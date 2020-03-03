@@ -1,0 +1,9 @@
+.classpath
+.project
+.settings
+
+# Keep empty directories:
+# Keep empty directories: >> .gitignore/.git*
+/target/
+.idea
+
