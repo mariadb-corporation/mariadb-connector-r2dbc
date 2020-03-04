@@ -8,6 +8,7 @@
 
 [![Maven Central][maven-image]][maven-url]
 [![Linux Build][travis-image]][travis-url]
+[![Build status][appveyor-image]][appveyor-url]
 [![License][license-image]][license-url]
 
 
@@ -112,7 +113,7 @@ To file an issue or follow the development, see [JIRA](https://jira.mariadb.org/
 [travis-url]:https://travis-ci.org/mariadb-corporation/mariadb-connector-r2dbc
 [maven-image]:https://maven-badges.herokuapp.com/maven-central/org.mariadb/r2dbc-mariadb/badge.svg
 [maven-url]:https://maven-badges.herokuapp.com/maven-central/org.mariadb/r2dbc-mariadb
-[appveyor-image]:https://ci.appveyor.com/api/projects/status/558kpv0j1r545pgq/branch/master?svg=true
-[appveyor-url]:https://ci.appveyor.com/project/rusher/mariadb-connector-r2dbc-w8k25
+[appveyor-image]:https://ci.appveyor.com/api/projects/status/hbfar9vg8w0rw15f/branch/master
+[appveyor-url]:https://ci.appveyor.com/project/rusher/mariadb-connector-r2dbc-57na3
 [license-image]:https://img.shields.io/badge/License-Apache%202.0-blue.svg
 [license-url]:https://opensource.org/licenses/Apache-2.0
