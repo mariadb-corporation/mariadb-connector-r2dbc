@@ -23,7 +23,7 @@
 
   <groupId>org.mariadb</groupId>
   <artifactId>r2dbc-mariadb</artifactId>
-  <version>0.8.1-alpha1-SNAPSHOT</version>
+  <version>0.8.1-alpha1</version>
   <packaging>jar</packaging>
 
   <name>R2DBC driver for MariaDB</name>

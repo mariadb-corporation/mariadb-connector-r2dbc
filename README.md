@@ -95,6 +95,13 @@ Basic example:
 | **`cachingRsaPublicKey`** | <i>only for MySQL server</i><br/> Server caching RSA public key, for cachingSHA256 authentication |*String* | |
 | **`allowPublicKeyRetrieval`** | <i>only for MySQL server</i><br/> Permit retrieved Server RSA public key from server. This can create a security issue |*boolean* | | 
       
+## Roadmap
+
+* Performance !
+* Fast batch using mariadb bulk
+* GeoJSON datatype
+* Pluggable types for MariaDB 10.5 (JSON, INET4, INET6, BOOLEAN, ...)
+
 
 ## Tracker 
 
