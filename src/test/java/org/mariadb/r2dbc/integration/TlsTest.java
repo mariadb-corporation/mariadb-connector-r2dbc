@@ -118,12 +118,13 @@ public class TlsTest extends BaseTest {
 
   @Test
   void trustForceProtocol() throws Exception {
+    String trustProtocol = minVersion(8, 0, 0) ? "TLSv1.2" : "TLSv1.1";
     Assumptions.assumeTrue(haveSsl(sharedConn));
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
             .sslMode(SslMode.ENABLE_TRUST)
-            .tlsProtocol("TLSv1.1")
+            .tlsProtocol(trustProtocol)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection
@@ -131,7 +132,7 @@ public class TlsTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(1)))
         .as(StepVerifier::create)
-        .expectNext("TLSv1.1")
+        .expectNext(trustProtocol)
         .verifyComplete();
     connection.close().block();
   }
