@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.integration;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -25,8 +26,6 @@ import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.api.MariadbResult;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class BigResultSetTest extends BaseTest {
 
@@ -46,31 +45,31 @@ public class BigResultSetTest extends BaseTest {
         .verifyComplete();
   }
 
-//  @Test
-//  void bench() {
-//    for (int i = 0; i < 1000000; i++) {
-//      consume(1, sharedConn);
-//    }
-//  }
-//
-//
-//  private void consume(int threadNo, io.r2dbc.spi.Connection connection) {
-//    io.r2dbc.spi.Statement statement =
-//            connection.createStatement("select * FROM benchmarks" + threadNo);
-//    Object[] obj =
-//            Flux.from(statement.execute())
-//                    .flatMap(
-//                            it ->
-//                                    it.map(
-//                                            (row, rowMetadata) -> {
-//                                              Object[] objs = new Object[2];
-//                                              for (int i = 0; i < 2; i++) {
-//                                                objs[i] = row.get(i);
-//                                              }
-//                                              return objs;
-//                                            }))
-//                    .blockLast();
-//  }
+  //  @Test
+  //  void bench() {
+  //    for (int i = 0; i < 1000000; i++) {
+  //      consume(1, sharedConn);
+  //    }
+  //  }
+  //
+  //
+  //  private void consume(int threadNo, io.r2dbc.spi.Connection connection) {
+  //    io.r2dbc.spi.Statement statement =
+  //            connection.createStatement("select * FROM benchmarks" + threadNo);
+  //    Object[] obj =
+  //            Flux.from(statement.execute())
+  //                    .flatMap(
+  //                            it ->
+  //                                    it.map(
+  //                                            (row, rowMetadata) -> {
+  //                                              Object[] objs = new Object[2];
+  //                                              for (int i = 0; i < 2; i++) {
+  //                                                objs[i] = row.get(i);
+  //                                              }
+  //                                              return objs;
+  //                                            }))
+  //                    .blockLast();
+  //  }
 
   @Test
   void multipleFluxSubscription() {

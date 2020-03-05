@@ -15,11 +15,10 @@
  */
 package org.mariadb.r2dbc.authentication.ed25519.math.ed25519;
 
+import java.util.Arrays;
 import org.mariadb.r2dbc.authentication.ed25519.Utils;
 import org.mariadb.r2dbc.authentication.ed25519.math.Field;
 import org.mariadb.r2dbc.authentication.ed25519.math.FieldElement;
-
-import java.util.Arrays;
 
 /**
  * Class to represent a field element of the finite field $p = 2^{255} - 19$ elements.

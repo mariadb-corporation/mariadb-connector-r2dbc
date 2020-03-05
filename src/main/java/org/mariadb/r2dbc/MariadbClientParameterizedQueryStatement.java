@@ -16,6 +16,9 @@
 
 package org.mariadb.r2dbc;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.codec.Codec;
@@ -27,10 +30,6 @@ import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.ClientPrepareResult;
 import reactor.core.publisher.Flux;
 import reactor.util.annotation.Nullable;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 final class MariadbClientParameterizedQueryStatement implements MariadbStatement {
 

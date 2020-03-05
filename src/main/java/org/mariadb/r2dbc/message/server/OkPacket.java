@@ -17,6 +17,7 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
+import java.util.Objects;
 import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.constants.Capabilities;
@@ -24,8 +25,6 @@ import org.mariadb.r2dbc.util.constants.ServerStatus;
 import org.mariadb.r2dbc.util.constants.StateChange;
 import reactor.util.Logger;
 import reactor.util.Loggers;
-
-import java.util.Objects;
 
 public class OkPacket implements ServerMessage {
   public static final byte TYPE = (byte) 0x00;

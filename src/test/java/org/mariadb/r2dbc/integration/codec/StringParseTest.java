@@ -18,17 +18,16 @@ package org.mariadb.r2dbc.integration.codec;
 
 import io.r2dbc.spi.Clob;
 import io.r2dbc.spi.R2dbcTransientResourceException;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
-import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.mariadb.r2dbc.BaseTest;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 public class StringParseTest extends BaseTest {
   @BeforeAll

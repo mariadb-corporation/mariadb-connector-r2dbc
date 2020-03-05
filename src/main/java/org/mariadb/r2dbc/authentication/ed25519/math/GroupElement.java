@@ -15,10 +15,9 @@
  */
 package org.mariadb.r2dbc.authentication.ed25519.math;
 
-import org.mariadb.r2dbc.authentication.ed25519.Utils;
-
 import java.io.Serializable;
 import java.util.Arrays;
+import org.mariadb.r2dbc.authentication.ed25519.Utils;
 
 /**
  * A point $(x,y)$ on an EdDSA curve.

@@ -18,15 +18,14 @@ package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Objects;
 import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.codec.Parameter;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.ClientPrepareResult;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Objects;
 
 public final class QueryWithParametersPacket implements ClientMessage {
 

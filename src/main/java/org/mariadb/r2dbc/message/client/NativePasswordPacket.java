@@ -18,13 +18,12 @@ package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import org.mariadb.r2dbc.client.ConnectionContext;
-import org.mariadb.r2dbc.message.server.Sequencer;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.message.server.Sequencer;
 
 public final class NativePasswordPacket implements ClientMessage {
 

@@ -17,14 +17,13 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import java.time.Duration;
+import java.util.EnumSet;
 import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.util.BufferUtils;
-
-import java.time.Duration;
-import java.util.EnumSet;
 
 public class DurationCodec implements Codec<Duration> {
 
@@ -60,8 +59,8 @@ public class DurationCodec implements Codec<Duration> {
         parts = LocalDateTimeCodec.parseTimestamp(buf, length);
         if (parts == null) return null;
         return Duration.ZERO
-                .plusDays(parts[2] - 1)
-                .plusHours(parts[3])
+            .plusDays(parts[2] - 1)
+            .plusHours(parts[3])
             .plusMinutes(parts[4])
             .plusSeconds(parts[5])
             .plusNanos(parts[6]);

@@ -18,6 +18,10 @@ package org.mariadb.r2dbc;
 
 import io.netty.channel.unix.DomainSocketAddress;
 import io.r2dbc.spi.*;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.util.Iterator;
+import java.util.Map;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.client.ClientImpl;
 import org.mariadb.r2dbc.message.flow.AuthenticationFlow;
@@ -25,11 +29,6 @@ import org.mariadb.r2dbc.util.Assert;
 import reactor.core.publisher.Mono;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.util.annotation.Nullable;
-
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.util.Iterator;
-import java.util.Map;
 
 public final class MariadbConnectionFactory implements ConnectionFactory {
 

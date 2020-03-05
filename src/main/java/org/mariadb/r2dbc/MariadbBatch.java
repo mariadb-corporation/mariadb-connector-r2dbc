@@ -16,15 +16,14 @@
 
 package org.mariadb.r2dbc;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.Assert;
 import reactor.core.publisher.Flux;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /** Basic implementation for batch. //TODO implement bulk */
 final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {

@@ -16,10 +16,9 @@
 
 package org.mariadb.r2dbc.message.flow;
 
+import java.util.ServiceLoader;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.authentication.AuthenticationPlugin;
-
-import java.util.ServiceLoader;
 
 public class AuthenticationFlowPluginLoader {
 

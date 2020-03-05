@@ -18,6 +18,12 @@ package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.Properties;
+import java.util.function.Supplier;
 import org.mariadb.r2dbc.MariadbConnectionFactoryProvider;
 import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.message.flow.ClearPasswordPluginFlow;
@@ -27,13 +33,6 @@ import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.PidFactory;
 import org.mariadb.r2dbc.util.constants.Capabilities;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.Properties;
-import java.util.function.Supplier;
 
 public final class HandshakeResponse implements ClientMessage {
 

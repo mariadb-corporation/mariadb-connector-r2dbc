@@ -17,10 +17,9 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
+import java.util.Objects;
 import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.util.BufferUtils;
-
-import java.util.Objects;
 
 public class ColumnCountPacket implements ServerMessage {
 

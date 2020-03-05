@@ -18,16 +18,15 @@ package org.mariadb.r2dbc.message.flow;
 
 import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.SslMode;
 import org.mariadb.r2dbc.message.client.*;
 import org.mariadb.r2dbc.message.server.AuthMoreDataPacket;
 import org.mariadb.r2dbc.message.server.AuthSwitchPacket;
-
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
 
 public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
 

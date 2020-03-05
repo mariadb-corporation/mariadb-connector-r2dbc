@@ -20,14 +20,13 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.r2dbc.spi.Row;
 import io.r2dbc.spi.RowMetadata;
+import java.nio.charset.StandardCharsets;
+import java.util.function.BiFunction;
 import org.mariadb.r2dbc.codec.RowDecoder;
 import org.mariadb.r2dbc.codec.TextRowDecoder;
 import org.mariadb.r2dbc.message.server.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.nio.charset.StandardCharsets;
-import java.util.function.BiFunction;
 
 final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
 

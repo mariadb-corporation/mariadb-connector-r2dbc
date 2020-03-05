@@ -18,12 +18,6 @@ package org.mariadb.r2dbc.integration.codec;
 
 import io.r2dbc.spi.Blob;
 import io.r2dbc.spi.R2dbcTransientResourceException;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
-import reactor.test.StepVerifier;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -32,6 +26,11 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.mariadb.r2dbc.BaseTest;
+import reactor.test.StepVerifier;
 
 public class BlobParseTest extends BaseTest {
   @BeforeAll

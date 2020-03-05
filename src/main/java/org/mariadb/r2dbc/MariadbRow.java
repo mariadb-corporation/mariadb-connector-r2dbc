@@ -18,14 +18,13 @@ package org.mariadb.r2dbc;
 
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Row;
+import java.util.Collections;
+import java.util.Set;
+import java.util.TreeSet;
 import org.mariadb.r2dbc.codec.RowDecoder;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.util.Assert;
 import reactor.util.annotation.Nullable;
-
-import java.util.Collections;
-import java.util.Set;
-import java.util.TreeSet;
 
 public class MariadbRow implements Row {
 

@@ -17,6 +17,9 @@
 package org.mariadb.r2dbc.integration;
 
 import io.r2dbc.spi.R2dbcNonTransientException;
+import java.io.File;
+import java.util.Arrays;
+import javax.net.ssl.SSLHandshakeException;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -25,10 +28,6 @@ import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-
-import javax.net.ssl.SSLHandshakeException;
-import java.io.File;
-import java.util.Arrays;
 
 public class TlsTest extends BaseTest {
 

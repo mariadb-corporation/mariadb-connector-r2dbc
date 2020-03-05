@@ -16,19 +16,18 @@
 
 package org.mariadb.r2dbc;
 
+import static io.r2dbc.spi.ConnectionFactoryOptions.*;
+
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.IsolationLevel;
-import org.mariadb.r2dbc.util.Assert;
-import org.mariadb.r2dbc.util.SslConfig;
-import reactor.util.annotation.Nullable;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import static io.r2dbc.spi.ConnectionFactoryOptions.*;
+import org.mariadb.r2dbc.util.Assert;
+import org.mariadb.r2dbc.util.SslConfig;
+import reactor.util.annotation.Nullable;
 
 public final class MariadbConnectionConfiguration {
 

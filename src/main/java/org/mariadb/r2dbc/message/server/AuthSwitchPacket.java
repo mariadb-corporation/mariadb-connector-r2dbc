@@ -17,11 +17,10 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
-import org.mariadb.r2dbc.client.ConnectionContext;
-
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Objects;
+import org.mariadb.r2dbc.client.ConnectionContext;
 
 public class AuthSwitchPacket implements ServerMessage {
 

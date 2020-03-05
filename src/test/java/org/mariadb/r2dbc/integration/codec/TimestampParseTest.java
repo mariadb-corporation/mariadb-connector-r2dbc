@@ -17,11 +17,6 @@
 package org.mariadb.r2dbc.integration.codec;
 
 import io.r2dbc.spi.R2dbcTransientResourceException;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
-import reactor.test.StepVerifier;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Duration;
@@ -29,6 +24,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.mariadb.r2dbc.BaseTest;
+import reactor.test.StepVerifier;
 
 public class TimestampParseTest extends BaseTest {
   @BeforeAll
@@ -104,15 +103,15 @@ public class TimestampParseTest extends BaseTest {
   @Test
   void durationValue() {
     sharedConn
-            .createStatement("SELECT t1 FROM TimestampTable2")
-            .execute()
-            .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Duration.class))))
-            .as(StepVerifier::create)
-            .expectNext(
-                    Optional.of(Duration.parse("PT36H50M05.0123S")),
-                    Optional.of(Duration.parse("PT10H45M01S")),
-                    Optional.empty())
-            .verifyComplete();
+        .createStatement("SELECT t1 FROM TimestampTable2")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Duration.class))))
+        .as(StepVerifier::create)
+        .expectNext(
+            Optional.of(Duration.parse("PT36H50M05.0123S")),
+            Optional.of(Duration.parse("PT10H45M01S")),
+            Optional.empty())
+        .verifyComplete();
   }
 
   @Test

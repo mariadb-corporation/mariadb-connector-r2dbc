@@ -17,15 +17,14 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalTime;
+import java.util.EnumSet;
 import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.util.BufferUtils;
-
-import java.nio.charset.StandardCharsets;
-import java.time.LocalTime;
-import java.util.EnumSet;
 
 public class LocalTimeCodec implements Codec<LocalTime> {
 

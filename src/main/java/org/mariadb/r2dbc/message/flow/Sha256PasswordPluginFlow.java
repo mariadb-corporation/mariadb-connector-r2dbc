@@ -19,6 +19,13 @@ package org.mariadb.r2dbc.message.flow;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.SslMode;
 import org.mariadb.r2dbc.authentication.AuthenticationPlugin;
@@ -28,14 +35,6 @@ import org.mariadb.r2dbc.message.client.RsaPublicKeyRequestPacket;
 import org.mariadb.r2dbc.message.client.Sha256PasswordPacket;
 import org.mariadb.r2dbc.message.server.AuthMoreDataPacket;
 import org.mariadb.r2dbc.message.server.AuthSwitchPacket;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.security.KeyFactory;
-import java.security.PublicKey;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.Base64;
 
 public class Sha256PasswordPluginFlow implements AuthenticationPlugin {
 

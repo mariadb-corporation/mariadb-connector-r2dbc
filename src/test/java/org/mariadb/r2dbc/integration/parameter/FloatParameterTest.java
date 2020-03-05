@@ -17,6 +17,12 @@
 package org.mariadb.r2dbc.integration.parameter;
 
 import io.r2dbc.spi.R2dbcTransientResourceException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Optional;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,13 +30,6 @@ import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
-
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.Optional;
 
 public class FloatParameterTest extends BaseTest {
   @BeforeAll

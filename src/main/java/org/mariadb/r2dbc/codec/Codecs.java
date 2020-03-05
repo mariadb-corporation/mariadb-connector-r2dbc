@@ -16,10 +16,9 @@
 
 package org.mariadb.r2dbc.codec;
 
-import org.mariadb.r2dbc.codec.list.*;
-
 import java.util.HashMap;
 import java.util.Map;
+import org.mariadb.r2dbc.codec.list.*;
 
 public class Codecs {
 

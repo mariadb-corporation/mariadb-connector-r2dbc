@@ -19,17 +19,16 @@ package org.mariadb.r2dbc.message.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import org.mariadb.r2dbc.authentication.ed25519.math.GroupElement;
 import org.mariadb.r2dbc.authentication.ed25519.math.ed25519.ScalarOps;
 import org.mariadb.r2dbc.authentication.ed25519.spec.EdDSANamedCurveTable;
 import org.mariadb.r2dbc.authentication.ed25519.spec.EdDSAParameterSpec;
 import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.message.server.Sequencer;
-
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 
 public final class Ed25519PasswordPacket implements ClientMessage {
 

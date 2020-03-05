@@ -16,13 +16,6 @@
 
 package org.mariadb.r2dbc.integration.parameter;
 
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
-import reactor.core.publisher.Flux;
-import reactor.test.StepVerifier;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Duration;
@@ -30,6 +23,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mariadb.r2dbc.BaseTest;
+import reactor.core.publisher.Flux;
+import reactor.test.StepVerifier;
 
 public class StringParameterTest extends BaseTest {
   @BeforeAll

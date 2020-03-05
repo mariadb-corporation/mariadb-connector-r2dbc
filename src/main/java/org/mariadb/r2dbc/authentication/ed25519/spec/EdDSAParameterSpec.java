@@ -15,14 +15,13 @@
  */
 package org.mariadb.r2dbc.authentication.ed25519.spec;
 
-import org.mariadb.r2dbc.authentication.ed25519.math.Curve;
-import org.mariadb.r2dbc.authentication.ed25519.math.GroupElement;
-import org.mariadb.r2dbc.authentication.ed25519.math.ed25519.ScalarOps;
-
 import java.io.Serializable;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.AlgorithmParameterSpec;
+import org.mariadb.r2dbc.authentication.ed25519.math.Curve;
+import org.mariadb.r2dbc.authentication.ed25519.math.GroupElement;
+import org.mariadb.r2dbc.authentication.ed25519.math.ed25519.ScalarOps;
 
 /**
  * Parameter specification for an EdDSA algorithm.

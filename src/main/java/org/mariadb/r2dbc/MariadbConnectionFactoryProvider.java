@@ -16,14 +16,13 @@
 
 package org.mariadb.r2dbc;
 
+import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
+
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryProvider;
 import io.r2dbc.spi.Option;
-import org.mariadb.r2dbc.util.Assert;
-
 import java.util.Map;
-
-import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
+import org.mariadb.r2dbc.util.Assert;
 
 public final class MariadbConnectionFactoryProvider implements ConnectionFactoryProvider {
   public static final String MARIADB_DRIVER = "mariadb";

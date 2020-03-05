@@ -17,13 +17,12 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.util.Assert;
 import reactor.util.Logger;
 import reactor.util.Loggers;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 
 public final class ErrorPacket implements ServerMessage {
   private static final Logger logger = Loggers.getLogger(ErrorPacket.class);

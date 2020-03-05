@@ -25,6 +25,15 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
+import java.net.SocketAddress;
+import java.time.Duration;
+import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLException;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.client.ClientMessage;
@@ -44,16 +53,6 @@ import reactor.util.Logger;
 import reactor.util.Loggers;
 import reactor.util.annotation.Nullable;
 import reactor.util.concurrent.Queues;
-
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLException;
-import java.net.SocketAddress;
-import java.time.Duration;
-import java.util.Queue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Function;
 
 public final class ClientImpl implements Client {
 

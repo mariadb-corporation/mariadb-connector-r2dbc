@@ -18,15 +18,6 @@ package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Nullability;
-import org.mariadb.r2dbc.client.ConnectionContext;
-import org.mariadb.r2dbc.codec.Codec;
-import org.mariadb.r2dbc.codec.DataType;
-import org.mariadb.r2dbc.codec.list.*;
-import org.mariadb.r2dbc.util.BufferUtils;
-import org.mariadb.r2dbc.util.constants.ColumnFlags;
-import reactor.util.Logger;
-import reactor.util.Loggers;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -35,6 +26,14 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.codec.Codec;
+import org.mariadb.r2dbc.codec.DataType;
+import org.mariadb.r2dbc.codec.list.*;
+import org.mariadb.r2dbc.util.BufferUtils;
+import org.mariadb.r2dbc.util.constants.ColumnFlags;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 
 public final class ColumnDefinitionPacket implements ServerMessage {
   private static final Logger logger = Loggers.getLogger(ColumnDefinitionPacket.class);

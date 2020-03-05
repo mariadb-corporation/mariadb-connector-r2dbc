@@ -20,12 +20,11 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.message.server.ServerPacketState;
-
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MariadbPacketDecoder extends ByteToMessageDecoder {
 

@@ -17,10 +17,9 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
+import java.util.Objects;
 import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
-
-import java.util.Objects;
 
 public class EofPacket implements ServerMessage {
 

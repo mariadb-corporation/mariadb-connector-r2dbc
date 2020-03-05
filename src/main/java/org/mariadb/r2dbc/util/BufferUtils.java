@@ -20,10 +20,6 @@ import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Blob;
 import io.r2dbc.spi.Clob;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
-import org.mariadb.r2dbc.client.ConnectionContext;
-import org.mariadb.r2dbc.util.constants.ServerStatus;
-import reactor.core.publisher.Flux;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -33,6 +29,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.BitSet;
+import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.util.constants.ServerStatus;
+import reactor.core.publisher.Flux;
 
 public class BufferUtils {
 

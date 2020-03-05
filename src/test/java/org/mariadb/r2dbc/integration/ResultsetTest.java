@@ -16,13 +16,12 @@
 
 package org.mariadb.r2dbc.integration;
 
+import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
 import reactor.test.StepVerifier;
-
-import java.util.Random;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ResultsetTest extends BaseTest {
   private static String vals = "azertyuiopqsdfghjklmwxcvbn";

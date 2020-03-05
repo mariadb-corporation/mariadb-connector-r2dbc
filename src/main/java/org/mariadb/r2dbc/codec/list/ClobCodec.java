@@ -18,15 +18,14 @@ package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Clob;
+import java.nio.charset.StandardCharsets;
+import java.util.EnumSet;
 import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.util.BufferUtils;
 import reactor.core.publisher.Mono;
-
-import java.nio.charset.StandardCharsets;
-import java.util.EnumSet;
 
 public class ClobCodec implements Codec<Clob> {
 
