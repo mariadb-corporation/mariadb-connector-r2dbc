@@ -36,9 +36,13 @@ import java.util.function.Consumer;
 public class BlobParseTest extends BaseTest {
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("CREATE TEMPORARY TABLE BlobTable (t1 BLOB)").execute().blockLast();
     sharedConn
-        .createStatement("INSERT INTO BlobTable VALUES ('diego🤘💪'),('georg'),('lawrin'), (null)")
+        .createStatement("CREATE TEMPORARY TABLE BlobTable (t1 BLOB, t2 int)")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "INSERT INTO BlobTable VALUES ('diego🤘💪',1),('georg',2),('lawrin',3), (null,4)")
         .execute()
         .blockLast();
     // ensure having same kind of result for truncation
@@ -66,9 +70,18 @@ public class BlobParseTest extends BaseTest {
         };
 
     sharedConn
-        .createStatement("SELECT t1 FROM BlobTable limit 3")
+        .createStatement("SELECT t1,t2 FROM BlobTable limit 3")
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(0)))
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      row.get(0);
+                      row.get(0);
+                      row.get(1);
+                      row.get(1);
+                      return row.get(0);
+                    }))
         .cast(Blob.class)
         .flatMap(Blob::stream)
         .as(StepVerifier::create)

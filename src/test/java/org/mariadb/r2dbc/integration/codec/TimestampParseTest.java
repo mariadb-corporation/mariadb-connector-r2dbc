@@ -43,14 +43,14 @@ public class TimestampParseTest extends BaseTest {
         .execute()
         .blockLast();
     sharedConn
-            .createStatement("CREATE TEMPORARY TABLE TimestampTable2 (t1 TIMESTAMP(6) NULL)")
-            .execute()
-            .blockLast();
+        .createStatement("CREATE TEMPORARY TABLE TimestampTable2 (t1 TIMESTAMP(6) NULL)")
+        .execute()
+        .blockLast();
     sharedConn
-            .createStatement(
-                    "INSERT INTO TimestampTable2 VALUES('1970-01-02 12:50:05.01230'), ('1970-01-01 10:45:01'), (null)")
-            .execute()
-            .blockLast();
+        .createStatement(
+            "INSERT INTO TimestampTable2 VALUES('1970-01-02 12:50:05.01230'), ('1970-01-01 10:45:01'), (null)")
+        .execute()
+        .blockLast();
 
     // ensure having same kind of result for truncation
     sharedConn

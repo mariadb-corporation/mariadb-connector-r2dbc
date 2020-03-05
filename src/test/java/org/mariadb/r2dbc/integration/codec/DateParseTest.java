@@ -32,9 +32,12 @@ import java.util.Optional;
 public class DateParseTest extends BaseTest {
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("CREATE TEMPORARY TABLE DateTable (t1 DATE)").execute().blockLast();
     sharedConn
-        .createStatement("INSERT INTO DateTable VALUES('2010-01-12'), ('2011-2-28'), (null)")
+        .createStatement("CREATE TEMPORARY TABLE DateTable (t1 DATE, t2 int)")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement("INSERT INTO DateTable VALUES('2010-01-12',1), ('2011-2-28',2), (null,3)")
         .execute()
         .blockLast();
     // ensure having same kind of result for truncation
@@ -47,9 +50,18 @@ public class DateParseTest extends BaseTest {
   @Test
   void defaultValue() {
     sharedConn
-        .createStatement("SELECT t1 FROM DateTable")
+        .createStatement("SELECT t1,t2 FROM DateTable")
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      row.get(0);
+                      row.get(0);
+                      row.get(1);
+                      row.get(1);
+                      return Optional.ofNullable(row.get(0));
+                    }))
         .as(StepVerifier::create)
         .expectNext(
             Optional.of(LocalDate.parse("2010-01-12")),

@@ -30,9 +30,13 @@ import java.util.Optional;
 public class BitParseTest extends BaseTest {
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("CREATE TEMPORARY TABLE BitTable (t1 BIT(4))").execute().blockLast();
     sharedConn
-        .createStatement("INSERT INTO BitTable VALUES (b'0001'),(b'1111'),(b'1010'), (null)")
+        .createStatement("CREATE TEMPORARY TABLE BitTable (t1 BIT(4), t2 int)")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "INSERT INTO BitTable VALUES (b'0001', 1),(b'1111', 2),(b'1010', 3), (null, 4)")
         .execute()
         .blockLast();
     // ensure having same kind of result for truncation
@@ -45,9 +49,18 @@ public class BitParseTest extends BaseTest {
   @Test
   void defaultValue() {
     sharedConn
-        .createStatement("SELECT t1 FROM BitTable")
+        .createStatement("SELECT t1, t2 FROM BitTable")
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      row.get(0);
+                      row.get(0);
+                      row.get(1);
+                      row.get(1);
+                      return Optional.ofNullable(row.get(0));
+                    }))
         .as(StepVerifier::create)
         .expectNext(
             Optional.of(BitSet.valueOf(new byte[] {(byte) 1})),

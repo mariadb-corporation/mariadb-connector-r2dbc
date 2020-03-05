@@ -30,11 +30,12 @@ public class BigIntegerParseTest extends BaseTest {
   @BeforeAll
   public static void before2() {
     sharedConn
-        .createStatement("CREATE TEMPORARY TABLE BigIntTable (t1 BIGINT)")
+        .createStatement("CREATE TEMPORARY TABLE BigIntTable (t1 BIGINT, t2 BIGINT)")
         .execute()
         .blockLast();
     sharedConn
-        .createStatement("INSERT INTO BigIntTable VALUES (0),(1),(9223372036854775807), (null)")
+        .createStatement(
+            "INSERT INTO BigIntTable VALUES (0,1),(1,2),(9223372036854775807,3), (null,4)")
         .execute()
         .blockLast();
     sharedConn
@@ -56,9 +57,18 @@ public class BigIntegerParseTest extends BaseTest {
   @Test
   void defaultValue() {
     sharedConn
-        .createStatement("SELECT t1 FROM BigIntTable")
+        .createStatement("SELECT t1,t2 FROM BigIntTable")
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      row.get(0);
+                      row.get(0);
+                      row.get(1);
+                      row.get(1);
+                      return Optional.ofNullable(row.get(0));
+                    }))
         .as(StepVerifier::create)
         .expectNext(
             Optional.of(0L), Optional.of(1L), Optional.of(9223372036854775807L), Optional.empty())
@@ -174,9 +184,18 @@ public class BigIntegerParseTest extends BaseTest {
   @Test
   void longValue() {
     sharedConn
-        .createStatement("SELECT t1 FROM BigIntTable")
+        .createStatement("SELECT t1,t2 FROM BigIntTable")
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Long.class))))
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      row.get(0, Long.class);
+                      row.get(0, Long.class);
+                      row.get(1, Long.class);
+                      row.get(1, Long.class);
+                      return Optional.ofNullable(row.get(0, Long.class));
+                    }))
         .as(StepVerifier::create)
         .expectNext(
             Optional.of(0L), Optional.of(1L), Optional.of(9223372036854775807L), Optional.empty())

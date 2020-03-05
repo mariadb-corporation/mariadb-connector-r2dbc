@@ -28,50 +28,50 @@ public class TextRowDecoder extends RowDecoder {
    * @param newIndex index (0 is first).
    */
   public void setPosition(int newIndex) {
-    if (index != newIndex) {
-      if (index > newIndex) {
-        index = 0;
-        buf.resetReaderIndex();
-      } else {
-        index++;
-      }
+    if (index >= newIndex) {
+      index = 0;
+      buf.resetReaderIndex();
+    } else {
+      index++;
+    }
 
-      for (; index < newIndex; index++) {
-        int type = this.buf.readUnsignedByte();
-        switch (type) {
-          case 252:
-            buf.skipBytes(buf.readUnsignedShortLE());
-            break;
-          case 253:
-            buf.skipBytes(buf.readUnsignedMediumLE());
-            break;
-          case 254:
-            buf.skipBytes((int) (4 + buf.readUnsignedIntLE()));
-            break;
-          default:
-            buf.skipBytes(type);
-            break;
-        }
-      }
-      short type = this.buf.readUnsignedByte();
+    for (; index < newIndex; index++) {
+      int type = this.buf.readUnsignedByte();
       switch (type) {
-        case 251:
-          length = NULL_LENGTH;
-          break;
         case 252:
-          length = buf.readUnsignedShortLE();
+          buf.skipBytes(buf.readUnsignedShortLE());
           break;
         case 253:
-          length = buf.readUnsignedMediumLE();
+          buf.skipBytes(buf.readUnsignedMediumLE());
           break;
         case 254:
-          length = (int) buf.readUnsignedIntLE();
-          buf.skipBytes(4);
+          buf.skipBytes((int) (4 + buf.readUnsignedIntLE()));
+          break;
+        case 251:
           break;
         default:
-          length = type;
+          buf.skipBytes(type);
           break;
       }
+    }
+    short type = this.buf.readUnsignedByte();
+    switch (type) {
+      case 251:
+        length = NULL_LENGTH;
+        break;
+      case 252:
+        length = buf.readUnsignedShortLE();
+        break;
+      case 253:
+        length = buf.readUnsignedMediumLE();
+        break;
+      case 254:
+        length = (int) buf.readUnsignedIntLE();
+        buf.skipBytes(4);
+        break;
+      default:
+        length = type;
+        break;
     }
   }
 }
