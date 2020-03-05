@@ -300,9 +300,9 @@ public final class MariadbConnectionConfiguration {
    */
   public static final class Builder implements Cloneable {
 
-    @Nullable public String rsaPublicKey;
-    @Nullable public String cachingRsaPublicKey;
-    public boolean allowPublicKeyRetrieval;
+    @Nullable private String rsaPublicKey;
+    @Nullable private String cachingRsaPublicKey;
+    private boolean allowPublicKeyRetrieval;
     @Nullable private String username;
     @Nullable private Duration connectTimeout;
     @Nullable private String database;
