@@ -235,11 +235,12 @@ public class TimeStampParameterTest extends BaseTest {
 
   @Test
   void localTimeValue() {
+    LocalTime localTime = LocalTime.parse("05:08:10.123456");
     sharedConn
         .createStatement("INSERT INTO TimestampParam VALUES (?,?,?)")
-        .bind(0, LocalTime.now())
-        .bind(1, LocalTime.now())
-        .bind(2, LocalTime.now())
+        .bind(0, localTime)
+        .bind(1, localTime)
+        .bind(2, localTime)
         .execute()
         .flatMap(r -> r.getRowsUpdated())
         .as(StepVerifier::create)
