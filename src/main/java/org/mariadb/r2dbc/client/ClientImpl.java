@@ -34,9 +34,7 @@ import reactor.netty.tcp.TcpClient;
 import reactor.util.annotation.Nullable;
 import reactor.util.concurrent.Queues;
 
-/**
- * Client that only send query one by one.
- */
+/** Client that only send query one by one. */
 public final class ClientImpl extends ClientBase {
   public ClientImpl(Connection connection) {
     super(connection);

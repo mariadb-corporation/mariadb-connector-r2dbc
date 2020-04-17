@@ -30,19 +30,17 @@
   <description>R2DBC driver for MariaDB</description>
 
   <properties>
-    <assertj.version>3.14.0</assertj.version>
+    <assertj.version>3.15.0</assertj.version>
     <java.version>1.8</java.version>
     <jsr305.version>3.0.2</jsr305.version>
-    <junit.version>5.5.2</junit.version>
-    <jmh.version>1.22</jmh.version>
+    <junit.version>5.6.2</junit.version>
+    <jmh.version>1.23</jmh.version>
     <logback.version>1.2.3</logback.version>
-    <mockito.version>3.1.0</mockito.version>
-    <netty.version>4.1.46.Final</netty.version>
+    <netty.version>4.1.48.Final</netty.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <r2dbc-spi.version>0.8.1.RELEASE</r2dbc-spi.version>
-    <reactor.version>Dysprosium-SR5</reactor.version>
-    <scram-client.version>2.1</scram-client.version>
-    <mariadb-jdbc.version>2.5.3</mariadb-jdbc.version>
+    <reactor.version>Dysprosium-SR6</reactor.version>
+    <mariadb-jdbc.version>2.6.0</mariadb-jdbc.version>
     <r2dbc-mysql.version>0.8.1.RELEASE</r2dbc-mysql.version>
     <uberjar.name>benchmarks</uberjar.name>
   </properties>
@@ -119,11 +117,6 @@
       <version>${r2dbc-spi.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.ongres.scram</groupId>
-      <artifactId>client</artifactId>
-      <version>${scram-client.version}</version>
-    </dependency>
-    <dependency>
       <groupId>io.projectreactor</groupId>
       <artifactId>reactor-core</artifactId>
     </dependency>
@@ -160,16 +153,16 @@
       <version>${assertj.version}</version>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-params</artifactId>
-      <scope>test</scope>
-    </dependency>
+<!--    <dependency>-->
+<!--      <groupId>org.junit.jupiter</groupId>-->
+<!--      <artifactId>junit-jupiter-api</artifactId>-->
+<!--      <scope>test</scope>-->
+<!--    </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>org.junit.jupiter</groupId>-->
+<!--      <artifactId>junit-jupiter-params</artifactId>-->
+<!--      <scope>test</scope>-->
+<!--    </dependency>-->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>

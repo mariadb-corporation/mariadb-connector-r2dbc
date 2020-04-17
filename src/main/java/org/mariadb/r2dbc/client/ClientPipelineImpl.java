@@ -32,9 +32,7 @@ import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
 import reactor.util.annotation.Nullable;
 
-/**
- * Client that send queries pipelining (without waiting for result).
- */
+/** Client that send queries pipelining (without waiting for result). */
 public final class ClientPipelineImpl extends ClientBase {
   public ClientPipelineImpl(Connection connection) {
     super(connection);
