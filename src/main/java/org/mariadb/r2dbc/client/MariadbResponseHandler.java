@@ -20,7 +20,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.util.List;
-import java.util.Queue;
+import java.util.function.Consumer;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
@@ -28,25 +28,22 @@ import reactor.core.publisher.MonoSink;
 
 public class MariadbResponseHandler extends MessageToMessageDecoder<ServerMessage> {
 
-  private final Queue<MonoSink<Flux<ServerMessage>>> responseReceivers;
+  private final Client client;
   private FluxSink<ServerMessage> fluxSink = null;
+  private Consumer<FluxSink<ServerMessage>> sinkConsumer = sink -> fluxSink = sink;
 
-  public MariadbResponseHandler(Queue<MonoSink<Flux<ServerMessage>>> responseReceivers) {
-    this.responseReceivers = responseReceivers;
+  public MariadbResponseHandler(Client client) {
+    this.client = client;
   }
 
   private void newReceiver() {
-    MonoSink<Flux<ServerMessage>> receiver = this.responseReceivers.poll();
+
+    MonoSink<Flux<ServerMessage>> receiver = client.nextReceiver();
     if (receiver == null) {
       throw new R2dbcNonTransientResourceException(
           "unexpected message received when no command was send");
     }
-    Flux<ServerMessage> flux =
-        Flux.create(
-            sink -> {
-              fluxSink = sink;
-            });
-    receiver.success(flux);
+    receiver.success(Flux.create(sinkConsumer));
   }
 
   @Override
@@ -58,6 +55,7 @@ public class MariadbResponseHandler extends MessageToMessageDecoder<ServerMessag
     fluxSink.next(msg);
     if (msg.ending()) {
       fluxSink.complete();
+      client.sendNext();
       fluxSink = null;
     }
   }

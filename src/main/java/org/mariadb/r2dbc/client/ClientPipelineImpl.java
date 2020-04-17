@@ -20,7 +20,6 @@ import io.netty.channel.ChannelOption;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.net.SocketAddress;
 import java.time.Duration;
-import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import org.mariadb.r2dbc.message.client.ClientMessage;
@@ -32,17 +31,14 @@ import reactor.netty.Connection;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
 import reactor.util.annotation.Nullable;
-import reactor.util.concurrent.Queues;
 
 /**
- * Client that only send query one by one.
+ * Client that send queries pipelining (without waiting for result).
  */
-public final class ClientImpl extends ClientBase {
-  public ClientImpl(Connection connection) {
+public final class ClientPipelineImpl extends ClientBase {
+  public ClientPipelineImpl(Connection connection) {
     super(connection);
   }
-
-  protected final Queue<ClientMessage> sendingQueue = Queues.<ClientMessage>unbounded().get();
 
   public static Mono<Client> connect(
       ConnectionProvider connectionProvider,
@@ -55,7 +51,7 @@ public final class ClientImpl extends ClientBase {
           tcpClient.option(
               ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(connectTimeout.toMillis()));
     }
-    return tcpClient.connect().flatMap(it -> Mono.just(new ClientImpl(it)));
+    return tcpClient.connect().flatMap(it -> Mono.just(new ClientPipelineImpl(it)));
   }
 
   public Flux<ServerMessage> sendCommand(ClientMessage message) {
@@ -71,13 +67,8 @@ public final class ClientImpl extends ClientBase {
               if (atomicBoolean.compareAndSet(false, true)) {
                 try {
                   lock.lock();
-                  if (this.responseReceivers.isEmpty()) {
-                    this.responseReceivers.add(sink);
-                    connection.channel().writeAndFlush(message);
-                  } else {
-                    this.responseReceivers.add(sink);
-                    sendingQueue.add(message);
-                  }
+                  this.responseReceivers.add(sink);
+                  connection.channel().writeAndFlush(message);
                 } finally {
                   lock.unlock();
                 }
@@ -86,22 +77,9 @@ public final class ClientImpl extends ClientBase {
         .flatMapMany(Function.identity());
   }
 
-  public void sendNext() {
-    lock.lock();
-    try {
-      ClientMessage next = sendingQueue.poll();
-      if (next != null) connection.channel().writeAndFlush(next);
-    } finally {
-      lock.unlock();
-    }
-  }
+  public void sendNext() {}
 
   public MonoSink<Flux<ServerMessage>> nextReceiver() {
-    lock.lock();
-    try {
-      return this.responseReceivers.poll();
-    } finally {
-      lock.unlock();
-    }
+    return this.responseReceivers.poll();
   }
 }

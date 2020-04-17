@@ -24,11 +24,11 @@ import java.util.Iterator;
 import java.util.Map;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.client.ClientImpl;
+import org.mariadb.r2dbc.client.ClientPipelineImpl;
 import org.mariadb.r2dbc.message.flow.AuthenticationFlow;
 import org.mariadb.r2dbc.util.Assert;
 import reactor.core.publisher.Mono;
 import reactor.netty.resources.ConnectionProvider;
-import reactor.util.annotation.Nullable;
 
 public final class MariadbConnectionFactory implements ConnectionFactory {
 
@@ -58,13 +58,22 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
 
   @Override
   public Mono<org.mariadb.r2dbc.api.MariadbConnection> create() {
-    return doCreateConnection(this.configuration.getConnectionAttributes())
-        .cast(org.mariadb.r2dbc.api.MariadbConnection.class);
+    return doCreateConnection().cast(org.mariadb.r2dbc.api.MariadbConnection.class);
   }
 
-  private Mono<MariadbConnection> doCreateConnection(@Nullable Map<String, String> options) {
-    return ClientImpl.connect(
-            ConnectionProvider.newConnection(), this.endpoint, configuration.getConnectTimeout())
+  private Mono<MariadbConnection> doCreateConnection() {
+    Mono<Client> clientMono;
+    if (configuration.allowPipelining()) {
+      clientMono =
+          ClientPipelineImpl.connect(
+              ConnectionProvider.newConnection(), this.endpoint, configuration.getConnectTimeout());
+    } else {
+      clientMono =
+          ClientImpl.connect(
+              ConnectionProvider.newConnection(), this.endpoint, configuration.getConnectTimeout());
+    }
+
+    return clientMono
         .delayUntil(client -> AuthenticationFlow.exchange(client, this.configuration))
         .cast(Client.class)
         .flatMap(
@@ -103,7 +112,7 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
       return throwable;
     }
 
-    return new MariadbConnectionException(
+    return new R2dbcNonTransientResourceException(
         String.format("Cannot connect to %s", this.endpoint), throwable);
   }
 
@@ -171,13 +180,5 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
                     }))
         .defaultIfEmpty(IsolationLevel.READ_COMMITTED)
         .last();
-  }
-
-  @SuppressWarnings("serial")
-  static class MariadbConnectionException extends R2dbcNonTransientResourceException {
-
-    public MariadbConnectionException(String msg, @Nullable Throwable cause) {
-      super(msg, cause);
-    }
   }
 }

@@ -1,0 +1,66 @@
+/*
+ * Copyright 2020 MariaDB Ab.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.mariadb.r2dbc.integration;
+
+import java.math.BigInteger;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.MariadbConnectionFactory;
+import org.mariadb.r2dbc.TestConfiguration;
+import org.mariadb.r2dbc.api.MariadbConnection;
+import reactor.core.publisher.Flux;
+import reactor.test.StepVerifier;
+
+public class NoPipelineTest extends BaseTest {
+
+  @Test
+  void noPipelineConnect() throws Exception {
+    MariadbConnectionConfiguration confPipeline =
+        TestConfiguration.defaultBuilder.clone().allowPipelining(true).build();
+    MariadbConnection connection = new MariadbConnectionFactory(confPipeline).create().block();
+
+    try {
+      runWithPipeline(connection);
+    } finally {
+      connection.close().block();
+    }
+  }
+
+  private Duration runWithPipeline(MariadbConnection connection) {
+    Instant initial = Instant.now();
+    int MAX = 100;
+    List<Flux<BigInteger>> fluxes = new ArrayList<>();
+    for (int i = 0; i < MAX; i++) {
+      fluxes.add(
+          connection
+              .createStatement("SELECT * from seq_" + (100 * i) + "_to_" + (100 * (i + 1) - 1))
+              .execute()
+              .flatMap(r -> r.map((row, metadata) -> row.get(0, BigInteger.class))));
+    }
+
+    for (int i = 0; i < MAX - 1; i++) {
+      fluxes.get(i).subscribe();
+    }
+    Flux.concat(fluxes.get(MAX - 1)).as(StepVerifier::create).expectNextCount(100).verifyComplete();
+    return Duration.between(initial, Instant.now());
+  }
+}

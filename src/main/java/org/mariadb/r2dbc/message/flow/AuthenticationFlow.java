@@ -100,7 +100,7 @@ public final class AuthenticationFlow {
             | Capabilities.CLIENT_SESSION_TRACK
             | Capabilities.FOUND_ROWS;
 
-    if (configuration.isAllowMultiQueries()) {
+    if (configuration.allowMultiQueries()) {
       capabilities |= Capabilities.MULTI_STATEMENTS;
     }
 

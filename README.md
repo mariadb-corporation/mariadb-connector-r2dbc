@@ -94,7 +94,8 @@ Basic example:
 | **`sslMode`** | ssl requirement. Possible value are <ul><li>DISABLED, // NO SSL</li><li>ENABLE_TRUST, // Encryption, but no certificate and hostname validation  (DEVELOPMENT ONLY)</li><li>ENABLE_WITHOUT_HOSTNAME_VERIFICATION, // Encryption, certificates validation, BUT no hostname validation</li><li>ENABLE, // Standard SSL use: Encryption, certificate validation and hostname validation</li></ul> | SslMode |DISABLED|
 | **`rsaPublicKey`** | <i>only for MySQL server</i><br/> Server RSA public key, for SHA256 authentication |*String* | |
 | **`cachingRsaPublicKey`** | <i>only for MySQL server</i><br/> Server caching RSA public key, for cachingSHA256 authentication |*String* | |
-| **`allowPublicKeyRetrieval`** | <i>only for MySQL server</i><br/> Permit retrieved Server RSA public key from server. This can create a security issue |*boolean* | | 
+| **`allowPublicKeyRetrieval`** | <i>only for MySQL server</i><br/> Permit retrieved Server RSA public key from server. This can create a security issue |*boolean* | true | 
+| **`allowPipelining`** | Permit to send queries to server without waiting for previous query to finish |*boolean* | | 
       
 ## Roadmap
 

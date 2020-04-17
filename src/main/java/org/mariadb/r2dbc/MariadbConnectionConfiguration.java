@@ -40,6 +40,7 @@ public final class MariadbConnectionConfiguration {
   private final String socket;
   private final String username;
   private final boolean allowMultiQueries;
+  private final boolean allowPipelining;
   private final Map<String, String> connectionAttributes;
   private final Map<String, String> sessionVariables;
   private final SslConfig sslConfig;
@@ -59,6 +60,7 @@ public final class MariadbConnectionConfiguration {
       @Nullable String socket,
       @Nullable String username,
       boolean allowMultiQueries,
+      boolean allowPipelining,
       @Nullable List<String> tlsProtocol,
       @Nullable String serverSslCert,
       @Nullable String clientSslCert,
@@ -78,6 +80,7 @@ public final class MariadbConnectionConfiguration {
     this.socket = socket;
     this.username = username;
     this.allowMultiQueries = allowMultiQueries;
+    this.allowPipelining = allowPipelining;
     if (sslMode == SslMode.DISABLED) {
       this.sslConfig = SslConfig.DISABLE_INSTANCE;
     } else {
@@ -105,6 +108,11 @@ public final class MariadbConnectionConfiguration {
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES)) {
       builder.allowMultiQueries(
           connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES));
+    }
+
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.ALLOW_PIPELINING)) {
+      builder.allowPipelining(
+          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.ALLOW_PIPELINING));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SSL_MODE)) {
@@ -196,8 +204,12 @@ public final class MariadbConnectionConfiguration {
     return this.username;
   }
 
-  public boolean isAllowMultiQueries() {
+  public boolean allowMultiQueries() {
     return allowMultiQueries;
+  }
+
+  public boolean allowPipelining() {
+    return allowPipelining;
   }
 
   public SslConfig getSslConfig() {
@@ -212,7 +224,7 @@ public final class MariadbConnectionConfiguration {
     return cachingRsaPublicKey;
   }
 
-  public boolean isAllowPublicKeyRetrieval() {
+  public boolean allowPublicKeyRetrieval() {
     return allowPublicKeyRetrieval;
   }
 
@@ -313,6 +325,7 @@ public final class MariadbConnectionConfiguration {
     private int port = DEFAULT_PORT;
     @Nullable private String socket;
     private boolean allowMultiQueries = false;
+    private boolean allowPipelining = true;
     @Nullable private List<String> tlsProtocol;
     @Nullable private String serverSslCert;
     @Nullable private String clientSslCert;
@@ -353,6 +366,7 @@ public final class MariadbConnectionConfiguration {
           this.socket,
           this.username,
           this.allowMultiQueries,
+          this.allowPipelining,
           this.tlsProtocol,
           this.serverSslCert,
           this.clientSslCert,
@@ -547,6 +561,17 @@ public final class MariadbConnectionConfiguration {
      */
     public Builder allowPublicKeyRetrieval(boolean allowPublicKeyRetrieval) {
       this.allowPublicKeyRetrieval = allowPublicKeyRetrieval;
+      return this;
+    }
+
+    /**
+     * Permit pipelining (sending request before resolution of previous one).
+     *
+     * @param allowPipelining indicate if pipelining is permit
+     * @return this {@link Builder}
+     */
+    public Builder allowPipelining(boolean allowPipelining) {
+      this.allowPipelining = allowPipelining;
       return this;
     }
 

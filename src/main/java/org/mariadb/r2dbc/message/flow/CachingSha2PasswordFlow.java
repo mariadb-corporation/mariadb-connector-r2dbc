@@ -123,7 +123,7 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
                   publicKey);
             }
 
-            if (!configuration.isAllowPublicKeyRetrieval()) {
+            if (!configuration.allowPublicKeyRetrieval()) {
               throw new R2dbcNonTransientResourceException(
                   "RSA public key is not available client side (option serverRsaPublicKeyFile) and option 'allowPublicKeyRetrieval' is disabled. Either set one or the other",
                   "S1009");

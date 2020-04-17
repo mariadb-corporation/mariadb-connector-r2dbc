@@ -20,7 +20,7 @@ import io.r2dbc.spi.IsolationLevel;
 import io.r2dbc.spi.ValidationDepth;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
-import org.mariadb.r2dbc.client.ClientImpl;
+import org.mariadb.r2dbc.client.ClientBase;
 import org.mariadb.r2dbc.message.client.PingPacket;
 import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.util.Assert;
@@ -49,7 +49,7 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
 
   @Override
   public Mono<Void> beginTransaction() {
-    try (ClientImpl.LockAction lockAction = this.client.getLockAction()) {
+    try (ClientBase.LockAction lockAction = this.client.getLockAction()) {
       return lockAction.beginTransaction();
     }
   }
@@ -61,7 +61,7 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
 
   @Override
   public Mono<Void> commitTransaction() {
-    try (ClientImpl.LockAction lockAction = this.client.getLockAction()) {
+    try (ClientBase.LockAction lockAction = this.client.getLockAction()) {
       return lockAction.commitTransaction();
     }
   }
@@ -74,7 +74,7 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
   @Override
   public Mono<Void> createSavepoint(String name) {
     Assert.requireNonNull(name, "name must not be null");
-    try (ClientImpl.LockAction lockAction = this.client.getLockAction()) {
+    try (ClientBase.LockAction lockAction = this.client.getLockAction()) {
       return lockAction.createSavepoint(name);
     }
   }
@@ -110,14 +110,14 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
   @Override
   public Mono<Void> releaseSavepoint(String name) {
     Assert.requireNonNull(name, "name must not be null");
-    try (ClientImpl.LockAction lockAction = this.client.getLockAction()) {
+    try (ClientBase.LockAction lockAction = this.client.getLockAction()) {
       return lockAction.releaseSavepoint(name);
     }
   }
 
   @Override
   public Mono<Void> rollbackTransaction() {
-    try (ClientImpl.LockAction lockAction = this.client.getLockAction()) {
+    try (ClientBase.LockAction lockAction = this.client.getLockAction()) {
       return lockAction.rollbackTransaction();
     }
   }
@@ -125,14 +125,14 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
   @Override
   public Mono<Void> rollbackTransactionToSavepoint(String name) {
     Assert.requireNonNull(name, "name must not be null");
-    try (ClientImpl.LockAction lockAction = this.client.getLockAction()) {
+    try (ClientBase.LockAction lockAction = this.client.getLockAction()) {
       return lockAction.rollbackTransactionToSavepoint(name);
     }
   }
 
   @Override
   public Mono<Void> setAutoCommit(boolean autoCommit) {
-    try (ClientImpl.LockAction lockAction = this.client.getLockAction()) {
+    try (ClientBase.LockAction lockAction = this.client.getLockAction()) {
       return lockAction.setAutoCommit(autoCommit);
     }
   }

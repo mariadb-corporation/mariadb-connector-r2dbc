@@ -31,6 +31,7 @@ public final class MariadbConnectionFactoryProvider implements ConnectionFactory
   public static final Option<String> TLS_PROTOCOL = Option.valueOf("tlsProtocol");
   public static final Option<String> SERVER_SSL_CERT = Option.valueOf("serverSslCert");
   public static final Option<String> CLIENT_SSL_CERT = Option.valueOf("clientSslCert");
+  public static final Option<Boolean> ALLOW_PIPELINING = Option.valueOf("allowPipelining");
   public static final Option<String> SSL_MODE = Option.valueOf("sslMode");
   public static final Option<Map<String, String>> OPTIONS = Option.valueOf("options");
 

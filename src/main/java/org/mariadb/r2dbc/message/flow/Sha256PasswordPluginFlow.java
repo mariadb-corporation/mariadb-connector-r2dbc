@@ -129,7 +129,7 @@ public class Sha256PasswordPluginFlow implements AuthenticationPlugin {
               && !configuration.getRsaPublicKey().isEmpty()) {
             publicKey = readPublicKeyFromFile(configuration.getRsaPublicKey());
           } else {
-            if (!configuration.isAllowPublicKeyRetrieval()) {
+            if (!configuration.allowPublicKeyRetrieval()) {
               throw new R2dbcNonTransientResourceException(
                   "RSA public key is not available client side (option "
                       + "serverRsaPublicKeyFile)",

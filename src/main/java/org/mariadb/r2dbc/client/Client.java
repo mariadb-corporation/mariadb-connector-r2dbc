@@ -23,6 +23,7 @@ import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.MonoSink;
 
 public interface Client {
 
@@ -35,7 +36,7 @@ public interface Client {
   Mono<Void> sendSslRequest(
       SslRequestPacket sslRequest, MariadbConnectionConfiguration configuration);
 
-  ClientImpl.LockAction getLockAction();
+  ClientBase.LockAction getLockAction();
 
   boolean isAutoCommit();
 
@@ -46,4 +47,8 @@ public interface Client {
   boolean isConnected();
 
   void setContext(InitialHandshakePacket packet);
+
+  void sendNext();
+
+  MonoSink<Flux<ServerMessage>> nextReceiver();
 }
