@@ -21,6 +21,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
@@ -34,6 +35,9 @@ public class NoPipelineTest extends BaseTest {
 
   @Test
   void noPipelineConnect() throws Exception {
+    // use sequence engine
+    Assumptions.assumeTrue(!isMariaDBServer() && minVersion(10, 0, 3));
+
     MariadbConnectionConfiguration confPipeline =
         TestConfiguration.defaultBuilder.clone().allowPipelining(true).build();
     MariadbConnection connection = new MariadbConnectionFactory(confPipeline).create().block();
