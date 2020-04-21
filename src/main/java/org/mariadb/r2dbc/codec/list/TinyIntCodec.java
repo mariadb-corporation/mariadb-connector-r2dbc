@@ -39,19 +39,7 @@ public class TinyIntCodec implements Codec<Byte> {
   @Override
   public Byte decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Byte> type) {
-    long result = 0;
-    boolean negate = false;
-    int idx = 0;
-    if (length > 0 && buf.getByte(buf.readerIndex()) == 45) { // minus sign
-      negate = true;
-      idx++;
-      buf.skipBytes(1);
-    }
-    while (idx++ < length) {
-      result = result * 10 + buf.readByte() - 48;
-    }
-
-    if (negate) result = -1 * result;
+    long result = LongCodec.parse(buf, length);
     IntCodec.rangeCheck(Byte.class.getName(), Byte.MIN_VALUE, Byte.MAX_VALUE, result, column);
     return (byte) result;
   }

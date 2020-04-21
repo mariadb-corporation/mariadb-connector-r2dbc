@@ -44,19 +44,7 @@ public class ShortCodec implements Codec<Short> {
   public Short decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Short> type) {
     if (column.getDataType() == DataType.BIT) return (short) ByteCodec.parseBit(buf, length);
-    long result = 0L;
-    boolean negate = false;
-    int idx = 0;
-    if (length > 0 && buf.getByte(buf.readerIndex()) == 45) { // minus sign
-      negate = true;
-      idx++;
-      buf.skipBytes(1);
-    }
-    while (idx++ < length) {
-      result = result * 10 + buf.readByte() - 48;
-    }
-
-    if (negate) result = -1 * result;
+    long result = LongCodec.parse(buf, length);
     IntCodec.rangeCheck(Short.class.getName(), Short.MIN_VALUE, Short.MAX_VALUE, result, column);
     return (short) result;
   }
