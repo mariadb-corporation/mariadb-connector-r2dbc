@@ -33,20 +33,33 @@ public class TinyIntCodec implements Codec<Byte> {
   }
 
   public boolean canEncode(Object value) {
-    return value instanceof Byte;
+    return false;
   }
 
   @Override
   public Byte decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Byte> type) {
-    long result = LongCodec.parse(buf, length);
-    IntCodec.rangeCheck(Byte.class.getName(), Byte.MIN_VALUE, Byte.MAX_VALUE, result, column);
-    return (byte) result;
+    return (byte) LongCodec.parse(buf, length);
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, Byte value) {
+  public Byte decodeBinary(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Byte> type) {
+    return buf.readByte();
+  }
+
+  @Override
+  public void encodeText(ByteBuf buf, ConnectionContext context, Byte value) {
     BufferUtils.writeAscii(buf, String.valueOf(value));
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, Byte value) {
+    buf.writeByte(value);
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.TINYINT;
   }
 
   @Override

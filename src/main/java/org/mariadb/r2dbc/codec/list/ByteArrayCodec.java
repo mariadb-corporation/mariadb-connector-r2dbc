@@ -53,13 +53,31 @@ public class ByteArrayCodec implements Codec<byte[]> {
     return arr;
   }
 
+  @Override
+  public byte[] decodeBinary(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends byte[]> type) {
+    byte[] arr = new byte[length];
+    buf.readBytes(arr);
+    return arr;
+  }
+
   public boolean canEncode(Object value) {
     return value instanceof byte[];
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, byte[] value) {
+  public void encodeText(ByteBuf buf, ConnectionContext context, byte[] value) {
     BufferUtils.write(buf, value, context);
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, byte[] value) {
+    BufferUtils.writeLengthEncode(value.length, buf);
+    buf.writeBytes(value);
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.BLOB;
   }
 
   @Override

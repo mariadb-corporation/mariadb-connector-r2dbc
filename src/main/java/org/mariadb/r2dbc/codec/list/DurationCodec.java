@@ -46,14 +46,6 @@ public class DurationCodec implements Codec<Duration> {
 
     int[] parts;
     switch (column.getDataType()) {
-      case TIME:
-        parts = LocalTimeCodec.parseTime(buf, length);
-        return Duration.ZERO
-            .plusHours(parts[0])
-            .plusMinutes(parts[1])
-            .plusSeconds(parts[2])
-            .plusNanos(parts[3]);
-
       case TIMESTAMP:
       case DATETIME:
         parts = LocalDateTimeCodec.parseTimestamp(buf, length);
@@ -66,15 +58,103 @@ public class DurationCodec implements Codec<Duration> {
             .plusNanos(parts[6]);
 
       default:
-        buf.skipBytes(length);
-        throw new IllegalArgumentException(
-            String.format("type %s not supported", column.getDataType()));
+        parts = LocalTimeCodec.parseTime(buf, length);
+        return Duration.ZERO
+            .plusHours(parts[0])
+            .plusMinutes(parts[1])
+            .plusSeconds(parts[2])
+            .plusNanos(parts[3]);
     }
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, Duration value) {
+  public Duration decodeBinary(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Duration> type) {
+
+    long days = 0;
+    int hours = 0;
+    int minutes = 0;
+    int seconds = 0;
+    long microseconds = 0;
+
+    switch (column.getDataType()) {
+      case TIME:
+        boolean negate = false;
+        if (length > 0) {
+          negate = buf.readUnsignedByte() == 0x01;
+          if (length > 4) {
+            days = buf.readUnsignedIntLE();
+            if (length > 7) {
+              hours = buf.readByte();
+              minutes = buf.readByte();
+              seconds = buf.readByte();
+              if (length > 8) {
+                microseconds = buf.readIntLE();
+              }
+            }
+          }
+        }
+
+        Duration duration =
+            Duration.ZERO
+                .plusDays(days)
+                .plusHours(hours)
+                .plusMinutes(minutes)
+                .plusSeconds(seconds)
+                .plusNanos(microseconds * 1000);
+        if (negate) return duration.negated();
+        return duration;
+
+      default:
+        buf.readUnsignedShortLE(); // skip year
+        buf.readByte(); // skip month
+        days = buf.readByte();
+        if (length > 4) {
+          hours = buf.readByte();
+          minutes = buf.readByte();
+          seconds = buf.readByte();
+
+          if (length > 7) {
+            microseconds = buf.readUnsignedIntLE();
+          }
+        }
+        return Duration.ZERO
+            .plusDays(days - 1)
+            .plusHours(hours)
+            .plusMinutes(minutes)
+            .plusSeconds(seconds)
+            .plusNanos(microseconds * 1000);
+    }
+  }
+
+  @Override
+  public void encodeText(ByteBuf buf, ConnectionContext context, Duration value) {
     BufferUtils.write(buf, value);
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, Duration value) {
+    int nano = value.getNano();
+    if (nano > 0) {
+      buf.writeByte((byte) 12);
+      buf.writeByte((byte) (value.isNegative() ? 1 : 0));
+      buf.writeIntLE((int) value.toDays());
+      buf.writeByte((byte) (value.toHours() - 24 * value.toDays()));
+      buf.writeByte((byte) (value.toMinutes() - 60 * value.toHours()));
+      buf.writeByte((byte) (value.getSeconds() - 60 * value.toMinutes()));
+      buf.writeIntLE(nano / 1000);
+    } else {
+      buf.writeByte((byte) 8);
+      buf.writeByte((byte) (value.isNegative() ? 1 : 0));
+      buf.writeIntLE((int) value.toDays());
+      buf.writeByte((byte) (value.toHours() - 24 * value.toDays()));
+      buf.writeByte((byte) (value.toMinutes() - 60 * value.toHours()));
+      buf.writeByte((byte) (value.getSeconds() - 60 * value.toMinutes()));
+    }
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.TIME;
   }
 
   @Override

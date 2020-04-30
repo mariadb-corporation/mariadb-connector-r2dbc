@@ -17,6 +17,7 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
@@ -32,13 +33,14 @@ public class LongCodec implements Codec<Long> {
 
   private static EnumSet<DataType> COMPATIBLE_TYPES =
       EnumSet.of(
-          DataType.BIT,
           DataType.TINYINT,
           DataType.SMALLINT,
           DataType.MEDIUMINT,
           DataType.INTEGER,
           DataType.YEAR,
-          DataType.BIGINT);
+          DataType.FLOAT,
+          DataType.DOUBLE,
+          DataType.DECIMAL);
 
   public static long parse(ByteBuf buf, int length) {
     long result = 0;
@@ -59,7 +61,8 @@ public class LongCodec implements Codec<Long> {
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getDataType())
+    return (COMPATIBLE_TYPES.contains(column.getDataType())
+            || (column.getDataType() == DataType.BIGINT && column.isSigned()))
         && ((type.isPrimitive() && type == Integer.TYPE) || type.isAssignableFrom(Long.class));
   }
 
@@ -71,8 +74,6 @@ public class LongCodec implements Codec<Long> {
   public Long decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Long> type) {
     switch (column.getDataType()) {
-      case BIT:
-        return ByteCodec.parseBit(buf, length);
       case TINYINT:
       case SMALLINT:
       case MEDIUMINT:
@@ -80,18 +81,79 @@ public class LongCodec implements Codec<Long> {
       case YEAR:
         return parse(buf, length);
 
-      case BIGINT:
+      case DECIMAL:
+      case DOUBLE:
+      case FLOAT:
+        String str1 = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
+        return new BigDecimal(str1).longValue();
+
+      default:
         String str = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
         return new BigInteger(str).longValueExact();
     }
-    buf.skipBytes(length);
-    throw new IllegalArgumentException(
-        String.format("Unexpected datatype %s", column.getDataType()));
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, Long value) {
+  public Long decodeBinary(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Long> type) {
+
+    switch (column.getDataType()) {
+      case TINYINT:
+        if (!column.isSigned()) {
+          return Long.valueOf(buf.readUnsignedByte());
+        }
+        return Long.valueOf((int) buf.readByte());
+
+      case YEAR:
+      case SMALLINT:
+        if (!column.isSigned()) {
+          return Long.valueOf(buf.readUnsignedShortLE());
+        }
+        return Long.valueOf((int) buf.readShortLE());
+
+      case MEDIUMINT:
+        if (!column.isSigned()) {
+          return Long.valueOf((buf.readUnsignedMediumLE()));
+        }
+        return Long.valueOf(buf.readMediumLE());
+
+      case INTEGER:
+        if (!column.isSigned()) {
+          return Long.valueOf(buf.readUnsignedIntLE());
+        }
+        return Long.valueOf(buf.readIntLE());
+
+      case FLOAT:
+        return (long) buf.readFloatLE();
+
+      case DOUBLE:
+        return (long) buf.readDoubleLE();
+
+      case VARSTRING:
+      case VARCHAR:
+      case STRING:
+      case OLDDECIMAL:
+      case DECIMAL:
+        return new BigDecimal(buf.readCharSequence(length, StandardCharsets.UTF_8).toString())
+            .longValue();
+
+      default:
+        return buf.readLongLE();
+    }
+  }
+
+  @Override
+  public void encodeText(ByteBuf buf, ConnectionContext context, Long value) {
     BufferUtils.writeAscii(buf, String.valueOf(value));
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, Long value) {
+    buf.writeLongLE(value);
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.BIGINT;
   }
 
   @Override

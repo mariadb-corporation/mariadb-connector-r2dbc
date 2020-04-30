@@ -29,12 +29,14 @@ public class ByteCodec implements Codec<Byte> {
 
   public static long parseBit(ByteBuf buf, int length) {
     if (length == 1) {
-      return buf.readByte();
+      return buf.readUnsignedByte();
     }
     long val = 0;
+    int idx = 0;
     do {
       val += ((long) buf.readUnsignedByte()) << (8 * length);
-    } while (length > 0);
+      idx++;
+    } while (idx < length);
     return val;
   }
 
@@ -43,25 +45,38 @@ public class ByteCodec implements Codec<Byte> {
         && ((type.isPrimitive() && type == Byte.TYPE) || type.isAssignableFrom(Byte.class));
   }
 
-  @Override
-  public Byte decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Byte> type) {
-    if (length == 0) {
-      throw new IllegalArgumentException(
-          String.format("Unexpected datatype %s", column.getDataType()));
-    }
-    Byte val = buf.readByte();
-    if (length > 1) buf.skipBytes(length - 1);
-    return val;
-  }
-
   public boolean canEncode(Object value) {
     return value instanceof Byte;
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, Byte value) {
+  public Byte decodeText(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Byte> type) {
+    Byte val = buf.readByte();
+    if (length > 1) buf.skipBytes(length - 1);
+    return val;
+  }
+
+  @Override
+  public Byte decodeBinary(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Byte> type) {
+    Byte val = buf.readByte();
+    if (length > 1) buf.skipBytes(length - 1);
+    return val;
+  }
+
+  @Override
+  public void encodeText(ByteBuf buf, ConnectionContext context, Byte value) {
     BufferUtils.writeAscii(buf, Integer.toString((int) value));
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, Byte value) {
+    buf.writeByte(value);
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.TINYINT;
   }
 
   @Override

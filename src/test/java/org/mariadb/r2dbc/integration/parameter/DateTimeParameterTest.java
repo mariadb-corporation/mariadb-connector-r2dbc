@@ -23,10 +23,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -35,7 +37,7 @@ public class DateTimeParameterTest extends BaseTest {
   public static void before2() {
     sharedConn
         .createStatement(
-            "CREATE TEMPORARY TABLE DateTimeParam (t1 DATETIME(6), t2 DATETIME(6), t3 DATETIME(6))")
+            "CREATE TABLE DateTimeParam (t1 DATETIME(6), t2 DATETIME(6), t3 DATETIME(6))")
         .execute()
         .subscribe();
     // ensure having same kind of result for truncation
@@ -45,6 +47,11 @@ public class DateTimeParameterTest extends BaseTest {
         .blockLast();
   }
 
+  @AfterAll
+  public static void after2() {
+    sharedConn.createStatement("DROP TABLE DateTimeParam").execute().blockLast();
+  }
+
   @BeforeEach
   public void beforeEach() {
     sharedConn.createStatement("TRUNCATE TABLE DateTimeParam").execute().blockLast();
@@ -52,7 +59,16 @@ public class DateTimeParameterTest extends BaseTest {
 
   @Test
   void nullValue() {
-    sharedConn
+    nullValue(sharedConn);
+  }
+
+  @Test
+  void nullValuePrepare() {
+    nullValue(sharedConnPrepare);
+  }
+
+  private void nullValue(MariadbConnection connection) {
+    connection
         .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
         .bindNull(0, LocalDateTime.class)
         .bindNull(1, LocalDateTime.class)
@@ -64,7 +80,16 @@ public class DateTimeParameterTest extends BaseTest {
 
   @Test
   void bigIntValue() {
-    sharedConn
+    bigIntValue(sharedConn);
+  }
+
+  @Test
+  void bigIntValuePrepare() {
+    bigIntValue(sharedConnPrepare);
+  }
+
+  private void bigIntValue(MariadbConnection connection) {
+    connection
         .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
         .bind(0, BigInteger.ONE)
         .bind(1, new BigInteger("9223372036854775807"))
@@ -81,7 +106,16 @@ public class DateTimeParameterTest extends BaseTest {
 
   @Test
   void stringValue() {
-    sharedConn
+    stringValue(sharedConn);
+  }
+
+  @Test
+  void stringValuePrepare() {
+    stringValue(sharedConnPrepare);
+  }
+
+  private void stringValue(MariadbConnection connection) {
+    connection
         .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
         .bind(0, "1")
         .bind(1, "9223372036854775807")
@@ -98,7 +132,16 @@ public class DateTimeParameterTest extends BaseTest {
 
   @Test
   void decimalValue() {
-    sharedConn
+    decimalValue(sharedConn);
+  }
+
+  @Test
+  void decimalValuePrepare() {
+    decimalValue(sharedConnPrepare);
+  }
+
+  private void decimalValue(MariadbConnection connection) {
+    connection
         .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
         .bind(0, BigDecimal.ONE)
         .bind(1, new BigDecimal("9223372036854775807"))
@@ -115,7 +158,16 @@ public class DateTimeParameterTest extends BaseTest {
 
   @Test
   void intValue() {
-    sharedConn
+    intValue(sharedConn);
+  }
+
+  @Test
+  void intValuePrepare() {
+    intValue(sharedConnPrepare);
+  }
+
+  private void intValue(MariadbConnection connection) {
+    connection
         .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
         .bind(0, 1)
         .bind(1, -1)
@@ -132,7 +184,16 @@ public class DateTimeParameterTest extends BaseTest {
 
   @Test
   void byteValue() {
-    sharedConn
+    byteValue(sharedConn);
+  }
+
+  @Test
+  void byteValuePrepare() {
+    byteValue(sharedConnPrepare);
+  }
+
+  private void byteValue(MariadbConnection connection) {
+    connection
         .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
         .bind(0, (byte) 127)
         .bind(1, (byte) 128)
@@ -149,7 +210,16 @@ public class DateTimeParameterTest extends BaseTest {
 
   @Test
   void floatValue() {
-    sharedConn
+    floatValue(sharedConn);
+  }
+
+  @Test
+  void floatValuePrepare() {
+    floatValue(sharedConnPrepare);
+  }
+
+  private void floatValue(MariadbConnection connection) {
+    connection
         .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
         .bind(0, 127f)
         .bind(1, -128f)
@@ -166,7 +236,16 @@ public class DateTimeParameterTest extends BaseTest {
 
   @Test
   void doubleValue() {
-    sharedConn
+    doubleValue(sharedConn);
+  }
+
+  @Test
+  void doubleValuePrepare() {
+    doubleValue(sharedConnPrepare);
+  }
+
+  private void doubleValue(MariadbConnection connection) {
+    connection
         .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
         .bind(0, 127d)
         .bind(1, -128d)
@@ -183,7 +262,16 @@ public class DateTimeParameterTest extends BaseTest {
 
   @Test
   void shortValue() {
-    sharedConn
+    shortValue(sharedConn);
+  }
+
+  @Test
+  void shortValuePrepare() {
+    shortValue(sharedConnPrepare);
+  }
+
+  private void shortValue(MariadbConnection connection) {
+    connection
         .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
         .bind(0, Short.valueOf("1"))
         .bind(1, Short.valueOf("-1"))
@@ -200,7 +288,16 @@ public class DateTimeParameterTest extends BaseTest {
 
   @Test
   void longValue() {
-    sharedConn
+    longValue(sharedConn);
+  }
+
+  @Test
+  void longValuePrepare() {
+    longValue(sharedConnPrepare);
+  }
+
+  private void longValue(MariadbConnection connection) {
+    connection
         .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
         .bind(0, Long.valueOf("1"))
         .bind(1, Long.valueOf("-1"))
@@ -217,7 +314,16 @@ public class DateTimeParameterTest extends BaseTest {
 
   @Test
   void localDateTimeValue() {
-    sharedConn
+    localDateTimeValue(sharedConn);
+  }
+
+  @Test
+  void localDateTimeValuePrepare() {
+    localDateTimeValue(sharedConnPrepare);
+  }
+
+  private void localDateTimeValue(MariadbConnection connection) {
+    connection
         .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
         .bind(0, LocalDateTime.parse("2010-01-12T05:08:09.0014"))
         .bind(1, LocalDateTime.parse("2018-12-15T05:08:10.123456"))
@@ -232,7 +338,16 @@ public class DateTimeParameterTest extends BaseTest {
 
   @Test
   void localDateValue() {
-    sharedConn
+    localDateValue(sharedConn);
+  }
+
+  @Test
+  void localDateValuePrepare() {
+    localDateValue(sharedConnPrepare);
+  }
+
+  private void localDateValue(MariadbConnection connection) {
+    connection
         .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
         .bind(0, LocalDate.parse("2010-01-12"))
         .bind(1, LocalDate.parse("2018-12-15"))
@@ -247,8 +362,27 @@ public class DateTimeParameterTest extends BaseTest {
 
   @Test
   void localTimeValue() {
+    localTimeValue(sharedConn);
+  }
+
+  @Test
+  void localTimeValuePrepare() {
     LocalTime localTime = LocalTime.parse("05:08:10.123456");
-    sharedConn
+    LocalDateTime localDateTime =
+        LocalDateTime.now().withHour(5).withMinute(8).withSecond(10).withNano(123456 * 1000);
+    sharedConnPrepare
+        .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
+        .bind(0, localTime)
+        .bind(1, localTime)
+        .bind(2, localTime)
+        .execute()
+        .blockLast();
+    validate(Optional.of(localDateTime), Optional.of(localDateTime), Optional.of(localDateTime));
+  }
+
+  private void localTimeValue(MariadbConnection connection) {
+    LocalTime localTime = LocalTime.parse("05:08:10.123456");
+    connection
         .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
         .bind(0, localTime)
         .bind(1, localTime)

@@ -32,12 +32,12 @@ public class IntCodec implements Codec<Integer> {
 
   private static EnumSet<DataType> COMPATIBLE_TYPES =
       EnumSet.of(
-          DataType.BIT,
           DataType.TINYINT,
           DataType.SMALLINT,
           DataType.MEDIUMINT,
-          DataType.INTEGER,
           DataType.YEAR,
+          DataType.FLOAT,
+          DataType.DOUBLE,
           DataType.DECIMAL);
 
   public static void rangeCheck(
@@ -51,7 +51,8 @@ public class IntCodec implements Codec<Integer> {
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getDataType())
+    return (COMPATIBLE_TYPES.contains(column.getDataType())
+            || (column.getDataType() == DataType.INTEGER && column.isSigned()))
         && ((type.isPrimitive() && type == Integer.TYPE) || type.isAssignableFrom(Integer.class));
   }
 
@@ -64,8 +65,6 @@ public class IntCodec implements Codec<Integer> {
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Integer> type) {
     long result;
     switch (column.getDataType()) {
-      case BIT:
-        return (int) ByteCodec.parseBit(buf, length);
       case TINYINT:
       case SMALLINT:
       case MEDIUMINT:
@@ -74,9 +73,8 @@ public class IntCodec implements Codec<Integer> {
       case YEAR:
         result = LongCodec.parse(buf, length);
         break;
-      case DECIMAL:
-      case DOUBLE:
-      case FLOAT:
+
+      default:
         String str = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
         try {
           result = new BigDecimal(str).longValue();
@@ -84,18 +82,62 @@ public class IntCodec implements Codec<Integer> {
         } catch (NumberFormatException nfe) {
           throw new IllegalArgumentException(String.format("Incorrect format %s", str));
         }
-      default:
-        buf.skipBytes(length);
-        throw new IllegalArgumentException(
-            String.format("Unexpected datatype %s", column.getDataType()));
     }
-    rangeCheck(Integer.class.getName(), Integer.MIN_VALUE, Integer.MAX_VALUE, result, column);
     return (int) result;
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, Integer value) {
+  public Integer decodeBinary(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Integer> type) {
+
+    switch (column.getDataType()) {
+      case TINYINT:
+        if (!column.isSigned()) {
+          return (int) buf.readUnsignedByte();
+        }
+        return (int) buf.readByte();
+
+      case YEAR:
+      case SMALLINT:
+        if (!column.isSigned()) {
+          return buf.readUnsignedShortLE();
+        }
+        return (int) buf.readShortLE();
+
+      case MEDIUMINT:
+        if (!column.isSigned()) {
+          return buf.readUnsignedMediumLE();
+        }
+        return buf.readMediumLE();
+
+      case OLDDECIMAL:
+      case DECIMAL:
+        return new BigDecimal(buf.readCharSequence(length, StandardCharsets.UTF_8).toString())
+            .intValue();
+
+      case DOUBLE:
+        return (int) buf.readDoubleLE();
+
+      case FLOAT:
+        return (int) buf.readFloatLE();
+
+      default:
+        return buf.readIntLE();
+    }
+  }
+
+  @Override
+  public void encodeText(ByteBuf buf, ConnectionContext context, Integer value) {
     BufferUtils.writeAscii(buf, String.valueOf(value));
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, Integer value) {
+    buf.writeIntLE(value);
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.INTEGER;
   }
 
   @Override

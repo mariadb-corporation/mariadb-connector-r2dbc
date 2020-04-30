@@ -17,7 +17,7 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import java.util.EnumSet;
+import java.nio.charset.StandardCharsets;
 import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
@@ -28,11 +28,12 @@ public class ShortCodec implements Codec<Short> {
 
   public static final ShortCodec INSTANCE = new ShortCodec();
 
-  private static EnumSet<DataType> COMPATIBLE_TYPES =
-      EnumSet.of(DataType.TINYINT, DataType.SMALLINT, DataType.YEAR, DataType.BIT);
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getDataType())
+    return (column.getDataType() == DataType.TINYINT
+            || (column.getDataType() == DataType.SMALLINT && column.isSigned())
+            || column.getDataType() == DataType.YEAR
+            || column.getDataType() == DataType.FLOAT
+            || column.getDataType() == DataType.DOUBLE)
         && ((type.isPrimitive() && type == Short.TYPE) || type.isAssignableFrom(Short.class));
   }
 
@@ -43,15 +44,56 @@ public class ShortCodec implements Codec<Short> {
   @Override
   public Short decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Short> type) {
-    if (column.getDataType() == DataType.BIT) return (short) ByteCodec.parseBit(buf, length);
-    long result = LongCodec.parse(buf, length);
-    IntCodec.rangeCheck(Short.class.getName(), Short.MIN_VALUE, Short.MAX_VALUE, result, column);
-    return (short) result;
+    switch (column.getDataType()) {
+      case DOUBLE:
+        String str = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
+        return Double.valueOf(str).shortValue();
+
+      case FLOAT:
+        String str2 = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
+        return Float.valueOf(str2).shortValue();
+
+      default:
+        long result = LongCodec.parse(buf, length);
+        IntCodec.rangeCheck(
+            Short.class.getName(), Short.MIN_VALUE, Short.MAX_VALUE, result, column);
+        return (short) result;
+    }
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, Short value) {
+  public Short decodeBinary(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Short> type) {
+    switch (column.getDataType()) {
+      case TINYINT:
+        if (!column.isSigned()) {
+          return buf.readUnsignedByte();
+        }
+        return (short) buf.readByte();
+
+      case DOUBLE:
+        return (short) buf.readDoubleLE();
+
+      case FLOAT:
+        return (short) buf.readFloatLE();
+
+      default: // YEAR and SMALLINT
+        return buf.readShortLE();
+    }
+  }
+
+  @Override
+  public void encodeText(ByteBuf buf, ConnectionContext context, Short value) {
     BufferUtils.writeAscii(buf, String.valueOf(value));
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, Short value) {
+    buf.writeShortLE(value);
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.SMALLINT;
   }
 
   @Override

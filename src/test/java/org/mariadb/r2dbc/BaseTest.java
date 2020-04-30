@@ -30,10 +30,14 @@ import reactor.test.StepVerifier;
 public class BaseTest {
   public static MariadbConnectionFactory factory = TestConfiguration.defaultFactory;
   public static MariadbConnection sharedConn;
+  public static MariadbConnection sharedConnPrepare;
 
   @BeforeAll
-  public static void beforeAll() {
+  public static void beforeAll() throws Exception {
     sharedConn = factory.create().block();
+    MariadbConnectionConfiguration confPipeline =
+        TestConfiguration.defaultBuilder.clone().useServerPrepStmts(true).build();
+    sharedConnPrepare = new MariadbConnectionFactory(confPipeline).create().block();
   }
 
   @AfterAll
@@ -44,6 +48,7 @@ public class BaseTest {
         .expectNext(Boolean.TRUE)
         .verifyComplete();
     sharedConn.close().block();
+    sharedConnPrepare.close().block();
   }
 
   //  @RegisterExtension public Extension watcher = new Follow();

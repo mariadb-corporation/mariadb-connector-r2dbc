@@ -25,8 +25,18 @@ public class Parameter<T> {
   public static final Parameter<?> NULL_PARAMETER =
       new Parameter(null, null) {
         @Override
-        public void encode(ByteBuf out, ConnectionContext context) {
+        public void encodeText(ByteBuf out, ConnectionContext context) {
           BufferUtils.writeAscii(out, "null");
+        }
+
+        @Override
+        public DataType getBinaryEncodeType() {
+          return DataType.VARCHAR;
+        }
+
+        @Override
+        public boolean isNull() {
+          return true;
         }
       };
 
@@ -38,8 +48,20 @@ public class Parameter<T> {
     this.value = value;
   }
 
-  public void encode(ByteBuf out, ConnectionContext context) {
-    codec.encode(out, context, this.value);
+  public void encodeText(ByteBuf out, ConnectionContext context) {
+    codec.encodeText(out, context, this.value);
+  }
+
+  public void encodeBinary(ByteBuf out, ConnectionContext context) {
+    codec.encodeBinary(out, context, this.value);
+  }
+
+  public DataType getBinaryEncodeType() {
+    return codec.getBinaryEncodeType();
+  }
+
+  public boolean isNull() {
+    return false;
   }
 
   @Override

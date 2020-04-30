@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.integration;
 
+import java.math.BigInteger;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -125,12 +126,12 @@ public class BigResultSetTest extends BaseTest {
   }
 
   public boolean checkMaxAllowedPacketMore20m(MariadbConnection connection) {
-    long maxAllowedPacket =
+    BigInteger maxAllowedPacket =
         connection
             .createStatement("select @@max_allowed_packet")
             .execute()
-            .flatMap(r -> r.map((row, metadata) -> row.get(0, Long.class)))
+            .flatMap(r -> r.map((row, metadata) -> row.get(0, BigInteger.class)))
             .blockLast();
-    return maxAllowedPacket >= 20 * 1024 * 1024L;
+    return maxAllowedPacket.compareTo(BigInteger.valueOf(20 * 1024 * 1024L)) > 0;
   }
 }

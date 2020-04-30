@@ -17,8 +17,12 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.util.BitSet;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.codec.Codec;
@@ -79,12 +83,20 @@ public class StringCodec implements Codec<String> {
   public String decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends String> type) {
     if (column.getDataType() == DataType.BIT) {
-      BitSet val = BitSetCodec.parseBit(buf, length);
-      StringBuilder sb = new StringBuilder(val.length() * 8 + 3);
+
+      byte[] bytes = new byte[length];
+      buf.readBytes(bytes);
+      StringBuilder sb = new StringBuilder(bytes.length * Byte.SIZE + 3);
       sb.append("b'");
-      int i = val.length();
-      while (i-- > 0) {
-        sb.append(val.get(i) ? "1" : "0");
+      boolean firstByteNonZero = false;
+      for (int i = 0; i < Byte.SIZE * bytes.length; i++) {
+        boolean b = (bytes[i / Byte.SIZE] & 1 << (Byte.SIZE - 1 - (i % Byte.SIZE))) > 0;
+        if (b) {
+          sb.append('1');
+          firstByteNonZero = true;
+        } else if (firstByteNonZero) {
+          sb.append('0');
+        }
       }
       sb.append("'");
       return sb.toString();
@@ -98,8 +110,158 @@ public class StringCodec implements Codec<String> {
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, String value) {
+  public String decodeBinary(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends String> type) {
+
+    switch (column.getDataType()) {
+      case BIT:
+        byte[] bytes = new byte[length];
+        buf.readBytes(bytes);
+        StringBuilder sb = new StringBuilder(bytes.length * Byte.SIZE + 3);
+        sb.append("b'");
+        boolean firstByteNonZero = false;
+        for (int i = 0; i < Byte.SIZE * bytes.length; i++) {
+          boolean b = (bytes[i / Byte.SIZE] & 1 << (Byte.SIZE - 1 - (i % Byte.SIZE))) > 0;
+          if (b) {
+            sb.append('1');
+            firstByteNonZero = true;
+          } else if (firstByteNonZero) {
+            sb.append('0');
+          }
+        }
+        sb.append("'");
+        return sb.toString();
+
+      case TINYINT:
+        if (!column.isSigned()) {
+          return String.valueOf(buf.readUnsignedByte());
+        }
+        return String.valueOf((int) buf.readByte());
+
+      case YEAR:
+      case SMALLINT:
+        if (!column.isSigned()) {
+          return String.valueOf(buf.readUnsignedShortLE());
+        }
+        return String.valueOf((int) buf.readShortLE());
+
+      case MEDIUMINT:
+        if (!column.isSigned()) {
+          return String.valueOf((buf.readUnsignedMediumLE()));
+        }
+        return String.valueOf(buf.readMediumLE());
+
+      case INTEGER:
+        if (!column.isSigned()) {
+          return String.valueOf(buf.readUnsignedIntLE());
+        }
+        return String.valueOf(buf.readIntLE());
+
+      case BIGINT:
+        BigInteger val;
+        if (column.isSigned()) {
+          val = BigInteger.valueOf(buf.readLongLE());
+        } else {
+          // need BIG ENDIAN, so reverse order
+          byte[] bb = new byte[8];
+          for (int ii = 7; ii >= 0; ii--) {
+            bb[ii] = buf.readByte();
+          }
+          val = new BigInteger(1, bb);
+        }
+
+        return new BigDecimal(String.valueOf(val)).setScale(column.getDecimals()).toPlainString();
+
+      case FLOAT:
+        return String.valueOf(buf.readFloatLE());
+
+      case DOUBLE:
+        return String.valueOf(buf.readDoubleLE());
+
+      case TIME:
+        long tDays = 0;
+        int tHours = 0;
+        int tMinutes = 0;
+        int tSeconds = 0;
+        long tMicroseconds = 0;
+        boolean negate = false;
+
+        if (length > 0) {
+          negate = buf.readByte() == 0x01;
+          if (length > 4) {
+            tDays = buf.readUnsignedIntLE();
+            if (length > 7) {
+              tHours = buf.readByte();
+              tMinutes = buf.readByte();
+              tSeconds = buf.readByte();
+              if (length > 8) {
+                tMicroseconds = buf.readIntLE();
+              }
+            }
+          }
+        }
+
+        Duration duration =
+            Duration.ZERO
+                .plusDays(tDays)
+                .plusHours(tHours)
+                .plusMinutes(tMinutes)
+                .plusSeconds(tSeconds)
+                .plusNanos(tMicroseconds * 1000);
+        if (negate) return duration.negated().toString();
+        return duration.toString();
+
+      case DATE:
+        int dateYear = buf.readUnsignedShortLE();
+        int dateMonth = buf.readByte();
+        int dateDay = buf.readByte();
+        if (length > 4) {
+          buf.skipBytes(length - 4);
+        }
+        return LocalDate.of(dateYear, dateMonth, dateDay).toString();
+
+      case DATETIME:
+      case TIMESTAMP:
+        int year = buf.readUnsignedShortLE();
+        int month = buf.readByte();
+        int day = buf.readByte();
+        int hour = 0;
+        int minutes = 0;
+        int seconds = 0;
+        long microseconds = 0;
+
+        if (length > 4) {
+          hour = buf.readByte();
+          minutes = buf.readByte();
+          seconds = buf.readByte();
+
+          if (length > 7) {
+            microseconds = buf.readUnsignedIntLE();
+          }
+        }
+        return LocalDateTime.of(year, month, day, hour, minutes, seconds)
+            .plusNanos(microseconds * 1000)
+            .toString();
+
+      default:
+        return buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+    }
+  }
+
+  @Override
+  public void encodeText(ByteBuf buf, ConnectionContext context, String value) {
     BufferUtils.write(buf, value, true, true, context);
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, String value) {
+    byte[] valueBytes = value.getBytes(StandardCharsets.UTF_8);
+    BufferUtils.writeLengthEncode(valueBytes.length, buf);
+    buf.writeBytes(valueBytes);
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.VARCHAR;
   }
 
   @Override

@@ -62,7 +62,7 @@ public final class QueryWithParametersPacket implements ClientMessage {
     } else {
       out.writeBytes(prepareResult.getQueryParts().get(0));
       for (int i = 0; i < prepareResult.getParamCount(); i++) {
-        parameters[i].encode(out, context);
+        parameters[i].encodeText(out, context);
         out.writeBytes(prepareResult.getQueryParts().get(i + 1));
       }
       if (additionalReturningPart != null)

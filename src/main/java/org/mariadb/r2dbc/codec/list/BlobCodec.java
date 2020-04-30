@@ -24,6 +24,7 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.util.BufferUtils;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class BlobCodec implements Codec<Blob> {
@@ -43,13 +44,46 @@ public class BlobCodec implements Codec<Blob> {
     return Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
   }
 
+  @Override
+  public Blob decodeBinary(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Blob> type) {
+    return Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
+  }
+
   public boolean canEncode(Object value) {
     return value instanceof Blob;
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, Blob value) {
+  public void encodeText(ByteBuf buf, ConnectionContext context, Blob value) {
     BufferUtils.write(buf, value, context);
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, Blob value) {
+    buf.writeByte(0xfe);
+    int initialPos = buf.writerIndex();
+    buf.writerIndex(buf.writerIndex() + 8); // reserve length encoded length bytes
+
+    Flux.from(value.stream())
+        .handle(
+            (tempVal, sync) -> {
+              buf.writeBytes(tempVal);
+              sync.next(buf);
+            })
+        .doOnComplete(
+            () -> {
+              // Write length
+              int endPos = buf.writerIndex();
+              buf.writerIndex(initialPos);
+              buf.writeLongLE(endPos - (initialPos + 8));
+              buf.writerIndex(endPos);
+            })
+        .subscribe();
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.BLOB;
   }
 
   @Override

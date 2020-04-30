@@ -54,13 +54,43 @@ public class BooleanCodec implements Codec<Boolean> {
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Boolean> type) {
     switch (column.getDataType()) {
       case BIT:
-        return BitSetCodec.parseBit(buf, length).get(0);
+        return ByteCodec.parseBit(buf, length) != 0;
       case VARCHAR:
       case VARSTRING:
         String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-        return "1".equals(rawValue);
+        return !"0".equals(rawValue);
       default:
-        return LongCodec.parse(buf, length) == 1L;
+        return LongCodec.parse(buf, length) != 0L;
+    }
+  }
+
+  @Override
+  public Boolean decodeBinary(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Boolean> type) {
+
+    switch (column.getDataType()) {
+      case BIT:
+        return ByteCodec.parseBit(buf, length) != 0;
+
+      case TINYINT:
+        return buf.readByte() != 0;
+
+      case YEAR:
+      case SMALLINT:
+        return buf.readShortLE() != 0;
+
+      case MEDIUMINT:
+        return buf.readMediumLE() != 0;
+
+      case INTEGER:
+        return buf.readIntLE() != 0;
+
+      case BIGINT:
+        return buf.readLongLE() != 0;
+
+      default:
+        String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        return !"0".equals(rawValue);
     }
   }
 
@@ -70,7 +100,16 @@ public class BooleanCodec implements Codec<Boolean> {
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, Boolean value) {
+  public void encodeText(ByteBuf buf, ConnectionContext context, Boolean value) {
     BufferUtils.writeAscii(buf, value ? "1" : "0");
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, Boolean value) {
+    buf.writeByte(value ? 1 : 0);
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.TINYINT;
   }
 }

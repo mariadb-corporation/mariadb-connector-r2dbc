@@ -214,7 +214,7 @@ public class ConnectionTest extends BaseTest {
 
   @Test
   void sessionVariables() throws Exception {
-    long[] res =
+    BigInteger[] res =
         sharedConn
             .createStatement("SELECT @@wait_timeout, @@net_read_timeout")
             .execute()
@@ -222,7 +222,9 @@ public class ConnectionTest extends BaseTest {
                 r ->
                     r.map(
                         (row, metadata) ->
-                            new long[] {row.get(0, Long.class), row.get(1, Long.class)}))
+                            new BigInteger[] {
+                              row.get(0, BigInteger.class), row.get(1, BigInteger.class)
+                            }))
             .blockLast();
 
     Map<String, String> sessionVariables = new HashMap<>();
@@ -239,10 +241,10 @@ public class ConnectionTest extends BaseTest {
             r ->
                 r.map(
                     (row, metadata) -> {
-                      Assertions.assertEquals(row.get(0, Long.class), 2147483);
-                      Assertions.assertEquals(row.get(1, Long.class), 60);
-                      Assertions.assertFalse(row.get(0, Long.class) == res[0]);
-                      Assertions.assertFalse(row.get(1, Long.class) == res[1]);
+                      Assertions.assertEquals(row.get(0, BigInteger.class).intValue(), 2147483);
+                      Assertions.assertEquals(row.get(1, BigInteger.class).intValue(), 60);
+                      Assertions.assertFalse(row.get(0, BigInteger.class).equals(res[0]));
+                      Assertions.assertFalse(row.get(1, BigInteger.class).equals(res[1]));
                       return 0;
                     }))
         .blockLast();

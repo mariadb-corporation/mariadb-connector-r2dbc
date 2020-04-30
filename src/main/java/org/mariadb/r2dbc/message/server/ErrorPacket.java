@@ -38,7 +38,7 @@ public final class ErrorPacket implements ServerMessage {
     this.sqlState = sqlState;
   }
 
-  static ErrorPacket decode(Sequencer sequencer, ByteBuf buf, ConnectionContext context) {
+  public static ErrorPacket decode(Sequencer sequencer, ByteBuf buf, ConnectionContext context) {
     Assert.requireNonNull(buf, "buffer must not be null");
     buf.skipBytes(1);
     short errorCode = buf.readShortLE();

@@ -19,6 +19,7 @@ package org.mariadb.r2dbc.codec.list;
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
+import java.time.temporal.ChronoField;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.codec.Codec;
@@ -94,10 +95,6 @@ public class LocalTimeCodec implements Codec<LocalTime> {
 
     int[] parts;
     switch (column.getDataType()) {
-      case TIME:
-        parts = parseTime(buf, length);
-        return LocalTime.of(parts[0] % 24, parts[1], parts[2], parts[3]);
-
       case TIMESTAMP:
       case DATETIME:
         parts = LocalDateTimeCodec.parseTimestamp(buf, length);
@@ -105,15 +102,79 @@ public class LocalTimeCodec implements Codec<LocalTime> {
         return LocalTime.of(parts[3], parts[4], parts[5], parts[6]);
 
       default:
-        buf.skipBytes(length);
-        throw new IllegalArgumentException(
-            String.format("type %s not supported", column.getDataType()));
+        parts = parseTime(buf, length);
+        return LocalTime.of(parts[0] % 24, parts[1], parts[2], parts[3]);
     }
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, LocalTime value) {
+  public LocalTime decodeBinary(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalTime> type) {
+
+    int hour = 0;
+    int minutes = 0;
+    int seconds = 0;
+    long microseconds = 0;
+    switch (column.getDataType()) {
+      case TIMESTAMP:
+      case DATETIME:
+        buf.skipBytes(4); // skip year, month and day
+        if (length > 4) {
+          hour = buf.readByte();
+          minutes = buf.readByte();
+          seconds = buf.readByte();
+
+          if (length > 7) {
+            microseconds = buf.readIntLE();
+          }
+        }
+        return LocalTime.of(hour, minutes, seconds).plusNanos(microseconds * 1000);
+
+      default: // TIME
+        buf.skipBytes(1); // skip negate
+        if (length > 4) {
+          buf.skipBytes(4); // skip days
+          if (length > 7) {
+            hour = buf.readByte();
+            minutes = buf.readByte();
+            seconds = buf.readByte();
+            if (length > 8) {
+              microseconds = buf.readIntLE();
+            }
+          }
+        }
+        return LocalTime.of(hour, minutes, seconds).plusNanos(microseconds * 1000);
+    }
+  }
+
+  @Override
+  public void encodeText(ByteBuf buf, ConnectionContext context, LocalTime value) {
     BufferUtils.write(buf, value);
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, LocalTime value) {
+    int nano = value.getNano();
+    if (nano > 0) {
+      buf.writeByte((byte) 12);
+      buf.writeByte((byte) 0);
+      buf.writeIntLE(0);
+      buf.writeByte((byte) value.get(ChronoField.HOUR_OF_DAY));
+      buf.writeByte((byte) value.get(ChronoField.MINUTE_OF_HOUR));
+      buf.writeByte((byte) value.get(ChronoField.SECOND_OF_MINUTE));
+      buf.writeIntLE(nano / 1000);
+    } else {
+      buf.writeByte((byte) 8);
+      buf.writeByte((byte) 0);
+      buf.writeIntLE(0);
+      buf.writeByte((byte) value.get(ChronoField.HOUR_OF_DAY));
+      buf.writeByte((byte) value.get(ChronoField.MINUTE_OF_HOUR));
+      buf.writeByte((byte) value.get(ChronoField.SECOND_OF_MINUTE));
+    }
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.TIME;
   }
 
   @Override

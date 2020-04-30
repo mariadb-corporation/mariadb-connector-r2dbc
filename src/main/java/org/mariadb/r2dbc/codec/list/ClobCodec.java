@@ -25,6 +25,7 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.util.BufferUtils;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class ClobCodec implements Codec<Clob> {
@@ -50,8 +51,41 @@ public class ClobCodec implements Codec<Clob> {
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, Clob value) {
+  public Clob decodeBinary(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Clob> type) {
+    String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+    return Clob.from(Mono.just(rawValue));
+  }
+
+  @Override
+  public void encodeText(ByteBuf buf, ConnectionContext context, Clob value) {
     BufferUtils.write(buf, value, context);
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, Clob value) {
+    buf.writeByte(0xfe);
+    int initialPos = buf.writerIndex();
+    buf.writerIndex(buf.writerIndex() + 8); // reserve length encoded length bytes
+    Flux.from(value.stream())
+        .handle(
+            (tempVal, sync) -> {
+              buf.writeCharSequence(tempVal, StandardCharsets.UTF_8);
+              sync.next(buf);
+            })
+        .doOnComplete(
+            () -> {
+              // Write length
+              int endPos = buf.writerIndex();
+              buf.writerIndex(initialPos);
+              buf.writeLongLE(endPos - (initialPos + 8));
+              buf.writerIndex(endPos);
+            })
+        .subscribe();
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.VARCHAR;
   }
 
   @Override

@@ -33,14 +33,15 @@ public class BigIntegerCodec implements Codec<BigInteger> {
 
   private static EnumSet<DataType> COMPATIBLE_TYPES =
       EnumSet.of(
-          DataType.BIT,
           DataType.TINYINT,
           DataType.SMALLINT,
           DataType.MEDIUMINT,
           DataType.INTEGER,
           DataType.BIGINT,
           DataType.DECIMAL,
-          DataType.YEAR);
+          DataType.YEAR,
+          DataType.DOUBLE,
+          DataType.FLOAT);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getDataType())
@@ -55,29 +56,84 @@ public class BigIntegerCodec implements Codec<BigInteger> {
   public BigInteger decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BigInteger> type) {
     switch (column.getDataType()) {
-      case BIT:
-        return BigInteger.valueOf(ByteCodec.parseBit(buf, length));
       case DECIMAL:
+      case DOUBLE:
+      case FLOAT:
         String value = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         return new BigDecimal(value).toBigInteger();
 
-      case TINYINT:
-      case SMALLINT:
-      case MEDIUMINT:
-      case INTEGER:
-      case BIGINT:
-      case YEAR:
+      default:
         String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         return new BigInteger(val);
     }
-    buf.skipBytes(length);
-    throw new IllegalArgumentException(
-        String.format("Unexpected datatype %s", column.getDataType()));
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, BigInteger value) {
+  public BigInteger decodeBinary(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BigInteger> type) {
+
+    switch (column.getDataType()) {
+      case TINYINT:
+        if (!column.isSigned()) {
+          return BigInteger.valueOf(buf.readUnsignedByte());
+        }
+        return BigInteger.valueOf((int) buf.readByte());
+
+      case YEAR:
+      case SMALLINT:
+        if (!column.isSigned()) {
+          return BigInteger.valueOf(buf.readUnsignedShortLE());
+        }
+        return BigInteger.valueOf((int) buf.readShortLE());
+
+      case MEDIUMINT:
+        if (!column.isSigned()) {
+          return BigInteger.valueOf((buf.readUnsignedMediumLE()));
+        }
+        return BigInteger.valueOf(buf.readMediumLE());
+
+      case INTEGER:
+        if (!column.isSigned()) {
+          return BigInteger.valueOf(buf.readUnsignedIntLE());
+        }
+        return BigInteger.valueOf(buf.readIntLE());
+
+      case FLOAT:
+        return BigDecimal.valueOf(buf.readFloatLE()).toBigInteger();
+
+      case DOUBLE:
+        return BigDecimal.valueOf(buf.readDoubleLE()).toBigInteger();
+
+      case DECIMAL:
+        return new BigDecimal(buf.readCharSequence(length, StandardCharsets.UTF_8).toString())
+            .toBigInteger();
+
+      default:
+        if (column.isSigned()) return BigInteger.valueOf(buf.readLongLE());
+
+        // need BIG ENDIAN, so reverse order
+        byte[] bb = new byte[8];
+        for (int i = 7; i >= 0; i--) {
+          bb[i] = buf.readByte();
+        }
+        return new BigInteger(1, bb);
+    }
+  }
+
+  @Override
+  public void encodeText(ByteBuf buf, ConnectionContext context, BigInteger value) {
     BufferUtils.writeAscii(buf, value.toString());
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, BigInteger value) {
+    String asciiFormat = value.toString();
+    BufferUtils.writeLengthEncode(asciiFormat.length(), buf);
+    BufferUtils.writeAscii(buf, asciiFormat);
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.DECIMAL;
   }
 
   @Override

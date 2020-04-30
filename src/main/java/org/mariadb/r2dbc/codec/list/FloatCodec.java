@@ -17,6 +17,8 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.client.ConnectionContext;
@@ -37,8 +39,10 @@ public class FloatCodec implements Codec<Float> {
           DataType.INTEGER,
           DataType.FLOAT,
           DataType.BIGINT,
+          DataType.OLDDECIMAL,
           DataType.DECIMAL,
-          DataType.YEAR);
+          DataType.YEAR,
+          DataType.DOUBLE);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getDataType())
@@ -52,9 +56,6 @@ public class FloatCodec implements Codec<Float> {
   @Override
   public Float decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Float> type) {
-    if (column.getDataType() == DataType.BIT) {
-      return Float.valueOf(ByteCodec.parseBit(buf, length));
-    }
     String str = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
     try {
       return Float.valueOf(str);
@@ -64,8 +65,72 @@ public class FloatCodec implements Codec<Float> {
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, Float value) {
+  public Float decodeBinary(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Float> type) {
+    switch (column.getDataType()) {
+      case TINYINT:
+        if (!column.isSigned()) {
+          return Float.valueOf(buf.readUnsignedByte());
+        }
+        return Float.valueOf((int) buf.readByte());
+
+      case YEAR:
+      case SMALLINT:
+        if (!column.isSigned()) {
+          return Float.valueOf(buf.readUnsignedShortLE());
+        }
+        return Float.valueOf((int) buf.readShortLE());
+
+      case MEDIUMINT:
+        if (!column.isSigned()) {
+          return Float.valueOf((buf.readUnsignedMediumLE()));
+        }
+        return Float.valueOf(buf.readMediumLE());
+
+      case INTEGER:
+        if (!column.isSigned()) {
+          return Float.valueOf(buf.readUnsignedIntLE());
+        }
+        return Float.valueOf(buf.readIntLE());
+
+      case BIGINT:
+        BigInteger val;
+        if (column.isSigned()) {
+          val = BigInteger.valueOf(buf.readLongLE());
+        } else {
+          // need BIG ENDIAN, so reverse order
+          byte[] bb = new byte[8];
+          for (int i = 7; i >= 0; i--) {
+            bb[i] = buf.readByte();
+          }
+          val = new BigInteger(1, bb);
+        }
+        return val.floatValue();
+
+      case DOUBLE:
+        return BigDecimal.valueOf(buf.readDoubleLE()).floatValue();
+
+      case OLDDECIMAL:
+      case DECIMAL:
+        return new BigDecimal(buf.readCharSequence(length, StandardCharsets.UTF_8).toString())
+            .floatValue();
+      default:
+        return buf.readFloatLE();
+    }
+  }
+
+  @Override
+  public void encodeText(ByteBuf buf, ConnectionContext context, Float value) {
     BufferUtils.writeAscii(buf, String.valueOf(value));
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, Float value) {
+    buf.writeFloatLE(value);
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.FLOAT;
   }
 
   @Override

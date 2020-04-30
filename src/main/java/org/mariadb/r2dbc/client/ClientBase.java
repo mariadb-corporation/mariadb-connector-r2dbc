@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.client;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
@@ -33,16 +34,17 @@ import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.client.ServerPacketState.TriFunction;
 import org.mariadb.r2dbc.message.client.ClientMessage;
 import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.message.client.QuitPacket;
 import org.mariadb.r2dbc.message.client.SslRequestPacket;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
+import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.MonoSink;
 import reactor.netty.Connection;
 import reactor.util.Logger;
 import reactor.util.Loggers;
@@ -53,12 +55,12 @@ public abstract class ClientBase implements Client {
   private static final Logger logger = Loggers.getLogger(ClientBase.class);
   protected final ReentrantLock lock = new ReentrantLock();
   protected final Connection connection;
-  protected final Queue<MonoSink<Flux<ServerMessage>>> responseReceivers =
-      Queues.<MonoSink<Flux<ServerMessage>>>unbounded().get();
+  protected final Queue<CommandResponse> responseReceivers =
+      Queues.<CommandResponse>unbounded().get();
+  protected volatile ServerPacketState state = new ServerPacketState(responseReceivers, this);
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
-  private final MariadbPacketDecoder mariadbPacketDecoder = new MariadbPacketDecoder();
+  private final MariadbPacketDecoder mariadbPacketDecoder = new MariadbPacketDecoder(state);
   private final MariadbPacketEncoder mariadbPacketEncoder = new MariadbPacketEncoder();
-  private final MariadbResponseHandler mariadbResponseHandler = new MariadbResponseHandler(this);
   private volatile ConnectionContext context;
 
   protected ClientBase(Connection connection) {
@@ -66,7 +68,6 @@ public abstract class ClientBase implements Client {
 
     connection.addHandler(mariadbPacketDecoder);
     connection.addHandler(mariadbPacketEncoder);
-    connection.addHandler(mariadbResponseHandler);
 
     if (logger.isTraceEnabled()) {
       connection.addHandlerFirst(
@@ -83,6 +84,10 @@ public abstract class ClientBase implements Client {
         .subscribe();
   }
 
+  public Flux<ServerMessage> prepare(ClientMessage message) {
+    return sendCommand(message, state::prepareResponse);
+  }
+
   private Mono<Void> handleConnectionError(Throwable throwable) {
     clearWaitingListWithError(new MariadbConnectionException(throwable));
     logger.error("Connection Error", throwable);
@@ -97,7 +102,6 @@ public abstract class ClientBase implements Client {
               new R2dbcNonTransientResourceException("Connection is closing"));
           if (this.isClosed.compareAndSet(false, true)) {
 
-            mariadbResponseHandler.close();
             Channel channel = this.connection.channel();
             if (!channel.isOpen()) {
               this.connection.dispose();
@@ -113,6 +117,14 @@ public abstract class ClientBase implements Client {
 
           return Mono.empty();
         });
+  }
+
+  public Flux<ServerMessage> authenticate(ClientMessage message) {
+    return sendCommand(message, state::authSwitchResponse);
+  }
+
+  public Flux<ServerMessage> sendCommand(ClientMessage message) {
+    return sendCommand(message, state::queryResponse);
   }
 
   @Override
@@ -143,13 +155,14 @@ public abstract class ClientBase implements Client {
     }
   }
 
-  public abstract Flux<ServerMessage> sendCommand(ClientMessage message);
+  public abstract Flux<ServerMessage> sendCommand(
+      ClientMessage message, TriFunction<ByteBuf, Sequencer, ConnectionContext> next);
 
   @Override
   public Flux<ServerMessage> receive() {
     return Mono.<Flux<ServerMessage>>create(
             sink -> {
-              this.responseReceivers.add(sink);
+              this.responseReceivers.add(new CommandResponse(sink, state::initHandshake));
             })
         .flatMapMany(Function.identity());
   }
@@ -212,15 +225,13 @@ public abstract class ClientBase implements Client {
   }
 
   private void clearWaitingListWithError(Throwable exception) {
-    MonoSink<Flux<ServerMessage>> sink;
-    while ((sink = this.responseReceivers.poll()) != null) {
-      sink.error(exception);
+    CommandResponse response;
+    while ((response = this.responseReceivers.poll()) != null) {
+      response.getSink().error(exception);
     }
   }
 
   public abstract void sendNext();
-
-  public abstract MonoSink<Flux<ServerMessage>> nextReceiver();
 
   @Override
   public String toString() {

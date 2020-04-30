@@ -16,10 +16,77 @@
 
 package org.mariadb.r2dbc.codec;
 
+import java.util.EnumSet;
+import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+
 public class TextRowDecoder extends RowDecoder {
 
-  public TextRowDecoder() {
+  public TextRowDecoder(int columnNumber, ColumnDefinitionPacket[] columns) {
     super();
+  }
+
+  @SuppressWarnings("unchecked")
+  public <T> T get(int index, ColumnDefinitionPacket column, Class<T> type) {
+    setPosition(index);
+
+    if (length == NULL_LENGTH) {
+      if (type.isPrimitive()) {
+        throw new IllegalArgumentException(
+            String.format("Cannot return null for primitive %s", type.getName()));
+      }
+      return null;
+    }
+
+    // type generic, return "natural" java type
+    if (Object.class == type || type == null) {
+      Codec<T> defaultCodec = ((Codec<T>) column.getDefaultCodec());
+      return defaultCodec.decodeText(buf, length, column, type);
+    }
+
+    for (Codec<?> codec : Codecs.LIST) {
+      if (codec.canDecode(column, type)) {
+        return ((Codec<T>) codec).decodeText(buf, length, column, type);
+      }
+    }
+
+    if (type.isArray()) {
+      if (EnumSet.of(
+              DataType.TINYINT,
+              DataType.SMALLINT,
+              DataType.MEDIUMINT,
+              DataType.INTEGER,
+              DataType.BIGINT)
+          .contains(column.getDataType())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "No decoder for type %s[] and column type %s(%s)",
+                type.getComponentType().getName(),
+                column.getDataType().toString(),
+                column.isSigned() ? "signed" : "unsigned"));
+      }
+      throw new IllegalArgumentException(
+          String.format(
+              "No decoder for type %s[] and column type %s",
+              type.getComponentType().getName(), column.getDataType().toString()));
+    }
+    if (EnumSet.of(
+            DataType.TINYINT,
+            DataType.SMALLINT,
+            DataType.MEDIUMINT,
+            DataType.INTEGER,
+            DataType.BIGINT)
+        .contains(column.getDataType())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "No decoder for type %s and column type %s(%s)",
+              type.getName(),
+              column.getDataType().toString(),
+              column.isSigned() ? "signed" : "unsigned"));
+    }
+    throw new IllegalArgumentException(
+        String.format(
+            "No decoder for type %s and column type %s",
+            type.getName(), column.getDataType().toString()));
   }
 
   /**

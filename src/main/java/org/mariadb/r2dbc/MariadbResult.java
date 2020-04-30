@@ -22,6 +22,7 @@ import io.r2dbc.spi.Row;
 import io.r2dbc.spi.RowMetadata;
 import java.nio.charset.StandardCharsets;
 import java.util.function.BiFunction;
+import org.mariadb.r2dbc.codec.BinaryRowDecoder;
 import org.mariadb.r2dbc.codec.RowDecoder;
 import org.mariadb.r2dbc.codec.TextRowDecoder;
 import org.mariadb.r2dbc.message.server.*;
@@ -32,9 +33,10 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
 
   private final Flux<ServerMessage> dataRows;
   private final ExceptionFactory factory;
-  private final RowDecoder decoder;
+  private RowDecoder decoder;
   private final String[] generatedColumns;
   private final boolean supportReturning;
+  private final boolean text;
 
   private volatile ColumnDefinitionPacket[] metadataList;
   private volatile int metadataIndex;
@@ -47,10 +49,9 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
       ExceptionFactory factory,
       String[] generatedColumns,
       boolean supportReturning) {
+    this.text = text;
     this.dataRows = dataRows;
     this.factory = factory;
-    // TODO do binary decoder too
-    this.decoder = new TextRowDecoder();
     this.generatedColumns = generatedColumns;
     this.supportReturning = supportReturning;
   }
@@ -100,6 +101,10 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
             this.metadataList[metadataIndex++] = (ColumnDefinitionPacket) serverMessage;
             if (metadataIndex == columnNumber) {
               rowMetadata = MariadbRowMetadata.toRowMetadata(this.metadataList);
+              this.decoder =
+                  text
+                      ? new TextRowDecoder(columnNumber, this.metadataList)
+                      : new BinaryRowDecoder(columnNumber, this.metadataList);
             }
             return;
           }
@@ -134,6 +139,7 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
               return;
             }
             ByteBuf buf = getLongTextEncoded(okPacket.getLastInsertId());
+            decoder = new TextRowDecoder(1, this.metadataList);
             sink.next(f.apply(new MariadbRow(metadataList, decoder, buf), rowMetadata));
           }
 

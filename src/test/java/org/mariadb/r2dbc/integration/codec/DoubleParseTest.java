@@ -19,27 +19,21 @@ package org.mariadb.r2dbc.integration.codec;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-public class DateTimeParseTest extends BaseTest {
+public class DoubleParseTest extends BaseTest {
   @BeforeAll
   public static void before2() {
+    sharedConn.createStatement("CREATE TABLE DoubleTable (t1 DOUBLE)").execute().blockLast();
     sharedConn
-        .createStatement("CREATE TABLE DateTimeTable (t1 DATETIME(6) NULL)")
-        .execute()
-        .blockLast();
-    sharedConn
-        .createStatement(
-            "INSERT INTO DateTimeTable VALUES('2013-07-22 12:50:05.01230'), ('2035-01-31 10:45:01'), (null)")
+        .createStatement("INSERT INTO DoubleTable VALUES (0.1),(1),(922.92233), (null)")
         .execute()
         .blockLast();
     // ensure having same kind of result for truncation
@@ -51,7 +45,7 @@ public class DateTimeParseTest extends BaseTest {
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE DateTimeTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE DoubleTable").execute().blockLast();
   }
 
   @Test
@@ -66,63 +60,27 @@ public class DateTimeParseTest extends BaseTest {
 
   private void defaultValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
-        .expectNext(
-            Optional.of(LocalDateTime.parse("2013-07-22T12:50:05.01230")),
-            Optional.of(LocalDateTime.parse("2035-01-31T10:45:01")),
-            Optional.empty())
-        .verifyComplete();
-  }
-
-  @Test
-  void localDateValue() {
-    localDateValue(sharedConn);
-  }
-
-  @Test
-  void localDateValuePrepare() {
-    localDateValue(sharedConnPrepare);
-  }
-
-  private void localDateValue(MariadbConnection connection) {
-    connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ?")
-        .bind(0, 1)
-        .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalDate.class))))
-        .as(StepVerifier::create)
-        .expectNext(
-            Optional.of(LocalDate.parse("2013-07-22")),
-            Optional.of(LocalDate.parse("2035-01-31")),
-            Optional.empty())
-        .verifyComplete();
-  }
-
-  @Test
-  void localTimeValue() {
-    localTimeValue(sharedConn);
-  }
-
-  @Test
-  void localTimeValuePrepare() {
-    localTimeValue(sharedConnPrepare);
-  }
-
-  private void localTimeValue(MariadbConnection connection) {
-    connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ?")
-        .bind(0, 1)
-        .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalTime.class))))
-        .as(StepVerifier::create)
-        .expectNext(
-            Optional.of(LocalTime.parse("12:50:05.012300")),
-            Optional.of(LocalTime.parse("10:45:01")),
-            Optional.empty())
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(0.1D, (Double) val.get(), 0.0000001);
+              return true;
+            })
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(1D, (Double) val.get(), 0.0000001);
+              return true;
+            })
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(922.922D, (Double) val.get(), 0.001);
+              return true;
+            })
+        .expectNext(Optional.empty())
         .verifyComplete();
   }
 
@@ -138,7 +96,7 @@ public class DateTimeParseTest extends BaseTest {
 
   private void booleanValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Boolean.class))))
@@ -148,7 +106,7 @@ public class DateTimeParseTest extends BaseTest {
                 throwable instanceof R2dbcTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals("No decoder for type java.lang.Boolean and column type DATETIME"))
+                        .equals("No decoder for type java.lang.Boolean and column type DOUBLE"))
         .verify();
   }
 
@@ -164,7 +122,7 @@ public class DateTimeParseTest extends BaseTest {
 
   private void byteArrayValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, byte[].class)))
@@ -174,7 +132,7 @@ public class DateTimeParseTest extends BaseTest {
                 throwable instanceof R2dbcTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals("No decoder for type byte[] and column type DATETIME"))
+                        .equals("No decoder for type byte[] and column type DOUBLE"))
         .verify();
   }
 
@@ -190,7 +148,7 @@ public class DateTimeParseTest extends BaseTest {
 
   private void ByteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
@@ -200,7 +158,7 @@ public class DateTimeParseTest extends BaseTest {
                 throwable instanceof R2dbcTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals("No decoder for type java.lang.Byte and column type DATETIME"))
+                        .equals("No decoder for type java.lang.Byte and column type DOUBLE"))
         .verify();
   }
 
@@ -216,7 +174,7 @@ public class DateTimeParseTest extends BaseTest {
 
   private void byteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
@@ -226,7 +184,7 @@ public class DateTimeParseTest extends BaseTest {
                 throwable instanceof R2dbcTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals("No decoder for type byte and column type DATETIME"))
+                        .equals("No decoder for type byte and column type DOUBLE"))
         .verify();
   }
 
@@ -242,18 +200,17 @@ public class DateTimeParseTest extends BaseTest {
 
   private void shortValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Short and column type DATETIME"))
-        .verify();
+        .expectNext(
+            Optional.of((short) 0),
+            Optional.of((short) 1),
+            Optional.of((short) 922),
+            Optional.empty())
+        .verifyComplete();
   }
 
   @Test
@@ -268,18 +225,13 @@ public class DateTimeParseTest extends BaseTest {
 
   private void intValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Integer.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Integer and column type DATETIME"))
-        .verify();
+        .expectNext(Optional.of(0), Optional.of(1), Optional.of(922), Optional.empty())
+        .verifyComplete();
   }
 
   @Test
@@ -294,18 +246,13 @@ public class DateTimeParseTest extends BaseTest {
 
   private void longValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Long.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Long and column type DATETIME"))
-        .verify();
+        .expectNext(Optional.of(0L), Optional.of(1L), Optional.of(922L), Optional.empty())
+        .verifyComplete();
   }
 
   @Test
@@ -320,18 +267,28 @@ public class DateTimeParseTest extends BaseTest {
 
   private void floatValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Float.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Float and column type DATETIME"))
-        .verify();
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(0.1F, val.get(), 0.0000001);
+              return true;
+            })
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(1F, val.get(), 0.0000001);
+              return true;
+            })
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(922.92233F, val.get(), 0.001);
+              return true;
+            })
+        .expectNext(Optional.empty())
+        .verifyComplete();
   }
 
   @Test
@@ -346,47 +303,50 @@ public class DateTimeParseTest extends BaseTest {
 
   private void doubleValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Double.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Double and column type DATETIME"))
-        .verify();
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(0.1D, val.get(), 0.0000001);
+              return true;
+            })
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(1D, val.get(), 0.0000001);
+              return true;
+            })
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(922.922D, val.get(), 0.001);
+              return true;
+            })
+        .expectNext(Optional.empty())
+        .verifyComplete();
   }
 
   @Test
   void stringValue() {
-    stringValue(
-        sharedConn,
-        Optional.of("2013-07-22 12:50:05.012300"),
-        Optional.of("2035-01-31 10:45:01.000000"),
-        Optional.empty());
+    stringValue(sharedConn, Optional.of("0.1"), Optional.of("1"), Optional.of("922.92233"));
   }
 
   @Test
   void stringValuePrepare() {
     stringValue(
-        sharedConnPrepare,
-        Optional.of("2013-07-22T12:50:05.012300"),
-        Optional.of("2035-01-31T10:45:01"),
-        Optional.empty());
+        sharedConnPrepare, Optional.of("0.1"), Optional.of("1.0"), Optional.of("922.92233"));
   }
 
   private void stringValue(
       MariadbConnection connection, Optional<String> t1, Optional<String> t2, Optional<String> t3) {
     connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
         .as(StepVerifier::create)
-        .expectNext(t1, t2, t3)
+        .expectNext(t1, t2, t3, Optional.empty())
         .verifyComplete();
   }
 
@@ -402,19 +362,28 @@ public class DateTimeParseTest extends BaseTest {
 
   private void decimalValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BigDecimal.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.math.BigDecimal and column type DATETIME"))
-        .verify();
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(0.1F, val.get().floatValue(), 0.0000001);
+              return true;
+            })
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(1F, val.get().floatValue(), 0.0000001);
+              return true;
+            })
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(922.922F, val.get().floatValue(), 0.001);
+              return true;
+            })
+        .expectNext(Optional.empty())
+        .verifyComplete();
   }
 
   @Test
@@ -429,42 +398,15 @@ public class DateTimeParseTest extends BaseTest {
 
   private void bigintValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BigInteger.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.math.BigInteger and column type DATETIME"))
-        .verify();
-  }
-
-  @Test
-  void localDateTimeValue() {
-    localDateTimeValue(sharedConn);
-  }
-
-  @Test
-  void localDateTimeValuePrepare() {
-    localDateTimeValue(sharedConnPrepare);
-  }
-
-  private void localDateTimeValue(MariadbConnection connection) {
-    connection
-        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ?")
-        .bind(0, 1)
-        .execute()
-        .flatMap(
-            r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalDateTime.class))))
-        .as(StepVerifier::create)
         .expectNext(
-            Optional.of(LocalDateTime.parse("2013-07-22T12:50:05.01230")),
-            Optional.of(LocalDateTime.parse("2035-01-31T10:45:01")),
+            Optional.of(BigInteger.ZERO),
+            Optional.of(BigInteger.ONE),
+            Optional.of(BigInteger.valueOf(922)),
             Optional.empty())
         .verifyComplete();
   }

@@ -40,7 +40,6 @@ public class Codecs {
         LocalDateTimeCodec.INSTANCE,
         LocalTimeCodec.INSTANCE,
         DurationCodec.INSTANCE,
-        MediumCodec.INSTANCE,
         ShortCodec.INSTANCE,
         StreamCodec.INSTANCE,
         StringCodec.INSTANCE,
@@ -59,7 +58,6 @@ public class Codecs {
     CODEC_LIST.put(DataType.NULL, StringCodec.INSTANCE);
     CODEC_LIST.put(DataType.TIMESTAMP, LocalDateTimeCodec.INSTANCE);
     CODEC_LIST.put(DataType.BIGINT, LongCodec.INSTANCE);
-    CODEC_LIST.put(DataType.MEDIUMINT, MediumCodec.INSTANCE);
     CODEC_LIST.put(DataType.DATE, LocalDateTimeCodec.INSTANCE);
     CODEC_LIST.put(DataType.TIME, DurationCodec.INSTANCE);
     CODEC_LIST.put(DataType.DATETIME, LocalDateTimeCodec.INSTANCE);

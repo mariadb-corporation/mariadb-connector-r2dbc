@@ -16,14 +16,16 @@
 
 package org.mariadb.r2dbc.client;
 
+import io.netty.buffer.ByteBuf;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.client.ServerPacketState.TriFunction;
 import org.mariadb.r2dbc.message.client.ClientMessage;
 import org.mariadb.r2dbc.message.client.SslRequestPacket;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
+import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.MonoSink;
 
 public interface Client {
 
@@ -31,7 +33,14 @@ public interface Client {
 
   Flux<ServerMessage> receive();
 
+  Flux<ServerMessage> prepare(ClientMessage message);
+
+  Flux<ServerMessage> authenticate(ClientMessage message);
+
   Flux<ServerMessage> sendCommand(ClientMessage requests);
+
+  Flux<ServerMessage> sendCommand(
+      ClientMessage requests, TriFunction<ByteBuf, Sequencer, ConnectionContext> next);
 
   Mono<Void> sendSslRequest(
       SslRequestPacket sslRequest, MariadbConnectionConfiguration configuration);
@@ -49,6 +58,4 @@ public interface Client {
   void setContext(InitialHandshakePacket packet);
 
   void sendNext();
-
-  MonoSink<Flux<ServerMessage>> nextReceiver();
 }

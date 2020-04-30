@@ -187,7 +187,7 @@ public final class AuthenticationFlow {
       @Override
       Mono<State> handle(AuthenticationFlow flow) {
         return flow.client
-            .sendCommand(flow.createHandshakeResponse(flow.clientCapabilities))
+            .authenticate(flow.createHandshakeResponse(flow.clientCapabilities))
             .<State>handle(
                 (message, sink) -> {
                   if (message instanceof ErrorPacket) {
@@ -232,7 +232,7 @@ public final class AuthenticationFlow {
         if (clientMessage != null) {
           // this can occur when there is a "finishing" message for authentication plugin
           // example CachingSha2PasswordFlow that finish with a successful FAST_AUTH
-          flux = flow.client.sendCommand(clientMessage);
+          flux = flow.client.authenticate(clientMessage);
         } else {
           flux = flow.client.receive();
         }

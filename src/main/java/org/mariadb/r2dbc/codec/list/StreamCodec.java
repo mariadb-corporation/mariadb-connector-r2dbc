@@ -18,6 +18,8 @@ package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.client.ConnectionContext;
@@ -34,13 +36,17 @@ public class StreamCodec implements Codec<InputStream> {
       EnumSet.of(DataType.BLOB, DataType.TINYBLOB, DataType.MEDIUMBLOB, DataType.LONGBLOB);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getDataType())
-        && ((type.isPrimitive() && type == Byte.TYPE && type.isArray())
-            || type.isAssignableFrom(byte[].class));
+    return false;
   }
 
   @Override
   public InputStream decodeText(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends InputStream> type) {
+    return new ByteBufInputStream(buf.readSlice(length));
+  }
+
+  @Override
+  public InputStream decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends InputStream> type) {
     return new ByteBufInputStream(buf.readSlice(length));
   }
@@ -50,8 +56,36 @@ public class StreamCodec implements Codec<InputStream> {
   }
 
   @Override
-  public void encode(ByteBuf buf, ConnectionContext context, InputStream value) {
+  public void encodeText(ByteBuf buf, ConnectionContext context, InputStream value) {
     BufferUtils.write(buf, value, context);
+  }
+
+  @Override
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, InputStream value) {
+
+    buf.writeByte(0xfe);
+    int initialPos = buf.writerIndex();
+    buf.writerIndex(buf.writerIndex() + 8); // reserve length encoded length bytes
+
+    byte[] array = new byte[4096];
+    int len;
+    try {
+      while ((len = value.read(array)) > 0) {
+        buf.writeBytes(array, 0, len);
+      }
+    } catch (IOException ioe) {
+      throw new R2dbcNonTransientResourceException("Failed to read InputStream", ioe);
+    }
+
+    // Write length
+    int endPos = buf.writerIndex();
+    buf.writerIndex(initialPos);
+    buf.writeLongLE(endPos - (initialPos + 8));
+    buf.writerIndex(endPos);
+  }
+
+  public DataType getBinaryEncodeType() {
+    return DataType.BLOB;
   }
 
   @Override

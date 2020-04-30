@@ -20,21 +20,28 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.mariadb.r2dbc.message.server.Sequencer;
-import org.mariadb.r2dbc.message.server.ServerMessage;
-import org.mariadb.r2dbc.message.server.ServerPacketState;
 
 public class MariadbPacketDecoder extends ByteToMessageDecoder {
 
-  private volatile ServerPacketState decoder = new ServerPacketState();
+  private volatile ServerPacketState decoder;
   private ConnectionContext context = null;
   private volatile CompositeByteBuf multipart;
   private AtomicBoolean isMultipart = new AtomicBoolean();
 
+  public MariadbPacketDecoder(ServerPacketState decoder) {
+    this.decoder = decoder;
+  }
+
   @Override
   protected void decode(ChannelHandlerContext ctx, ByteBuf buf, List<Object> out) throws Exception {
+    if (decoder.response == null && !decoder.loadNextResponse()) {
+      throw new R2dbcNonTransientResourceException(
+          "unexpected message received when no command was send");
+    }
     while (buf.readableBytes() > 4) {
       int length = buf.getUnsignedMediumLE(buf.readerIndex());
 
@@ -58,8 +65,9 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
         buf.skipBytes(3); // skip length
         Sequencer sequencer = new Sequencer(buf.readByte());
         multipart.addComponent(true, buf.readRetainedSlice(length));
-        ServerMessage msg = decoder.next.apply(multipart, sequencer, context);
-        out.add(msg);
+
+        decoder.next.apply(multipart, sequencer, context);
+
         multipart.release();
         isMultipart.set(false);
         continue;
@@ -69,8 +77,7 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
       ByteBuf packet = buf.readSlice(4 + length);
       packet.skipBytes(3); // skip length
       Sequencer sequencer = new Sequencer(packet.readByte());
-      ServerMessage msg = decoder.next.apply(packet, sequencer, context);
-      out.add(msg);
+      decoder.next.apply(packet, sequencer, context);
     }
   }
 

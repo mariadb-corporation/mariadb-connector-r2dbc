@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.client;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelOption;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.net.SocketAddress;
@@ -23,11 +24,12 @@ import java.time.Duration;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import org.mariadb.r2dbc.client.ServerPacketState.TriFunction;
 import org.mariadb.r2dbc.message.client.ClientMessage;
+import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.MonoSink;
 import reactor.netty.Connection;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
@@ -56,7 +58,8 @@ public final class ClientImpl extends ClientBase {
     return tcpClient.connect().flatMap(it -> Mono.just(new ClientImpl(it)));
   }
 
-  public Flux<ServerMessage> sendCommand(ClientMessage message) {
+  public Flux<ServerMessage> sendCommand(
+      ClientMessage message, TriFunction<ByteBuf, Sequencer, ConnectionContext> next) {
     AtomicBoolean atomicBoolean = new AtomicBoolean();
     return Mono.<Flux<ServerMessage>>create(
             sink -> {
@@ -69,11 +72,11 @@ public final class ClientImpl extends ClientBase {
               if (atomicBoolean.compareAndSet(false, true)) {
                 try {
                   lock.lock();
+                  this.responseReceivers.add(new CommandResponse(sink, next));
+
                   if (this.responseReceivers.isEmpty()) {
-                    this.responseReceivers.add(sink);
                     connection.channel().writeAndFlush(message);
                   } else {
-                    this.responseReceivers.add(sink);
                     sendingQueue.add(message);
                   }
                 } finally {
@@ -89,15 +92,6 @@ public final class ClientImpl extends ClientBase {
     try {
       ClientMessage next = sendingQueue.poll();
       if (next != null) connection.channel().writeAndFlush(next);
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  public MonoSink<Flux<ServerMessage>> nextReceiver() {
-    lock.lock();
-    try {
-      return this.responseReceivers.poll();
     } finally {
       lock.unlock();
     }

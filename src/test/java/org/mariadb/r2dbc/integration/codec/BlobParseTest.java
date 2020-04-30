@@ -26,19 +26,18 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
 public class BlobParseTest extends BaseTest {
   @BeforeAll
   public static void before2() {
-    sharedConn
-        .createStatement("CREATE TEMPORARY TABLE BlobTable (t1 BLOB, t2 int)")
-        .execute()
-        .blockLast();
+    sharedConn.createStatement("CREATE TABLE BlobTable (t1 BLOB, t2 int)").execute().blockLast();
     sharedConn
         .createStatement(
             "INSERT INTO BlobTable VALUES ('diego🤘💪',1),('georg',2),('lawrin',3), (null,4)")
@@ -51,8 +50,23 @@ public class BlobParseTest extends BaseTest {
         .blockLast();
   }
 
+  @AfterAll
+  public static void afterAll2() {
+    sharedConn.createStatement("DROP TABLE BlobTable").execute().blockLast();
+  }
+
   @Test
   void defaultValue() {
+    defaultValue(sharedConn);
+  }
+
+  @Test
+  void defaultValuePrepare() {
+    defaultValue(sharedConnPrepare);
+  }
+
+  private void defaultValue(MariadbConnection connection) {
+
     String[] expectedVals = new String[] {"diego🤘💪", "georg", "lawrin"};
     AtomicInteger index = new AtomicInteger();
 
@@ -68,8 +82,9 @@ public class BlobParseTest extends BaseTest {
           }
         };
 
-    sharedConn
-        .createStatement("SELECT t1,t2 FROM BlobTable limit 3")
+    connection
+        .createStatement("SELECT t1,t2 FROM BlobTable WHERE 1 = ? limit 3")
+        .bind(0, 1)
         .execute()
         .flatMap(
             r ->
@@ -92,8 +107,18 @@ public class BlobParseTest extends BaseTest {
 
   @Test
   void booleanValue() {
-    sharedConn
-        .createStatement("SELECT t1 FROM BlobTable LIMIT 1")
+    booleanValue(sharedConn);
+  }
+
+  @Test
+  void booleanValuePrepare() {
+    booleanValue(sharedConnPrepare);
+  }
+
+  private void booleanValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Boolean.class))))
         .as(StepVerifier::create)
@@ -108,8 +133,18 @@ public class BlobParseTest extends BaseTest {
 
   @Test
   void byteArrayValue() {
-    sharedConn
-        .createStatement("SELECT t1 FROM BlobTable")
+    byteArrayValue(sharedConn);
+  }
+
+  @Test
+  void byteArrayValuePrepare() {
+    byteArrayValue(sharedConnPrepare);
+  }
+
+  private void byteArrayValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ?")
+        .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte[].class))))
         .as(StepVerifier::create)
@@ -125,8 +160,18 @@ public class BlobParseTest extends BaseTest {
 
   @Test
   void ByteValue() {
-    sharedConn
-        .createStatement("SELECT t1 FROM BlobTable LIMIT 1")
+    ByteValue(sharedConn);
+  }
+
+  @Test
+  void ByteValuePrepare() {
+    ByteValue(sharedConnPrepare);
+  }
+
+  private void ByteValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
         .as(StepVerifier::create)
@@ -141,8 +186,18 @@ public class BlobParseTest extends BaseTest {
 
   @Test
   void byteValue() {
-    sharedConn
-        .createStatement("SELECT t1 FROM BlobTable LIMIT 1")
+    byteValue(sharedConn);
+  }
+
+  @Test
+  void byteValuePrepare() {
+    byteValue(sharedConnPrepare);
+  }
+
+  private void byteValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
         .as(StepVerifier::create)
@@ -157,8 +212,18 @@ public class BlobParseTest extends BaseTest {
 
   @Test
   void shortValue() {
-    sharedConn
-        .createStatement("SELECT t1 FROM BlobTable LIMIT 1")
+    shortValue(sharedConn);
+  }
+
+  @Test
+  void shortValuePrepare() {
+    shortValue(sharedConnPrepare);
+  }
+
+  private void shortValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
         .as(StepVerifier::create)
@@ -173,8 +238,18 @@ public class BlobParseTest extends BaseTest {
 
   @Test
   void intValue() {
-    sharedConn
-        .createStatement("SELECT t1 FROM BlobTable LIMIT 1")
+    intValue(sharedConn);
+  }
+
+  @Test
+  void intValuePrepare() {
+    intValue(sharedConnPrepare);
+  }
+
+  private void intValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Integer.class))))
         .as(StepVerifier::create)
@@ -189,8 +264,18 @@ public class BlobParseTest extends BaseTest {
 
   @Test
   void longValue() {
-    sharedConn
-        .createStatement("SELECT t1 FROM BlobTable LIMIT 1")
+    longValue(sharedConn);
+  }
+
+  @Test
+  void longValuePrepare() {
+    longValue(sharedConnPrepare);
+  }
+
+  private void longValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Long.class))))
         .as(StepVerifier::create)
@@ -205,8 +290,18 @@ public class BlobParseTest extends BaseTest {
 
   @Test
   void floatValue() {
-    sharedConn
-        .createStatement("SELECT t1 FROM BlobTable LIMIT 1")
+    floatValue(sharedConn);
+  }
+
+  @Test
+  void floatValuePrepare() {
+    floatValue(sharedConnPrepare);
+  }
+
+  private void floatValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Float.class))))
         .as(StepVerifier::create)
@@ -221,8 +316,18 @@ public class BlobParseTest extends BaseTest {
 
   @Test
   void doubleValue() {
-    sharedConn
-        .createStatement("SELECT t1 FROM BlobTable LIMIT 1")
+    doubleValue(sharedConn);
+  }
+
+  @Test
+  void doubleValuePrepare() {
+    doubleValue(sharedConnPrepare);
+  }
+
+  private void doubleValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Double.class))))
         .as(StepVerifier::create)
@@ -237,8 +342,18 @@ public class BlobParseTest extends BaseTest {
 
   @Test
   void stringValue() {
-    sharedConn
-        .createStatement("SELECT t1 FROM BlobTable LIMIT 1")
+    stringValue(sharedConn);
+  }
+
+  @Test
+  void stringValuePrepare() {
+    stringValue(sharedConnPrepare);
+  }
+
+  private void stringValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
         .as(StepVerifier::create)
@@ -253,8 +368,18 @@ public class BlobParseTest extends BaseTest {
 
   @Test
   void decimalValue() {
-    sharedConn
-        .createStatement("SELECT t1 FROM BlobTable LIMIT 1")
+    decimalValue(sharedConn);
+  }
+
+  @Test
+  void decimalValuePrepare() {
+    decimalValue(sharedConnPrepare);
+  }
+
+  private void decimalValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BigDecimal.class))))
         .as(StepVerifier::create)
@@ -269,8 +394,18 @@ public class BlobParseTest extends BaseTest {
 
   @Test
   void bigintValue() {
-    sharedConn
-        .createStatement("SELECT t1 FROM BlobTable LIMIT 1")
+    bigintValue(sharedConn);
+  }
+
+  @Test
+  void bigintValuePrepare() {
+    bigintValue(sharedConnPrepare);
+  }
+
+  private void bigintValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BigInteger.class))))
         .as(StepVerifier::create)

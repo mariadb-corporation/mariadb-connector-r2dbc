@@ -77,11 +77,29 @@ public final class ColumnDefinitionPacket implements ServerMessage {
     0, 0, 0, 0, 0, 0, 0, 0
   };
   private final byte[] meta;
-  private final short charset;
+  private final int charset;
   private final long length;
   private final DataType dataType;
   private final byte decimals;
-  private final short flags;
+  private final int flags;
+  private boolean ending;
+
+  private ColumnDefinitionPacket(
+      byte[] meta,
+      int charset,
+      long length,
+      DataType dataType,
+      byte decimals,
+      int flags,
+      boolean ending) {
+    this.meta = meta;
+    this.charset = charset;
+    this.length = length;
+    this.dataType = dataType;
+    this.decimals = decimals;
+    this.flags = flags;
+    this.ending = ending;
+  }
 
   private ColumnDefinitionPacket(String name) {
     byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
@@ -110,16 +128,19 @@ public final class ColumnDefinitionPacket implements ServerMessage {
     this.dataType = DataType.BIGINT;
     this.decimals = 0;
     this.flags = ColumnFlags.PRIMARY_KEY;
+    this.ending = false;
   }
 
-  public ColumnDefinitionPacket(Sequencer sequencer, ByteBuf buf, ConnectionContext context) {
-    this.meta = new byte[buf.readableBytes() - 12];
+  public static ColumnDefinitionPacket decode(
+      Sequencer sequencer, ByteBuf buf, ConnectionContext context, boolean ending) {
+    byte[] meta = new byte[buf.readableBytes() - 12];
     buf.readBytes(meta);
-    this.charset = buf.readShortLE();
-    this.length = buf.readUnsignedIntLE();
-    this.dataType = DataType.fromServer(buf.readUnsignedByte(), charset);
-    this.flags = buf.readShortLE();
-    this.decimals = buf.readByte();
+    int charset = buf.readUnsignedShortLE();
+    long length = buf.readUnsignedIntLE();
+    DataType dataType = DataType.fromServer(buf.readUnsignedByte(), charset);
+    int flags = buf.readUnsignedShortLE();
+    byte decimals = buf.readByte();
+    return new ColumnDefinitionPacket(meta, charset, length, dataType, decimals, flags, ending);
   }
 
   public static ColumnDefinitionPacket fromGeneratedId(String name) {
@@ -158,7 +179,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
     return this.getString(5);
   }
 
-  public short getCharset() {
+  public int getCharset() {
     return charset;
   }
 
@@ -339,6 +360,11 @@ public final class ColumnDefinitionPacket implements ServerMessage {
   @Override
   public int hashCode() {
     return Objects.hash(charset, length, dataType, decimals, flags);
+  }
+
+  @Override
+  public boolean ending() {
+    return this.ending;
   }
 
   @Override

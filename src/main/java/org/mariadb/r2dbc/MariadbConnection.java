@@ -24,6 +24,7 @@ import org.mariadb.r2dbc.client.ClientBase;
 import org.mariadb.r2dbc.message.client.PingPacket;
 import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.util.Assert;
+import org.mariadb.r2dbc.util.PrepareCache;
 import reactor.core.publisher.Mono;
 import reactor.util.Logger;
 import reactor.util.Loggers;
@@ -34,12 +35,15 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
   private final Client client;
   private final MariadbConnectionConfiguration configuration;
   private volatile IsolationLevel isolationLevel;
+  private final PrepareCache prepareCache;
 
   MariadbConnection(
       Client client, IsolationLevel isolationLevel, MariadbConnectionConfiguration configuration) {
     this.client = Assert.requireNonNull(client, "client must not be null");
     this.isolationLevel = Assert.requireNonNull(isolationLevel, "isolationLevel must not be null");
     this.configuration = Assert.requireNonNull(configuration, "configuration must not be null");
+    this.prepareCache =
+        this.configuration.useServerPrepStmts() ? new PrepareCache(250, client) : null;
 
     // save Global isolation level to avoid asking each new connection with same configuration
     if (configuration.getIsolationLevel() == null) {
@@ -88,6 +92,10 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
     if (MariadbSimpleQueryStatement.supports(sql, this.client)) {
       return new MariadbSimpleQueryStatement(this.client, sql);
     } else {
+      if (this.configuration.useServerPrepStmts()) {
+        return new MariadbServerParameterizedQueryStatement(
+            this.client, sql, this.prepareCache, this.configuration);
+      }
       return new MariadbClientParameterizedQueryStatement(this.client, sql, this.configuration);
     }
   }
@@ -173,7 +181,7 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
             sink.success(false);
             return;
           }
-          ExceptionFactory factory = ExceptionFactory.withSql("PING");
+
           this.client
               .sendCommand(new PingPacket())
               .windowUntil(it -> it.ending())

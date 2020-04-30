@@ -48,6 +48,7 @@ public final class MariadbConnectionConfiguration {
   private final String cachingRsaPublicKey;
   private final boolean allowPublicKeyRetrieval;
   private IsolationLevel isolationLevel;
+  private final boolean useServerPrepStmts;
 
   private MariadbConnectionConfiguration(
       @Nullable Duration connectTimeout,
@@ -69,7 +70,8 @@ public final class MariadbConnectionConfiguration {
       SslMode sslMode,
       @Nullable String rsaPublicKey,
       @Nullable String cachingRsaPublicKey,
-      boolean allowPublicKeyRetrieval) {
+      boolean allowPublicKeyRetrieval,
+      boolean useServerPrepStmts) {
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
     this.database = database;
     this.host = host;
@@ -91,6 +93,7 @@ public final class MariadbConnectionConfiguration {
     this.rsaPublicKey = rsaPublicKey;
     this.cachingRsaPublicKey = cachingRsaPublicKey;
     this.allowPublicKeyRetrieval = allowPublicKeyRetrieval;
+    this.useServerPrepStmts = useServerPrepStmts;
   }
 
   public static Builder fromOptions(ConnectionFactoryOptions connectionFactoryOptions) {
@@ -113,6 +116,11 @@ public final class MariadbConnectionConfiguration {
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.ALLOW_PIPELINING)) {
       builder.allowPipelining(
           connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.ALLOW_PIPELINING));
+    }
+
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.USE_SERVER_PREPARE)) {
+      builder.useServerPrepStmts(
+          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.USE_SERVER_PREPARE));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SSL_MODE)) {
@@ -228,6 +236,10 @@ public final class MariadbConnectionConfiguration {
     return allowPublicKeyRetrieval;
   }
 
+  public boolean useServerPrepStmts() {
+    return useServerPrepStmts;
+  }
+
   @Override
   public String toString() {
     StringBuilder hiddenPwd = new StringBuilder();
@@ -266,6 +278,8 @@ public final class MariadbConnectionConfiguration {
         + '\''
         + ", allowPublicKeyRetrieval="
         + allowPublicKeyRetrieval
+        + ", useServerPrepStmts="
+        + useServerPrepStmts
         + '}';
   }
 
@@ -326,6 +340,7 @@ public final class MariadbConnectionConfiguration {
     @Nullable private String socket;
     private boolean allowMultiQueries = false;
     private boolean allowPipelining = true;
+    private boolean useServerPrepStmts = false;
     @Nullable private List<String> tlsProtocol;
     @Nullable private String serverSslCert;
     @Nullable private String clientSslCert;
@@ -375,7 +390,8 @@ public final class MariadbConnectionConfiguration {
           this.sslMode,
           this.rsaPublicKey,
           this.cachingRsaPublicKey,
-          this.allowPublicKeyRetrieval);
+          this.allowPublicKeyRetrieval,
+          this.useServerPrepStmts);
     }
 
     /**
@@ -561,6 +577,17 @@ public final class MariadbConnectionConfiguration {
      */
     public Builder allowPublicKeyRetrieval(boolean allowPublicKeyRetrieval) {
       this.allowPublicKeyRetrieval = allowPublicKeyRetrieval;
+      return this;
+    }
+
+    /**
+     * Permit to indicate to use text or binary protocol.
+     *
+     * @param useServerPrepStmts
+     * @return this {@link Builder}
+     */
+    public Builder useServerPrepStmts(boolean useServerPrepStmts) {
+      this.useServerPrepStmts = useServerPrepStmts;
       return this;
     }
 

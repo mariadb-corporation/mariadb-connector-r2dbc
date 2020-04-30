@@ -23,10 +23,14 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -34,7 +38,7 @@ public class BigIntegerParameterTest extends BaseTest {
   @BeforeAll
   public static void before2() {
     sharedConn
-        .createStatement("CREATE TEMPORARY TABLE BigIntParam (t1 BIGINT, t2 BIGINT, t3 BIGINT)")
+        .createStatement("CREATE TABLE BigIntParam (t1 BIGINT, t2 BIGINT, t3 BIGINT)")
         .execute()
         .subscribe();
     // ensure having same kind of result for truncation
@@ -44,6 +48,11 @@ public class BigIntegerParameterTest extends BaseTest {
         .blockLast();
   }
 
+  @AfterAll
+  public static void after2() {
+    sharedConn.createStatement("DROP TABLE BigIntParam").execute().blockLast();
+  }
+
   @BeforeEach
   public void beforeEach() {
     sharedConn.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
@@ -51,7 +60,16 @@ public class BigIntegerParameterTest extends BaseTest {
 
   @Test
   void nullValue() {
-    sharedConn
+    nullValue(sharedConn);
+  }
+
+  @Test
+  void nullValuePrepare() {
+    nullValue(sharedConnPrepare);
+  }
+
+  private void nullValue(MariadbConnection connection) {
+    connection
         .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
         .bindNull(0, BigInteger.class)
         .bindNull(1, BigInteger.class)
@@ -63,121 +81,245 @@ public class BigIntegerParameterTest extends BaseTest {
 
   @Test
   void bigIntValue() {
-    sharedConn
-        .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
-        .bind(0, BigInteger.ONE)
-        .bind(1, new BigInteger("9223372036854775807"))
-        .bind(2, new BigInteger("-9"))
-        .execute()
-        .blockLast();
+    bigIntValue(sharedConn);
+  }
+
+  @Test
+  void bigIntValuePrepare() {
+    bigIntValue(sharedConnPrepare);
+  }
+
+  private void bigIntValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
+            .bind(0, BigInteger.ONE)
+            .bind(1, new BigInteger("9223372036854775807"))
+            .bind(2, new BigInteger("-9"));
+    Assertions.assertTrue(
+        stmt.toString()
+            .contains(
+                "parameters=[Parameter{codec=BigIntegerCodec{}, value=1}, Parameter{codec=BigIntegerCodec{}, value=9223372036854775807}, Parameter{codec=BigIntegerCodec{}, value=-9}]"));
+    stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("9223372036854775807"), Optional.of("-9"));
   }
 
   @Test
   void stringValue() {
-    sharedConn
-        .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
-        .bind(0, "1")
-        .bind(1, "9223372036854775807")
-        .bind(2, "-9")
-        .execute()
-        .blockLast();
+    stringValue(sharedConn);
+  }
+
+  @Test
+  void stringValuePrepare() {
+    stringValue(sharedConnPrepare);
+  }
+
+  private void stringValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
+            .bind(0, "1")
+            .bind(1, "9223372036854775807")
+            .bind(2, "-9");
+    Assertions.assertTrue(
+        stmt.toString()
+            .contains(
+                "parameters=[Parameter{codec=StringCodec{}, value=1}, Parameter{codec=StringCodec{}, value=9223372036854775807}, Parameter{codec=StringCodec{}, value=-9}]"));
+    stmt.execute().blockLast();
+
     validate(Optional.of("1"), Optional.of("9223372036854775807"), Optional.of("-9"));
   }
 
   @Test
   void decimalValue() {
-    sharedConn
-        .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
-        .bind(0, BigDecimal.ONE)
-        .bind(1, new BigDecimal("9223372036854775807"))
-        .bind(2, new BigDecimal("-9"))
-        .execute()
-        .blockLast();
+    decimalValue(sharedConn);
+  }
 
+  @Test
+  void decimalValuePrepare() {
+    decimalValue(sharedConnPrepare);
+  }
+
+  private void decimalValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
+            .bind(0, BigDecimal.ONE)
+            .bind(1, new BigDecimal("9223372036854775807"))
+            .bind(2, new BigDecimal("-9"));
+    Assertions.assertTrue(
+        stmt.toString()
+            .contains(
+                "Parameter{codec=BigDecimalCodec{}, value=9223372036854775807}, Parameter{codec=BigDecimalCodec{}, value=-9}]"));
+    stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("9223372036854775807"), Optional.of("-9"));
   }
 
   @Test
   void intValue() {
-    sharedConn
-        .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
-        .bind(0, 1)
-        .bind(1, -1)
-        .bind(2, 0)
-        .execute()
-        .blockLast();
+    intValue(sharedConn);
+  }
+
+  @Test
+  void intValuePrepare() {
+    intValue(sharedConnPrepare);
+  }
+
+  private void intValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
+            .bind(0, 1)
+            .bind(1, -1)
+            .bind(2, 0);
+    Assertions.assertTrue(
+        stmt.toString()
+            .contains(
+                "parameters=[Parameter{codec=IntCodec{}, value=1}, Parameter{codec=IntCodec{}, value=-1}, Parameter{codec=IntCodec{}, value=0}]"));
+    stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
   }
 
   @Test
   void byteValue() {
-    sharedConn
-        .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
-        .bind(0, (byte) 127)
-        .bind(1, (byte) -128)
-        .bind(2, (byte) 0)
-        .execute()
-        .blockLast();
+    byteValue(sharedConn);
+  }
+
+  @Test
+  void byteValuePrepare() {
+    byteValue(sharedConnPrepare);
+  }
+
+  private void byteValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
+            .bind(0, (byte) 127)
+            .bind(1, (byte) -128)
+            .bind(2, (byte) 0);
+    Assertions.assertTrue(
+        stmt.toString()
+            .contains(
+                "parameters=[Parameter{codec=ByteCodec{}, value=127}, Parameter{codec=ByteCodec{}, value=-128}, Parameter{codec=ByteCodec{}, value=0}]"));
+    stmt.execute().blockLast();
     validate(Optional.of("127"), Optional.of("-128"), Optional.of("0"));
   }
 
   @Test
   void floatValue() {
-    sharedConn
-        .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
-        .bind(0, 127f)
-        .bind(1, -128f)
-        .bind(2, 0f)
-        .execute()
-        .blockLast();
+    floatValue(sharedConn);
+  }
+
+  @Test
+  void floatValuePrepare() {
+    floatValue(sharedConnPrepare);
+  }
+
+  private void floatValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
+            .bind(0, 127f)
+            .bind(1, -128f)
+            .bind(2, 0f);
+    Assertions.assertTrue(
+        stmt.toString()
+            .contains(
+                "parameters=[Parameter{codec=FloatCodec{}, value=127.0}, Parameter{codec=FloatCodec{}, value=-128.0}, Parameter{codec=FloatCodec{}, value=0.0}]"));
+    stmt.execute().blockLast();
     validate(Optional.of("127"), Optional.of("-128"), Optional.of("0"));
   }
 
   @Test
   void doubleValue() {
-    sharedConn
-        .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
-        .bind(0, 127d)
-        .bind(1, -128d)
-        .bind(2, 0d)
-        .execute()
-        .blockLast();
+    doubleValue(sharedConn);
+  }
+
+  @Test
+  void doubleValuePrepare() {
+    doubleValue(sharedConnPrepare);
+  }
+
+  private void doubleValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
+            .bind(0, 127d)
+            .bind(1, -128d)
+            .bind(2, 0d);
+    Assertions.assertTrue(
+        stmt.toString()
+            .contains(
+                "parameters=[Parameter{codec=DoubleCodec{}, value=127.0}, Parameter{codec=DoubleCodec{}, value=-128.0}, Parameter{codec=DoubleCodec{}, value=0.0}]"));
+    stmt.execute().blockLast();
     validate(Optional.of("127"), Optional.of("-128"), Optional.of("0"));
   }
 
   @Test
   void shortValue() {
-    sharedConn
-        .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
-        .bind(0, Short.valueOf("1"))
-        .bind(1, Short.valueOf("-1"))
-        .bind(2, Short.valueOf("0"))
-        .execute()
-        .blockLast();
+    shortValue(sharedConn);
+  }
+
+  @Test
+  void shortValuePrepare() {
+    shortValue(sharedConnPrepare);
+  }
+
+  private void shortValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
+            .bind(0, Short.valueOf("1"))
+            .bind(1, Short.valueOf("-1"))
+            .bind(2, Short.valueOf("0"));
+    Assertions.assertTrue(
+        stmt.toString()
+            .contains(
+                "Parameter{codec=ShortCodec{}, value=-1}, Parameter{codec=ShortCodec{}, value=0}]"));
+    stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
   }
 
   @Test
   void longValue() {
-    sharedConn
-        .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
-        .bind(0, Long.valueOf("1"))
-        .bind(1, Long.valueOf("-1"))
-        .bind(2, Long.valueOf("0"))
-        .execute()
-        .blockLast();
+    longValue(sharedConn);
+  }
+
+  @Test
+  void longValuePrepare() {
+    longValue(sharedConnPrepare);
+  }
+
+  private void longValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
+            .bind(0, Long.valueOf("1"))
+            .bind(1, Long.valueOf("-1"))
+            .bind(2, Long.valueOf("0"));
+    Assertions.assertTrue(
+        stmt.toString()
+            .contains(
+                "parameters=[Parameter{codec=LongCodec{}, value=1}, Parameter{codec=LongCodec{}, value=-1}, Parameter{codec=LongCodec{}, value=0}]"));
+    stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
   }
 
   @Test
   void localDateTimeValue() {
-    sharedConn
-        .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
-        .bind(0, LocalDateTime.now())
-        .bind(1, LocalDateTime.now())
-        .bind(2, LocalDateTime.now())
-        .execute()
+    localDateTimeValue(sharedConn);
+  }
+
+  private void localDateTimeValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
+            .bind(0, LocalDateTime.now())
+            .bind(1, LocalDateTime.now())
+            .bind(2, LocalDateTime.now());
+    Assertions.assertTrue(
+        stmt.toString().contains("parameters=[Parameter{codec=LocalDateTimeCodec{}, value="));
+    stmt.execute()
         .flatMap(r -> r.getRowsUpdated())
         .as(StepVerifier::create)
         .expectErrorMatches(
@@ -188,13 +330,42 @@ public class BigIntegerParameterTest extends BaseTest {
   }
 
   @Test
+  void localDateTimeValuePrepare() {
+    sharedConnPrepare
+        .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
+        .bind(0, LocalDateTime.now())
+        .bind(1, LocalDateTime.now())
+        .bind(2, LocalDateTime.now())
+        .execute()
+        .blockLast();
+  }
+
+  @Test
   void localDateValue() {
-    sharedConn
+    localDateValue(sharedConn);
+  }
+
+  @Test
+  void localDateValuePrepare() {
+    sharedConnPrepare
         .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
         .bind(0, LocalDate.now())
         .bind(1, LocalDate.now())
         .bind(2, LocalDate.now())
         .execute()
+        .blockLast();
+  }
+
+  private void localDateValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
+            .bind(0, LocalDate.now())
+            .bind(1, LocalDate.now())
+            .bind(2, LocalDate.now());
+    Assertions.assertTrue(
+        stmt.toString().contains("parameters=[Parameter{codec=LocalDateCodec{}, value="));
+    stmt.execute()
         .flatMap(r -> r.getRowsUpdated())
         .as(StepVerifier::create)
         .expectErrorMatches(
@@ -206,7 +377,24 @@ public class BigIntegerParameterTest extends BaseTest {
 
   @Test
   void localTimeValue() {
-    sharedConn
+    localTimeValue(sharedConn);
+  }
+
+  @Test
+  void localTimeValuePrepare() {
+    MariadbStatement stmt =
+        sharedConnPrepare
+            .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
+            .bind(0, LocalTime.now())
+            .bind(1, LocalTime.now())
+            .bind(2, LocalTime.now());
+    Assertions.assertTrue(
+        stmt.toString().contains("parameters=[Parameter{codec=LocalTimeCodec{}, value="));
+    stmt.execute().blockLast();
+  }
+
+  private void localTimeValue(MariadbConnection connection) {
+    connection
         .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
         .bind(0, LocalTime.now())
         .bind(1, LocalTime.now())

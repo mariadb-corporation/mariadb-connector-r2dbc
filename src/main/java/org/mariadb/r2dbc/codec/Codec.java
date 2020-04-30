@@ -21,11 +21,19 @@ import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
 public interface Codec<T> {
+
   boolean canDecode(ColumnDefinitionPacket column, Class<?> type);
 
   boolean canEncode(Object value);
 
   T decodeText(ByteBuf buffer, int length, ColumnDefinitionPacket column, Class<? extends T> type);
 
-  void encode(ByteBuf buf, ConnectionContext context, T value);
+  void encodeText(ByteBuf buf, ConnectionContext context, T value);
+
+  T decodeBinary(
+      ByteBuf buffer, int length, ColumnDefinitionPacket column, Class<? extends T> type);
+
+  void encodeBinary(ByteBuf buf, ConnectionContext context, T value);
+
+  DataType getBinaryEncodeType();
 }
