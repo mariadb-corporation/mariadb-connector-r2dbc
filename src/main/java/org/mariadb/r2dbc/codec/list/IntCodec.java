@@ -76,12 +76,7 @@ public class IntCodec implements Codec<Integer> {
 
       default:
         String str = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
-        try {
-          result = new BigDecimal(str).longValue();
-          break;
-        } catch (NumberFormatException nfe) {
-          throw new IllegalArgumentException(String.format("Incorrect format %s", str));
-        }
+        result = new BigDecimal(str).longValue();
     }
     return (int) result;
   }

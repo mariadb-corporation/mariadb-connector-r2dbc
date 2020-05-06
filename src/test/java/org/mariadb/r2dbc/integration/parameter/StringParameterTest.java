@@ -45,7 +45,7 @@ public class StringParameterTest extends BaseTest {
         .createStatement(
             "CREATE TABLE StringParam (t1 VARCHAR(256), t2 VARCHAR(256), t3 VARCHAR(256)) DEFAULT CHARSET=utf8mb4")
         .execute()
-        .subscribe();
+        .blockLast();
     // ensure having same kind of result for truncation
     sharedConn
         .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")

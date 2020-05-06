@@ -17,31 +17,25 @@
 package org.mariadb.r2dbc.client;
 
 import io.netty.buffer.ByteBuf;
-import org.mariadb.r2dbc.client.ServerPacketState.TriFunction;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.message.server.ServerMessage;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
-import reactor.core.publisher.MonoSink;
 
-public class CommandResponse {
+public interface DecoderStateInterface {
 
-  private FluxSink<ServerMessage> sink;
-  private TriFunction<ByteBuf, Sequencer, ConnectionContext> nextState;
-
-  public CommandResponse(
-      MonoSink<Flux<ServerMessage>> sink,
-      TriFunction<ByteBuf, Sequencer, ConnectionContext> nextState) {
-
-    sink.success(Flux.create(fluxSink -> this.sink = fluxSink));
-    this.nextState = nextState;
+  default DecoderState decoder(short val, int len, long serverCapabilities) {
+    throw new IllegalArgumentException("unexpected state");
   }
 
-  public FluxSink<ServerMessage> getSink() {
-    return sink;
+  default ServerMessage decode(
+      ByteBuf body,
+      Sequencer sequencer,
+      ConnectionContext context,
+      long serverCapabilities,
+      int[] stateCounter) {
+    throw new IllegalArgumentException("unexpected state");
   }
 
-  public TriFunction<ByteBuf, Sequencer, ConnectionContext> getNextState() {
-    return nextState;
+  default DecoderState next(long serverCapabilities, int[] stateCounter) {
+    throw new IllegalArgumentException("unexpected state");
   }
 }

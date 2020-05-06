@@ -139,11 +139,15 @@ public class StringCodec implements Codec<String> {
         return String.valueOf((int) buf.readByte());
 
       case YEAR:
+        String s = String.valueOf(buf.readUnsignedShortLE());
+        while (s.length() < column.getLength()) s = "0" + s;
+        return s;
+
       case SMALLINT:
         if (!column.isSigned()) {
           return String.valueOf(buf.readUnsignedShortLE());
         }
-        return String.valueOf((int) buf.readShortLE());
+        return String.valueOf(buf.readShortLE());
 
       case MEDIUMINT:
         if (!column.isSigned()) {

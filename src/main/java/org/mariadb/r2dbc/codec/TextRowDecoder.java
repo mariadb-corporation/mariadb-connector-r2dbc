@@ -16,7 +16,6 @@
 
 package org.mariadb.r2dbc.codec;
 
-import java.util.EnumSet;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
 public class TextRowDecoder extends RowDecoder {
@@ -26,7 +25,8 @@ public class TextRowDecoder extends RowDecoder {
   }
 
   @SuppressWarnings("unchecked")
-  public <T> T get(int index, ColumnDefinitionPacket column, Class<T> type) {
+  public <T> T get(int index, ColumnDefinitionPacket column, Class<T> type)
+      throws IllegalArgumentException {
     setPosition(index);
 
     if (length == NULL_LENGTH) {
@@ -49,44 +49,9 @@ public class TextRowDecoder extends RowDecoder {
       }
     }
 
-    if (type.isArray()) {
-      if (EnumSet.of(
-              DataType.TINYINT,
-              DataType.SMALLINT,
-              DataType.MEDIUMINT,
-              DataType.INTEGER,
-              DataType.BIGINT)
-          .contains(column.getDataType())) {
-        throw new IllegalArgumentException(
-            String.format(
-                "No decoder for type %s[] and column type %s(%s)",
-                type.getComponentType().getName(),
-                column.getDataType().toString(),
-                column.isSigned() ? "signed" : "unsigned"));
-      }
-      throw new IllegalArgumentException(
-          String.format(
-              "No decoder for type %s[] and column type %s",
-              type.getComponentType().getName(), column.getDataType().toString()));
-    }
-    if (EnumSet.of(
-            DataType.TINYINT,
-            DataType.SMALLINT,
-            DataType.MEDIUMINT,
-            DataType.INTEGER,
-            DataType.BIGINT)
-        .contains(column.getDataType())) {
-      throw new IllegalArgumentException(
-          String.format(
-              "No decoder for type %s and column type %s(%s)",
-              type.getName(),
-              column.getDataType().toString(),
-              column.isSigned() ? "signed" : "unsigned"));
-    }
-    throw new IllegalArgumentException(
-        String.format(
-            "No decoder for type %s and column type %s",
-            type.getName(), column.getDataType().toString()));
+    buf.skipBytes(length);
+
+    throw noDecoderException(column, type);
   }
 
   /**

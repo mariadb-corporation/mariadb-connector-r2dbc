@@ -16,17 +16,13 @@
 
 package org.mariadb.r2dbc.client;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelOption;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.net.SocketAddress;
 import java.time.Duration;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
-import org.mariadb.r2dbc.client.ServerPacketState.TriFunction;
 import org.mariadb.r2dbc.message.client.ClientMessage;
-import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -58,33 +54,31 @@ public final class ClientImpl extends ClientBase {
     return tcpClient.connect().flatMap(it -> Mono.just(new ClientImpl(it)));
   }
 
-  public Flux<ServerMessage> sendCommand(
-      ClientMessage message, TriFunction<ByteBuf, Sequencer, ConnectionContext> next) {
+  public Flux<ServerMessage> sendCommand(ClientMessage message, DecoderState initialState) {
     AtomicBoolean atomicBoolean = new AtomicBoolean();
-    return Mono.<Flux<ServerMessage>>create(
-            sink -> {
-              if (!isConnected()) {
-                sink.error(
-                    new R2dbcNonTransientResourceException(
-                        "Connection is close. Cannot send anything"));
-                return;
-              }
-              if (atomicBoolean.compareAndSet(false, true)) {
-                try {
-                  lock.lock();
-                  this.responseReceivers.add(new CommandResponse(sink, next));
+    return Flux.create(
+        sink -> {
+          if (!isConnected()) {
+            sink.error(
+                new R2dbcNonTransientResourceException(
+                    "Connection is close. Cannot send anything"));
+            return;
+          }
+          if (atomicBoolean.compareAndSet(false, true)) {
+            try {
+              lock.lock();
+              this.responseReceivers.add(new CmdElement(sink, initialState));
 
-                  if (this.responseReceivers.isEmpty()) {
-                    connection.channel().writeAndFlush(message);
-                  } else {
-                    sendingQueue.add(message);
-                  }
-                } finally {
-                  lock.unlock();
-                }
+              if (this.responseReceivers.isEmpty()) {
+                connection.channel().writeAndFlush(message);
+              } else {
+                sendingQueue.add(message);
               }
-            })
-        .flatMapMany(Function.identity());
+            } finally {
+              lock.unlock();
+            }
+          }
+        });
   }
 
   public void sendNext() {

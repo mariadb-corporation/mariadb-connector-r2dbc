@@ -67,13 +67,13 @@ public class Sha256PluginTest extends BaseTest {
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
-        .subscribe();
+        .blockLast();
     sharedConn
         .createStatement("DROP USER 'cachingSha256User'@'%'")
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
-        .subscribe();
+        .blockLast();
     sharedConn
         .createStatement("DROP USER 'cachingSha256User2'@'%'")
         .execute()
@@ -92,14 +92,14 @@ public class Sha256PluginTest extends BaseTest {
           "GRANT ALL PRIVILEGES ON *.* TO 'sha256User'@'%' IDENTIFIED WITH "
               + "sha256_password BY 'password'";
     }
-    sharedConn.createStatement(sqlCreateUser).execute().subscribe();
+    sharedConn.createStatement(sqlCreateUser).execute().blockLast();
     sharedConn.createStatement(sqlGrant).execute().blockLast();
     if (minVersion(8, 0, 0)) {
       sharedConn
           .createStatement(
               "CREATE USER 'cachingSha256User'@'%'  IDENTIFIED WITH caching_sha2_password BY 'password'")
           .execute()
-          .subscribe();
+          .blockLast();
       sharedConn
           .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User'@'%'")
           .execute()
@@ -108,7 +108,7 @@ public class Sha256PluginTest extends BaseTest {
           .createStatement(
               "CREATE USER 'cachingSha256User2'@'%'  IDENTIFIED WITH caching_sha2_password BY 'password'")
           .execute()
-          .subscribe();
+          .blockLast();
       sharedConn
           .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User2'@'%'")
           .execute()
@@ -117,7 +117,7 @@ public class Sha256PluginTest extends BaseTest {
           .createStatement(
               "CREATE USER 'cachingSha256User3'@'%'  IDENTIFIED WITH caching_sha2_password BY 'password'")
           .execute()
-          .subscribe();
+          .blockLast();
       sharedConn
           .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User3'@'%'")
           .execute()
@@ -127,30 +127,31 @@ public class Sha256PluginTest extends BaseTest {
 
   @AfterAll
   public static void after2() {
+    Assumptions.assumeTrue(!isMariaDBServer() && minVersion(5, 7, 0));
     sharedConn
         .createStatement("DROP USER sha256User")
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
-        .subscribe();
+        .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User")
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
-        .subscribe();
+        .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User2")
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
-        .subscribe();
+        .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User3")
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
-        .subscribe();
+        .blockLast();
   }
 
   @Test

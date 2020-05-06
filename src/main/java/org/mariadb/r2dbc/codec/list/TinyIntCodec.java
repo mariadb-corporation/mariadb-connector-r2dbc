@@ -21,7 +21,6 @@ import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BufferUtils;
 
 public class TinyIntCodec implements Codec<Byte> {
 
@@ -49,14 +48,10 @@ public class TinyIntCodec implements Codec<Byte> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, ConnectionContext context, Byte value) {
-    BufferUtils.writeAscii(buf, String.valueOf(value));
-  }
+  public void encodeText(ByteBuf buf, ConnectionContext context, Byte value) {}
 
   @Override
-  public void encodeBinary(ByteBuf buf, ConnectionContext context, Byte value) {
-    buf.writeByte(value);
-  }
+  public void encodeBinary(ByteBuf buf, ConnectionContext context, Byte value) {}
 
   public DataType getBinaryEncodeType() {
     return DataType.TINYINT;

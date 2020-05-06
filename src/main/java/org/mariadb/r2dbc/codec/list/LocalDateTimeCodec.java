@@ -49,10 +49,6 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
         nanoLen = 0;
         continue;
       }
-      if (b < '0' || b > '9') {
-        buf.skipBytes(length - idx);
-        throw new IllegalArgumentException(String.format("Illegal date format: value %s", b));
-      }
       if (nanoLen >= 0) nanoLen++;
       timestampsPart[partIdx] = timestampsPart[partIdx] * 10 + b - 48;
     }
@@ -89,20 +85,14 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
   public LocalDateTime decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalDateTime> type) {
 
-    int[] parts;
-    switch (column.getDataType()) {
-      case TIMESTAMP:
-      case DATETIME:
-        parts = parseTimestamp(buf, length);
-        break;
-
-      default:
-        buf.skipBytes(length);
-        throw new IllegalArgumentException("date type not supported");
+    if (column.getDataType() == DataType.TIMESTAMP || column.getDataType() == DataType.DATETIME) {
+      int[] parts = parseTimestamp(buf, length);
+      if (parts == null) return null;
+      return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
+          .plusNanos(parts[6]);
     }
-    if (parts == null) return null;
-    return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
-        .plusNanos(parts[6]);
+    buf.skipBytes(length);
+    throw new IllegalArgumentException("date type not supported");
   }
 
   @Override

@@ -36,7 +36,7 @@ public final class QueryPacket implements ClientMessage {
   @Override
   public ByteBuf encode(ConnectionContext context, ByteBufAllocator byteBufAllocator) {
     Assert.requireNonNull(byteBufAllocator, "byteBufAllocator must not be null");
-    ByteBuf out = byteBufAllocator.ioBuffer();
+    ByteBuf out = byteBufAllocator.ioBuffer(this.sql.length() + 1);
     out.writeByte(0x03);
     out.writeCharSequence(this.sql, StandardCharsets.UTF_8);
     return out;

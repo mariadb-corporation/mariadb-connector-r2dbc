@@ -17,6 +17,8 @@
 package org.mariadb.r2dbc;
 
 import io.r2dbc.spi.ValidationDepth;
+import java.time.Duration;
+import java.time.Instant;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -40,13 +42,27 @@ public class BaseTest {
     sharedConnPrepare = new MariadbConnectionFactory(confPipeline).create().block();
   }
 
-  @AfterAll
-  public static void afterAll() {
+  @AfterEach
+  public void after1() throws Throwable {
+    System.gc();
+  }
+
+  @AfterEach
+  public void afterEach1() {
     sharedConn
         .validate(ValidationDepth.REMOTE)
         .as(StepVerifier::create)
         .expectNext(Boolean.TRUE)
         .verifyComplete();
+    sharedConnPrepare
+        .validate(ValidationDepth.REMOTE)
+        .as(StepVerifier::create)
+        .expectNext(Boolean.TRUE)
+        .verifyComplete();
+  }
+
+  @AfterAll
+  public static void afterEAll() {
     sharedConn.close().block();
     sharedConnPrepare.close().block();
   }
@@ -81,15 +97,18 @@ public class BaseTest {
         .equals("YES");
   }
 
+  private static Instant initialTest;
+
   private class Follow implements BeforeEachCallback, AfterEachCallback {
     @Override
     public void afterEach(ExtensionContext extensionContext) throws Exception {
-      System.out.println("after test : " + extensionContext.getTestMethod().get());
+      System.out.println(Duration.between(initialTest, Instant.now()).toString());
     }
 
     @Override
     public void beforeEach(ExtensionContext extensionContext) throws Exception {
-      System.out.println("before test : " + extensionContext.getTestMethod().get());
+      initialTest = Instant.now();
+      System.out.print("       test : " + extensionContext.getTestMethod().get() + " ");
     }
   }
 }

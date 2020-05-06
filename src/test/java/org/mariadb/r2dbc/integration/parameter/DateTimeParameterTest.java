@@ -39,7 +39,7 @@ public class DateTimeParameterTest extends BaseTest {
         .createStatement(
             "CREATE TABLE DateTimeParam (t1 DATETIME(6), t2 DATETIME(6), t3 DATETIME(6))")
         .execute()
-        .subscribe();
+        .blockLast();
     // ensure having same kind of result for truncation
     sharedConn
         .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")

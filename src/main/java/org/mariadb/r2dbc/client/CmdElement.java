@@ -14,24 +14,26 @@
  * limitations under the License.
  */
 
-package org.mariadb.r2dbc.message.client;
+package org.mariadb.r2dbc.client;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.message.server.ServerMessage;
+import reactor.core.publisher.FluxSink;
 
-public final class QuitPacket implements ClientMessage {
-  public static final QuitPacket INSTANCE = new QuitPacket();
+public class CmdElement {
 
-  @Override
-  public ByteBuf encode(ConnectionContext context, ByteBufAllocator allocator) {
-    ByteBuf buf = allocator.ioBuffer(1);
-    buf.writeByte(0x01);
-    return buf;
+  private FluxSink<ServerMessage> sink;
+  private DecoderState initialState;
+
+  public CmdElement(FluxSink<ServerMessage> sink, DecoderState initialState) {
+    this.sink = sink;
+    this.initialState = initialState;
   }
 
-  @Override
-  public String toString() {
-    return "QuitPacket{}";
+  public FluxSink<ServerMessage> getSink() {
+    return sink;
+  }
+
+  public DecoderState getInitialState() {
+    return initialState;
   }
 }

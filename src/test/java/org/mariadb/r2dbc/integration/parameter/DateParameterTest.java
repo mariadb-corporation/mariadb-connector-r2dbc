@@ -38,7 +38,7 @@ public class DateParameterTest extends BaseTest {
     sharedConn
         .createStatement("CREATE TABLE DateParam (t1 DATE, t2 DATE, t3 DATE)")
         .execute()
-        .subscribe();
+        .blockLast();
     // ensure having same kind of result for truncation
     sharedConn
         .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")

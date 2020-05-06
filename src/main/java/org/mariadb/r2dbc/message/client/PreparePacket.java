@@ -37,7 +37,7 @@ public final class PreparePacket implements ClientMessage {
 
   @Override
   public ByteBuf encode(ConnectionContext context, ByteBufAllocator allocator) {
-    ByteBuf buf = allocator.ioBuffer();
+    ByteBuf buf = allocator.ioBuffer(this.sql.length() + 1);
     buf.writeByte(0x16);
     buf.writeCharSequence(this.sql, StandardCharsets.UTF_8);
     return buf;

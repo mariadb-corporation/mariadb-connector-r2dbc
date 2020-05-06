@@ -78,7 +78,4 @@ public class Codecs {
     CODEC_LIST.put(DataType.GEOMETRY, ByteArrayCodec.INSTANCE);
   }
 
-  public static Codec<?> from(DataType dataType) {
-    return CODEC_LIST.get(dataType);
-  }
 }

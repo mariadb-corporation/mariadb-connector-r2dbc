@@ -23,6 +23,7 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.SslMode;
 import org.mariadb.r2dbc.authentication.AuthenticationPlugin;
 import org.mariadb.r2dbc.client.Client;
+import org.mariadb.r2dbc.client.DecoderState;
 import org.mariadb.r2dbc.message.client.ClientMessage;
 import org.mariadb.r2dbc.message.client.HandshakeResponse;
 import org.mariadb.r2dbc.message.client.SslRequestPacket;
@@ -187,7 +188,9 @@ public final class AuthenticationFlow {
       @Override
       Mono<State> handle(AuthenticationFlow flow) {
         return flow.client
-            .authenticate(flow.createHandshakeResponse(flow.clientCapabilities))
+            .sendCommand(
+                flow.createHandshakeResponse(flow.clientCapabilities),
+                DecoderState.AUTHENTICATION_SWITCH_RESPONSE)
             .<State>handle(
                 (message, sink) -> {
                   if (message instanceof ErrorPacket) {
@@ -232,7 +235,8 @@ public final class AuthenticationFlow {
         if (clientMessage != null) {
           // this can occur when there is a "finishing" message for authentication plugin
           // example CachingSha2PasswordFlow that finish with a successful FAST_AUTH
-          flux = flow.client.authenticate(clientMessage);
+          flux =
+              flow.client.sendCommand(clientMessage, DecoderState.AUTHENTICATION_SWITCH_RESPONSE);
         } else {
           flux = flow.client.receive();
         }

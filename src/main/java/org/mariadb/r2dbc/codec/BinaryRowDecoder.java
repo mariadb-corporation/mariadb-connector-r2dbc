@@ -17,7 +17,6 @@
 package org.mariadb.r2dbc.codec;
 
 import io.netty.buffer.ByteBuf;
-import java.util.EnumSet;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
 public class BinaryRowDecoder extends RowDecoder {
@@ -33,16 +32,24 @@ public class BinaryRowDecoder extends RowDecoder {
   }
 
   @SuppressWarnings("unchecked")
-  public <T> T get(int index, ColumnDefinitionPacket column, Class<T> type) {
-    setPosition(index);
+  public <T> T get(int index, ColumnDefinitionPacket column, Class<T> type)
+      throws IllegalArgumentException {
 
-    if (length == NULL_LENGTH) {
+    if (index < 0 || index >= this.columnNumber) {
+      throw new IllegalArgumentException(
+          String.format("Wrong index value %s (possible value: 0-%s)", index, this.columnNumber));
+    }
+
+    // check NULL-Bitmap that indicate if field is null
+    if ((nullBitmap[(index + 2) / 8] & (1 << ((index + 2) % 8))) != 0) {
       if (type.isPrimitive()) {
         throw new IllegalArgumentException(
             String.format("Cannot return null for primitive %s", type.getName()));
       }
       return null;
     }
+
+    setPosition(index);
 
     // type generic, return "natural" java type
     if (Object.class == type || type == null) {
@@ -56,52 +63,17 @@ public class BinaryRowDecoder extends RowDecoder {
       }
     }
 
-    if (type.isArray()) {
-      if (EnumSet.of(
-              DataType.TINYINT,
-              DataType.SMALLINT,
-              DataType.MEDIUMINT,
-              DataType.INTEGER,
-              DataType.BIGINT)
-          .contains(column.getDataType())) {
-        throw new IllegalArgumentException(
-            String.format(
-                "No decoder for type %s[] and column type %s(%s)",
-                type.getComponentType().getName(),
-                column.getDataType().toString(),
-                column.isSigned() ? "signed" : "unsigned"));
-      }
-      throw new IllegalArgumentException(
-          String.format(
-              "No decoder for type %s[] and column type %s",
-              type.getComponentType().getName(), column.getDataType().toString()));
-    }
-    if (EnumSet.of(
-            DataType.TINYINT,
-            DataType.SMALLINT,
-            DataType.MEDIUMINT,
-            DataType.INTEGER,
-            DataType.BIGINT)
-        .contains(column.getDataType())) {
-      throw new IllegalArgumentException(
-          String.format(
-              "No decoder for type %s and column type %s(%s)",
-              type.getName(),
-              column.getDataType().toString(),
-              column.isSigned() ? "signed" : "unsigned"));
-    }
-    throw new IllegalArgumentException(
-        String.format(
-            "No decoder for type %s and column type %s",
-            type.getName(), column.getDataType().toString()));
+    buf.skipBytes(length);
+
+    throw noDecoderException(column, type);
   }
 
   @Override
   public void resetRow(ByteBuf buf) {
-    super.resetRow(buf);
+    buf.skipBytes(1); // skip 0x00 header
     nullBitmap = new byte[(columnNumber + 9) / 8];
-    this.buf.skipBytes(1); // skip 0x00 header
-    this.buf.readBytes(nullBitmap);
+    buf.readBytes(nullBitmap);
+    super.resetRow(buf);
   }
 
   /**
@@ -111,17 +83,9 @@ public class BinaryRowDecoder extends RowDecoder {
    */
   public void setPosition(int newIndex) {
 
-    // check NULL-Bitmap that indicate if field is null
-    if ((nullBitmap[(newIndex + 2) / 8] & (1 << ((newIndex + 2) % 8))) != 0) {
-      length = NULL_LENGTH;
-      return;
-    }
-
     if (index >= newIndex) {
       index = 0;
       buf.resetReaderIndex();
-      // check NULL-Bitmap that indicate if field is null
-      buf.skipBytes(1 + ((columnNumber + 9) / 8)); // skip header + null bitmap
     } else {
       index++;
     }
@@ -200,8 +164,8 @@ public class BinaryRowDecoder extends RowDecoder {
 
             default:
               // field with variable length
-              int type = this.buf.readUnsignedByte();
-              switch (type) {
+              int len = this.buf.readUnsignedByte();
+              switch (len) {
                 case 251:
                   // null length field
                   // must never occur
@@ -226,7 +190,7 @@ public class BinaryRowDecoder extends RowDecoder {
 
                 default:
                   // length is encoded on 1 bytes (is then less than 251)
-                  length = type;
+                  length = len;
                   return;
               }
           }

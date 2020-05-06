@@ -40,7 +40,7 @@ public class BigIntegerParameterTest extends BaseTest {
     sharedConn
         .createStatement("CREATE TABLE BigIntParam (t1 BIGINT, t2 BIGINT, t3 BIGINT)")
         .execute()
-        .subscribe();
+        .blockLast();
     // ensure having same kind of result for truncation
     sharedConn
         .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
@@ -291,6 +291,31 @@ public class BigIntegerParameterTest extends BaseTest {
   }
 
   private void longValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
+            .bind(0, 1L)
+            .bind(1, -1L)
+            .bind(2, 0L);
+    Assertions.assertTrue(
+        stmt.toString()
+            .contains(
+                "parameters=[Parameter{codec=LongCodec{}, value=1}, Parameter{codec=LongCodec{}, value=-1}, Parameter{codec=LongCodec{}, value=0}]"));
+    stmt.execute().blockLast();
+    validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
+  }
+
+  @Test
+  void LongValue() {
+    LongValue(sharedConn);
+  }
+
+  @Test
+  void LongValuePrepare() {
+    LongValue(sharedConnPrepare);
+  }
+
+  private void LongValue(MariadbConnection connection) {
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")

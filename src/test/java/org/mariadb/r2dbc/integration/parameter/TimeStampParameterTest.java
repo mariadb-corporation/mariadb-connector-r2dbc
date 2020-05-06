@@ -39,7 +39,7 @@ public class TimeStampParameterTest extends BaseTest {
         .createStatement(
             "CREATE TABLE TimestampParam (t1 TIMESTAMP(6) NULL, t2 TIMESTAMP(6) NULL, t3 TIMESTAMP(6) NULL)")
         .execute()
-        .subscribe();
+        .blockLast();
     // ensure having same kind of result for truncation
     sharedConn
         .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")

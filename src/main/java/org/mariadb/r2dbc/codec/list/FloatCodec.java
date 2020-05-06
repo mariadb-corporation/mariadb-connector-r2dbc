@@ -57,11 +57,7 @@ public class FloatCodec implements Codec<Float> {
   public Float decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Float> type) {
     String str = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
-    try {
-      return Float.valueOf(str);
-    } catch (NumberFormatException nfe) {
-      throw new IllegalArgumentException(String.format("Incorrect float format %s", str));
-    }
+    return Float.valueOf(str);
   }
 
   @Override

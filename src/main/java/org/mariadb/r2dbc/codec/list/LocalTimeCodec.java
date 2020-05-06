@@ -67,13 +67,7 @@ public class LocalTimeCodec implements Codec<LocalTime> {
       if (i >= timestring.length()) {
         digit = 0;
       } else {
-        char value = timestring.charAt(i);
-        if (value < '0' || value > '9') {
-          throw new IllegalArgumentException(
-              String.format(
-                  "cannot parse sub-second part in " + "timestamp string '%s'", timestring));
-        }
-        digit = value - '0';
+        digit = timestring.charAt(i) - '0';
       }
       nanos = nanos * 10 + digit;
     }

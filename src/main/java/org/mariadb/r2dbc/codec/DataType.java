@@ -76,12 +76,6 @@ public enum DataType {
 
     DataType dataType = typeMap[typeValue];
 
-    if (dataType == null) {
-      // Potential fallback for types that are not implemented.
-      // Should not be normally used.
-      dataType = BLOB;
-    }
-
     if (charsetNumber != 63 && typeValue >= 249 && typeValue <= 252) {
       // MariaDB Text dataType
       return DataType.VARCHAR;

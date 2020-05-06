@@ -39,7 +39,7 @@ public class FloatParameterTest extends BaseTest {
     sharedConn
         .createStatement("CREATE TABLE FloatParam (t1 FLOAT, t2 FLOAT, t3 FLOAT)")
         .execute()
-        .subscribe();
+        .blockLast();
     // ensure having same kind of result for truncation
     sharedConn
         .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")

@@ -46,14 +46,14 @@ public class Ed25519PluginTest extends BaseTest {
                 "CREATE USER verificationEd25519AuthPlugin IDENTIFIED "
                     + "VIA ed25519 USING PASSWORD('MySup8%rPassw@ord')")
             .execute()
-            .subscribe();
+            .blockLast();
       } else {
         sharedConn
             .createStatement(
                 "CREATE USER verificationEd25519AuthPlugin IDENTIFIED "
                     + "VIA ed25519 USING '6aW9C7ENlasUfymtfMvMZZtnkCVlcb1ssxOLJ0kj/AA'")
             .execute()
-            .subscribe();
+            .blockLast();
       }
       sharedConn
           .createStatement("GRANT ALL on *.* to verificationEd25519AuthPlugin")
@@ -71,7 +71,7 @@ public class Ed25519PluginTest extends BaseTest {
           .execute()
           .map(res -> res.getRowsUpdated())
           .onErrorReturn(Mono.empty())
-          .subscribe();
+          .blockLast();
     }
   }
 

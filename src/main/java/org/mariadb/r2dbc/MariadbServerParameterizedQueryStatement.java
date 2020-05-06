@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
+import org.mariadb.r2dbc.client.DecoderState;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.Codecs;
 import org.mariadb.r2dbc.codec.Parameter;
@@ -142,7 +143,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     } else {
       if (prepareResult == null) {
         this.client
-            .prepare(new PreparePacket(sql))
+            .sendCommand(new PreparePacket(sql), DecoderState.PREPARE_RESPONSE)
             .map(
                 serverMessage -> {
                   if (serverMessage instanceof PrepareResultPacket) {

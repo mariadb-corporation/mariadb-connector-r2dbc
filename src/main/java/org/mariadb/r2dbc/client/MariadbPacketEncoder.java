@@ -34,35 +34,39 @@ public class MariadbPacketEncoder extends MessageToByteEncoder<ClientMessage> {
       logger.debug("Request:  {}", msg);
     }
 
-    ByteBuf messageBuffer = msg.encode(this.context, ctx.alloc());
+    ByteBuf buf = null;
+    try {
+      buf = msg.encode(this.context, ctx.alloc());
 
-    // single mysql packet
-    if (messageBuffer.writerIndex() - messageBuffer.readerIndex() < 0xffffff) {
-      out.writeMediumLE(messageBuffer.writerIndex() - messageBuffer.readerIndex());
-      out.writeByte(msg.getSequencer().next());
-      out.writeBytes(messageBuffer);
-      messageBuffer.release();
-      return;
+      // single mysql packet
+      if (buf.writerIndex() - buf.readerIndex() < 0xffffff) {
+        out.writeMediumLE(buf.writerIndex() - buf.readerIndex());
+        out.writeByte(msg.getSequencer().next());
+        out.writeBytes(buf);
+        //        buf.release();
+        return;
+      }
+
+      // multiple mysql packet - split in 16mb packet
+      int readerIndex = buf.readerIndex();
+      int packetLength = -1;
+      while (readerIndex < buf.writerIndex()) {
+        packetLength = Math.min(0xffffff, buf.writerIndex() - readerIndex);
+        out.writeMediumLE(packetLength);
+        out.writeByte(msg.getSequencer().next());
+        out.writeBytes(buf.slice(readerIndex, packetLength));
+        readerIndex += packetLength;
+      }
+
+      if (packetLength == 0xffffff) {
+        // in case last packet is full, sending an empty packet to indicate that command is complete
+        out.writeMediumLE(packetLength);
+        out.writeByte(msg.getSequencer().next());
+      }
+
+    } finally {
+      if (buf != null) buf.release();
     }
-
-    // multiple mysql packet - split in 16mb packet
-    int readerIndex = messageBuffer.readerIndex();
-    int packetLength = -1;
-    while (readerIndex < messageBuffer.writerIndex()) {
-      packetLength = Math.min(0xffffff, messageBuffer.writerIndex() - readerIndex);
-      out.writeMediumLE(packetLength);
-      out.writeByte(msg.getSequencer().next());
-      out.writeBytes(messageBuffer.slice(readerIndex, packetLength));
-      readerIndex += packetLength;
-    }
-
-    if (packetLength == 0xffffff) {
-      // in case last packet is full, sending an empty packet to indicate that command is complete
-      out.writeMediumLE(packetLength);
-      out.writeByte(msg.getSequencer().next());
-    }
-
-    messageBuffer.release();
   }
 
   public void setContext(ConnectionContext context) {

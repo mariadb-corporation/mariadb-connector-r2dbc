@@ -20,28 +20,34 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Queue;
 import org.mariadb.r2dbc.message.server.Sequencer;
+import org.mariadb.r2dbc.message.server.ServerMessage;
+import reactor.core.publisher.FluxSink;
 
 public class MariadbPacketDecoder extends ByteToMessageDecoder {
 
-  private volatile ServerPacketState decoder;
   private ConnectionContext context = null;
-  private volatile CompositeByteBuf multipart;
-  private AtomicBoolean isMultipart = new AtomicBoolean();
+  private boolean isMultipart = false;
+  private Queue<CmdElement> responseReceivers;
+  private Client client;
 
-  public MariadbPacketDecoder(ServerPacketState decoder) {
-    this.decoder = decoder;
+  private DecoderState state = null;
+  private FluxSink<ServerMessage> fluxSink;
+  private CompositeByteBuf multipart;
+  private long serverCapabilities;
+  private int[] stateCounter = new int[2];
+
+  public MariadbPacketDecoder(Queue<CmdElement> responseReceivers, Client client) {
+    this.responseReceivers = responseReceivers;
+    this.client = client;
   }
 
   @Override
   protected void decode(ChannelHandlerContext ctx, ByteBuf buf, List<Object> out) throws Exception {
-    if (decoder.response == null && !decoder.loadNextResponse()) {
-      throw new R2dbcNonTransientResourceException(
-          "unexpected message received when no command was send");
-    }
     while (buf.readableBytes() > 4) {
       int length = buf.getUnsignedMediumLE(buf.readerIndex());
 
@@ -51,7 +57,8 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
       // extract packet
       if (length == 0xffffff) {
         // multipart packet
-        if (!isMultipart.getAndSet(true)) {
+        if (!isMultipart) {
+          isMultipart = true;
           multipart = buf.alloc().compositeBuffer();
         }
         buf.skipBytes(4); // skip length + header
@@ -60,28 +67,71 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
       }
 
       // wait for complete packet
-      if (isMultipart.get()) {
+      if (isMultipart) {
         // last part of multipart packet
         buf.skipBytes(3); // skip length
         Sequencer sequencer = new Sequencer(buf.readByte());
         multipart.addComponent(true, buf.readRetainedSlice(length));
 
-        decoder.next.apply(multipart, sequencer, context);
+        handleBuffer(multipart, sequencer);
 
         multipart.release();
-        isMultipart.set(false);
+        isMultipart = false;
         continue;
       }
 
       // create Object from packet
-      ByteBuf packet = buf.readSlice(4 + length);
+      ByteBuf packet = buf.readRetainedSlice(4 + length);
       packet.skipBytes(3); // skip length
       Sequencer sequencer = new Sequencer(packet.readByte());
-      decoder.next.apply(packet, sequencer, context);
+      handleBuffer(packet, sequencer);
+      packet.release();
     }
+  }
+
+  private void handleBuffer(ByteBuf packet, Sequencer sequencer) {
+    if (state == null && !loadNextResponse()) {
+      throw new R2dbcNonTransientResourceException(
+          "unexpected message received when no command was send");
+    }
+    state =
+        state.decoder(
+            packet.getUnsignedByte(packet.readerIndex()),
+            packet.readableBytes(),
+            serverCapabilities);
+
+    ServerMessage msg = null;
+    try {
+      msg = state.decode(packet, sequencer, context, serverCapabilities, stateCounter);
+      fluxSink.next(msg);
+      if (msg.ending()) {
+        fluxSink.complete();
+        loadNextResponse();
+        client.sendNext();
+      } else {
+        state = state.next(serverCapabilities, stateCounter);
+      }
+    } finally{
+      if (msg instanceof ReferenceCounted) {
+        ((ReferenceCounted) msg).release();
+      }
+    }
+
+  }
+
+  private boolean loadNextResponse() {
+    CmdElement cmdElement = responseReceivers.poll();
+    if (cmdElement != null) {
+      state = cmdElement.getInitialState();
+      fluxSink = cmdElement.getSink();
+      return true;
+    }
+    state = null;
+    return false;
   }
 
   public void setContext(ConnectionContext context) {
     this.context = context;
+    this.serverCapabilities = this.context.getServerCapabilities();
   }
 }

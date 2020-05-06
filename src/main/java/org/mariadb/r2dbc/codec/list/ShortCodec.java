@@ -54,10 +54,7 @@ public class ShortCodec implements Codec<Short> {
         return Float.valueOf(str2).shortValue();
 
       default:
-        long result = LongCodec.parse(buf, length);
-        IntCodec.rangeCheck(
-            Short.class.getName(), Short.MIN_VALUE, Short.MAX_VALUE, result, column);
-        return (short) result;
+        return (short) LongCodec.parse(buf, length);
     }
   }
 

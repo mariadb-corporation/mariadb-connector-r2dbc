@@ -31,7 +31,8 @@ public class LocalDateCodec implements Codec<LocalDate> {
   public static final LocalDateCodec INSTANCE = new LocalDateCodec();
 
   private static EnumSet<DataType> COMPATIBLE_TYPES =
-      EnumSet.of(DataType.DATE, DataType.NEWDATE, DataType.DATETIME, DataType.TIMESTAMP);
+      EnumSet.of(
+          DataType.DATE, DataType.NEWDATE, DataType.DATETIME, DataType.TIMESTAMP, DataType.YEAR);
 
   public static int[] parseDate(ByteBuf buf, int length) {
     int[] datePart = new int[] {0, 0, 0};
@@ -42,10 +43,6 @@ public class LocalDateCodec implements Codec<LocalDate> {
       if (b == '-') {
         partIdx++;
         continue;
-      }
-      if (b < '0' || b > '9') {
-        buf.skipBytes(length - idx);
-        throw new IllegalArgumentException(String.format("Illegal date format: value %s", b));
       }
       datePart[partIdx] = datePart[partIdx] * 10 + b - 48;
     }
@@ -71,6 +68,19 @@ public class LocalDateCodec implements Codec<LocalDate> {
 
     int[] parts;
     switch (column.getDataType()) {
+      case YEAR:
+        short year = (short) LongCodec.parse(buf, length);
+
+        if (length == 2 && column.getLength() == 2) {
+          // YEAR(2) - deprecated
+          if (year <= 69) {
+            year += 2000;
+          } else {
+            year += 1900;
+          }
+        }
+
+        return LocalDate.of(year, 1, 1);
       case NEWDATE:
       case DATE:
         parts = parseDate(buf, length);

@@ -97,7 +97,7 @@ public class ErrorTest extends BaseTest {
     sharedConn
         .createStatement("CREATE TEMPORARY TABLE dataIntegrity(t1 VARCHAR(5))")
         .execute()
-        .subscribe();
+        .blockLast();
     sharedConn
         .createStatement("INSERT INTO dataIntegrity VALUE ('DATATOOOBIG')")
         .execute()

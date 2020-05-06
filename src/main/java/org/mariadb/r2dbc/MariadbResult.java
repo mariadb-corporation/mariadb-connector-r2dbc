@@ -73,11 +73,6 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
                 sink.next((int) affectedRows);
                 sink.complete();
               }
-
-              if (serverMessage instanceof RowPacket) {
-                // in case of having a resultset
-                ((RowPacket) serverMessage).getRaw().release();
-              }
             });
   }
 
@@ -115,8 +110,8 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
               sink.next(f.apply(new MariadbRow(metadataList, decoder, buf), rowMetadata));
               return;
             } catch (IllegalArgumentException i) {
-              // in case parsing isn't possible for datatype
               sink.error(this.factory.createException(i.getMessage(), "HY000", -1));
+              return;
             }
           }
 
@@ -140,7 +135,11 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
             }
             ByteBuf buf = getLongTextEncoded(okPacket.getLastInsertId());
             decoder = new TextRowDecoder(1, this.metadataList);
-            sink.next(f.apply(new MariadbRow(metadataList, decoder, buf), rowMetadata));
+            try {
+              sink.next(f.apply(new MariadbRow(metadataList, decoder, buf), rowMetadata));
+            } finally{
+              buf.release();
+            }
           }
 
           if (serverMessage.resultSetEnd()) {
