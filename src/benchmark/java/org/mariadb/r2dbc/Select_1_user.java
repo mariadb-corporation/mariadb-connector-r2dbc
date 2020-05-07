@@ -45,6 +45,11 @@ public class Select_1_user extends Common {
   }
 
   @Benchmark
+  public void testR2dbcPrepare(MyState state, Blackhole blackhole) throws Throwable {
+    consume(state.r2dbcPrepare, blackhole);
+  }
+
+  @Benchmark
   public void testR2dbcMySql(MyState state, Blackhole blackhole) throws Throwable {
     consume(state.r2dbcMysql, blackhole);
   }

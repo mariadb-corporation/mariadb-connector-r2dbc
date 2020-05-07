@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark)
 @Warmup(iterations = 10, timeUnit = TimeUnit.SECONDS, time = 1)
 @Measurement(iterations = 10, timeUnit = TimeUnit.SECONDS, time = 1)
-@Fork(value = 5)
+@Fork(value = 1)
 @Threads(value = -1) // detecting CPU count
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -49,6 +49,7 @@ public class Common {
     // connections
     protected Connection jdbc;
     protected io.r2dbc.spi.Connection r2dbc;
+    protected io.r2dbc.spi.Connection r2dbcPrepare;
     protected io.r2dbc.spi.Connection r2dbcMysql;
 
     @Setup(Level.Trial)
@@ -60,6 +61,16 @@ public class Common {
               .username(username)
               .password(password)
               .database(database)
+              .build();
+
+      MariadbConnectionConfiguration confPrepare =
+          MariadbConnectionConfiguration.builder()
+              .host(host)
+              .port(port)
+              .username(username)
+              .password(password)
+              .database(database)
+              .useServerPrepStmts(true)
               .build();
 
       MySqlConnectionConfiguration confMysql =
@@ -78,6 +89,7 @@ public class Common {
       try {
         jdbc = DriverManager.getConnection("jdbc:" + jdbcUrl);
         r2dbc = MariadbConnectionFactory.from(conf).create().block();
+        r2dbcPrepare = MariadbConnectionFactory.from(confPrepare).create().block();
         r2dbcMysql = MySqlConnectionFactory.from(confMysql).create().block();
 
       } catch (SQLException e) {
@@ -90,6 +102,7 @@ public class Common {
     public void doTearDown() throws SQLException {
       jdbc.close();
       Mono.from(r2dbc.close()).block();
+      Mono.from(r2dbcPrepare.close()).block();
       Mono.from(r2dbcMysql.close()).block();
     }
   }

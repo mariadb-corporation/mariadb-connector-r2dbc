@@ -77,5 +77,4 @@ public class Codecs {
     CODEC_LIST.put(DataType.STRING, StringCodec.INSTANCE);
     CODEC_LIST.put(DataType.GEOMETRY, ByteArrayCodec.INSTANCE);
   }
-
 }

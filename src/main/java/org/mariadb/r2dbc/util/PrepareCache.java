@@ -44,14 +44,16 @@ public class PrepareCache extends LinkedHashMap<String, ServerPrepareResult> {
   public synchronized ServerPrepareResult put(String key, ServerPrepareResult result) {
     ServerPrepareResult cached = super.get(key);
 
-    // if there is already some cached data (and not been deallocate), return existing cached data
+    // if there is already some cached data, return existing cached data
     if (cached != null) {
       cached.incrementUse();
+      result.unCache(client);
       return cached;
     }
 
-    // if no cache data, or been deallocate, put new result in cache
-    super.put(key, result);
+    if (result.cache()) {
+      super.put(key, result);
+    }
     return null;
   }
 }

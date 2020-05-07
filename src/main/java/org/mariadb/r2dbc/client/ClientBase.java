@@ -38,6 +38,7 @@ import org.mariadb.r2dbc.message.client.QuitPacket;
 import org.mariadb.r2dbc.message.client.SslRequestPacket;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
+import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -50,17 +51,24 @@ public abstract class ClientBase implements Client {
 
   private static final Logger logger = Loggers.getLogger(ClientBase.class);
   protected final ReentrantLock lock = new ReentrantLock();
+  private final MariadbConnectionConfiguration configuration;
   protected final Connection connection;
-  protected final Queue<CmdElement> responseReceivers =
-      Queues.<CmdElement>unbounded().get();
+  protected final Queue<CmdElement> responseReceivers = Queues.<CmdElement>unbounded().get();
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
-  private final MariadbPacketDecoder mariadbPacketDecoder =
-      new MariadbPacketDecoder(responseReceivers, this);
+  private final MariadbPacketDecoder mariadbPacketDecoder;
   private final MariadbPacketEncoder mariadbPacketEncoder = new MariadbPacketEncoder();
   private volatile ConnectionContext context;
+  private final PrepareCache prepareCache;
 
-  protected ClientBase(Connection connection) {
+  protected ClientBase(Connection connection, MariadbConnectionConfiguration configuration) {
     this.connection = connection;
+    this.configuration = configuration;
+    this.prepareCache =
+        this.configuration.useServerPrepStmts()
+            ? new PrepareCache(this.configuration.getPrepareCacheSize(), this)
+            : null;
+    this.mariadbPacketDecoder =
+        new MariadbPacketDecoder(responseReceivers, this.prepareCache, this);
 
     connection.addHandler(mariadbPacketDecoder);
     connection.addHandler(mariadbPacketEncoder);
@@ -143,8 +151,7 @@ public abstract class ClientBase implements Client {
     }
   }
 
-  public abstract Flux<ServerMessage> sendCommand(
-      ClientMessage message, DecoderState initialState);
+  public abstract Flux<ServerMessage> sendCommand(ClientMessage message, DecoderState initialState);
 
   @Override
   public Flux<ServerMessage> receive() {
@@ -219,6 +226,10 @@ public abstract class ClientBase implements Client {
   }
 
   public abstract void sendNext();
+
+  public PrepareCache getPrepareCache() {
+    return prepareCache;
+  }
 
   @Override
   public String toString() {

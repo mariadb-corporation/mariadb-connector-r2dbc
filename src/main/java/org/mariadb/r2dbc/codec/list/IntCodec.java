@@ -107,6 +107,8 @@ public class IntCodec implements Codec<Integer> {
 
       case OLDDECIMAL:
       case DECIMAL:
+      case VARCHAR:
+      case VARSTRING:
         return new BigDecimal(buf.readCharSequence(length, StandardCharsets.UTF_8).toString())
             .intValue();
 

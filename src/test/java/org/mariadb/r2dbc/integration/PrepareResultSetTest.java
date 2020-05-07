@@ -16,12 +16,21 @@
 
 package org.mariadb.r2dbc.integration;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.MariadbConnectionFactory;
+import org.mariadb.r2dbc.TestConfiguration;
+import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.util.PrepareCache;
+import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.test.StepVerifier;
 
 public class PrepareResultSetTest extends BaseTest {
@@ -81,6 +90,129 @@ public class PrepareResultSetTest extends BaseTest {
           .as(StepVerifier::create)
           .expectNext(stringList.get(i))
           .verifyComplete();
+    }
+  }
+
+  private List<String> prepareInfo(MariadbConnection connection) {
+    return connection
+        .createStatement(
+            "SHOW SESSION STATUS WHERE Variable_name in ('Prepared_stmt_count','Com_stmt_prepare', 'Com_stmt_close')")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(1, String.class)))
+        .collectList()
+        .block();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void cacheReuse() throws Throwable {
+    MariadbConnectionConfiguration confPipeline =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .useServerPrepStmts(true)
+            .prepareCacheSize(3)
+            .build();
+    MariadbConnection connection = new MariadbConnectionFactory(confPipeline).create().block();
+    try {
+      Method method = connection.getClass().getDeclaredMethod("_test_prepareCache");
+      method.setAccessible(true);
+      PrepareCache cache = (PrepareCache) method.invoke(connection);
+      ServerPrepareResult[] prepareResults = new ServerPrepareResult[5];
+
+      for (int i = 0; i < 5; i++) {
+
+        connection
+            .createStatement("SELECT " + i + ", ?")
+            .bind(0, i)
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.class)))
+            .as(StepVerifier::create)
+            .expectNext(i)
+            .verifyComplete();
+
+        Object[] entriesArr = cache.entrySet().toArray();
+        switch (i) {
+          case 0:
+            Assertions.assertEquals(
+                "SELECT 0, ?=ServerPrepareResult{statementId=1, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
+                entriesArr[0].toString());
+            prepareResults[0] = ((Map.Entry<String, ServerPrepareResult>) entriesArr[0]).getValue();
+            break;
+          case 1:
+            Assertions.assertEquals(
+                "SELECT 0, ?=ServerPrepareResult{statementId=1, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
+                entriesArr[0].toString());
+            Assertions.assertEquals(
+                "SELECT 1, ?=ServerPrepareResult{statementId=2, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
+                entriesArr[1].toString());
+            prepareResults[1] = ((Map.Entry<String, ServerPrepareResult>) entriesArr[1]).getValue();
+            break;
+          case 2:
+            Assertions.assertEquals(
+                "SELECT 0, ?=ServerPrepareResult{statementId=1, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
+                entriesArr[0].toString());
+            Assertions.assertEquals(
+                "SELECT 1, ?=ServerPrepareResult{statementId=2, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
+                entriesArr[1].toString());
+            Assertions.assertEquals(
+                "SELECT 2, ?=ServerPrepareResult{statementId=4, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
+                entriesArr[2].toString());
+            prepareResults[2] = ((Map.Entry<String, ServerPrepareResult>) entriesArr[2]).getValue();
+            break;
+          case 3:
+            Assertions.assertEquals(
+                "SELECT 2, ?=ServerPrepareResult{statementId=4, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
+                entriesArr[0].toString());
+            Assertions.assertEquals(
+                "SELECT 1, ?=ServerPrepareResult{statementId=2, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
+                entriesArr[1].toString());
+            Assertions.assertEquals(
+                "SELECT 3, ?=ServerPrepareResult{statementId=5, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
+                entriesArr[2].toString());
+            prepareResults[3] = ((Map.Entry<String, ServerPrepareResult>) entriesArr[2]).getValue();
+            break;
+          case 4:
+            Assertions.assertEquals(
+                "SELECT 1, ?=ServerPrepareResult{statementId=2, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
+                entriesArr[0].toString());
+            Assertions.assertEquals(
+                "SELECT 3, ?=ServerPrepareResult{statementId=5, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
+                entriesArr[1].toString());
+            Assertions.assertEquals(
+                "SELECT 4, ?=ServerPrepareResult{statementId=6, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
+                entriesArr[2].toString());
+            prepareResults[4] = ((Map.Entry<String, ServerPrepareResult>) entriesArr[2]).getValue();
+            break;
+        }
+
+        if (i % 2 == 0) {
+          connection.createStatement("SELECT 1, ?").bind(0, i).execute().subscribe();
+        }
+      }
+
+      Assertions.assertEquals(
+          "ServerPrepareResult{statementId=1, numColumns=2, numParams=1, closing=true, use=0, cached=false}",
+          prepareResults[0].toString());
+      Assertions.assertEquals(
+          "ServerPrepareResult{statementId=2, numColumns=2, numParams=1, closing=false, use=1, cached=true}",
+          prepareResults[1].toString());
+      Assertions.assertEquals(
+          "ServerPrepareResult{statementId=4, numColumns=2, numParams=1, closing=true, use=0, cached=false}",
+          prepareResults[2].toString());
+      Assertions.assertEquals(
+          "ServerPrepareResult{statementId=5, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
+          prepareResults[3].toString());
+      Assertions.assertEquals(
+          "ServerPrepareResult{statementId=6, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
+          prepareResults[4].toString());
+
+      List<String> endingStatus = prepareInfo(connection);
+      Assertions.assertEquals(endingStatus.get(0), "3"); // Prepared_stmt_count
+      Assertions.assertEquals(endingStatus.get(1), "6"); // Com_stmt_prepare
+      Assertions.assertTrue(
+          "3".equals(endingStatus.get(2)) || "4".equals(endingStatus.get(2))); // Com_stmt_close
+    } finally {
+      connection.close().block();
     }
   }
 }

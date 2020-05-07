@@ -35,15 +35,12 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
   private final Client client;
   private final MariadbConnectionConfiguration configuration;
   private volatile IsolationLevel isolationLevel;
-  private final PrepareCache prepareCache;
 
   MariadbConnection(
       Client client, IsolationLevel isolationLevel, MariadbConnectionConfiguration configuration) {
     this.client = Assert.requireNonNull(client, "client must not be null");
     this.isolationLevel = Assert.requireNonNull(isolationLevel, "isolationLevel must not be null");
     this.configuration = Assert.requireNonNull(configuration, "configuration must not be null");
-    this.prepareCache =
-        this.configuration.useServerPrepStmts() ? new PrepareCache(250, client) : null;
 
     // save Global isolation level to avoid asking each new connection with same configuration
     if (configuration.getIsolationLevel() == null) {
@@ -93,8 +90,7 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
       return new MariadbSimpleQueryStatement(this.client, sql);
     } else {
       if (this.configuration.useServerPrepStmts()) {
-        return new MariadbServerParameterizedQueryStatement(
-            this.client, sql, this.prepareCache, this.configuration);
+        return new MariadbServerParameterizedQueryStatement(this.client, sql, this.configuration);
       }
       return new MariadbClientParameterizedQueryStatement(this.client, sql, this.configuration);
     }
@@ -192,5 +188,9 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
                     sink.success(false);
                   });
         });
+  }
+
+  public PrepareCache _test_prepareCache() {
+    return client.getPrepareCache();
   }
 }

@@ -58,9 +58,8 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
 
   @Override
   public Mono<Integer> getRowsUpdated() {
-    return this.dataRows
-        .singleOrEmpty()
-        .handle(
+    Flux<Integer> f =
+        this.dataRows.handle(
             (serverMessage, sink) -> {
               if (serverMessage instanceof ErrorPacket) {
                 sink.error(this.factory.from((ErrorPacket) serverMessage));
@@ -74,6 +73,7 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
                 sink.complete();
               }
             });
+    return f.singleOrEmpty();
   }
 
   @Override
@@ -137,7 +137,7 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
             decoder = new TextRowDecoder(1, this.metadataList);
             try {
               sink.next(f.apply(new MariadbRow(metadataList, decoder, buf), rowMetadata));
-            } finally{
+            } finally {
               buf.release();
             }
           }

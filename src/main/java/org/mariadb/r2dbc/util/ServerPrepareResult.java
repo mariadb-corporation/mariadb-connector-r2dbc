@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.util;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.mariadb.r2dbc.client.Client;
@@ -29,7 +30,7 @@ public class ServerPrepareResult {
 
   private final AtomicBoolean closing = new AtomicBoolean();
   private final AtomicInteger use = new AtomicInteger(1);
-  private final AtomicBoolean cached = new AtomicBoolean(true);
+  private final AtomicBoolean cached = new AtomicBoolean(false);
 
   public ServerPrepareResult(int statementId, int numColumns, int numParams) {
     this.statementId = statementId;
@@ -50,8 +51,8 @@ public class ServerPrepareResult {
   }
 
   public void close(Client client) {
-    if (closing.compareAndSet(false, true)) {
-      client.sendCommand(new ClosePreparePacket(this.statementId));
+    if (!cached.get() && closing.compareAndSet(false, true)) {
+      client.sendCommandWithoutResult(new ClosePreparePacket(this.statementId));
     }
   }
 
@@ -61,15 +62,26 @@ public class ServerPrepareResult {
     }
   }
 
-  public void incrementUse() {
+  public boolean incrementUse() {
+    if (closing.get()) {
+      return false;
+    }
     use.getAndIncrement();
+    return true;
   }
 
   public void unCache(Client client) {
     cached.set(false);
-    if (use.decrementAndGet() <= 0) {
+    if (use.get() <= 0) {
       close(client);
     }
+  }
+
+  public boolean cache() {
+    if (closing.get()) {
+      return false;
+    }
+    return cached.compareAndSet(false, true);
   }
 
   @Override
@@ -88,5 +100,22 @@ public class ServerPrepareResult {
         + ", cached="
         + cached
         + '}';
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ServerPrepareResult that = (ServerPrepareResult) o;
+    return statementId == that.statementId;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(statementId);
   }
 }

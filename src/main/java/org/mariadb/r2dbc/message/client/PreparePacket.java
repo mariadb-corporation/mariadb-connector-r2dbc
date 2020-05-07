@@ -31,6 +31,10 @@ public final class PreparePacket implements ClientMessage {
     this.sql = Assert.requireNonNull(sql, "query must not be null");
   }
 
+  public String getSql() {
+    return sql;
+  }
+
   public Sequencer getSequencer() {
     return sequencer;
   }

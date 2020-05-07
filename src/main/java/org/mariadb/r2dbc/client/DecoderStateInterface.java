@@ -27,15 +27,11 @@ public interface DecoderStateInterface {
   }
 
   default ServerMessage decode(
-      ByteBuf body,
-      Sequencer sequencer,
-      ConnectionContext context,
-      long serverCapabilities,
-      int[] stateCounter) {
+      ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
     throw new IllegalArgumentException("unexpected state");
   }
 
-  default DecoderState next(long serverCapabilities, int[] stateCounter) {
+  default DecoderState next(MariadbPacketDecoder decoder) {
     throw new IllegalArgumentException("unexpected state");
   }
 }

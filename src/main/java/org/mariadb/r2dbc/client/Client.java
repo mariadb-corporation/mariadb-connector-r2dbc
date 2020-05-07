@@ -18,9 +18,12 @@ package org.mariadb.r2dbc.client;
 
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.client.ClientMessage;
+import org.mariadb.r2dbc.message.client.ExecutePacket;
+import org.mariadb.r2dbc.message.client.PreparePacket;
 import org.mariadb.r2dbc.message.client.SslRequestPacket;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
+import org.mariadb.r2dbc.util.PrepareCache;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -30,9 +33,13 @@ public interface Client {
 
   Flux<ServerMessage> receive();
 
+  void sendCommandWithoutResult(ClientMessage requests);
+
   Flux<ServerMessage> sendCommand(ClientMessage requests);
 
   Flux<ServerMessage> sendCommand(ClientMessage requests, DecoderState initialState);
+
+  Flux<ServerMessage> sendCommand(PreparePacket preparePacket, ExecutePacket executePacket);
 
   Mono<Void> sendSslRequest(
       SslRequestPacket sslRequest, MariadbConnectionConfiguration configuration);
@@ -50,4 +57,6 @@ public interface Client {
   void setContext(InitialHandshakePacket packet);
 
   void sendNext();
+
+  PrepareCache getPrepareCache();
 }

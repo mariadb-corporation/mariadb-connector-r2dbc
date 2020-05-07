@@ -16,11 +16,13 @@
 
 package org.mariadb.r2dbc.integration;
 
+import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
 public class ResultsetTest extends BaseTest {
@@ -116,5 +118,57 @@ public class ResultsetTest extends BaseTest {
             second[3] + second[1] + second[2] + second[0],
             third[3] + third[1] + third[2] + third[0])
         .verifyComplete();
+  }
+
+  @Test
+  void getIndexToBig() {
+    getIndexToBig(sharedConn);
+    getIndexToBig(sharedConnPrepare);
+  }
+
+  void getIndexToBig(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT 1, 2, ?")
+        .bind(0, 3)
+        .execute()
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      return row.get(0, Integer.class) + row.get(5, Integer.class);
+                    }))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable
+                        .getMessage()
+                        .equals("Column index 5 is larger than the number of columns 3"))
+        .verify();
+  }
+
+  @Test
+  void getIndexToLow() {
+    getIndexToLow(sharedConn);
+    getIndexToLow(sharedConnPrepare);
+  }
+
+  void getIndexToLow(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT 1, 2, ?")
+        .bind(0, 3)
+        .execute()
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      return row.get(0, Integer.class) + row.get(-5, Integer.class);
+                    }))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable.getMessage().equals("Column index -5 must be positive"))
+        .verify();
   }
 }

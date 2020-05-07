@@ -48,7 +48,9 @@ public final class PrepareResultPacket implements ServerMessage {
 
   public static PrepareResultPacket decode(
       Sequencer sequencer, ByteBuf buffer, ConnectionContext context) {
-
+    if (buffer.readableBytes() < 10) {
+      System.out.println("DIEGOOOOO");
+    }
     /* Prepared Statement OK */
     buffer.readByte(); /* skip field count */
     final int statementId = buffer.readIntLE();
@@ -76,6 +78,20 @@ public final class PrepareResultPacket implements ServerMessage {
 
   public boolean isEofDeprecated() {
     return eofDeprecated;
+  }
+
+  @Override
+  public String toString() {
+    return "PrepareResultPacket{"
+        + "statementId="
+        + statementId
+        + ", numColumns="
+        + numColumns
+        + ", numParams="
+        + numParams
+        + ", sequencer="
+        + sequencer
+        + '}';
   }
 
   @Override

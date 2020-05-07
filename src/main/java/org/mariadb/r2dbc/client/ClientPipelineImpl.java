@@ -19,35 +19,71 @@ package org.mariadb.r2dbc.client;
 import io.netty.channel.ChannelOption;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.net.SocketAddress;
-import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.client.ClientMessage;
+import org.mariadb.r2dbc.message.client.ExecutePacket;
+import org.mariadb.r2dbc.message.client.PreparePacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.Connection;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
-import reactor.util.annotation.Nullable;
 
 /** Client that send queries pipelining (without waiting for result). */
 public final class ClientPipelineImpl extends ClientBase {
-  public ClientPipelineImpl(Connection connection) {
-    super(connection);
+  public ClientPipelineImpl(Connection connection, MariadbConnectionConfiguration configuration) {
+    super(connection, configuration);
   }
 
   public static Mono<Client> connect(
       ConnectionProvider connectionProvider,
       SocketAddress socketAddress,
-      @Nullable Duration connectTimeout) {
+      MariadbConnectionConfiguration configuration) {
 
     TcpClient tcpClient = TcpClient.create(connectionProvider).addressSupplier(() -> socketAddress);
-    if (connectTimeout != null) {
+    if (configuration.getConnectTimeout() != null) {
       tcpClient =
           tcpClient.option(
-              ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(connectTimeout.toMillis()));
+              ChannelOption.CONNECT_TIMEOUT_MILLIS,
+              Math.toIntExact(configuration.getConnectTimeout().toMillis()));
     }
-    return tcpClient.connect().flatMap(it -> Mono.just(new ClientPipelineImpl(it)));
+    return tcpClient.connect().flatMap(it -> Mono.just(new ClientPipelineImpl(it, configuration)));
+  }
+
+  public void sendCommandWithoutResult(ClientMessage message) {
+    try {
+      lock.lock();
+      connection.channel().writeAndFlush(message);
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public Flux<ServerMessage> sendCommand(PreparePacket preparePacket, ExecutePacket executePacket) {
+    AtomicBoolean atomicBoolean = new AtomicBoolean();
+    return Flux.create(
+        sink -> {
+          if (!isConnected()) {
+            sink.error(
+                new R2dbcNonTransientResourceException(
+                    "Connection is close. Cannot send anything"));
+            return;
+          }
+          if (atomicBoolean.compareAndSet(false, true)) {
+            try {
+              lock.lock();
+              this.responseReceivers.add(
+                  new CmdElement(
+                      sink, DecoderState.PREPARE_AND_EXECUTE_RESPONSE, preparePacket.getSql()));
+              connection.channel().writeAndFlush(preparePacket);
+              connection.channel().writeAndFlush(executePacket);
+            } finally {
+              lock.unlock();
+            }
+          }
+        });
   }
 
   public Flux<ServerMessage> sendCommand(ClientMessage message, DecoderState initialState) {

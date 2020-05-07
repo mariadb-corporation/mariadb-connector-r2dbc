@@ -19,7 +19,6 @@ package org.mariadb.r2dbc.message.server;
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
-import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.util.Assert;
 import reactor.util.Logger;
 import reactor.util.Loggers;
@@ -38,7 +37,7 @@ public final class ErrorPacket implements ServerMessage {
     this.sqlState = sqlState;
   }
 
-  public static ErrorPacket decode(Sequencer sequencer, ByteBuf buf, ConnectionContext context) {
+  public static ErrorPacket decode(Sequencer sequencer, ByteBuf buf) {
     Assert.requireNonNull(buf, "buffer must not be null");
     buf.skipBytes(1);
     short errorCode = buf.readShortLE();

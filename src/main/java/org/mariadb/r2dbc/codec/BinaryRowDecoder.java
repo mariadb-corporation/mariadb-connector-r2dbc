@@ -35,11 +35,6 @@ public class BinaryRowDecoder extends RowDecoder {
   public <T> T get(int index, ColumnDefinitionPacket column, Class<T> type)
       throws IllegalArgumentException {
 
-    if (index < 0 || index >= this.columnNumber) {
-      throw new IllegalArgumentException(
-          String.format("Wrong index value %s (possible value: 0-%s)", index, this.columnNumber));
-    }
-
     // check NULL-Bitmap that indicate if field is null
     if ((nullBitmap[(index + 2) / 8] & (1 << ((index + 2) % 8))) != 0) {
       if (type.isPrimitive()) {

@@ -62,15 +62,15 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
   }
 
   private Mono<MariadbConnection> doCreateConnection() {
+
     Mono<Client> clientMono;
     if (configuration.allowPipelining()) {
       clientMono =
           ClientPipelineImpl.connect(
-              ConnectionProvider.newConnection(), this.endpoint, configuration.getConnectTimeout());
+              ConnectionProvider.newConnection(), this.endpoint, configuration);
     } else {
       clientMono =
-          ClientImpl.connect(
-              ConnectionProvider.newConnection(), this.endpoint, configuration.getConnectTimeout());
+          ClientImpl.connect(ConnectionProvider.newConnection(), this.endpoint, configuration);
     }
 
     return clientMono

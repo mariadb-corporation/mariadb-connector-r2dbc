@@ -37,6 +37,7 @@ public final class MariadbConnectionConfiguration {
   private final Duration connectTimeout;
   private final CharSequence password;
   private final int port;
+  private final int prepareCacheSize;
   private final String socket;
   private final String username;
   private final boolean allowMultiQueries;
@@ -71,7 +72,8 @@ public final class MariadbConnectionConfiguration {
       @Nullable String rsaPublicKey,
       @Nullable String cachingRsaPublicKey,
       boolean allowPublicKeyRetrieval,
-      boolean useServerPrepStmts) {
+      boolean useServerPrepStmts,
+      @Nullable Integer prepareCacheSize) {
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
     this.database = database;
     this.host = host;
@@ -94,6 +96,7 @@ public final class MariadbConnectionConfiguration {
     this.cachingRsaPublicKey = cachingRsaPublicKey;
     this.allowPublicKeyRetrieval = allowPublicKeyRetrieval;
     this.useServerPrepStmts = useServerPrepStmts;
+    this.prepareCacheSize = (prepareCacheSize == null) ? 250 : prepareCacheSize.intValue();
   }
 
   public static Builder fromOptions(ConnectionFactoryOptions connectionFactoryOptions) {
@@ -122,6 +125,9 @@ public final class MariadbConnectionConfiguration {
       builder.useServerPrepStmts(
           connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.USE_SERVER_PREPARE));
     }
+
+    builder.prepareCacheSize(
+        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.PREPARE_CACHE_SIZE));
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SSL_MODE)) {
       builder.sslMode(
@@ -240,6 +246,10 @@ public final class MariadbConnectionConfiguration {
     return useServerPrepStmts;
   }
 
+  public int getPrepareCacheSize() {
+    return prepareCacheSize;
+  }
+
   @Override
   public String toString() {
     StringBuilder hiddenPwd = new StringBuilder();
@@ -341,6 +351,7 @@ public final class MariadbConnectionConfiguration {
     private boolean allowMultiQueries = false;
     private boolean allowPipelining = true;
     private boolean useServerPrepStmts = false;
+    @Nullable Integer prepareCacheSize;
     @Nullable private List<String> tlsProtocol;
     @Nullable private String serverSslCert;
     @Nullable private String clientSslCert;
@@ -391,7 +402,8 @@ public final class MariadbConnectionConfiguration {
           this.rsaPublicKey,
           this.cachingRsaPublicKey,
           this.allowPublicKeyRetrieval,
-          this.useServerPrepStmts);
+          this.useServerPrepStmts,
+          this.prepareCacheSize);
     }
 
     /**
@@ -497,6 +509,23 @@ public final class MariadbConnectionConfiguration {
      */
     public Builder serverSslCert(String serverSslCert) {
       this.serverSslCert = serverSslCert;
+      return this;
+    }
+
+    /**
+     * Prepare result cache size.
+     *
+     * <ul>
+     *   <li>0 = no cache
+     *   <li>null = use default size
+     *   <li>other indicate cache size
+     * </ul>
+     *
+     * @param prepareCacheSize prepare cache size
+     * @return this {@link Builder}
+     */
+    public Builder prepareCacheSize(Integer prepareCacheSize) {
+      this.prepareCacheSize = prepareCacheSize;
       return this;
     }
 

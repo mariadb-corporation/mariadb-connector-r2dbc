@@ -26,24 +26,27 @@ import java.util.List;
 import java.util.Queue;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.message.server.ServerMessage;
-import reactor.core.publisher.FluxSink;
+import org.mariadb.r2dbc.util.PrepareCache;
 
 public class MariadbPacketDecoder extends ByteToMessageDecoder {
 
+  private final Queue<CmdElement> responseReceivers;
+  private final Client client;
+  private final PrepareCache prepareCache;
+
   private ConnectionContext context = null;
   private boolean isMultipart = false;
-  private Queue<CmdElement> responseReceivers;
-  private Client client;
-
   private DecoderState state = null;
-  private FluxSink<ServerMessage> fluxSink;
+  private CmdElement cmdElement;
   private CompositeByteBuf multipart;
   private long serverCapabilities;
-  private int[] stateCounter = new int[2];
+  private int stateCounter = 0;
 
-  public MariadbPacketDecoder(Queue<CmdElement> responseReceivers, Client client) {
+  public MariadbPacketDecoder(
+      Queue<CmdElement> responseReceivers, PrepareCache prepareCache, Client client) {
     this.responseReceivers = responseReceivers;
     this.client = client;
+    this.prepareCache = prepareCache;
   }
 
   @Override
@@ -90,40 +93,62 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
   }
 
   private void handleBuffer(ByteBuf packet, Sequencer sequencer) {
-    if (state == null && !loadNextResponse()) {
+    if (cmdElement == null && !loadNextResponse()) {
       throw new R2dbcNonTransientResourceException(
           "unexpected message received when no command was send");
     }
+
     state =
         state.decoder(
             packet.getUnsignedByte(packet.readerIndex()),
             packet.readableBytes(),
             serverCapabilities);
-
     ServerMessage msg = null;
     try {
-      msg = state.decode(packet, sequencer, context, serverCapabilities, stateCounter);
-      fluxSink.next(msg);
+      msg = state.decode(packet, sequencer, this, cmdElement);
+      cmdElement.getSink().next(msg);
       if (msg.ending()) {
-        fluxSink.complete();
+        cmdElement.getSink().complete();
         loadNextResponse();
         client.sendNext();
       } else {
-        state = state.next(serverCapabilities, stateCounter);
+        state = state.next(this);
       }
-    } finally{
+    } finally {
       if (msg instanceof ReferenceCounted) {
         ((ReferenceCounted) msg).release();
       }
     }
+  }
 
+  public Client getClient() {
+    return client;
+  }
+
+  public ConnectionContext getContext() {
+    return context;
+  }
+
+  public int getStateCounter() {
+    return stateCounter;
+  }
+
+  public void setStateCounter(int counter) {
+    stateCounter = counter;
+  }
+
+  public void decrementStateCounter() {
+    stateCounter--;
+  }
+
+  public long getServerCapabilities() {
+    return serverCapabilities;
   }
 
   private boolean loadNextResponse() {
-    CmdElement cmdElement = responseReceivers.poll();
+    this.cmdElement = responseReceivers.poll();
     if (cmdElement != null) {
       state = cmdElement.getInitialState();
-      fluxSink = cmdElement.getSink();
       return true;
     }
     state = null;
