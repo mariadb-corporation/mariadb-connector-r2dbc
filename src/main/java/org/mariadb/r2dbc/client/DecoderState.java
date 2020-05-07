@@ -211,6 +211,11 @@ public enum DecoderState implements DecoderStateInterface {
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
       return EofPacket.decode(sequencer, body, decoder.getContext(), true);
     }
+
+    @Override
+    public DecoderState next(MariadbPacketDecoder decoder) {
+      return QUERY_RESPONSE;
+    }
   },
 
   ROW_RESPONSE {

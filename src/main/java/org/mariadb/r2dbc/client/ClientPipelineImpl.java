@@ -86,7 +86,8 @@ public final class ClientPipelineImpl extends ClientBase {
         });
   }
 
-  public Flux<ServerMessage> sendCommand(ClientMessage message, DecoderState initialState) {
+  public Flux<ServerMessage> sendCommand(
+      ClientMessage message, DecoderState initialState, String sql) {
     AtomicBoolean atomicBoolean = new AtomicBoolean();
     return Flux.create(
         sink -> {
@@ -99,7 +100,7 @@ public final class ClientPipelineImpl extends ClientBase {
           if (atomicBoolean.compareAndSet(false, true)) {
             try {
               lock.lock();
-              this.responseReceivers.add(new CmdElement(sink, initialState));
+              this.responseReceivers.add(new CmdElement(sink, initialState, sql));
               connection.channel().writeAndFlush(message);
             } finally {
               lock.unlock();

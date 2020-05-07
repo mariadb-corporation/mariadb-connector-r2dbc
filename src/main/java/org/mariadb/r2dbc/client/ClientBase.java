@@ -151,7 +151,12 @@ public abstract class ClientBase implements Client {
     }
   }
 
-  public abstract Flux<ServerMessage> sendCommand(ClientMessage message, DecoderState initialState);
+  public Flux<ServerMessage> sendCommand(ClientMessage message, DecoderState initialState) {
+    return sendCommand(message, initialState, null);
+  }
+
+  public abstract Flux<ServerMessage> sendCommand(
+      ClientMessage message, DecoderState initialState, String sql);
 
   @Override
   public Flux<ServerMessage> receive() {

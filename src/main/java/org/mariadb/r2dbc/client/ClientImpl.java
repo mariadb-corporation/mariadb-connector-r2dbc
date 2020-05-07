@@ -73,7 +73,8 @@ public final class ClientImpl extends ClientBase {
     return Flux.error(new R2dbcNonTransientResourceException("Cannot pipeline"));
   }
 
-  public Flux<ServerMessage> sendCommand(ClientMessage message, DecoderState initialState) {
+  public Flux<ServerMessage> sendCommand(
+      ClientMessage message, DecoderState initialState, String sql) {
     AtomicBoolean atomicBoolean = new AtomicBoolean();
     return Flux.create(
         sink -> {
@@ -86,7 +87,7 @@ public final class ClientImpl extends ClientBase {
           if (atomicBoolean.compareAndSet(false, true)) {
             try {
               lock.lock();
-              this.responseReceivers.add(new CmdElement(sink, initialState));
+              this.responseReceivers.add(new CmdElement(sink, initialState, sql));
 
               if (this.responseReceivers.isEmpty()) {
                 connection.channel().writeAndFlush(message);

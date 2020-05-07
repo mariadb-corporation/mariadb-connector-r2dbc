@@ -48,9 +48,6 @@ public final class PrepareResultPacket implements ServerMessage {
 
   public static PrepareResultPacket decode(
       Sequencer sequencer, ByteBuf buffer, ConnectionContext context) {
-    if (buffer.readableBytes() < 10) {
-      System.out.println("DIEGOOOOO");
-    }
     /* Prepared Statement OK */
     buffer.readByte(); /* skip field count */
     final int statementId = buffer.readIntLE();

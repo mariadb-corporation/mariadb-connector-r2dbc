@@ -135,7 +135,7 @@ public class ResultsetTest extends BaseTest {
             r ->
                 r.map(
                     (row, metadata) -> {
-                      return row.get(0, Integer.class) + row.get(5, Integer.class);
+                      return row.get(0, Long.class) + row.get(5, Long.class);
                     }))
         .as(StepVerifier::create)
         .expectErrorMatches(
@@ -162,7 +162,7 @@ public class ResultsetTest extends BaseTest {
             r ->
                 r.map(
                     (row, metadata) -> {
-                      return row.get(0, Integer.class) + row.get(-5, Integer.class);
+                      return row.get(0, Long.class) + row.get(-5, Long.class);
                     }))
         .as(StepVerifier::create)
         .expectErrorMatches(

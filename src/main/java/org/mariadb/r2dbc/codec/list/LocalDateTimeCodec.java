@@ -52,14 +52,13 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
       if (nanoLen >= 0) nanoLen++;
       timestampsPart[partIdx] = timestampsPart[partIdx] * 10 + b - 48;
     }
-    if (timestampsPart[0] == 0
-        && timestampsPart[1] == 0
-        && timestampsPart[2] == 0
-        && timestampsPart[3] == 0
-        && timestampsPart[4] == 0
-        && timestampsPart[5] == 0
-        && timestampsPart[6] == 0) {
-      return null;
+    if (timestampsPart[0] == 0 && timestampsPart[1] == 0 && timestampsPart[2] == 0) {
+      if (timestampsPart[3] == 0
+          && timestampsPart[4] == 0
+          && timestampsPart[5] == 0
+          && timestampsPart[6] == 0) return null;
+      timestampsPart[1] = 1;
+      timestampsPart[2] = 1;
     }
 
     // fix non leading tray for nanoseconds
@@ -109,11 +108,8 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
 
     if (length > 4) {
       hour = buf.readByte();
-      ;
       minutes = buf.readByte();
-      ;
       seconds = buf.readByte();
-      ;
 
       if (length > 7) {
         microseconds = buf.readUnsignedIntLE();

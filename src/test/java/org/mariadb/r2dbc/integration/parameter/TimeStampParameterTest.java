@@ -24,11 +24,13 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -346,6 +348,9 @@ public class TimeStampParameterTest extends BaseTest {
 
   @Test
   void localTimeValuePrepare() {
+    MariadbConnectionMetadata meta = sharedConn.getMetadata();
+    Assumptions.assumeTrue(meta.isMariaDBServer() && minVersion(10, 0, 0));
+
     sharedConnPrepare
         .createStatement("INSERT INTO TimestampParam VALUES (?,?,?)")
         .bind(0, LocalTime.parse("05:08:10.123456"))

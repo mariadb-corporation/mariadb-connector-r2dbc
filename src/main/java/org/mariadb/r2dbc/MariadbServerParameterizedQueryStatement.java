@@ -27,6 +27,7 @@ import org.mariadb.r2dbc.codec.Codecs;
 import org.mariadb.r2dbc.codec.Parameter;
 import org.mariadb.r2dbc.message.client.ExecutePacket;
 import org.mariadb.r2dbc.message.client.PreparePacket;
+import org.mariadb.r2dbc.message.server.PrepareResultPacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
@@ -153,7 +154,6 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
       if (prepareResult == null) {
         prepareResult = client.getPrepareCache().get(sql);
         if (prepareResult == null) {
-          System.out.println("PREPARE DIEGO 2 " + sql);
           sendPrepare().block();
         }
       }
@@ -249,10 +249,14 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
       }
     }
 
-    if (configuration.allowPipelining()) {
+    if (configuration.allowPipelining()
+        && client.getVersion().isMariaDBServer()
+        && client.getVersion().versionGreaterOrEqual(10, 2, 0)) {
       flux = sendPrepareAndExecute(factory, parameters, generatedColumns);
     } else {
-      flux = sendPrepare().thenMany(sendExecuteCmd(factory, parameters, generatedColumns));
+      flux =
+          sendPrepare()
+              .flatMapMany(prepareResult1 -> sendExecuteCmd(factory, parameters, generatedColumns));
     }
     return flux.concatWith(
         Flux.create(
@@ -281,24 +285,29 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                         && client.getVersion().versionGreaterOrEqual(10, 5, 1)));
   }
 
-  private Mono<Void> sendPrepare() {
-    return this.client
-        .sendCommand(new PreparePacket(sql), DecoderState.PREPARE_RESPONSE)
-        .concatWith(
-            Flux.create(
-                sink -> {
-                  prepareResult = client.getPrepareCache().get(sql);
-                  if (client.getPrepareCache() != null) {
-                    ServerPrepareResult res = client.getPrepareCache().get(sql);
-                    if (res != null && !res.equals(prepareResult)) {
-                      prepareResult.close(client);
-                      prepareResult = res;
+  private Mono<ServerPrepareResult> sendPrepare() {
+    Flux<ServerPrepareResult> f =
+        this.client
+            .sendCommand(new PreparePacket(sql), DecoderState.PREPARE_RESPONSE, sql)
+            .handle(
+                (it, sink) -> {
+                  if (it instanceof PrepareResultPacket) {
+                    PrepareResultPacket packet = (PrepareResultPacket) it;
+                    prepareResult =
+                        new ServerPrepareResult(
+                            packet.getStatementId(), packet.getNumColumns(), packet.getNumParams());
+                    if (client.getPrepareCache() != null) {
+                      ServerPrepareResult res = client.getPrepareCache().get(sql);
+                      if (res != null && !res.equals(prepareResult)) {
+                        prepareResult.close(client);
+                        prepareResult = res;
+                      }
                     }
+                    sink.next(prepareResult);
                   }
-
-                  sink.complete();
-                }))
-        .then();
+                  if (it.ending()) sink.complete();
+                });
+    return f.singleOrEmpty();
   };
 
   private Flux<org.mariadb.r2dbc.api.MariadbResult> sendExecuteCmd(

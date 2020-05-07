@@ -39,6 +39,8 @@ public interface Client {
 
   Flux<ServerMessage> sendCommand(ClientMessage requests, DecoderState initialState);
 
+  Flux<ServerMessage> sendCommand(ClientMessage requests, DecoderState initialState, String sql);
+
   Flux<ServerMessage> sendCommand(PreparePacket preparePacket, ExecutePacket executePacket);
 
   Mono<Void> sendSslRequest(

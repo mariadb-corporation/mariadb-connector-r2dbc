@@ -29,6 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -370,6 +371,10 @@ public class DateTimeParameterTest extends BaseTest {
     LocalTime localTime = LocalTime.parse("05:08:10.123456");
     LocalDateTime localDateTime =
         LocalDateTime.now().withHour(5).withMinute(8).withSecond(10).withNano(123456 * 1000);
+    MariadbConnectionMetadata meta = sharedConn.getMetadata();
+    if (meta.isMariaDBServer() && !minVersion(10, 0, 0)) {
+      localDateTime = localDateTime.withYear(0).withDayOfMonth(1).withMonth(1);
+    }
     sharedConnPrepare
         .createStatement("INSERT INTO DateTimeParam VALUES (?,?,?)")
         .bind(0, localTime)
