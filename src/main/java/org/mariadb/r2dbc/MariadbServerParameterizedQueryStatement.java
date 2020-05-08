@@ -18,7 +18,9 @@ package org.mariadb.r2dbc;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.client.DecoderState;
@@ -40,8 +42,8 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   private final Client client;
   private final String sql;
   private final MariadbConnectionConfiguration configuration;
-  private List<Parameter<?>> parameters;
-  private List<List<Parameter<?>>> batchingParameters;
+  private Map<Integer, Parameter<?>> parameters;
+  private List<Map<Integer, Parameter<?>>> batchingParameters;
   private String[] generatedColumns;
   private ServerPrepareResult prepareResult;
 
@@ -50,7 +52,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     this.client = client;
     this.configuration = configuration;
     this.sql = Assert.requireNonNull(sql, "sql must not be null");
-    this.parameters = new ArrayList<>();
+    this.parameters = new HashMap<>();
     this.prepareResult = client.getPrepareCache().get(sql);
   }
 
@@ -72,7 +74,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     }
     if (batchingParameters == null) batchingParameters = new ArrayList<>();
     batchingParameters.add(parameters);
-    parameters = new ArrayList<>(prepareResult.getNumParams());
+    parameters = new HashMap<>();
     return this;
   }
 
@@ -96,7 +98,8 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
 
     for (Codec<?> codec : Codecs.LIST) {
       if (codec.canEncode(value)) {
-        parameters.add(index, (Parameter<?>) new Parameter(codec, value));
+
+        parameters.put(index, (Parameter<?>) new Parameter(codec, value));
         return this;
       }
     }
@@ -121,7 +124,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
               prepareResult.getNumParams() - 1, index));
     }
 
-    parameters.add(index, Parameter.NULL_PARAMETER);
+    parameters.put(index, Parameter.NULL_PARAMETER);
     return this;
   }
 
@@ -157,41 +160,39 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
           sendPrepare().block();
         }
       }
+      Flux<ServerMessage> fluxMsg =
+          this.client.sendCommand(
+              new ExecutePacket(prepareResult.getStatementId(), this.batchingParameters.get(0)));
+      int index = 1;
+      while (index < this.batchingParameters.size()) {
+        fluxMsg =
+            fluxMsg.concatWith(
+                this.client.sendCommand(
+                    new ExecutePacket(
+                        prepareResult.getStatementId(), this.batchingParameters.get(index++))));
+      }
+      fluxMsg =
+          fluxMsg.concatWith(
+              Flux.create(
+                  sink -> {
+                    prepareResult.decrementUse(client);
+                    sink.complete();
+                  }));
 
-      Flux<Flux<ServerMessage>> fluxMsg =
-          Flux.create(
-              sink -> {
-                for (List<Parameter<?>> parameters : this.batchingParameters) {
-                  Flux<ServerMessage> in =
-                      this.client.sendCommand(
-                          new ExecutePacket(
-                              prepareResult != null ? prepareResult.getStatementId() : -1,
-                              parameters));
-                  sink.next(in);
-                  in.subscribe();
-                }
-                sink.complete();
-              });
+      this.batchingParameters.clear();
+      this.parameters = new HashMap<>();
 
-      Flux<org.mariadb.r2dbc.api.MariadbResult> f =
-          fluxMsg
-              .flatMap(Flux::from)
-              .windowUntil(it -> it.resultSetEnd())
-              .map(
-                  dataRow ->
-                      new MariadbResult(
-                          true,
-                          dataRow,
-                          ExceptionFactory.INSTANCE,
-                          null,
-                          client.getVersion().isMariaDBServer()
-                              && client.getVersion().versionGreaterOrEqual(10, 5, 1)));
-      return f.concatWith(
-          Flux.create(
-              sink -> {
-                prepareResult.decrementUse(client);
-                sink.complete();
-              }));
+      return fluxMsg
+          .windowUntil(it -> it.resultSetEnd())
+          .map(
+              dataRow ->
+                  new MariadbResult(
+                      false,
+                      dataRow,
+                      ExceptionFactory.INSTANCE,
+                      null,
+                      client.getVersion().isMariaDBServer()
+                          && client.getVersion().versionGreaterOrEqual(10, 5, 1)));
     }
   }
 
@@ -216,7 +217,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   }
 
   private Flux<org.mariadb.r2dbc.api.MariadbResult> execute(
-      String sql, List<Parameter<?>> parameters, String[] generatedColumns) {
+      String sql, Map<Integer, Parameter<?>> parameters, String[] generatedColumns) {
     ExceptionFactory factory = ExceptionFactory.withSql(sql);
 
     if (prepareResult == null && client.getPrepareCache() != null) {
@@ -270,7 +271,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   }
 
   private Flux<org.mariadb.r2dbc.api.MariadbResult> sendPrepareAndExecute(
-      ExceptionFactory factory, List<Parameter<?>> parameters, String[] generatedColumns) {
+      ExceptionFactory factory, Map<Integer, Parameter<?>> parameters, String[] generatedColumns) {
     return this.client
         .sendCommand(new PreparePacket(sql), new ExecutePacket(-1, parameters))
         .windowUntil(it -> it.resultSetEnd())
@@ -311,7 +312,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   };
 
   private Flux<org.mariadb.r2dbc.api.MariadbResult> sendExecuteCmd(
-      ExceptionFactory factory, List<Parameter<?>> parameters, String[] generatedColumns) {
+      ExceptionFactory factory, Map<Integer, Parameter<?>> parameters, String[] generatedColumns) {
     return this.client
         .sendCommand(
             new ExecutePacket(

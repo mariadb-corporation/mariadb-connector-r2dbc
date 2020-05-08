@@ -18,29 +18,39 @@ package org.mariadb.r2dbc.integration;
 
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
 public class StatementBatchingTest extends BaseTest {
 
   @Test
   void batchStatement() {
-    sharedConn
+    batchStatement(sharedConn);
+  }
+
+  @Test
+  void batchStatementPrepare() {
+    batchStatement(sharedConnPrepare);
+  }
+
+  void batchStatement(MariadbConnection connection) {
+    connection
         .createStatement(
             "CREATE TEMPORARY TABLE batchStatement (id int not null primary key auto_increment, test varchar(10))")
         .execute()
         .blockLast();
 
-    sharedConn
+    connection
         .createStatement("INSERT INTO batchStatement values (?, ?)")
         .bind(0, 1)
         .bind(1, "test")
         .add()
-        .bind(0, 2)
         .bind(1, "test2")
+        .bind(0, 2)
         .execute()
-        .subscribe();
+        .blockLast();
 
-    sharedConn
+    connection
         .createStatement("SELECT * FROM batchStatement")
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
@@ -51,16 +61,25 @@ public class StatementBatchingTest extends BaseTest {
 
   @Test
   void batchStatementResultSet() {
-    sharedConn
+    batchStatementResultSet(sharedConn);
+  }
+
+  @Test
+  void batchStatementResultSetPrepare() {
+    batchStatementResultSet(sharedConnPrepare);
+  }
+
+  void batchStatementResultSet(MariadbConnection connection) {
+    connection
         .createStatement(
             "CREATE TEMPORARY TABLE batchStatementResultSet (id int not null primary key auto_increment, test varchar(10))")
         .execute()
         .blockLast();
-    sharedConn
+    connection
         .createStatement("INSERT INTO batchStatementResultSet values (1, 'test1'), (2, 'test2')")
         .execute()
         .blockLast();
-    sharedConn
+    connection
         .createStatement("SELECT test FROM batchStatementResultSet WHERE id = ?")
         .bind(0, 1)
         .add()

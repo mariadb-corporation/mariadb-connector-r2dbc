@@ -80,13 +80,13 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
   @SuppressWarnings({"rawtypes", "unchecked"})
   @Override
   public MariadbClientParameterizedQueryStatement bind(int index, @Nullable Object value) {
+    if (value == null) return bindNull(index, null);
     if (index >= prepareResult.getParamCount() || index < 0) {
       throw new IndexOutOfBoundsException(
           String.format(
               "index must be in 0-%d range but value is %d",
               prepareResult.getParamCount() - 1, index));
     }
-    if (value == null) return bindNull(index, null);
 
     for (Codec<?> codec : Codecs.LIST) {
       if (codec.canEncode(value)) {
@@ -142,28 +142,36 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
       return execute(this.sql, this.prepareResult, parameters, this.generatedColumns);
     } else {
       add();
-      Flux<Flux<ServerMessage>> fluxMsg =
-          Flux.create(
-              sink -> {
-                for (Parameter<?>[] parameters : this.batchingParameters) {
-                  Flux<ServerMessage> in =
-                      this.client.sendCommand(
-                          new QueryWithParametersPacket(
-                              prepareResult,
-                              parameters,
-                              generatedColumns != null
-                                      && client.getVersion().isMariaDBServer()
-                                      && client.getVersion().versionGreaterOrEqual(10, 5, 1)
-                                  ? generatedColumns
-                                  : null));
-                  sink.next(in);
-                  in.subscribe();
-                }
-                sink.complete();
-              });
+
+      Flux<ServerMessage> fluxMsg =
+          this.client.sendCommand(
+              new QueryWithParametersPacket(
+                  prepareResult,
+                  this.batchingParameters.get(0),
+                  generatedColumns != null
+                          && client.getVersion().isMariaDBServer()
+                          && client.getVersion().versionGreaterOrEqual(10, 5, 1)
+                      ? generatedColumns
+                      : null));
+      int index = 1;
+      while (index < this.batchingParameters.size()) {
+        fluxMsg =
+            fluxMsg.concatWith(
+                this.client.sendCommand(
+                    new QueryWithParametersPacket(
+                        prepareResult,
+                        this.batchingParameters.get(index++),
+                        generatedColumns != null
+                                && client.getVersion().isMariaDBServer()
+                                && client.getVersion().versionGreaterOrEqual(10, 5, 1)
+                            ? generatedColumns
+                            : null)));
+      }
+
+      this.batchingParameters.clear();
+      this.parameters = new Parameter<?>[prepareResult.getParamCount()];
 
       return fluxMsg
-          .flatMap(Flux::from)
           .windowUntil(it -> it.resultSetEnd())
           .map(
               dataRow ->

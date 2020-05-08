@@ -98,8 +98,12 @@ public class BigIntegerParameterTest extends BaseTest {
             .bind(2, new BigInteger("-9"));
     Assertions.assertTrue(
         stmt.toString()
-            .contains(
-                "parameters=[Parameter{codec=BigIntegerCodec{}, value=1}, Parameter{codec=BigIntegerCodec{}, value=9223372036854775807}, Parameter{codec=BigIntegerCodec{}, value=-9}]"));
+                .contains(
+                    "parameters=[Parameter{codec=BigIntegerCodec{}, value=1}, Parameter{codec=BigIntegerCodec{}, value=9223372036854775807}, Parameter{codec=BigIntegerCodec{}, value=-9}]")
+            || stmt.toString()
+                .contains(
+                    "parameters={0=Parameter{codec=BigIntegerCodec{}, value=1}, 1=Parameter{codec=BigIntegerCodec{}, value=9223372036854775807}, 2=Parameter{codec=BigIntegerCodec{}, value=-9}}"));
+
     stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("9223372036854775807"), Optional.of("-9"));
   }
@@ -123,8 +127,12 @@ public class BigIntegerParameterTest extends BaseTest {
             .bind(2, "-9");
     Assertions.assertTrue(
         stmt.toString()
-            .contains(
-                "parameters=[Parameter{codec=StringCodec{}, value=1}, Parameter{codec=StringCodec{}, value=9223372036854775807}, Parameter{codec=StringCodec{}, value=-9}]"));
+                .contains(
+                    "parameters=[Parameter{codec=StringCodec{}, value=1}, Parameter{codec=StringCodec{}, value=9223372036854775807}, Parameter{codec=StringCodec{}, value=-9}]")
+            || stmt.toString()
+                .contains(
+                    "parameters={0=Parameter{codec=StringCodec{}, value=1}, 1=Parameter{codec=StringCodec{}, value=9223372036854775807}, 2=Parameter{codec=StringCodec{}, value=-9}}"));
+
     stmt.execute().blockLast();
 
     validate(Optional.of("1"), Optional.of("9223372036854775807"), Optional.of("-9"));
@@ -147,10 +155,15 @@ public class BigIntegerParameterTest extends BaseTest {
             .bind(0, BigDecimal.ONE)
             .bind(1, new BigDecimal("9223372036854775807"))
             .bind(2, new BigDecimal("-9"));
+
     Assertions.assertTrue(
         stmt.toString()
-            .contains(
-                "Parameter{codec=BigDecimalCodec{}, value=9223372036854775807}, Parameter{codec=BigDecimalCodec{}, value=-9}]"));
+                .contains(
+                    "Parameter{codec=BigDecimalCodec{}, value=9223372036854775807}, Parameter{codec=BigDecimalCodec{}, value=-9}]")
+            || stmt.toString()
+                .contains(
+                    "parameters={0=Parameter{codec=BigDecimalCodec{}, value=1}, 1=Parameter{codec=BigDecimalCodec{}, value=9223372036854775807}, 2=Parameter{codec=BigDecimalCodec{}, value=-9}}"));
+
     stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("9223372036854775807"), Optional.of("-9"));
   }
@@ -174,8 +187,12 @@ public class BigIntegerParameterTest extends BaseTest {
             .bind(2, 0);
     Assertions.assertTrue(
         stmt.toString()
-            .contains(
-                "parameters=[Parameter{codec=IntCodec{}, value=1}, Parameter{codec=IntCodec{}, value=-1}, Parameter{codec=IntCodec{}, value=0}]"));
+                .contains(
+                    "parameters=[Parameter{codec=IntCodec{}, value=1}, Parameter{codec=IntCodec{}, value=-1}, Parameter{codec=IntCodec{}, value=0}]")
+            || stmt.toString()
+                .contains(
+                    "parameters={0=Parameter{codec=IntCodec{}, value=1}, 1=Parameter{codec=IntCodec{}, value=-1}, 2=Parameter{codec=IntCodec{}, value=0}}"));
+
     stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
   }
@@ -199,8 +216,12 @@ public class BigIntegerParameterTest extends BaseTest {
             .bind(2, (byte) 0);
     Assertions.assertTrue(
         stmt.toString()
-            .contains(
-                "parameters=[Parameter{codec=ByteCodec{}, value=127}, Parameter{codec=ByteCodec{}, value=-128}, Parameter{codec=ByteCodec{}, value=0}]"));
+                .contains(
+                    "parameters=[Parameter{codec=ByteCodec{}, value=127}, Parameter{codec=ByteCodec{}, value=-128}, Parameter{codec=ByteCodec{}, value=0}]")
+            || stmt.toString()
+                .contains(
+                    "parameters={0=Parameter{codec=ByteCodec{}, value=127}, 1=Parameter{codec=ByteCodec{}, value=-128}, 2=Parameter{codec=ByteCodec{}, value=0}}"));
+
     stmt.execute().blockLast();
     validate(Optional.of("127"), Optional.of("-128"), Optional.of("0"));
   }
@@ -224,8 +245,12 @@ public class BigIntegerParameterTest extends BaseTest {
             .bind(2, 0f);
     Assertions.assertTrue(
         stmt.toString()
-            .contains(
-                "parameters=[Parameter{codec=FloatCodec{}, value=127.0}, Parameter{codec=FloatCodec{}, value=-128.0}, Parameter{codec=FloatCodec{}, value=0.0}]"));
+                .contains(
+                    "parameters=[Parameter{codec=FloatCodec{}, value=127.0}, Parameter{codec=FloatCodec{}, value=-128.0}, Parameter{codec=FloatCodec{}, value=0.0}]")
+            || stmt.toString()
+                .contains(
+                    "parameters={0=Parameter{codec=FloatCodec{}, value=127.0}, 1=Parameter{codec=FloatCodec{}, value=-128.0}, 2=Parameter{codec=FloatCodec{}, value=0.0}}"));
+
     stmt.execute().blockLast();
     validate(Optional.of("127"), Optional.of("-128"), Optional.of("0"));
   }
@@ -247,10 +272,14 @@ public class BigIntegerParameterTest extends BaseTest {
             .bind(0, 127d)
             .bind(1, -128d)
             .bind(2, 0d);
+
     Assertions.assertTrue(
         stmt.toString()
-            .contains(
-                "parameters=[Parameter{codec=DoubleCodec{}, value=127.0}, Parameter{codec=DoubleCodec{}, value=-128.0}, Parameter{codec=DoubleCodec{}, value=0.0}]"));
+                .contains(
+                    "parameters=[Parameter{codec=DoubleCodec{}, value=127.0}, Parameter{codec=DoubleCodec{}, value=-128.0}, Parameter{codec=DoubleCodec{}, value=0.0}]")
+            || stmt.toString()
+                .contains(
+                    "parameters={0=Parameter{codec=DoubleCodec{}, value=127.0}, 1=Parameter{codec=DoubleCodec{}, value=-128.0}, 2=Parameter{codec=DoubleCodec{}, value=0.0}}"));
     stmt.execute().blockLast();
     validate(Optional.of("127"), Optional.of("-128"), Optional.of("0"));
   }
@@ -274,8 +303,11 @@ public class BigIntegerParameterTest extends BaseTest {
             .bind(2, Short.valueOf("0"));
     Assertions.assertTrue(
         stmt.toString()
-            .contains(
-                "Parameter{codec=ShortCodec{}, value=-1}, Parameter{codec=ShortCodec{}, value=0}]"));
+                .contains(
+                    "Parameter{codec=ShortCodec{}, value=-1}, Parameter{codec=ShortCodec{}, value=0}]")
+            || stmt.toString()
+                .contains(
+                    "1=Parameter{codec=ShortCodec{}, value=-1}, 2=Parameter{codec=ShortCodec{}, value=0}}"));
     stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
   }
@@ -299,8 +331,11 @@ public class BigIntegerParameterTest extends BaseTest {
             .bind(2, 0L);
     Assertions.assertTrue(
         stmt.toString()
-            .contains(
-                "parameters=[Parameter{codec=LongCodec{}, value=1}, Parameter{codec=LongCodec{}, value=-1}, Parameter{codec=LongCodec{}, value=0}]"));
+                .contains(
+                    "parameters=[Parameter{codec=LongCodec{}, value=1}, Parameter{codec=LongCodec{}, value=-1}, Parameter{codec=LongCodec{}, value=0}]")
+            || stmt.toString()
+                .contains(
+                    "parameters={0=Parameter{codec=LongCodec{}, value=1}, 1=Parameter{codec=LongCodec{}, value=-1}, 2=Parameter{codec=LongCodec{}, value=0}}"));
     stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
   }
@@ -324,8 +359,12 @@ public class BigIntegerParameterTest extends BaseTest {
             .bind(2, Long.valueOf("0"));
     Assertions.assertTrue(
         stmt.toString()
-            .contains(
-                "parameters=[Parameter{codec=LongCodec{}, value=1}, Parameter{codec=LongCodec{}, value=-1}, Parameter{codec=LongCodec{}, value=0}]"));
+                .contains(
+                    "parameters=[Parameter{codec=LongCodec{}, value=1}, Parameter{codec=LongCodec{}, value=-1}, Parameter{codec=LongCodec{}, value=0}]")
+            || stmt.toString()
+                .contains(
+                    "parameters={0=Parameter{codec=LongCodec{}, value=1}, 1=Parameter{codec=LongCodec{}, value=-1}, 2=Parameter{codec=LongCodec{}, value=0}}"));
+
     stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
   }
@@ -414,7 +453,9 @@ public class BigIntegerParameterTest extends BaseTest {
             .bind(1, LocalTime.now())
             .bind(2, LocalTime.now());
     Assertions.assertTrue(
-        stmt.toString().contains("parameters=[Parameter{codec=LocalTimeCodec{}, value="));
+        stmt.toString().contains("parameters=[Parameter{codec=LocalTimeCodec{}, value=")
+            || stmt.toString().contains("parameters={0=Parameter{codec=LocalTimeCodec{}, value="));
+
     stmt.execute().blockLast();
   }
 

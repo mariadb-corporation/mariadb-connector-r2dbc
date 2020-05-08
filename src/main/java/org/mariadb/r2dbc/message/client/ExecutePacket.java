@@ -18,17 +18,17 @@ package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import java.util.List;
+import java.util.Map;
 import org.mariadb.r2dbc.client.ConnectionContext;
 import org.mariadb.r2dbc.codec.Parameter;
 import org.mariadb.r2dbc.message.server.Sequencer;
 
 public final class ExecutePacket implements ClientMessage {
-  private final List<Parameter<?>> parameters;
+  private final Map<Integer, Parameter<?>> parameters;
   private final int statementId;
   private final Sequencer sequencer = new Sequencer((byte) 0xff);
 
-  public ExecutePacket(int statementId, List<Parameter<?>> parameters) {
+  public ExecutePacket(int statementId, Map<Integer, Parameter<?>> parameters) {
     this.parameters = parameters;
     this.statementId = statementId;
   }

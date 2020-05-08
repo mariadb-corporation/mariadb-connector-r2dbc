@@ -119,7 +119,8 @@ public class StringParameterTest extends BaseTest {
             .bind(1, BitSet.valueOf(revertOrder("你好".getBytes(StandardCharsets.UTF_8))))
             .bind(2, BitSet.valueOf(revertOrder("🌟hello".getBytes(StandardCharsets.UTF_8))));
     Assertions.assertTrue(
-        stmt.toString().contains("parameters=[Parameter{codec=BitSetCodec{}, value={"));
+        stmt.toString().contains("parameters=[Parameter{codec=BitSetCodec{}, value={")
+            || stmt.toString().contains("parameters={0=Parameter{codec=BitSetCodec{}, value={"));
     stmt.execute().blockLast();
     validate(Optional.of("çà¤"), Optional.of("你好"), Optional.of("🌟hello"));
   }
@@ -142,7 +143,8 @@ public class StringParameterTest extends BaseTest {
             .bind(1, "你好".getBytes(StandardCharsets.UTF_8))
             .bind(2, "🌟hello".getBytes(StandardCharsets.UTF_8));
     Assertions.assertTrue(
-        stmt.toString().contains("parameters=[Parameter{codec=ByteArrayCodec{}, value="));
+        stmt.toString().contains("parameters=[Parameter{codec=ByteArrayCodec{}, value=")
+            || stmt.toString().contains("parameters={0=Parameter{codec=ByteArrayCodec{}, value="));
     stmt.execute().blockLast();
     validate(Optional.of("çà¤"), Optional.of("你好"), Optional.of("🌟hello"));
   }
