@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Queue;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.message.server.ServerMessage;
-import org.mariadb.r2dbc.util.PrepareCache;
 
 public class MariadbPacketDecoder extends ByteToMessageDecoder {
 
@@ -41,8 +40,7 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
   private long serverCapabilities;
   private int stateCounter = 0;
 
-  public MariadbPacketDecoder(
-      Queue<CmdElement> responseReceivers, Client client) {
+  public MariadbPacketDecoder(Queue<CmdElement> responseReceivers, Client client) {
     this.responseReceivers = responseReceivers;
     this.client = client;
   }
