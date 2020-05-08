@@ -19,7 +19,7 @@ package org.mariadb.r2dbc;
 public class TestConfiguration {
 
   public static final String host = System.getProperty("TEST_HOST", "localhost");
-  public static final int port = Integer.parseInt(System.getProperty("TEST_PORT", "3311"));
+  public static final int port = Integer.parseInt(System.getProperty("TEST_PORT", "3306"));
   public static final String username = System.getProperty("TEST_USERNAME", "root");
   public static final String password = System.getProperty("TEST_PASSWORD", "");
   public static final String database = System.getProperty("TEST_DATABASE", "testj");

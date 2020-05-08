@@ -33,6 +33,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -362,19 +363,25 @@ public class BitParameterTest extends BaseTest {
   }
 
   private void localDateTimeValue(MariadbConnection connection) {
-    connection
-        .createStatement("INSERT INTO ByteParam VALUES (?,?,?)")
-        .bind(0, LocalDateTime.now())
-        .bind(1, LocalDateTime.now())
-        .bind(2, LocalDateTime.now())
-        .execute()
-        .flatMap(r -> r.getRowsUpdated())
-        .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcBadGrammarException
-                    && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22001"))
-        .verify();
+    Flux<MariadbResult> f =
+        connection
+            .createStatement("INSERT INTO ByteParam VALUES (?,?,?)")
+            .bind(0, LocalDateTime.now())
+            .bind(1, LocalDateTime.now())
+            .bind(2, LocalDateTime.now())
+            .execute();
+    if ((isMariaDBServer() && !minVersion(10, 2, 0))
+        || (!isMariaDBServer() && !minVersion(5, 6, 0))) {
+      f.blockLast();
+    } else {
+      f.flatMap(r -> r.getRowsUpdated())
+          .as(StepVerifier::create)
+          .expectErrorMatches(
+              throwable ->
+                  throwable instanceof R2dbcBadGrammarException
+                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22001"))
+          .verify();
+    }
   }
 
   @Test
@@ -388,19 +395,25 @@ public class BitParameterTest extends BaseTest {
   }
 
   private void localDateValue(MariadbConnection connection) {
-    connection
-        .createStatement("INSERT INTO ByteParam VALUES (?,?,?)")
-        .bind(0, LocalDate.now())
-        .bind(1, LocalDate.now())
-        .bind(2, LocalDate.now())
-        .execute()
-        .flatMap(r -> r.getRowsUpdated())
-        .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcBadGrammarException
-                    && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22001"))
-        .verify();
+    Flux<MariadbResult> f =
+        connection
+            .createStatement("INSERT INTO ByteParam VALUES (?,?,?)")
+            .bind(0, LocalDate.now())
+            .bind(1, LocalDate.now())
+            .bind(2, LocalDate.now())
+            .execute();
+    if ((isMariaDBServer() && !minVersion(10, 2, 0))
+        || (!isMariaDBServer() && !minVersion(5, 6, 0))) {
+      f.blockLast();
+    } else {
+      f.flatMap(r -> r.getRowsUpdated())
+          .as(StepVerifier::create)
+          .expectErrorMatches(
+              throwable ->
+                  throwable instanceof R2dbcBadGrammarException
+                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22001"))
+          .verify();
+    }
   }
 
   @Test
@@ -414,19 +427,25 @@ public class BitParameterTest extends BaseTest {
   }
 
   private void localTimeValue(MariadbConnection connection) {
-    connection
-        .createStatement("INSERT INTO ByteParam VALUES (?,?,?)")
-        .bind(0, LocalTime.now())
-        .bind(1, LocalTime.now())
-        .bind(2, LocalTime.now())
-        .execute()
-        .flatMap(r -> r.getRowsUpdated())
-        .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcBadGrammarException
-                    && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22001"))
-        .verify();
+    Flux<MariadbResult> f =
+        connection
+            .createStatement("INSERT INTO ByteParam VALUES (?,?,?)")
+            .bind(0, LocalTime.now())
+            .bind(1, LocalTime.now())
+            .bind(2, LocalTime.now())
+            .execute();
+    if ((isMariaDBServer() && !minVersion(10, 2, 0))
+        || (!isMariaDBServer() && !minVersion(5, 6, 0))) {
+      f.blockLast();
+    } else {
+      f.flatMap(r -> r.getRowsUpdated())
+          .as(StepVerifier::create)
+          .expectErrorMatches(
+              throwable ->
+                  throwable instanceof R2dbcBadGrammarException
+                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22001"))
+          .verify();
+    }
   }
 
   private void validate(Optional<BitSet> t1, Optional<BitSet> t2, Optional<BitSet> t3) {

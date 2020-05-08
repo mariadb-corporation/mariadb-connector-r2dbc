@@ -30,6 +30,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbResult;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -89,19 +90,25 @@ public class TimeParameterTest extends BaseTest {
   }
 
   private void bigIntValue(MariadbConnection connection) {
-    connection
-        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-        .bind(0, BigInteger.ONE)
-        .bind(1, new BigInteger("9223372036854775807"))
-        .bind(2, new BigInteger("-9"))
-        .execute()
-        .flatMap(r -> r.getRowsUpdated())
-        .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcBadGrammarException
-                    && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
-        .verify();
+    Flux<MariadbResult> f =
+        connection
+            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+            .bind(0, BigInteger.ONE)
+            .bind(1, new BigInteger("9223372036854775807"))
+            .bind(2, new BigInteger("-9"))
+            .execute();
+    if ((isMariaDBServer() && !minVersion(10, 2, 0))
+        || (!isMariaDBServer() && !minVersion(5, 6, 0))) {
+      f.blockLast();
+    } else {
+      f.flatMap(r -> r.getRowsUpdated())
+          .as(StepVerifier::create)
+          .expectErrorMatches(
+              throwable ->
+                  throwable instanceof R2dbcBadGrammarException
+                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
+          .verify();
+    }
   }
 
   @Test
@@ -115,19 +122,25 @@ public class TimeParameterTest extends BaseTest {
   }
 
   private void stringValue(MariadbConnection connection) {
-    connection
-        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-        .bind(0, "1")
-        .bind(1, "9223372036854775807")
-        .bind(2, "-9")
-        .execute()
-        .flatMap(r -> r.getRowsUpdated())
-        .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcBadGrammarException
-                    && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
-        .verify();
+    Flux<MariadbResult> f =
+        connection
+            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+            .bind(0, "1")
+            .bind(1, "9223372036854775807")
+            .bind(2, "-9")
+            .execute();
+    if ((isMariaDBServer() && !minVersion(10, 2, 0))
+        || (!isMariaDBServer() && !minVersion(5, 6, 0))) {
+      f.blockLast();
+    } else {
+      f.flatMap(r -> r.getRowsUpdated())
+          .as(StepVerifier::create)
+          .expectErrorMatches(
+              throwable ->
+                  throwable instanceof R2dbcBadGrammarException
+                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
+          .verify();
+    }
   }
 
   @Test
@@ -141,19 +154,25 @@ public class TimeParameterTest extends BaseTest {
   }
 
   private void decimalValue(MariadbConnection connection) {
-    connection
-        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-        .bind(0, BigDecimal.ONE)
-        .bind(1, new BigDecimal("9223372036854775807"))
-        .bind(2, new BigDecimal("-9"))
-        .execute()
-        .flatMap(r -> r.getRowsUpdated())
-        .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcBadGrammarException
-                    && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
-        .verify();
+    Flux<MariadbResult> f =
+        connection
+            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+            .bind(0, BigDecimal.ONE)
+            .bind(1, new BigDecimal("9223372036854775807"))
+            .bind(2, new BigDecimal("-9"))
+            .execute();
+    if ((isMariaDBServer() && !minVersion(10, 2, 0))
+        || (!isMariaDBServer() && !minVersion(5, 6, 0))) {
+      f.blockLast();
+    } else {
+      f.flatMap(r -> r.getRowsUpdated())
+          .as(StepVerifier::create)
+          .expectErrorMatches(
+              throwable ->
+                  throwable instanceof R2dbcBadGrammarException
+                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
+          .verify();
+    }
   }
 
   @Test

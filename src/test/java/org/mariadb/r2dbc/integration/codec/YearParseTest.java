@@ -26,19 +26,25 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import reactor.test.StepVerifier;
 
 public class YearParseTest extends BaseTest {
+  private static MariadbConnectionMetadata meta = sharedConn.getMetadata();
+
   @BeforeAll
   public static void before2() {
-    sharedConn
-        .createStatement("CREATE TABLE YearTable (t1 YEAR(4), t2 YEAR(2))")
-        .execute()
-        .blockLast();
-    sharedConn
-        .createStatement("INSERT INTO YearTable VALUES (2060, 60),(2071, 71),(0, 0), (null, null)")
-        .execute()
-        .blockLast();
+    String sqlCreate = "CREATE TABLE YearTable (t1 YEAR(4), t2 YEAR(2))";
+    String sqlInsert = "INSERT INTO YearTable VALUES (2060, 60),(2071, 71),(0, 0), (null, null)";
+    // mysql doesn't support YEAR(2) anymore
+    if (!meta.isMariaDBServer()) {
+      sqlCreate = "CREATE TABLE YearTable (t1 YEAR(4), t2 YEAR(4))";
+      //      sqlInsert = "INSERT INTO YearTable VALUES (2060, 2060),(2071, 1971),(0, 2000), (null,
+      // null)";
+    }
+
+    sharedConn.createStatement(sqlCreate).execute().blockLast();
+    sharedConn.createStatement(sqlInsert).execute().blockLast();
     // ensure having same kind of result for truncation
     sharedConn
         .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
@@ -81,8 +87,8 @@ public class YearParseTest extends BaseTest {
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
         .expectNext(
-            Optional.of((short) 60),
-            Optional.of((short) 71),
+            Optional.of((short) (meta.isMariaDBServer() ? 60 : 2060)),
+            Optional.of((short) (meta.isMariaDBServer() ? 71 : 1971)),
             Optional.of((short) 0),
             Optional.empty())
         .verifyComplete();
@@ -222,9 +228,9 @@ public class YearParseTest extends BaseTest {
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
         .expectNext(
-            Optional.of((short) 60),
-            Optional.of((short) 71),
-            Optional.of((short) 0),
+            Optional.of((short) (meta.isMariaDBServer() ? 60 : 2060)),
+            Optional.of((short) (meta.isMariaDBServer() ? 71 : 1971)),
+            Optional.of((short) (0)),
             Optional.empty())
         .verifyComplete();
   }
@@ -254,7 +260,11 @@ public class YearParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Integer.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of(60), Optional.of(71), Optional.of(0), Optional.empty())
+        .expectNext(
+            Optional.of(meta.isMariaDBServer() ? 60 : 2060),
+            Optional.of(meta.isMariaDBServer() ? 71 : 1971),
+            Optional.of(0),
+            Optional.empty())
         .verifyComplete();
   }
 
@@ -283,7 +293,11 @@ public class YearParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Long.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of(60L), Optional.of(71L), Optional.of(0L), Optional.empty())
+        .expectNext(
+            Optional.of(meta.isMariaDBServer() ? 60L : 2060L),
+            Optional.of(meta.isMariaDBServer() ? 71L : 1971L),
+            Optional.of(0L),
+            Optional.empty())
         .verifyComplete();
   }
 
@@ -312,7 +326,11 @@ public class YearParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Float.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of(60F), Optional.of(71F), Optional.of(0F), Optional.empty())
+        .expectNext(
+            Optional.of(meta.isMariaDBServer() ? 60F : 2060F),
+            Optional.of(meta.isMariaDBServer() ? 71F : 1971F),
+            Optional.of(0F),
+            Optional.empty())
         .verifyComplete();
   }
 
@@ -341,7 +359,11 @@ public class YearParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Double.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of(60D), Optional.of(71D), Optional.of(0D), Optional.empty())
+        .expectNext(
+            Optional.of(meta.isMariaDBServer() ? 60D : 2060D),
+            Optional.of(meta.isMariaDBServer() ? 71D : 1971D),
+            Optional.of(0D),
+            Optional.empty())
         .verifyComplete();
   }
 
@@ -370,7 +392,11 @@ public class YearParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of("60"), Optional.of("71"), Optional.of("00"), Optional.empty())
+        .expectNext(
+            Optional.of(meta.isMariaDBServer() ? "60" : "2060"),
+            Optional.of(meta.isMariaDBServer() ? "71" : "1971"),
+            Optional.of(meta.isMariaDBServer() ? "00" : "0000"),
+            Optional.empty())
         .verifyComplete();
   }
 
@@ -406,7 +432,7 @@ public class YearParseTest extends BaseTest {
         .expectNext(
             Optional.of(LocalDate.parse("2060-01-01")),
             Optional.of(LocalDate.parse("1971-01-01")),
-            Optional.of(LocalDate.parse("2000-01-01")),
+            Optional.of(LocalDate.parse(meta.isMariaDBServer() ? "2000-01-01" : "0000-01-01")),
             Optional.empty())
         .verifyComplete();
   }
@@ -441,8 +467,8 @@ public class YearParseTest extends BaseTest {
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BigDecimal.class))))
         .as(StepVerifier::create)
         .expectNext(
-            Optional.of(new BigDecimal("60")),
-            Optional.of(new BigDecimal("71")),
+            Optional.of(new BigDecimal(meta.isMariaDBServer() ? "60" : "2060")),
+            Optional.of(new BigDecimal(meta.isMariaDBServer() ? "71" : "1971")),
             Optional.of(BigDecimal.ZERO),
             Optional.empty())
         .verifyComplete();
@@ -478,8 +504,8 @@ public class YearParseTest extends BaseTest {
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BigInteger.class))))
         .as(StepVerifier::create)
         .expectNext(
-            Optional.of(new BigInteger("60")),
-            Optional.of(new BigInteger("71")),
+            Optional.of(new BigInteger(meta.isMariaDBServer() ? "60" : "2060")),
+            Optional.of(new BigInteger(meta.isMariaDBServer() ? "71" : "1971")),
             Optional.of(BigInteger.ZERO),
             Optional.empty())
         .verifyComplete();

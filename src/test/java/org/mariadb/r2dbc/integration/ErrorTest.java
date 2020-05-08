@@ -82,7 +82,9 @@ public class ErrorTest extends BaseTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && throwable.getCause() instanceof R2dbcPermissionDeniedException)
+                    && (throwable
+                        .getMessage()
+                        .contains("Access denied for user 'userWithoutRight'")))
         .verify();
   }
 

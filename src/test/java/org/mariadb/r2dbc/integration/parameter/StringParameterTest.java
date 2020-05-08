@@ -33,12 +33,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class StringParameterTest extends BaseTest {
+  private static MariadbConnectionMetadata meta = sharedConn.getMetadata();
+
   @BeforeAll
   public static void before2() {
     sharedConn
@@ -359,15 +362,23 @@ public class StringParameterTest extends BaseTest {
 
   @Test
   void localDateTimeValue() {
-    localDateTimeValue(sharedConn);
+    localDateTimeValue(
+        sharedConn,
+        "2010-01-12 05:08:09.001400",
+        "2018-12-15 05:08:10.123456",
+        "2025-05-12 05:08:11.123000");
   }
 
   @Test
   void localDateTimeValuePrepare() {
-    localDateTimeValue(sharedConnPrepare);
+    localDateTimeValue(
+        sharedConnPrepare,
+        meta.isMariaDBServer() ? "2010-01-12 05:08:09.001400" : "2010-01-12 05:08:09",
+        meta.isMariaDBServer() ? "2018-12-15 05:08:10.123456" : "2018-12-15 05:08:10",
+        meta.isMariaDBServer() ? "2025-05-12 05:08:11.123000" : "2025-05-12 05:08:11");
   }
 
-  private void localDateTimeValue(MariadbConnection connection) {
+  private void localDateTimeValue(MariadbConnection connection, String t1, String t2, String t3) {
     connection
         .createStatement("INSERT INTO StringParam VALUES (?,?,?)")
         .bind(0, LocalDateTime.parse("2010-01-12T05:08:09.0014"))
@@ -375,10 +386,7 @@ public class StringParameterTest extends BaseTest {
         .bind(2, LocalDateTime.parse("2025-05-12T05:08:11.123"))
         .execute()
         .blockLast();
-    validate(
-        Optional.of("2010-01-12 05:08:09.001400"),
-        Optional.of("2018-12-15 05:08:10.123456"),
-        Optional.of("2025-05-12 05:08:11.123000"));
+    validate(Optional.of(t1), Optional.of(t2), Optional.of(t3));
   }
 
   @Test
@@ -414,10 +422,14 @@ public class StringParameterTest extends BaseTest {
   @Test
   void localTimeValuePrepare() {
     localTimeValue(sharedConnPrepare);
-    validate(
-        Optional.of("05:08:09.001400"),
-        Optional.of("05:08:10.123456"),
-        Optional.of("05:08:11.123000"));
+    if (meta.isMariaDBServer()) {
+      validate(
+          Optional.of("05:08:09.001400"),
+          Optional.of("05:08:10.123456"),
+          Optional.of("05:08:11.123000"));
+    } else {
+      validate(Optional.of("05:08:09"), Optional.of("05:08:10"), Optional.of("05:08:11"));
+    }
   }
 
   private void localTimeValue(MariadbConnection connection) {
@@ -439,7 +451,11 @@ public class StringParameterTest extends BaseTest {
   @Test
   void durationValuePrepare() {
     durationValue(sharedConnPrepare);
-    validate(Optional.of("90:00:00.012340"), Optional.of("00:08:00"), Optional.of("00:00:22"));
+    if (meta.isMariaDBServer()) {
+      validate(Optional.of("90:00:00.012340"), Optional.of("00:08:00"), Optional.of("00:00:22"));
+    } else {
+      validate(Optional.of("90:00:00"), Optional.of("00:08:00"), Optional.of("00:00:22"));
+    }
   }
 
   private void durationValue(MariadbConnection connection) {

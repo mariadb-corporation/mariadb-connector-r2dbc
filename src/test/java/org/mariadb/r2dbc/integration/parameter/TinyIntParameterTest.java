@@ -30,6 +30,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbResult;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -305,19 +306,25 @@ public class TinyIntParameterTest extends BaseTest {
   }
 
   private void localDateTimeValue(MariadbConnection connection) {
-    connection
-        .createStatement("INSERT INTO TinyIntParam VALUES (?,?,?)")
-        .bind(0, LocalDateTime.now())
-        .bind(1, LocalDateTime.now())
-        .bind(2, LocalDateTime.now())
-        .execute()
-        .flatMap(r -> r.getRowsUpdated())
-        .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcBadGrammarException
-                    && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22003"))
-        .verify();
+    Flux<MariadbResult> f =
+        connection
+            .createStatement("INSERT INTO TinyIntParam VALUES (?,?,?)")
+            .bind(0, LocalDateTime.now())
+            .bind(1, LocalDateTime.now())
+            .bind(2, LocalDateTime.now())
+            .execute();
+    if ((isMariaDBServer() && !minVersion(10, 2, 0))
+        || (!isMariaDBServer() && !minVersion(5, 6, 0))) {
+      f.blockLast();
+    } else {
+      f.flatMap(r -> r.getRowsUpdated())
+          .as(StepVerifier::create)
+          .expectErrorMatches(
+              throwable ->
+                  throwable instanceof R2dbcBadGrammarException
+                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22003"))
+          .verify();
+    }
   }
 
   @Test
@@ -331,19 +338,25 @@ public class TinyIntParameterTest extends BaseTest {
   }
 
   private void localDateValue(MariadbConnection connection) {
-    connection
-        .createStatement("INSERT INTO TinyIntParam VALUES (?,?,?)")
-        .bind(0, LocalDate.now())
-        .bind(1, LocalDate.now())
-        .bind(2, LocalDate.now())
-        .execute()
-        .flatMap(r -> r.getRowsUpdated())
-        .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcBadGrammarException
-                    && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22003"))
-        .verify();
+    Flux<MariadbResult> f =
+        connection
+            .createStatement("INSERT INTO TinyIntParam VALUES (?,?,?)")
+            .bind(0, LocalDate.now())
+            .bind(1, LocalDate.now())
+            .bind(2, LocalDate.now())
+            .execute();
+    if ((isMariaDBServer() && !minVersion(10, 2, 0))
+        || (!isMariaDBServer() && !minVersion(5, 6, 0))) {
+      f.blockLast();
+    } else {
+      f.flatMap(r -> r.getRowsUpdated())
+          .as(StepVerifier::create)
+          .expectErrorMatches(
+              throwable ->
+                  throwable instanceof R2dbcBadGrammarException
+                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22003"))
+          .verify();
+    }
   }
 
   @Test

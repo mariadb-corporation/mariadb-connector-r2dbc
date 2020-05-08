@@ -58,7 +58,24 @@ public class PrepareResultSetTest extends BaseTest {
   public static void before2() {
     sharedConn
         .createStatement(
-            "CREATE TABLE PrepareResultSetTest(id int, i2 BIGINT, i3 int, i4 MEDIUMINT, i5 FLOAT, i6 SMALLINT, i7 YEAR, i8 TINYINT, i9 VARCHAR(256), i10 BIGINT, i11 int, i12 MEDIUMINT, i13 FLOAT, i14 SMALLINT, i15 YEAR, i16 TINYINT, i17 VARCHAR(256))")
+            "CREATE TABLE PrepareResultSetTest("
+                + "id int, "
+                + "i2 BIGINT, "
+                + "i3 int, "
+                + "i4 MEDIUMINT, "
+                + "i5 FLOAT, "
+                + "i6 SMALLINT, "
+                + "i7 YEAR, "
+                + "i8 TINYINT, "
+                + "i9 VARCHAR(256), "
+                + "i10 BIGINT, "
+                + "i11 int, "
+                + "i12 MEDIUMINT, "
+                + "i13 FLOAT, "
+                + "i14 SMALLINT, "
+                + "i15 YEAR, "
+                + "i16 TINYINT, "
+                + "i17 VARCHAR(256)) DEFAULT CHARSET=utf8mb4")
         .execute()
         .blockLast();
     sharedConn
@@ -77,7 +94,7 @@ public class PrepareResultSetTest extends BaseTest {
   void resultSetSkippingRes() {
     for (int i = 10; i < 17; i++) {
       int finalI = i;
-      //      System.out.println("IIIIIIIIIIIIIIIII:" + i);
+      System.out.println("IIIIIIIIIIIIIIIII:" + i);
       sharedConnPrepare
           .createStatement("SELECT * FROM PrepareResultSetTest WHERE 1 = ?")
           .bind(0, 1)

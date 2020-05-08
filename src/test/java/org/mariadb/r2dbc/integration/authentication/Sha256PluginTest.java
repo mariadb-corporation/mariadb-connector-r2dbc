@@ -37,16 +37,13 @@ public class Sha256PluginTest extends BaseTest {
     Assumptions.assumeTrue(!isMariaDBServer() && minVersion(5, 7, 0));
 
     rsaPublicKey = System.getProperty("rsaPublicKey");
-    if (rsaPublicKey == null) {
+    if (rsaPublicKey == null && minVersion(8, 0, 0)) {
       rsaPublicKey =
           sharedConn
               .createStatement("SELECT @@caching_sha2_password_public_key_path")
               .execute()
-              .map(res -> res.map((row, meta) -> row.get(0, String.class)))
-              .singleOrEmpty()
-              .block()
-              .singleOrEmpty()
-              .block();
+              .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+              .blockLast();
     }
 
     cachingRsaPublicKey = System.getProperty("cachingRsaPublicKey");
@@ -55,27 +52,24 @@ public class Sha256PluginTest extends BaseTest {
           sharedConn
               .createStatement("SELECT @@sha256_password_public_key_path")
               .execute()
-              .map(res -> res.map((row, meta) -> row.get(0, String.class)))
-              .singleOrEmpty()
-              .block()
-              .singleOrEmpty()
-              .block();
+              .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+              .blockLast();
     }
 
     sharedConn
-        .createStatement("DROP USER 'sha256User'@'%'")
+        .createStatement("DROP USER IF EXISTS 'sha256User'@'%'")
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
-        .createStatement("DROP USER 'cachingSha256User'@'%'")
+        .createStatement("DROP USER IF EXISTS 'cachingSha256User'@'%'")
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
-        .createStatement("DROP USER 'cachingSha256User2'@'%'")
+        .createStatement("DROP USER IF EXISTS 'cachingSha256User2'@'%'")
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
