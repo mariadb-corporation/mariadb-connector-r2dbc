@@ -314,7 +314,7 @@ public class TinyIntParameterTest extends BaseTest {
             .bind(2, LocalDateTime.now())
             .execute();
     if ((isMariaDBServer() && !minVersion(10, 2, 0))
-        || (!isMariaDBServer() && !minVersion(5, 6, 0))) {
+        || (!isMariaDBServer() && !minVersion(5, 7, 0))) {
       f.blockLast();
     } else {
       f.flatMap(r -> r.getRowsUpdated())
@@ -346,7 +346,7 @@ public class TinyIntParameterTest extends BaseTest {
             .bind(2, LocalDate.now())
             .execute();
     if ((isMariaDBServer() && !minVersion(10, 2, 0))
-        || (!isMariaDBServer() && !minVersion(5, 6, 0))) {
+        || (!isMariaDBServer() && !minVersion(5, 7, 0))) {
       f.blockLast();
     } else {
       f.flatMap(r -> r.getRowsUpdated())

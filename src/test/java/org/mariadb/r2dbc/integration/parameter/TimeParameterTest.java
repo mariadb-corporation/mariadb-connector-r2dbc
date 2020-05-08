@@ -98,7 +98,7 @@ public class TimeParameterTest extends BaseTest {
             .bind(2, new BigInteger("-9"))
             .execute();
     if ((isMariaDBServer() && !minVersion(10, 2, 0))
-        || (!isMariaDBServer() && !minVersion(5, 6, 0))) {
+        || (!isMariaDBServer() && !minVersion(5, 7, 0))) {
       f.blockLast();
     } else {
       f.flatMap(r -> r.getRowsUpdated())
@@ -130,7 +130,7 @@ public class TimeParameterTest extends BaseTest {
             .bind(2, "-9")
             .execute();
     if ((isMariaDBServer() && !minVersion(10, 2, 0))
-        || (!isMariaDBServer() && !minVersion(5, 6, 0))) {
+        || (!isMariaDBServer() && !minVersion(5, 7, 0))) {
       f.blockLast();
     } else {
       f.flatMap(r -> r.getRowsUpdated())
@@ -162,7 +162,7 @@ public class TimeParameterTest extends BaseTest {
             .bind(2, new BigDecimal("-9"))
             .execute();
     if ((isMariaDBServer() && !minVersion(10, 2, 0))
-        || (!isMariaDBServer() && !minVersion(5, 6, 0))) {
+        || (!isMariaDBServer() && !minVersion(5, 7, 0))) {
       f.blockLast();
     } else {
       f.flatMap(r -> r.getRowsUpdated())
