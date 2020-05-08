@@ -32,21 +32,19 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
 
   private final Queue<CmdElement> responseReceivers;
   private final Client client;
-  private final PrepareCache prepareCache;
 
   private ConnectionContext context = null;
   private boolean isMultipart = false;
-  private DecoderState state = null;
+  private DecoderState state = DecoderState.INIT_HANDSHAKE;
   private CmdElement cmdElement;
   private CompositeByteBuf multipart;
   private long serverCapabilities;
   private int stateCounter = 0;
 
   public MariadbPacketDecoder(
-      Queue<CmdElement> responseReceivers, PrepareCache prepareCache, Client client) {
+      Queue<CmdElement> responseReceivers, Client client) {
     this.responseReceivers = responseReceivers;
     this.client = client;
-    this.prepareCache = prepareCache;
   }
 
   @Override

@@ -94,7 +94,6 @@ public class PrepareResultSetTest extends BaseTest {
   void resultSetSkippingRes() {
     for (int i = 10; i < 17; i++) {
       int finalI = i;
-      System.out.println("IIIIIIIIIIIIIIIII:" + i);
       sharedConnPrepare
           .createStatement("SELECT * FROM PrepareResultSetTest WHERE 1 = ?")
           .bind(0, 1)

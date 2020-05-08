@@ -68,7 +68,7 @@ public abstract class ClientBase implements Client {
             ? new PrepareCache(this.configuration.getPrepareCacheSize(), this)
             : null;
     this.mariadbPacketDecoder =
-        new MariadbPacketDecoder(responseReceivers, this.prepareCache, this);
+        new MariadbPacketDecoder(responseReceivers,this);
 
     connection.addHandler(mariadbPacketDecoder);
     connection.addHandler(mariadbPacketEncoder);

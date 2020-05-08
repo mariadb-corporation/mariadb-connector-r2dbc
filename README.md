@@ -29,7 +29,7 @@ The MariaDB Connector is available through maven using :
     <dependency>
         <groupId>org.mariadb</groupId>
         <artifactId>r2dbc-mariadb</artifactId>
-        <version>0.8.1-alpha1</version>
+        <version>0.8.2-alpha2</version>
     </dependency>
 ```
 
@@ -96,6 +96,8 @@ Basic example:
 | **`cachingRsaPublicKey`** | <i>only for MySQL server</i><br/> Server caching RSA public key, for cachingSHA256 authentication |*String* | |
 | **`allowPublicKeyRetrieval`** | <i>only for MySQL server</i><br/> Permit retrieved Server RSA public key from server. This can create a security issue |*boolean* | true | 
 | **`allowPipelining`** | Permit to send queries to server without waiting for previous query to finish |*boolean* | | 
+| **`useServerPrepStmts`** | Permit to indicate to use text or binary protocol for query with parameter |*boolean* |false | 
+| **`prepareCacheSize`** | if useServerPrepStmts = true, cache the prepared informations in a LRU cache to avoid re-preparation of command. Next use of that command, only prepared identifier and parameters (if any) will be sent to server. This mainly permit for server to avoid reparsing query. |*int* |256 | 
       
 ## Roadmap
 
