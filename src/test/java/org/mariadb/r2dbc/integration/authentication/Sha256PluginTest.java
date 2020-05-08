@@ -34,7 +34,8 @@ public class Sha256PluginTest extends BaseTest {
 
   @BeforeAll
   public static void init() throws Exception {
-    Assumptions.assumeTrue(!isMariaDBServer() && minVersion(5, 7, 0));
+    boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+    Assumptions.assumeTrue(!isWindows && !isMariaDBServer() && minVersion(5, 7, 0));
 
     rsaPublicKey = System.getProperty("rsaPublicKey");
     if (rsaPublicKey == null && minVersion(8, 0, 0)) {
