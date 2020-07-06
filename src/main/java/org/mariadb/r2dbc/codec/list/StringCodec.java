@@ -20,11 +20,10 @@ import io.netty.buffer.ByteBuf;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
@@ -34,7 +33,7 @@ public class StringCodec implements Codec<String> {
 
   public static final StringCodec INSTANCE = new StringCodec();
 
-  private static EnumSet<DataType> COMPATIBLE_TYPES =
+  private static final EnumSet<DataType> COMPATIBLE_TYPES =
       EnumSet.of(
           DataType.BIT,
           DataType.OLDDECIMAL,
@@ -71,8 +70,12 @@ public class StringCodec implements Codec<String> {
     return value;
   }
 
+  public String className() {
+    return String.class.getName();
+  }
+
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getDataType()) && type.isAssignableFrom(String.class);
+    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(String.class);
   }
 
   public boolean canEncode(Object value) {
@@ -82,7 +85,7 @@ public class StringCodec implements Codec<String> {
   @Override
   public String decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends String> type) {
-    if (column.getDataType() == DataType.BIT) {
+    if (column.getType() == DataType.BIT) {
 
       byte[] bytes = new byte[length];
       buf.readBytes(bytes);
@@ -103,9 +106,9 @@ public class StringCodec implements Codec<String> {
     }
 
     String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-    if (column.isZeroFill()) {
-      return zeroFillingIfNeeded(rawValue, column);
-    }
+    //    if (column.isZeroFill()) {
+    //      return zeroFillingIfNeeded(rawValue, column);
+    //    }
     return rawValue;
   }
 
@@ -113,7 +116,7 @@ public class StringCodec implements Codec<String> {
   public String decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends String> type) {
 
-    switch (column.getDataType()) {
+    switch (column.getType()) {
       case BIT:
         byte[] bytes = new byte[length];
         buf.readBytes(bytes);
@@ -136,7 +139,7 @@ public class StringCodec implements Codec<String> {
         if (!column.isSigned()) {
           return String.valueOf(buf.readUnsignedByte());
         }
-        return String.valueOf((int) buf.readByte());
+        return String.valueOf(buf.readByte());
 
       case YEAR:
         String s = String.valueOf(buf.readUnsignedShortLE());
@@ -204,16 +207,23 @@ public class StringCodec implements Codec<String> {
             }
           }
         }
-
-        Duration duration =
-            Duration.ZERO
-                .plusDays(tDays)
-                .plusHours(tHours)
-                .plusMinutes(tMinutes)
-                .plusSeconds(tSeconds)
-                .plusNanos(tMicroseconds * 1000);
-        if (negate) return duration.negated().toString();
-        return duration.toString();
+        int totalHour = (int) (tDays * 24 + tHours);
+        String stTime =
+            (negate ? "-" : "")
+                + (totalHour < 10 ? "0" : "")
+                + totalHour
+                + ":"
+                + (tMinutes < 10 ? "0" : "")
+                + tMinutes
+                + ":"
+                + (tSeconds < 10 ? "0" : "")
+                + tSeconds;
+        if (column.getDecimals() == 0) return stTime;
+        String stMicro = String.valueOf(tMicroseconds);
+        while (stMicro.length() < column.getDecimals()) {
+          stMicro = "0" + stMicro;
+        }
+        return stTime + "." + stMicro;
 
       case DATE:
         int dateYear = buf.readUnsignedShortLE();
@@ -243,9 +253,10 @@ public class StringCodec implements Codec<String> {
             microseconds = buf.readUnsignedIntLE();
           }
         }
-        return LocalDateTime.of(year, month, day, hour, minutes, seconds)
-            .plusNanos(microseconds * 1000)
-            .toString();
+        LocalDateTime dateTime =
+            LocalDateTime.of(year, month, day, hour, minutes, seconds)
+                .plusNanos(microseconds * 1000);
+        return dateTime.toLocalDate().toString() + ' ' + dateTime.toLocalTime().toString();
 
       default:
         return buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
@@ -253,19 +264,19 @@ public class StringCodec implements Codec<String> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, ConnectionContext context, String value) {
+  public void encodeText(ByteBuf buf, Context context, String value) {
     BufferUtils.write(buf, value, true, true, context);
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, ConnectionContext context, String value) {
-    byte[] valueBytes = value.getBytes(StandardCharsets.UTF_8);
-    BufferUtils.writeLengthEncode(valueBytes.length, buf);
-    buf.writeBytes(valueBytes);
+  public void encodeBinary(ByteBuf buf, Context context, String value) {
+    byte[] b = value.getBytes(StandardCharsets.UTF_8);
+    BufferUtils.writeLengthEncode(b.length, buf);
+    buf.writeBytes(b);
   }
 
   public DataType getBinaryEncodeType() {
-    return DataType.VARCHAR;
+    return DataType.VARSTRING;
   }
 
   @Override

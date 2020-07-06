@@ -195,7 +195,7 @@ public class TimeParameterTest extends BaseTest {
         .blockLast();
     validate(
         Optional.of(Duration.parse("PT1S")),
-        Optional.of(Duration.parse("PT1S")),
+        Optional.of(Duration.parse("PT-1S")),
         Optional.of(Duration.parse("PT0M")));
   }
 
@@ -219,7 +219,7 @@ public class TimeParameterTest extends BaseTest {
         .blockLast();
     validate(
         Optional.of(Duration.parse("PT1M27S")),
-        Optional.of(Duration.parse("PT1M28S")),
+        Optional.of(Duration.parse("PT-1M-28S")),
         Optional.of(Duration.parse("PT0M")));
   }
 
@@ -243,7 +243,7 @@ public class TimeParameterTest extends BaseTest {
         .blockLast();
     validate(
         Optional.of(Duration.parse("PT1M27S")),
-        Optional.of(Duration.parse("PT1M28S")),
+        Optional.of(Duration.parse("PT-1M-28S")),
         Optional.of(Duration.parse("PT0M")));
   }
 
@@ -291,7 +291,7 @@ public class TimeParameterTest extends BaseTest {
         .blockLast();
     validate(
         Optional.of(Duration.parse("PT1S")),
-        Optional.of(Duration.parse("PT1S")),
+        Optional.of(Duration.parse("PT-1S")),
         Optional.of(Duration.parse("PT0M")));
   }
 
@@ -315,7 +315,7 @@ public class TimeParameterTest extends BaseTest {
         .blockLast();
     validate(
         Optional.of(Duration.parse("PT1S")),
-        Optional.of(Duration.parse("PT1S")),
+        Optional.of(Duration.parse("PT-1S")),
         Optional.of(Duration.parse("PT0M")));
   }
 

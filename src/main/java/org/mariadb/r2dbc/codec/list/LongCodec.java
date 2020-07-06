@@ -17,11 +17,13 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
@@ -31,16 +33,23 @@ public class LongCodec implements Codec<Long> {
 
   public static final LongCodec INSTANCE = new LongCodec();
 
-  private static EnumSet<DataType> COMPATIBLE_TYPES =
+  private static final EnumSet<DataType> COMPATIBLE_TYPES =
       EnumSet.of(
+          DataType.FLOAT,
+          DataType.DOUBLE,
+          DataType.OLDDECIMAL,
+          DataType.VARCHAR,
+          DataType.DECIMAL,
+          DataType.ENUM,
+          DataType.VARSTRING,
+          DataType.STRING,
           DataType.TINYINT,
           DataType.SMALLINT,
           DataType.MEDIUMINT,
           DataType.INTEGER,
-          DataType.YEAR,
-          DataType.FLOAT,
-          DataType.DOUBLE,
-          DataType.DECIMAL);
+          DataType.BIGINT,
+          DataType.BIT,
+          DataType.YEAR);
 
   public static long parse(ByteBuf buf, int length) {
     long result = 0;
@@ -60,9 +69,12 @@ public class LongCodec implements Codec<Long> {
     return result;
   }
 
+  public String className() {
+    return Long.class.getName();
+  }
+
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return (COMPATIBLE_TYPES.contains(column.getDataType())
-            || (column.getDataType() == DataType.BIGINT && column.isSigned()))
+    return COMPATIBLE_TYPES.contains(column.getType())
         && ((type.isPrimitive() && type == Integer.TYPE) || type.isAssignableFrom(Long.class));
   }
 
@@ -73,7 +85,8 @@ public class LongCodec implements Codec<Long> {
   @Override
   public Long decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Long> type) {
-    switch (column.getDataType()) {
+    long result;
+    switch (column.getType()) {
       case TINYINT:
       case SMALLINT:
       case MEDIUMINT:
@@ -81,47 +94,126 @@ public class LongCodec implements Codec<Long> {
       case YEAR:
         return parse(buf, length);
 
+      case BIGINT:
+        if (column.isSigned()) {
+          result = parse(buf, length);
+          break;
+        } else {
+          BigInteger val =
+              new BigInteger(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
+          try {
+            return val.longValueExact();
+          } catch (ArithmeticException ae) {
+            throw new R2dbcNonTransientResourceException(
+                String.format("value '%s' cannot be decoded as Long", val.toString()));
+          }
+        }
+
+      case BIT:
+        result = 0;
+        for (int i = 0; i < Math.min(length, 8); i++) {
+          byte b = buf.readByte();
+          result = (result << 8) + (b & 0xff);
+        }
+        if (length > 8) {
+          buf.skipBytes(length - 8);
+        }
+        return result;
+
       case DECIMAL:
       case DOUBLE:
       case FLOAT:
         String str1 = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
-        return new BigDecimal(str1).longValue();
+        try {
+          result = new BigDecimal(str1).setScale(0, RoundingMode.DOWN).longValue();
+          break;
+        } catch (NumberFormatException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' cannot be decoded as Long", str1));
+        }
+
+      case VARCHAR:
+      case VARSTRING:
+      case STRING:
+        String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          result = new BigInteger(str).longValueExact();
+          break;
+        } catch (NumberFormatException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' cannot be decoded as Long", str));
+        }
 
       default:
-        String str = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
-        return new BigInteger(str).longValueExact();
+        buf.skipBytes(length);
+        throw new R2dbcNonTransientResourceException(
+            String.format("Data type %s cannot be decoded as Long", column.getType()));
     }
+
+    if (result < 0 & !column.isSigned()) {
+      throw new R2dbcNonTransientResourceException("long overflow");
+    }
+    return result;
   }
 
   @Override
   public Long decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Long> type) {
 
-    switch (column.getDataType()) {
+    switch (column.getType()) {
+      case BIT:
+        long result = 0;
+        for (int i = 0; i < Math.min(length, 8); i++) {
+          byte b = buf.readByte();
+          result = (result << 8) + (b & 0xff);
+        }
+        if (length > 8) {
+          buf.skipBytes(length - 8);
+        }
+        return result;
+
       case TINYINT:
         if (!column.isSigned()) {
-          return Long.valueOf(buf.readUnsignedByte());
+          return (long) buf.readUnsignedByte();
         }
-        return Long.valueOf((int) buf.readByte());
+        return (long) buf.readByte();
 
       case YEAR:
       case SMALLINT:
         if (!column.isSigned()) {
-          return Long.valueOf(buf.readUnsignedShortLE());
+          return (long) buf.readUnsignedShortLE();
         }
-        return Long.valueOf((int) buf.readShortLE());
+        return (long) buf.readShortLE();
 
       case MEDIUMINT:
         if (!column.isSigned()) {
-          return Long.valueOf((buf.readUnsignedMediumLE()));
+          return (long) buf.readUnsignedMediumLE();
         }
-        return Long.valueOf(buf.readMediumLE());
+        return (long) buf.readMediumLE();
 
       case INTEGER:
         if (!column.isSigned()) {
-          return Long.valueOf(buf.readUnsignedIntLE());
+          return buf.readUnsignedIntLE();
         }
-        return Long.valueOf(buf.readIntLE());
+        return (long) buf.readIntLE();
+
+      case BIGINT:
+        if (column.isSigned()) {
+          return buf.readLongLE();
+        } else {
+          // need BIG ENDIAN, so reverse order
+          byte[] bb = new byte[8];
+          for (int i = 7; i >= 0; i--) {
+            bb[i] = buf.readByte();
+          }
+          BigInteger val = new BigInteger(1, bb);
+          try {
+            return val.longValueExact();
+          } catch (ArithmeticException ae) {
+            throw new R2dbcNonTransientResourceException(
+                String.format("value '%s' cannot be decoded as Long", val.toString()));
+          }
+        }
 
       case FLOAT:
         return (long) buf.readFloatLE();
@@ -134,21 +226,28 @@ public class LongCodec implements Codec<Long> {
       case STRING:
       case OLDDECIMAL:
       case DECIMAL:
-        return new BigDecimal(buf.readCharSequence(length, StandardCharsets.UTF_8).toString())
-            .longValue();
+        String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          return new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValueExact();
+        } catch (NumberFormatException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' cannot be decoded as Long", str));
+        }
 
       default:
-        return buf.readLongLE();
+        buf.skipBytes(length);
+        throw new R2dbcNonTransientResourceException(
+            String.format("Data type %s cannot be decoded as Long", column.getType()));
     }
   }
 
   @Override
-  public void encodeText(ByteBuf buf, ConnectionContext context, Long value) {
+  public void encodeText(ByteBuf buf, Context context, Long value) {
     BufferUtils.writeAscii(buf, String.valueOf(value));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, ConnectionContext context, Long value) {
+  public void encodeBinary(ByteBuf buf, Context context, Long value) {
     buf.writeLongLE(value);
   }
 

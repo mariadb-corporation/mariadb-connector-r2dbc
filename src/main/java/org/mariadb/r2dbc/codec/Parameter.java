@@ -17,7 +17,7 @@
 package org.mariadb.r2dbc.codec;
 
 import io.netty.buffer.ByteBuf;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class Parameter<T> {
@@ -25,7 +25,7 @@ public class Parameter<T> {
   public static final Parameter<?> NULL_PARAMETER =
       new Parameter(null, null) {
         @Override
-        public void encodeText(ByteBuf out, ConnectionContext context) {
+        public void encodeText(ByteBuf out, Context context) {
           BufferUtils.writeAscii(out, "null");
         }
 
@@ -48,11 +48,15 @@ public class Parameter<T> {
     this.value = value;
   }
 
-  public void encodeText(ByteBuf out, ConnectionContext context) {
+  public void encodeText(ByteBuf out, Context context) {
     codec.encodeText(out, context, this.value);
   }
 
-  public void encodeBinary(ByteBuf out, ConnectionContext context) {
+  public void encodeBinary(ByteBuf out, Context context) {
+    codec.encodeBinary(out, context, this.value);
+  }
+
+  public void encodeLongData(ByteBuf out, Context context) {
     codec.encodeBinary(out, context, this.value);
   }
 

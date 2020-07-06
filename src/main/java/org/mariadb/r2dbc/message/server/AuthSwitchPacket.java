@@ -20,7 +20,7 @@ import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Objects;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 
 public class AuthSwitchPacket implements ServerMessage {
 
@@ -34,8 +34,7 @@ public class AuthSwitchPacket implements ServerMessage {
     this.seed = seed;
   }
 
-  public static AuthSwitchPacket decode(
-      Sequencer sequencer, ByteBuf buf, ConnectionContext context) {
+  public static AuthSwitchPacket decode(Sequencer sequencer, ByteBuf buf, Context context) {
     buf.skipBytes(1);
     int nullLength = buf.bytesBefore((byte) 0x00);
     String plugin = buf.toString(buf.readerIndex(), nullLength, StandardCharsets.US_ASCII);

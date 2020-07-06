@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.integration.codec;
 
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -187,12 +188,12 @@ public class TinyIntParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
         .as(StepVerifier::create)
-        .expectNext(
-            Optional.of(Byte.valueOf((byte) 0)),
-            Optional.of(Byte.valueOf((byte) 1)),
-            Optional.of(Byte.valueOf((byte) 255)),
-            Optional.empty())
-        .verifyComplete();
+        .expectNext(Optional.of(Byte.valueOf((byte) 0)), Optional.of(Byte.valueOf((byte) 1)))
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
+        .verify();
   }
 
   @Test
@@ -224,11 +225,11 @@ public class TinyIntParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1), Optional.of((byte) 255))
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable.getMessage().equals("Cannot return null for primitive byte"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
         .verify();
   }
 

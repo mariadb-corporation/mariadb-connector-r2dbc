@@ -17,10 +17,13 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
@@ -30,29 +33,30 @@ public class IntCodec implements Codec<Integer> {
 
   public static final IntCodec INSTANCE = new IntCodec();
 
-  private static EnumSet<DataType> COMPATIBLE_TYPES =
+  private static final EnumSet<DataType> COMPATIBLE_TYPES =
       EnumSet.of(
+          DataType.FLOAT,
+          DataType.DOUBLE,
+          DataType.OLDDECIMAL,
+          DataType.VARCHAR,
+          DataType.DECIMAL,
+          DataType.ENUM,
+          DataType.VARSTRING,
+          DataType.STRING,
           DataType.TINYINT,
           DataType.SMALLINT,
           DataType.MEDIUMINT,
-          DataType.YEAR,
-          DataType.FLOAT,
-          DataType.DOUBLE,
-          DataType.DECIMAL);
+          DataType.INTEGER,
+          DataType.BIGINT,
+          DataType.BIT,
+          DataType.YEAR);
 
-  public static void rangeCheck(
-      String className, long minValue, long maxValue, long value, ColumnDefinitionPacket col) {
-    if (value < minValue || value > maxValue) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Out of range value for column '%s' : value %d  is not in %s range",
-              col.getColumnAlias(), value, className));
-    }
+  public String className() {
+    return Integer.class.getName();
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return (COMPATIBLE_TYPES.contains(column.getDataType())
-            || (column.getDataType() == DataType.INTEGER && column.isSigned()))
+    return COMPATIBLE_TYPES.contains(column.getType())
         && ((type.isPrimitive() && type == Integer.TYPE) || type.isAssignableFrom(Integer.class));
   }
 
@@ -64,20 +68,60 @@ public class IntCodec implements Codec<Integer> {
   public Integer decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Integer> type) {
     long result;
-    switch (column.getDataType()) {
+    switch (column.getType()) {
       case TINYINT:
       case SMALLINT:
       case MEDIUMINT:
       case INTEGER:
-      case BIGINT:
       case YEAR:
         result = LongCodec.parse(buf, length);
         break;
 
+      case BIGINT:
+        result = LongCodec.parse(buf, length);
+        if (result < 0 & !column.isSigned()) {
+          throw new R2dbcNonTransientResourceException("integer overflow");
+        }
+        break;
+
+      case BIT:
+        result = 0;
+        for (int i = 0; i < Math.min(length, 8); i++) {
+          byte b = buf.readByte();
+          result = (result << 8) + (b & 0xff);
+        }
+        if (length > 8) {
+          buf.skipBytes(length - 8);
+        }
+        break;
+
+      case FLOAT:
+      case DOUBLE:
+      case OLDDECIMAL:
+      case VARCHAR:
+      case DECIMAL:
+      case ENUM:
+      case VARSTRING:
+      case STRING:
+        String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValue();
+          break;
+        } catch (NumberFormatException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' cannot be decoded as Integer", str));
+        }
+
       default:
-        String str = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
-        result = new BigDecimal(str).longValue();
+        buf.skipBytes(length);
+        throw new R2dbcNonTransientResourceException(
+            String.format("Data type %s cannot be decoded as Integer", column.getType()));
     }
+
+    if ((int) result != result) {
+      throw new R2dbcNonTransientResourceException("integer overflow");
+    }
+
     return (int) result;
   }
 
@@ -85,51 +129,97 @@ public class IntCodec implements Codec<Integer> {
   public Integer decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Integer> type) {
 
-    switch (column.getDataType()) {
+    long result;
+    switch (column.getType()) {
       case TINYINT:
-        if (!column.isSigned()) {
-          return (int) buf.readUnsignedByte();
-        }
-        return (int) buf.readByte();
+        result = column.isSigned() ? buf.readByte() : buf.readUnsignedByte();
+        break;
 
       case YEAR:
       case SMALLINT:
-        if (!column.isSigned()) {
-          return buf.readUnsignedShortLE();
-        }
-        return (int) buf.readShortLE();
+        result = column.isSigned() ? buf.readShortLE() : buf.readUnsignedShortLE();
+        break;
 
       case MEDIUMINT:
-        if (!column.isSigned()) {
-          return buf.readUnsignedMediumLE();
+        result = column.isSigned() ? buf.readMediumLE() : buf.readUnsignedMediumLE();
+        break;
+
+      case INTEGER:
+        result = column.isSigned() ? buf.readIntLE() : buf.readUnsignedIntLE();
+        break;
+
+      case BIGINT:
+        if (column.isSigned()) {
+          result = buf.readLongLE();
+          break;
+        } else {
+          // need BIG ENDIAN, so reverse order
+          byte[] bb = new byte[8];
+          for (int i = 7; i >= 0; i--) {
+            bb[i] = buf.readByte();
+          }
+          BigInteger val = new BigInteger(1, bb);
+          try {
+            return val.intValueExact();
+          } catch (ArithmeticException ae) {
+            throw new R2dbcNonTransientResourceException("integer overflow");
+          }
         }
-        return buf.readMediumLE();
 
-      case OLDDECIMAL:
-      case DECIMAL:
-      case VARCHAR:
-      case VARSTRING:
-        return new BigDecimal(buf.readCharSequence(length, StandardCharsets.UTF_8).toString())
-            .intValue();
-
-      case DOUBLE:
-        return (int) buf.readDoubleLE();
+      case BIT:
+        result = 0;
+        for (int i = 0; i < Math.min(length, 8); i++) {
+          byte b = buf.readByte();
+          result = (result << 8) + (b & 0xff);
+        }
+        if (length > 8) {
+          buf.skipBytes(length - 8);
+        }
+        break;
 
       case FLOAT:
-        return (int) buf.readFloatLE();
+        result = (long) buf.readFloatLE();
+        break;
+
+      case DOUBLE:
+        result = (long) buf.readDoubleLE();
+        break;
+
+      case OLDDECIMAL:
+      case VARCHAR:
+      case DECIMAL:
+      case ENUM:
+      case VARSTRING:
+      case STRING:
+        String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValue();
+          break;
+        } catch (NumberFormatException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' cannot be decoded as Integer", str));
+        }
 
       default:
-        return buf.readIntLE();
+        buf.skipBytes(length);
+        throw new R2dbcNonTransientResourceException(
+            String.format("Data type %s cannot be decoded as Integer", column.getType()));
     }
+
+    if ((int) result != result || (result < 0 && !column.isSigned())) {
+      throw new R2dbcNonTransientResourceException("integer overflow");
+    }
+
+    return (int) result;
   }
 
   @Override
-  public void encodeText(ByteBuf buf, ConnectionContext context, Integer value) {
+  public void encodeText(ByteBuf buf, Context context, Integer value) {
     BufferUtils.writeAscii(buf, String.valueOf(value));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, ConnectionContext context, Integer value) {
+  public void encodeBinary(ByteBuf buf, Context context, Integer value) {
     buf.writeIntLE(value);
   }
 

@@ -170,18 +170,17 @@ public class BlobParseTest extends BaseTest {
 
   private void ByteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Byte and column type BLOB"))
-        .verify();
+        .expectNext(
+            Optional.of((byte) 100),
+            Optional.of((byte) 103),
+            Optional.of((byte) 108),
+            Optional.empty())
+        .verifyComplete();
   }
 
   @Test
@@ -196,17 +195,16 @@ public class BlobParseTest extends BaseTest {
 
   private void byteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 100), Optional.of((byte) 103), Optional.of((byte) 108))
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type byte and column type BLOB"))
+                    && throwable.getMessage().equals("Cannot return null for primitive byte"))
         .verify();
   }
 

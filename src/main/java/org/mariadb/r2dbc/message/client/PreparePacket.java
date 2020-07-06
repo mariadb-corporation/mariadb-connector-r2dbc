@@ -19,7 +19,7 @@ package org.mariadb.r2dbc.message.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.Assert;
 
@@ -40,7 +40,7 @@ public final class PreparePacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(ConnectionContext context, ByteBufAllocator allocator) {
+  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
     ByteBuf buf = allocator.ioBuffer(this.sql.length() + 1);
     buf.writeByte(0x16);
     buf.writeCharSequence(this.sql, StandardCharsets.UTF_8);

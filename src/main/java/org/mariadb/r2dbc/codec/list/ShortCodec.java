@@ -17,8 +17,12 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import java.util.EnumSet;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
@@ -28,12 +32,26 @@ public class ShortCodec implements Codec<Short> {
 
   public static final ShortCodec INSTANCE = new ShortCodec();
 
+  private static final EnumSet<DataType> COMPATIBLE_TYPES =
+      EnumSet.of(
+          DataType.FLOAT,
+          DataType.DOUBLE,
+          DataType.OLDDECIMAL,
+          DataType.VARCHAR,
+          DataType.DECIMAL,
+          DataType.ENUM,
+          DataType.VARSTRING,
+          DataType.STRING,
+          DataType.TINYINT,
+          DataType.SMALLINT,
+          DataType.MEDIUMINT,
+          DataType.INTEGER,
+          DataType.BIGINT,
+          DataType.BIT,
+          DataType.YEAR);
+
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return (column.getDataType() == DataType.TINYINT
-            || (column.getDataType() == DataType.SMALLINT && column.isSigned())
-            || column.getDataType() == DataType.YEAR
-            || column.getDataType() == DataType.FLOAT
-            || column.getDataType() == DataType.DOUBLE)
+    return COMPATIBLE_TYPES.contains(column.getType())
         && ((type.isPrimitive() && type == Short.TYPE) || type.isAssignableFrom(Short.class));
   }
 
@@ -41,51 +59,149 @@ public class ShortCodec implements Codec<Short> {
     return value instanceof Short;
   }
 
+  public String className() {
+    return Short.class.getName();
+  }
+
   @Override
   public Short decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Short> type) {
-    switch (column.getDataType()) {
-      case DOUBLE:
-        String str = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
-        return Double.valueOf(str).shortValue();
+    long result;
+    switch (column.getType()) {
+      case TINYINT:
+      case SMALLINT:
+      case MEDIUMINT:
+      case INTEGER:
+      case BIGINT:
+      case YEAR:
+        result = LongCodec.parse(buf, length);
+        break;
+
+      case BIT:
+        result = 0;
+        for (int i = 0; i < Math.min(length, 8); i++) {
+          byte b = buf.readByte();
+          result = (result << 8) + (b & 0xff);
+        }
+        if (length > 8) {
+          buf.skipBytes(length - 8);
+        }
+        break;
 
       case FLOAT:
-        String str2 = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
-        return Float.valueOf(str2).shortValue();
+      case DOUBLE:
+      case OLDDECIMAL:
+      case VARCHAR:
+      case DECIMAL:
+      case ENUM:
+      case VARSTRING:
+      case STRING:
+        String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValue();
+          break;
+        } catch (NumberFormatException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' cannot be decoded as Short", str));
+        }
 
       default:
-        return (short) LongCodec.parse(buf, length);
+        buf.skipBytes(length);
+        throw new R2dbcNonTransientResourceException(
+            String.format("Data type %s cannot be decoded as Short", column.getType()));
     }
+
+    if ((short) result != result || (result < 0 && !column.isSigned())) {
+      throw new R2dbcNonTransientResourceException("Short overflow");
+    }
+
+    return (short) result;
   }
 
   @Override
   public Short decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Short> type) {
-    switch (column.getDataType()) {
-      case TINYINT:
-        if (!column.isSigned()) {
-          return buf.readUnsignedByte();
-        }
-        return (short) buf.readByte();
 
-      case DOUBLE:
-        return (short) buf.readDoubleLE();
+    long result;
+    switch (column.getType()) {
+      case TINYINT:
+        result = column.isSigned() ? buf.readByte() : buf.readUnsignedByte();
+        break;
+
+      case YEAR:
+      case SMALLINT:
+        result = column.isSigned() ? buf.readShortLE() : buf.readUnsignedShortLE();
+        break;
+
+      case MEDIUMINT:
+        result = column.isSigned() ? buf.readMediumLE() : buf.readUnsignedMediumLE();
+        break;
+
+      case INTEGER:
+        result = column.isSigned() ? buf.readIntLE() : buf.readUnsignedIntLE();
+        break;
+
+      case BIGINT:
+        result = buf.readLongLE();
+        if (result < 0 & !column.isSigned()) {
+          throw new R2dbcNonTransientResourceException("Short overflow");
+        }
+        break;
+
+      case BIT:
+        result = 0;
+        for (int i = 0; i < Math.min(length, 8); i++) {
+          byte b = buf.readByte();
+          result = (result << 8) + (b & 0xff);
+        }
+        if (length > 8) {
+          buf.skipBytes(length - 8);
+        }
+        break;
 
       case FLOAT:
-        return (short) buf.readFloatLE();
+        result = (long) buf.readFloatLE();
+        break;
 
-      default: // YEAR and SMALLINT
-        return buf.readShortLE();
+      case DOUBLE:
+        result = (long) buf.readDoubleLE();
+        break;
+
+      case OLDDECIMAL:
+      case VARCHAR:
+      case DECIMAL:
+      case ENUM:
+      case VARSTRING:
+      case STRING:
+        String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValue();
+          break;
+        } catch (NumberFormatException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' cannot be decoded as Short", str));
+        }
+
+      default:
+        buf.skipBytes(length);
+        throw new R2dbcNonTransientResourceException(
+            String.format("Data type %s cannot be decoded as Short", column.getType()));
     }
+
+    if ((short) result != result || (result < 0 && !column.isSigned())) {
+      throw new R2dbcNonTransientResourceException("Short overflow");
+    }
+
+    return (short) result;
   }
 
   @Override
-  public void encodeText(ByteBuf buf, ConnectionContext context, Short value) {
+  public void encodeText(ByteBuf buf, Context context, Short value) {
     BufferUtils.writeAscii(buf, String.valueOf(value));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, ConnectionContext context, Short value) {
+  public void encodeBinary(ByteBuf buf, Context context, Short value) {
     buf.writeShortLE(value);
   }
 

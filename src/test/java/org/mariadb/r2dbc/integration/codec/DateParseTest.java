@@ -452,18 +452,16 @@ public class DateParseTest extends BaseTest {
 
   private void localDateTimeValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DateTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(
             r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalDateTime.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.time.LocalDateTime and column type DATE"))
-        .verify();
+        .expectNext(
+            Optional.of(LocalDateTime.parse("2010-01-12T00:00")),
+            Optional.of(LocalDateTime.parse("2011-02" + "-28T00:00")),
+            Optional.empty())
+        .verifyComplete();
   }
 }

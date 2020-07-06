@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.integration.codec;
 
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -96,18 +97,13 @@ public class FloatParseTest extends BaseTest {
 
   private void booleanValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Boolean.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Boolean and column type FLOAT"))
-        .verify();
+        .expectNext(Optional.of(false), Optional.of(true), Optional.of(true), Optional.empty())
+        .verifyComplete();
   }
 
   @Test
@@ -148,17 +144,21 @@ public class FloatParseTest extends BaseTest {
 
   private void ByteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Byte and column type FLOAT"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && (throwable
+                            .getMessage()
+                            .equals("value '922.922' (FLOAT) cannot be decoded as Byte")
+                        | throwable
+                            .getMessage()
+                            .equals("value '922.9223' (FLOAT) cannot be decoded as Byte")))
         .verify();
   }
 
@@ -174,17 +174,21 @@ public class FloatParseTest extends BaseTest {
 
   private void byteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ? LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type byte and column type FLOAT"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && (throwable
+                            .getMessage()
+                            .equals("value '922.922' (FLOAT) cannot be decoded as Byte")
+                        | throwable
+                            .getMessage()
+                            .equals("value '922.9223' (FLOAT) cannot be decoded as Byte")))
         .verify();
   }
 

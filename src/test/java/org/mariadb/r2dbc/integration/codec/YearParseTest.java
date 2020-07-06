@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.integration.codec;
 
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -165,10 +166,8 @@ public class YearParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Byte and column type YEAR"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
         .verify();
   }
 
@@ -191,10 +190,8 @@ public class YearParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type byte and column type YEAR"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
         .verify();
   }
 
@@ -318,20 +315,20 @@ public class YearParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Float.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of(2060F), Optional.of(2071F), Optional.of(0F), Optional.empty())
-        .verifyComplete();
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("Data type YEAR cannot be decoded as Float"));
     connection
         .createStatement("SELECT t2 FROM YearTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Float.class))))
         .as(StepVerifier::create)
-        .expectNext(
-            Optional.of(meta.isMariaDBServer() ? 60F : 2060F),
-            Optional.of(meta.isMariaDBServer() ? 71F : 1971F),
-            Optional.of(0F),
-            Optional.empty())
-        .verifyComplete();
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("Data type YEAR cannot be decoded as Float"));
   }
 
   @Test
@@ -351,20 +348,21 @@ public class YearParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Double.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of(2060D), Optional.of(2071D), Optional.of(0D), Optional.empty())
-        .verifyComplete();
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("Data type YEAR cannot be decoded as Double"));
+
     connection
         .createStatement("SELECT t2 FROM YearTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Double.class))))
         .as(StepVerifier::create)
-        .expectNext(
-            Optional.of(meta.isMariaDBServer() ? 60D : 2060D),
-            Optional.of(meta.isMariaDBServer() ? 71D : 1971D),
-            Optional.of(0D),
-            Optional.empty())
-        .verifyComplete();
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("Data type YEAR cannot be decoded as Double"));
   }
 
   @Test
@@ -454,24 +452,24 @@ public class YearParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BigDecimal.class))))
         .as(StepVerifier::create)
-        .expectNext(
-            Optional.of(new BigDecimal("2060")),
-            Optional.of(new BigDecimal("2071")),
-            Optional.of(new BigDecimal("0")),
-            Optional.empty())
-        .verifyComplete();
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable
+                        .getMessage()
+                        .equals("Data type YEAR cannot be decoded as BigDecimal"));
     connection
         .createStatement("SELECT t2 FROM YearTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BigDecimal.class))))
         .as(StepVerifier::create)
-        .expectNext(
-            Optional.of(new BigDecimal(meta.isMariaDBServer() ? "60" : "2060")),
-            Optional.of(new BigDecimal(meta.isMariaDBServer() ? "71" : "1971")),
-            Optional.of(BigDecimal.ZERO),
-            Optional.empty())
-        .verifyComplete();
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable
+                        .getMessage()
+                        .equals("Data type YEAR cannot be decoded as BigDecimal"));
   }
 
   @Test

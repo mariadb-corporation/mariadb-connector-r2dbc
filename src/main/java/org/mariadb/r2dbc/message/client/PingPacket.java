@@ -18,12 +18,12 @@ package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 
 public final class PingPacket implements ClientMessage {
 
   @Override
-  public ByteBuf encode(ConnectionContext context, ByteBufAllocator allocator) {
+  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
     ByteBuf buf = allocator.ioBuffer();
     buf.writeByte(0x0e);
     return buf;

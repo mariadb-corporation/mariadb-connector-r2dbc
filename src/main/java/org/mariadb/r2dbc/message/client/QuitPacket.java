@@ -18,13 +18,13 @@ package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 
 public final class QuitPacket implements ClientMessage {
   public static final QuitPacket INSTANCE = new QuitPacket();
 
   @Override
-  public ByteBuf encode(ConnectionContext context, ByteBufAllocator allocator) {
+  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
     ByteBuf buf = allocator.ioBuffer(1);
     buf.writeByte(0x01);
     return buf;

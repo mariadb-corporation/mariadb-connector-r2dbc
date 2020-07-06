@@ -17,23 +17,34 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BufferUtils;
 
 public class DurationCodec implements Codec<Duration> {
 
   public static final DurationCodec INSTANCE = new DurationCodec();
 
-  private static EnumSet<DataType> COMPATIBLE_TYPES =
-      EnumSet.of(DataType.TIME, DataType.DATETIME, DataType.TIMESTAMP);
+  private static final EnumSet<DataType> COMPATIBLE_TYPES =
+      EnumSet.of(
+          DataType.TIME,
+          DataType.DATETIME,
+          DataType.TIMESTAMP,
+          DataType.VARSTRING,
+          DataType.VARCHAR,
+          DataType.STRING);
+
+  public String className() {
+    return Duration.class.getName();
+  }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getDataType()) && type.isAssignableFrom(Duration.class);
+    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(Duration.class);
   }
 
   public boolean canEncode(Object value) {
@@ -45,10 +56,12 @@ public class DurationCodec implements Codec<Duration> {
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Duration> type) {
 
     int[] parts;
-    switch (column.getDataType()) {
+    switch (column.getType()) {
       case TIMESTAMP:
       case DATETIME:
-        parts = LocalDateTimeCodec.parseTimestamp(buf, length);
+        parts =
+            LocalDateTimeCodec.parseTimestamp(
+                buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
         if (parts == null) return null;
         return Duration.ZERO
             .plusDays(parts[2] - 1)
@@ -57,13 +70,24 @@ public class DurationCodec implements Codec<Duration> {
             .plusSeconds(parts[5])
             .plusNanos(parts[6]);
 
+      case TIME:
+      case VARCHAR:
+      case VARSTRING:
+      case STRING:
+        parts = LocalTimeCodec.parseTime(buf, length, column);
+        Duration d =
+            Duration.ZERO
+                .plusHours(parts[1])
+                .plusMinutes(parts[2])
+                .plusSeconds(parts[3])
+                .plusNanos(parts[4]);
+        if (parts[0] == 1) return d.negated();
+        return d;
+
       default:
-        parts = LocalTimeCodec.parseTime(buf, length);
-        return Duration.ZERO
-            .plusHours(parts[0])
-            .plusMinutes(parts[1])
-            .plusSeconds(parts[2])
-            .plusNanos(parts[3]);
+        buf.skipBytes(length);
+        throw new R2dbcNonTransientResourceException(
+            String.format("Data type %s cannot be decoded as Duration", column.getType()));
     }
   }
 
@@ -77,7 +101,7 @@ public class DurationCodec implements Codec<Duration> {
     int seconds = 0;
     long microseconds = 0;
 
-    switch (column.getDataType()) {
+    switch (column.getType()) {
       case TIME:
         boolean negate = false;
         if (length > 0) {
@@ -128,12 +152,24 @@ public class DurationCodec implements Codec<Duration> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, ConnectionContext context, Duration value) {
-    BufferUtils.write(buf, value);
+  public void encodeText(ByteBuf buf, Context context, Duration val) {
+    long s = val.getSeconds();
+    long microSecond = val.getNano() / 1000;
+    buf.writeByte('\'');
+    if (microSecond != 0) {
+      buf.writeCharSequence(
+          String.format("%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), microSecond),
+          StandardCharsets.US_ASCII);
+    } else {
+      buf.writeCharSequence(
+          String.format("%d:%02d:%02d", s / 3600, (s % 3600) / 60, (s % 60)),
+          StandardCharsets.US_ASCII);
+    }
+    buf.writeByte('\'');
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, ConnectionContext context, Duration value) {
+  public void encodeBinary(ByteBuf buf, Context context, Duration value) {
     int nano = value.getNano();
     if (nano > 0) {
       buf.writeByte((byte) 12);

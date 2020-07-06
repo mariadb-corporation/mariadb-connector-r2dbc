@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.integration.codec;
 
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -184,32 +185,28 @@ public class BigIntegerParseTest extends BaseTest {
 
   private void ByteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM BigIntTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM BigIntTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Byte and column type BIGINT(signed)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
         .verify();
     connection
-        .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Byte and column type BIGINT(unsigned)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
         .verify();
   }
 
@@ -225,30 +222,28 @@ public class BigIntegerParseTest extends BaseTest {
 
   private void byteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM BigIntTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM BigIntTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type byte and column type BIGINT(signed)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
         .verify();
     connection
-        .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type byte and column type BIGINT(unsigned)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
         .verify();
   }
 
@@ -264,32 +259,28 @@ public class BigIntegerParseTest extends BaseTest {
 
   private void shortValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM BigIntTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM BigIntTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((short) 0), Optional.of((short) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Short and column type BIGINT(signed)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("Short overflow"))
         .verify();
     connection
-        .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((short) 0), Optional.of((short) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Short and column type BIGINT(unsigned)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("Short overflow"))
         .verify();
   }
 
@@ -305,32 +296,28 @@ public class BigIntegerParseTest extends BaseTest {
 
   private void intValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM BigIntTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM BigIntTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Integer.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of(0), Optional.of(1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Integer and column type BIGINT(signed)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("integer overflow"))
         .verify();
     connection
-        .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Integer.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of(0), Optional.of(1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Integer and column type BIGINT(unsigned)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("integer overflow"))
         .verify();
   }
 
@@ -364,18 +351,18 @@ public class BigIntegerParseTest extends BaseTest {
             Optional.of(0L), Optional.of(1L), Optional.of(9223372036854775807L), Optional.empty())
         .verifyComplete();
     connection
-        .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Long.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of(0L), Optional.of(1L))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
+                throwable instanceof R2dbcNonTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Long and column type BIGINT(unsigned)"))
+                        .equals("value '18446744073709551615' cannot be decoded as Long"))
         .verify();
   }
 

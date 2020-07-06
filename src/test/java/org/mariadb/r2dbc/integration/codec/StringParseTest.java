@@ -17,7 +17,7 @@
 package org.mariadb.r2dbc.integration.codec;
 
 import io.r2dbc.spi.Clob;
-import io.r2dbc.spi.R2dbcTransientResourceException;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -34,9 +34,14 @@ import reactor.test.StepVerifier;
 public class StringParseTest extends BaseTest {
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("CREATE TABLE StringTable (t1 varchar(256))").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE StringTable").execute().blockLast();
     sharedConn
-        .createStatement("INSERT INTO StringTable VALUES ('some'),('1'),('0'), (null)")
+        .createStatement(
+            "CREATE TABLE StringTable (t1 varchar(256)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement("INSERT INTO StringTable VALUES ('some🌟'),('1'),('0'), (null)")
         .execute()
         .blockLast();
     // ensure having same kind of result for truncation
@@ -68,7 +73,7 @@ public class StringParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of("some"), Optional.of("1"), Optional.of("0"), Optional.empty())
+        .expectNext(Optional.of("some🌟"), Optional.of("1"), Optional.of("0"), Optional.empty())
         .verifyComplete();
   }
 
@@ -93,7 +98,7 @@ public class StringParseTest extends BaseTest {
             val ->
                 val.handle(
                         (ch, sink) -> {
-                          if (ch.equals("some")) {
+                          if (ch.equals("some🌟")) {
                             sink.complete();
                           } else {
                             sink.error(new Exception("ERROR"));
@@ -152,7 +157,8 @@ public class StringParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte[].class))))
         .as(StepVerifier::create)
-        .expectNextMatches(val -> Arrays.equals(val.get(), "some".getBytes(StandardCharsets.UTF_8)))
+        .expectNextMatches(
+            val -> Arrays.equals(val.get(), "some🌟".getBytes(StandardCharsets.UTF_8)))
         .expectNextMatches(val -> Arrays.equals(val.get(), "1".getBytes(StandardCharsets.UTF_8)))
         .expectNextMatches(val -> Arrays.equals(val.get(), "0".getBytes(StandardCharsets.UTF_8)))
         .expectNextMatches(val -> !val.isPresent())
@@ -178,10 +184,10 @@ public class StringParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
+                throwable instanceof R2dbcNonTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals("No decoder for type java.lang.Byte and column type VARSTRING"))
+                        .equals("value 'some\uD83C\uDF1F' (VARSTRING) cannot be decoded as Byte"))
         .verify();
   }
 
@@ -204,10 +210,10 @@ public class StringParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
+                throwable instanceof R2dbcNonTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals("No decoder for type byte and column type VARSTRING"))
+                        .equals("value 'some\uD83C\uDF1F' (VARSTRING) cannot be decoded as Byte"))
         .verify();
   }
 
@@ -230,10 +236,10 @@ public class StringParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
+                throwable instanceof R2dbcNonTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals("No decoder for type java.lang.Short and column type VARSTRING"))
+                        .equals("value 'some\uD83C\uDF1F' cannot be decoded as Short"))
         .verify();
   }
 
@@ -256,10 +262,10 @@ public class StringParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
+                throwable instanceof R2dbcNonTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals("No decoder for type java.lang.Integer and column type VARSTRING"))
+                        .equals("value 'some\uD83C\uDF1F' cannot be decoded as Integer"))
         .verify();
   }
 
@@ -282,10 +288,10 @@ public class StringParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
+                throwable instanceof R2dbcNonTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals("No decoder for type java.lang.Long and column type VARSTRING"))
+                        .equals("value 'some\uD83C\uDF1F' cannot be decoded as Long"))
         .verify();
   }
 
@@ -308,10 +314,10 @@ public class StringParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
+                throwable instanceof R2dbcNonTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals("No decoder for type java.lang.Float and column type VARSTRING"))
+                        .equals("value 'some\uD83C\uDF1F' cannot be decoded as Float"))
         .verify();
   }
 
@@ -334,10 +340,10 @@ public class StringParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
+                throwable instanceof R2dbcNonTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals("No decoder for type java.lang.Double and column type VARSTRING"))
+                        .equals("value 'some\uD83C\uDF1F' cannot be decoded as Double"))
         .verify();
   }
 
@@ -358,7 +364,7 @@ public class StringParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of("some"), Optional.of("1"), Optional.of("0"), Optional.empty())
+        .expectNext(Optional.of("some🌟"), Optional.of("1"), Optional.of("0"), Optional.empty())
         .verifyComplete();
   }
 
@@ -381,11 +387,10 @@ public class StringParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
+                throwable instanceof R2dbcNonTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals(
-                            "No decoder for type java.math.BigDecimal and column type VARSTRING"))
+                        .equals("value 'some\uD83C\uDF1F' cannot be decoded as BigDecimal"))
         .verify();
   }
 
@@ -408,11 +413,10 @@ public class StringParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
+                throwable instanceof R2dbcNonTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals(
-                            "No decoder for type java.math.BigInteger and column type VARSTRING"))
+                        .equals("value 'some\uD83C\uDF1F' cannot be decoded as BigInteger"))
         .verify();
   }
 }

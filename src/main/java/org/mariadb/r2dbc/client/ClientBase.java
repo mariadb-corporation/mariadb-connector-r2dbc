@@ -57,7 +57,7 @@ public abstract class ClientBase implements Client {
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final MariadbPacketDecoder mariadbPacketDecoder;
   private final MariadbPacketEncoder mariadbPacketEncoder = new MariadbPacketEncoder();
-  private volatile ConnectionContext context;
+  private volatile Context context;
   private final PrepareCache prepareCache;
 
   protected ClientBase(Connection connection, MariadbConnectionConfiguration configuration) {
@@ -167,7 +167,7 @@ public abstract class ClientBase implements Client {
 
   public void setContext(InitialHandshakePacket handshake) {
     this.context =
-        new ConnectionContext(
+        new Context(
             handshake.getServerVersion(),
             handshake.getThreadId(),
             handshake.getSeed(),

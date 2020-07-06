@@ -29,7 +29,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.BitSet;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 import reactor.core.publisher.Flux;
 
@@ -272,13 +272,13 @@ public class BufferUtils {
     buf.writeCharSequence(sb.toString(), StandardCharsets.US_ASCII);
   }
 
-  public static void write(ByteBuf buf, byte[] val, ConnectionContext context) {
+  public static void write(ByteBuf buf, byte[] val, Context context) {
     buf.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
     writeEscaped(buf, val, 0, val.length, context);
     buf.writeByte(QUOTE);
   }
 
-  public static void write(ByteBuf buffer, Clob val, ConnectionContext context) {
+  public static void write(ByteBuf buffer, Clob val, Context context) {
     buffer.writeByte(QUOTE);
     Flux.from(val.stream())
         .handle(
@@ -290,7 +290,7 @@ public class BufferUtils {
     buffer.writeByte(QUOTE);
   }
 
-  public static void write(ByteBuf buffer, Blob val, ConnectionContext context) {
+  public static void write(ByteBuf buffer, Blob val, Context context) {
     buffer.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
     Flux.from(val.stream())
         .handle(
@@ -312,7 +312,7 @@ public class BufferUtils {
         .subscribe();
   }
 
-  public static void write(ByteBuf buf, InputStream val, ConnectionContext context) {
+  public static void write(ByteBuf buf, InputStream val, Context context) {
     try {
       buf.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
       BufferUtils.write(buf, val, true, context);
@@ -322,7 +322,7 @@ public class BufferUtils {
     }
   }
 
-  private static void write(ByteBuf buf, InputStream is, boolean escape, ConnectionContext context)
+  private static void write(ByteBuf buf, InputStream is, boolean escape, Context context)
       throws IOException {
     byte[] array = new byte[4096];
     int len;
@@ -337,8 +337,7 @@ public class BufferUtils {
     }
   }
 
-  public static void writeEscaped(
-      ByteBuf buf, byte[] bytes, int offset, int len, ConnectionContext context) {
+  public static void writeEscaped(ByteBuf buf, byte[] bytes, int offset, int len, Context context) {
     buf.ensureWritable(len * 2);
     boolean noBackslashEscapes =
         (context.getServerStatus() & ServerStatus.NO_BACKSLASH_ESCAPES) > 0;
@@ -364,7 +363,7 @@ public class BufferUtils {
   }
 
   public static ByteBuf write(
-      ByteBuf buf, String str, boolean quote, boolean escape, ConnectionContext context) {
+      ByteBuf buf, String str, boolean quote, boolean escape, Context context) {
 
     int charsLength = str.length();
     buf.ensureWritable(charsLength * 3 + 2);

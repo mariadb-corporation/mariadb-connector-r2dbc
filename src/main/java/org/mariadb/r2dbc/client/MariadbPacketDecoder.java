@@ -32,7 +32,7 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
   private final Queue<CmdElement> responseReceivers;
   private final Client client;
 
-  private ConnectionContext context = null;
+  private Context context = null;
   private boolean isMultipart = false;
   private DecoderState state = DecoderState.INIT_HANDSHAKE;
   private CmdElement cmdElement;
@@ -121,7 +121,7 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
     return client;
   }
 
-  public ConnectionContext getContext() {
+  public Context getContext() {
     return context;
   }
 
@@ -151,7 +151,7 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
     return false;
   }
 
-  public void setContext(ConnectionContext context) {
+  public void setContext(Context context) {
     this.context = context;
     this.serverCapabilities = this.context.getServerCapabilities();
   }

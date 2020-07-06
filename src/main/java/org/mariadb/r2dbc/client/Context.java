@@ -16,7 +16,7 @@
 
 package org.mariadb.r2dbc.client;
 
-public class ConnectionContext {
+public class Context {
 
   private final long threadId;
   private final long serverCapabilities;
@@ -25,7 +25,7 @@ public class ConnectionContext {
   private String database = null;
   private ServerVersion version;
 
-  public ConnectionContext(
+  public Context(
       String serverVersion,
       long threadId,
       byte[] seed,

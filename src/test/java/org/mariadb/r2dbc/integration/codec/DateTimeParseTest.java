@@ -373,8 +373,8 @@ public class DateTimeParseTest extends BaseTest {
   void stringValuePrepare() {
     stringValue(
         sharedConnPrepare,
-        Optional.of("2013-07-22T12:50:05.012300"),
-        Optional.of("2035-01-31T10:45:01"),
+        Optional.of("2013-07-22 12:50:05.012300"),
+        Optional.of("2035-01-31 10:45:01"),
         Optional.empty());
   }
 

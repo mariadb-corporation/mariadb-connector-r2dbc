@@ -17,11 +17,12 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
@@ -31,7 +32,7 @@ public class FloatCodec implements Codec<Float> {
 
   public static final FloatCodec INSTANCE = new FloatCodec();
 
-  private static EnumSet<DataType> COMPATIBLE_TYPES =
+  private static final EnumSet<DataType> COMPATIBLE_TYPES =
       EnumSet.of(
           DataType.TINYINT,
           DataType.SMALLINT,
@@ -42,10 +43,17 @@ public class FloatCodec implements Codec<Float> {
           DataType.OLDDECIMAL,
           DataType.DECIMAL,
           DataType.YEAR,
-          DataType.DOUBLE);
+          DataType.DOUBLE,
+          DataType.VARCHAR,
+          DataType.VARSTRING,
+          DataType.STRING);
+
+  public String className() {
+    return Float.class.getName();
+  }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getDataType())
+    return COMPATIBLE_TYPES.contains(column.getType())
         && ((type.isPrimitive() && type == Float.TYPE) || type.isAssignableFrom(Float.class));
   }
 
@@ -56,72 +64,114 @@ public class FloatCodec implements Codec<Float> {
   @Override
   public Float decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Float> type) {
-    String str = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
-    return Float.valueOf(str);
+    switch (column.getType()) {
+      case TINYINT:
+      case SMALLINT:
+      case MEDIUMINT:
+      case INTEGER:
+      case BIGINT:
+      case DOUBLE:
+      case OLDDECIMAL:
+      case DECIMAL:
+      case FLOAT:
+        return Float.valueOf(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
+
+      case VARCHAR:
+      case VARSTRING:
+      case STRING:
+        String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          return Float.valueOf(val);
+        } catch (NumberFormatException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' cannot be decoded as Float", val));
+        }
+
+      default:
+        buf.skipBytes(length);
+        throw new R2dbcNonTransientResourceException(
+            String.format("Data type %s cannot be decoded as Float", column.getType()));
+    }
   }
 
   @Override
   public Float decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Float> type) {
-    switch (column.getDataType()) {
+
+    switch (column.getType()) {
       case TINYINT:
         if (!column.isSigned()) {
-          return Float.valueOf(buf.readUnsignedByte());
+          return (float) buf.readUnsignedByte();
         }
-        return Float.valueOf((int) buf.readByte());
+        return (float) buf.readByte();
 
       case YEAR:
       case SMALLINT:
         if (!column.isSigned()) {
-          return Float.valueOf(buf.readUnsignedShortLE());
+          return (float) buf.readUnsignedShortLE();
         }
-        return Float.valueOf((int) buf.readShortLE());
+        return (float) buf.readShortLE();
 
       case MEDIUMINT:
         if (!column.isSigned()) {
-          return Float.valueOf((buf.readUnsignedMediumLE()));
+          return (float) buf.readUnsignedMediumLE();
         }
-        return Float.valueOf(buf.readMediumLE());
+        return (float) buf.readMediumLE();
 
       case INTEGER:
         if (!column.isSigned()) {
-          return Float.valueOf(buf.readUnsignedIntLE());
+          return (float) buf.readUnsignedIntLE();
         }
-        return Float.valueOf(buf.readIntLE());
+        return (float) buf.readIntLE();
 
       case BIGINT:
-        BigInteger val;
         if (column.isSigned()) {
-          val = BigInteger.valueOf(buf.readLongLE());
+          return (float) buf.readLongLE();
         } else {
           // need BIG ENDIAN, so reverse order
           byte[] bb = new byte[8];
           for (int i = 7; i >= 0; i--) {
             bb[i] = buf.readByte();
           }
-          val = new BigInteger(1, bb);
+          return new BigInteger(1, bb).floatValue();
         }
-        return val.floatValue();
+
+      case FLOAT:
+        return buf.readFloatLE();
 
       case DOUBLE:
-        return BigDecimal.valueOf(buf.readDoubleLE()).floatValue();
+        return (float) buf.readDoubleLE();
 
       case OLDDECIMAL:
       case DECIMAL:
-        return new BigDecimal(buf.readCharSequence(length, StandardCharsets.UTF_8).toString())
+        return new BigDecimal(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString())
             .floatValue();
+
+      case VARCHAR:
+      case VARSTRING:
+      case STRING:
+        String str2 = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          return Float.valueOf(str2);
+        } catch (NumberFormatException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' cannot be decoded as Float", str2));
+        }
+
       default:
-        return buf.readFloatLE();
+        buf.skipBytes(length);
+        throw new R2dbcNonTransientResourceException(
+            String.format("Data type %s cannot be decoded as Float", column.getType()));
     }
   }
 
   @Override
-  public void encodeText(ByteBuf buf, ConnectionContext context, Float value) {
+  public void encodeText(ByteBuf buf, Context context, Float value) {
     BufferUtils.writeAscii(buf, String.valueOf(value));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, ConnectionContext context, Float value) {
+  public void encodeBinary(ByteBuf buf, Context context, Float value) {
     buf.writeFloatLE(value);
   }
 

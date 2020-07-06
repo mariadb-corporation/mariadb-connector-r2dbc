@@ -18,7 +18,7 @@ package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
 import java.util.Objects;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
@@ -51,7 +51,7 @@ public class OkPacket implements ServerMessage {
     this.ending = ending;
   }
 
-  public static OkPacket decode(Sequencer sequencer, ByteBuf buf, ConnectionContext context) {
+  public static OkPacket decode(Sequencer sequencer, ByteBuf buf, Context context) {
     buf.skipBytes(1);
     long affectedRows = BufferUtils.readLengthEncodedInt(buf);
     long lastInsertId = BufferUtils.readLengthEncodedInt(buf);

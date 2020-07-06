@@ -19,7 +19,7 @@ package org.mariadb.r2dbc.message.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.message.server.Sequencer;
 
 public final class ClearPasswordPacket implements ClientMessage {
@@ -33,7 +33,7 @@ public final class ClearPasswordPacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(ConnectionContext context, ByteBufAllocator allocator) {
+  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
     if (password == null) return allocator.ioBuffer(0);
     ByteBuf buf = allocator.ioBuffer(password.length() * 4);
     buf.writeCharSequence(password, StandardCharsets.UTF_8);

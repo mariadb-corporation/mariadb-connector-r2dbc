@@ -89,7 +89,7 @@ public class BinaryRowDecoder extends RowDecoder {
       if ((nullBitmap[(index + 2) / 8] & (1 << ((index + 2) % 8))) == 0) {
         if (index != newIndex) {
           // skip bytes
-          switch (columns[index].getDataType()) {
+          switch (columns[index].getType()) {
             case BIGINT:
             case DOUBLE:
               buf.skipBytes(8);
@@ -136,7 +136,7 @@ public class BinaryRowDecoder extends RowDecoder {
           }
         } else {
           // read asked field position and length
-          switch (columns[index].getDataType()) {
+          switch (columns[index].getType()) {
             case BIGINT:
             case DOUBLE:
               length = 8;

@@ -22,7 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.message.server.Sequencer;
 
 public final class NativePasswordPacket implements ClientMessage {
@@ -65,7 +65,7 @@ public final class NativePasswordPacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(ConnectionContext context, ByteBufAllocator allocator) {
+  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
     if (password == null) return allocator.ioBuffer(0);
     ByteBuf buf = allocator.ioBuffer(32);
     buf.writeBytes(encrypt(password, seed));

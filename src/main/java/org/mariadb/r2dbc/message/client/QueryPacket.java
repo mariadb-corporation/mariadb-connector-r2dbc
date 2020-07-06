@@ -20,7 +20,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.Assert;
 
@@ -34,7 +34,7 @@ public final class QueryPacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(ConnectionContext context, ByteBufAllocator byteBufAllocator) {
+  public ByteBuf encode(Context context, ByteBufAllocator byteBufAllocator) {
     Assert.requireNonNull(byteBufAllocator, "byteBufAllocator must not be null");
     ByteBuf out = byteBufAllocator.ioBuffer(this.sql.length() + 1);
     out.writeByte(0x03);

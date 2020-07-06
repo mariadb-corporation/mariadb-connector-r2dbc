@@ -18,7 +18,7 @@ package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
 import java.util.Objects;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class ColumnCountPacket implements ServerMessage {
@@ -29,8 +29,7 @@ public class ColumnCountPacket implements ServerMessage {
     this.columnCount = columnCount;
   }
 
-  public static ColumnCountPacket decode(
-      Sequencer sequencer, ByteBuf buf, ConnectionContext context) {
+  public static ColumnCountPacket decode(Sequencer sequencer, ByteBuf buf, Context context) {
     long columnCount = BufferUtils.readLengthEncodedInt(buf);
     return new ColumnCountPacket((int) columnCount);
   }

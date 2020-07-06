@@ -67,7 +67,7 @@ public class Codecs {
     CODEC_LIST.put(DataType.BIT, BitSetCodec.INSTANCE);
     CODEC_LIST.put(DataType.JSON, StringCodec.INSTANCE);
     CODEC_LIST.put(DataType.DECIMAL, BigDecimalCodec.INSTANCE);
-    CODEC_LIST.put(DataType.ENUM, LocalDateTimeCodec.INSTANCE);
+    CODEC_LIST.put(DataType.ENUM, StringCodec.INSTANCE);
     CODEC_LIST.put(DataType.SET, StringCodec.INSTANCE);
     CODEC_LIST.put(DataType.TINYBLOB, ByteArrayCodec.INSTANCE);
     CODEC_LIST.put(DataType.MEDIUMBLOB, ByteArrayCodec.INSTANCE);

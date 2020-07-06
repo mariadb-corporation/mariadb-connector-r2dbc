@@ -22,7 +22,7 @@ import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
@@ -32,23 +32,48 @@ public class StreamCodec implements Codec<InputStream> {
 
   public static final StreamCodec INSTANCE = new StreamCodec();
 
-  private static EnumSet<DataType> COMPATIBLE_TYPES =
-      EnumSet.of(DataType.BLOB, DataType.TINYBLOB, DataType.MEDIUMBLOB, DataType.LONGBLOB);
+  private static final EnumSet<DataType> COMPATIBLE_TYPES =
+      EnumSet.of(
+          DataType.BLOB,
+          DataType.TINYBLOB,
+          DataType.MEDIUMBLOB,
+          DataType.LONGBLOB,
+          DataType.VARCHAR,
+          DataType.VARSTRING,
+          DataType.STRING);
+
+  public String className() {
+    return InputStream.class.getName();
+  }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return false;
+    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(InputStream.class);
   }
 
   @Override
   public InputStream decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends InputStream> type) {
-    return new ByteBufInputStream(buf.readSlice(length));
+    switch (column.getType()) {
+      case STRING:
+      case VARCHAR:
+      case VARSTRING:
+      case BLOB:
+      case TINYBLOB:
+      case MEDIUMBLOB:
+      case LONGBLOB:
+        return new ByteBufInputStream(buf.readSlice(length));
+
+      default:
+        buf.skipBytes(length);
+        throw new R2dbcNonTransientResourceException(
+            String.format("Data type %s cannot be decoded as Stream", column.getType()));
+    }
   }
 
   @Override
   public InputStream decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends InputStream> type) {
-    return new ByteBufInputStream(buf.readSlice(length));
+    return decodeText(buf, length, column, type);
   }
 
   public boolean canEncode(Object value) {
@@ -56,17 +81,29 @@ public class StreamCodec implements Codec<InputStream> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, ConnectionContext context, InputStream value) {
+  public void encodeText(ByteBuf buf, Context context, InputStream value) {
     BufferUtils.write(buf, value, context);
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, ConnectionContext context, InputStream value) {
+  public void encodeBinary(ByteBuf buf, Context context, InputStream value) {
 
+    // reserve place for length
     buf.writeByte(0xfe);
     int initialPos = buf.writerIndex();
-    buf.writerIndex(buf.writerIndex() + 8); // reserve length encoded length bytes
+    buf.writerIndex(buf.writerIndex() + 8);
 
+    encodeLongData(buf, context, value);
+
+    // Write length
+    int endPos = buf.writerIndex();
+    buf.writerIndex(initialPos);
+    buf.writeLongLE(endPos - (initialPos + 8));
+    buf.writerIndex(endPos);
+  }
+
+  @Override
+  public void encodeLongData(ByteBuf buf, Context context, InputStream value) {
     byte[] array = new byte[4096];
     int len;
     try {
@@ -76,16 +113,14 @@ public class StreamCodec implements Codec<InputStream> {
     } catch (IOException ioe) {
       throw new R2dbcNonTransientResourceException("Failed to read InputStream", ioe);
     }
-
-    // Write length
-    int endPos = buf.writerIndex();
-    buf.writerIndex(initialPos);
-    buf.writeLongLE(endPos - (initialPos + 8));
-    buf.writerIndex(endPos);
   }
 
   public DataType getBinaryEncodeType() {
     return DataType.BLOB;
+  }
+
+  public boolean canEncodeLongData() {
+    return true;
   }
 
   @Override

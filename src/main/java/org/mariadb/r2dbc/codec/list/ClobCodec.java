@@ -18,9 +18,10 @@ package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Clob;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
@@ -32,11 +33,15 @@ public class ClobCodec implements Codec<Clob> {
 
   public static final ClobCodec INSTANCE = new ClobCodec();
 
-  private static EnumSet<DataType> COMPATIBLE_TYPES =
+  private static final EnumSet<DataType> COMPATIBLE_TYPES =
       EnumSet.of(DataType.VARCHAR, DataType.VARSTRING, DataType.STRING);
 
+  public String className() {
+    return Clob.class.getName();
+  }
+
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getDataType()) && type.isAssignableFrom(Clob.class);
+    return COMPATIBLE_TYPES.contains(column.getType()) && (type.isAssignableFrom(Clob.class));
   }
 
   public boolean canEncode(Object value) {
@@ -46,24 +51,52 @@ public class ClobCodec implements Codec<Clob> {
   @Override
   public Clob decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Clob> type) {
-    String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-    return Clob.from(Mono.just(rawValue));
+    switch (column.getType()) {
+      case STRING:
+      case VARCHAR:
+      case VARSTRING:
+        String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        return Clob.from(Mono.just(rawValue));
+
+      default:
+        buf.skipBytes(length);
+        throw new R2dbcNonTransientResourceException(
+            String.format("Data type %s cannot be decoded as Clob", column.getType()));
+    }
   }
 
   @Override
   public Clob decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Clob> type) {
-    String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-    return Clob.from(Mono.just(rawValue));
+    switch (column.getType()) {
+      case STRING:
+      case VARCHAR:
+      case VARSTRING:
+        String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        return Clob.from(Mono.just(rawValue));
+
+      default:
+        buf.skipBytes(length);
+        throw new R2dbcNonTransientResourceException(
+            String.format("Data type %s cannot be decoded as Clob", column.getType()));
+    }
   }
 
   @Override
-  public void encodeText(ByteBuf buf, ConnectionContext context, Clob value) {
-    BufferUtils.write(buf, value, context);
+  public void encodeText(ByteBuf buf, Context context, Clob value) {
+    buf.writeByte('\'');
+    Flux.from(value.stream())
+        .handle(
+            (tempVal, sync) -> {
+              BufferUtils.write(buf, tempVal.toString(), false, true, context);
+              sync.next(buf);
+            })
+        .subscribe();
+    buf.writeByte('\'');
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, ConnectionContext context, Clob value) {
+  public void encodeBinary(ByteBuf buf, Context context, Clob value) {
     buf.writeByte(0xfe);
     int initialPos = buf.writerIndex();
     buf.writerIndex(buf.writerIndex() + 8); // reserve length encoded length bytes
@@ -84,8 +117,23 @@ public class ClobCodec implements Codec<Clob> {
         .subscribe();
   }
 
+  @Override
+  public void encodeLongData(ByteBuf buf, Context context, Clob value) {
+    Flux.from(value.stream())
+        .handle(
+            (tempVal, sync) -> {
+              buf.writeCharSequence(tempVal, StandardCharsets.UTF_8);
+              sync.next(buf);
+            })
+        .subscribe();
+  }
+
+  public boolean canEncodeLongData() {
+    return true;
+  }
+
   public DataType getBinaryEncodeType() {
-    return DataType.VARCHAR;
+    return DataType.VARSTRING;
   }
 
   @Override

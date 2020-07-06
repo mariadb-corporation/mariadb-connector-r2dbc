@@ -17,11 +17,12 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
@@ -29,9 +30,8 @@ import org.mariadb.r2dbc.util.BufferUtils;
 
 public class BigIntegerCodec implements Codec<BigInteger> {
 
-  public static final BigIntegerCodec INSTANCE = new BigIntegerCodec();
-
-  private static EnumSet<DataType> COMPATIBLE_TYPES =
+  public static BigIntegerCodec INSTANCE = new BigIntegerCodec();
+  private static final EnumSet<DataType> COMPATIBLE_TYPES =
       EnumSet.of(
           DataType.TINYINT,
           DataType.SMALLINT,
@@ -41,11 +41,20 @@ public class BigIntegerCodec implements Codec<BigInteger> {
           DataType.DECIMAL,
           DataType.YEAR,
           DataType.DOUBLE,
-          DataType.FLOAT);
+          DataType.DECIMAL,
+          DataType.OLDDECIMAL,
+          DataType.FLOAT,
+          DataType.BIT,
+          DataType.VARCHAR,
+          DataType.VARSTRING,
+          DataType.STRING);
+
+  public String className() {
+    return BigInteger.class.getName();
+  }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getDataType())
-        && type.isAssignableFrom(BigInteger.class);
+    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(BigInteger.class);
   }
 
   public boolean canEncode(Object value) {
@@ -55,16 +64,49 @@ public class BigIntegerCodec implements Codec<BigInteger> {
   @Override
   public BigInteger decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BigInteger> type) {
-    switch (column.getDataType()) {
-      case DECIMAL:
-      case DOUBLE:
+
+    switch (column.getType()) {
       case FLOAT:
+      case DOUBLE:
+      case DECIMAL:
+      case OLDDECIMAL:
         String value = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         return new BigDecimal(value).toBigInteger();
 
+      case VARCHAR:
+      case VARSTRING:
+      case STRING:
+        String str2 = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          return new BigDecimal(str2).toBigInteger();
+        } catch (NumberFormatException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' cannot be decoded as BigInteger", str2));
+        }
+
+      case BIT:
+        long result = 0;
+        for (int i = 0; i < Math.min(length, 8); i++) {
+          byte b = buf.readByte();
+          result = (result << 8) + (b & 0xff);
+        }
+        if (length > 8) {
+          buf.skipBytes(length - 8);
+        }
+        return BigInteger.valueOf(result);
+
+      case TINYINT:
+      case SMALLINT:
+      case MEDIUMINT:
+      case INTEGER:
+      case BIGINT:
+      case YEAR:
+        return new BigInteger(buf.readCharSequence(length, StandardCharsets.UTF_8).toString());
+
       default:
-        String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-        return new BigInteger(val);
+        buf.skipBytes(length);
+        throw new R2dbcNonTransientResourceException(
+            String.format("Data type %s cannot be decoded as BigInteger", column.getType()));
     }
   }
 
@@ -72,7 +114,17 @@ public class BigIntegerCodec implements Codec<BigInteger> {
   public BigInteger decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BigInteger> type) {
 
-    switch (column.getDataType()) {
+    switch (column.getType()) {
+      case BIT:
+        long result = 0;
+        for (int i = 0; i < Math.min(length, 8); i++) {
+          byte b = buf.readByte();
+          result = (result << 8) + (b & 0xff);
+        }
+        if (length > 8) {
+          buf.skipBytes(length - 8);
+        }
+        return BigInteger.valueOf(result);
       case TINYINT:
         if (!column.isSigned()) {
           return BigInteger.valueOf(buf.readUnsignedByte());
@@ -108,7 +160,7 @@ public class BigIntegerCodec implements Codec<BigInteger> {
         return new BigDecimal(buf.readCharSequence(length, StandardCharsets.UTF_8).toString())
             .toBigInteger();
 
-      default:
+      case BIGINT:
         if (column.isSigned()) return BigInteger.valueOf(buf.readLongLE());
 
         // need BIG ENDIAN, so reverse order
@@ -117,16 +169,31 @@ public class BigIntegerCodec implements Codec<BigInteger> {
           bb[i] = buf.readByte();
         }
         return new BigInteger(1, bb);
+      case VARCHAR:
+      case VARSTRING:
+      case STRING:
+        String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          return new BigInteger(str);
+        } catch (NumberFormatException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' cannot be decoded as BigInteger", str));
+        }
+
+      default:
+        buf.skipBytes(length);
+        throw new R2dbcNonTransientResourceException(
+            String.format("Data type %s cannot be decoded as BigInteger", column.getType()));
     }
   }
 
   @Override
-  public void encodeText(ByteBuf buf, ConnectionContext context, BigInteger value) {
+  public void encodeText(ByteBuf buf, Context context, BigInteger value) {
     BufferUtils.writeAscii(buf, value.toString());
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, ConnectionContext context, BigInteger value) {
+  public void encodeBinary(ByteBuf buf, Context context, BigInteger value) {
     String asciiFormat = value.toString();
     BufferUtils.writeLengthEncode(asciiFormat.length(), buf);
     BufferUtils.writeAscii(buf, asciiFormat);

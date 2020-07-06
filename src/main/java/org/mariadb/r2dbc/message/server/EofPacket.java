@@ -18,7 +18,7 @@ package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
 import java.util.Objects;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 
 public class EofPacket implements ServerMessage {
@@ -43,7 +43,7 @@ public class EofPacket implements ServerMessage {
   }
 
   public static EofPacket decode(
-      Sequencer sequencer, ByteBuf buf, ConnectionContext context, boolean resultSetEnd) {
+      Sequencer sequencer, ByteBuf buf, Context context, boolean resultSetEnd) {
     buf.skipBytes(1);
     short warningCount = buf.readShortLE();
     short serverStatus = buf.readShortLE();

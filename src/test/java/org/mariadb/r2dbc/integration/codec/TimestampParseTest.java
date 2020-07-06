@@ -403,7 +403,7 @@ public class TimestampParseTest extends BaseTest {
 
   @Test
   void stringValuePrepare() {
-    stringValue(sharedConnPrepare, "2013-07-22T12:50:05.012300", "2035-01-31T10:45:01");
+    stringValue(sharedConnPrepare, "2013-07-22 12:50:05.012300", "2035-01-31 10:45:01");
   }
 
   private void stringValue(MariadbConnection connection, String t1, String t2) {

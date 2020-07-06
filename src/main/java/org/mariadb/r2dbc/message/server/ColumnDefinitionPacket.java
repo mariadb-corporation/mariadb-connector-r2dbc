@@ -17,6 +17,7 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
+import io.r2dbc.spi.Blob;
 import io.r2dbc.spi.Nullability;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -26,7 +27,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.codec.list.*;
@@ -132,7 +133,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
   }
 
   public static ColumnDefinitionPacket decode(
-      Sequencer sequencer, ByteBuf buf, ConnectionContext context, boolean ending) {
+      Sequencer sequencer, ByteBuf buf, Context context, boolean ending) {
     byte[] meta = new byte[buf.readableBytes() - 12];
     buf.readBytes(meta);
     int charset = buf.readUnsignedShortLE();
@@ -187,7 +188,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
     return length;
   }
 
-  public DataType getDataType() {
+  public DataType getType() {
     return dataType;
   }
 
@@ -288,7 +289,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
       case LONGBLOB:
       case BLOB:
       case GEOMETRY:
-        return ByteBuffer.class;
+        return Blob.class;
 
       default:
         return null;
