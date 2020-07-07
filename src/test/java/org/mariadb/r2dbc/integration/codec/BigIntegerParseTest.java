@@ -336,19 +336,13 @@ public class BigIntegerParseTest extends BaseTest {
         .createStatement("SELECT t1,t2 FROM BigIntTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
-        .flatMap(
-            r ->
-                r.map(
-                    (row, metadata) -> Optional.ofNullable(row.get(0, long.class))))
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, long.class))))
         .as(StepVerifier::create)
-        .expectNext(
-            Optional.of(0L), Optional.of(1L), Optional.of(9223372036854775807L))
+        .expectNext(Optional.of(0L), Optional.of(1L), Optional.of(9223372036854775807L))
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                    .getMessage()
-                    .equals("Cannot return null for primitive long"))
+                    && throwable.getMessage().equals("Cannot return null for primitive long"))
         .verify();
     connection
         .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ?")
@@ -406,8 +400,8 @@ public class BigIntegerParseTest extends BaseTest {
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
                     && throwable
-                    .getMessage()
-                    .equals("value '18446744073709551615' cannot be decoded as Long"))
+                        .getMessage()
+                        .equals("value '18446744073709551615' cannot be decoded as Long"))
         .verify();
   }
 

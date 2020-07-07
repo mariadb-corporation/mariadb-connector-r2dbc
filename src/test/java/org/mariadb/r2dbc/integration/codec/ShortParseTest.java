@@ -246,10 +246,7 @@ public class ShortParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, short.class))))
         .as(StepVerifier::create)
-        .expectNext(
-            Optional.of((short) 0),
-            Optional.of((short) 1),
-            Optional.of((short) -1))
+        .expectNext(Optional.of((short) 0), Optional.of((short) 1), Optional.of((short) -1))
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException

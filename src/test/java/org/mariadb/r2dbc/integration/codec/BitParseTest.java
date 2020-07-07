@@ -104,11 +104,7 @@ public class BitParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, boolean.class))))
         .as(StepVerifier::create)
-        .expectNext(
-            Optional.of(false),
-            Optional.of(true),
-            Optional.of(true),
-            Optional.of(true))
+        .expectNext(Optional.of(false), Optional.of(true), Optional.of(true), Optional.of(true))
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
