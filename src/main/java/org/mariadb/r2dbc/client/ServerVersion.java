@@ -143,18 +143,6 @@ public class ServerVersion {
 
   @Override
   public String toString() {
-    return "ServerVersion{"
-        + "serverVersion='"
-        + serverVersion
-        + '\''
-        + ", majorVersion="
-        + majorVersion
-        + ", minorVersion="
-        + minorVersion
-        + ", patchVersion="
-        + patchVersion
-        + ", mariaDBServer="
-        + mariaDBServer
-        + '}';
+    return "ServerVersion{" + serverVersion + '}';
   }
 }

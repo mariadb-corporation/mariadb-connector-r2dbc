@@ -155,14 +155,7 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
 
   @Override
   public String toString() {
-    return "MariadbConnection{"
-        + "logger="
-        + logger
-        + ", client="
-        + client
-        + ", isolationLevel="
-        + isolationLevel
-        + '}';
+    return "MariadbConnection{client=" + client + ", isolationLevel=" + isolationLevel + '}';
   }
 
   @Override
