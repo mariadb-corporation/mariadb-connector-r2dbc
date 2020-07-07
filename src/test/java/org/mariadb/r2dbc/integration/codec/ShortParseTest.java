@@ -244,6 +244,47 @@ public class ShortParseTest extends BaseTest {
         .createStatement("SELECT t1 FROM ShortTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, short.class))))
+        .as(StepVerifier::create)
+        .expectNext(
+            Optional.of((short) 0),
+            Optional.of((short) 1),
+            Optional.of((short) -1))
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable.getMessage().equals("Cannot return null for primitive short"))
+        .verify();
+
+    connection
+        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of((short) 0), Optional.of((short) 1))
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("Short overflow"))
+        .verify();
+  }
+
+  @Test
+  void shortObjectValue() {
+    shortObjectValue(sharedConn);
+  }
+
+  @Test
+  void shortObjectValuePrepare() {
+    shortObjectValue(sharedConnPrepare);
+  }
+
+  private void shortObjectValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM ShortTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
         .as(StepVerifier::create)
         .expectNext(

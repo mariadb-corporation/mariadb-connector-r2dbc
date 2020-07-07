@@ -75,7 +75,7 @@ public class LongCodec implements Codec<Long> {
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType())
-        && ((type.isPrimitive() && type == Integer.TYPE) || type.isAssignableFrom(Long.class));
+        && ((type.isPrimitive() && type == Long.TYPE) || type.isAssignableFrom(Long.class));
   }
 
   public boolean canEncode(Object value) {

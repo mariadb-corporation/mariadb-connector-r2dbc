@@ -102,6 +102,35 @@ public class BitParseTest extends BaseTest {
         .createStatement("SELECT t1 FROM BitTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, boolean.class))))
+        .as(StepVerifier::create)
+        .expectNext(
+            Optional.of(false),
+            Optional.of(true),
+            Optional.of(true),
+            Optional.of(true))
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable.getMessage().equals("Cannot return null for primitive boolean"))
+        .verify();
+  }
+
+  @Test
+  void booleanObjectValue() {
+    booleanObjectValue(sharedConn);
+  }
+
+  @Test
+  void booleanObjectValuePrepare() {
+    booleanObjectValue(sharedConnPrepare);
+  }
+
+  private void booleanObjectValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BitTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Boolean.class))))
         .as(StepVerifier::create)
         .expectNext(

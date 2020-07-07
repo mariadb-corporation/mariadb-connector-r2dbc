@@ -277,6 +277,44 @@ public class IntParseTest extends BaseTest {
         .createStatement("SELECT t1 FROM IntTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, int.class))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of(0), Optional.of(1), Optional.of(-1))
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable.getMessage().equals("Cannot return null for primitive int"))
+        .verify();
+
+    connection
+        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Integer.class))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of(0), Optional.of(1))
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("integer overflow"))
+        .verify();
+  }
+
+  @Test
+  void intObjectValue() {
+    intObjectValue(sharedConn);
+  }
+
+  @Test
+  void intObjectValuePrepare() {
+    intObjectValue(sharedConnPrepare);
+  }
+
+  private void intObjectValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Integer.class))))
         .as(StepVerifier::create)
         .expectNext(Optional.of(0), Optional.of(1), Optional.of(-1), Optional.empty())

@@ -304,6 +304,45 @@ public class DoubleParseTest extends BaseTest {
         .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, double.class))))
+        .as(StepVerifier::create)
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(0.1D, val.get(), 0.0000001);
+              return true;
+            })
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(1D, val.get(), 0.0000001);
+              return true;
+            })
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(922.922D, val.get(), 0.001);
+              return true;
+            })
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable.getMessage().equals("Cannot return null for primitive double"))
+        .verify();
+  }
+
+  @Test
+  void doubleObjectValue() {
+    doubleObjectValue(sharedConn);
+  }
+
+  @Test
+  void doubleObjectValuePrepare() {
+    doubleObjectValue(sharedConnPrepare);
+  }
+
+  private void doubleObjectValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Double.class))))
         .as(StepVerifier::create)
         .expectNextMatches(

@@ -274,6 +274,45 @@ public class FloatParseTest extends BaseTest {
         .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, float.class))))
+        .as(StepVerifier::create)
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(0.1F, val.get(), 0.0000001);
+              return true;
+            })
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(1F, val.get(), 0.0000001);
+              return true;
+            })
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(922.922F, val.get(), 0.001);
+              return true;
+            })
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable.getMessage().equals("Cannot return null for primitive float"))
+        .verify();
+  }
+
+  @Test
+  void floatObjectValue() {
+    floatObjectValue(sharedConn);
+  }
+
+  @Test
+  void floatObjectValuePrepare() {
+    floatObjectValue(sharedConnPrepare);
+  }
+
+  private void floatObjectValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Float.class))))
         .as(StepVerifier::create)
         .expectNextMatches(
