@@ -612,7 +612,7 @@ public final class MariadbConnectionConfiguration {
     /**
      * Permit to indicate to use text or binary protocol.
      *
-     * @param useServerPrepStmts
+     * @param useServerPrepStmts use server param
      * @return this {@link Builder}
      */
     public Builder useServerPrepStmts(boolean useServerPrepStmts) {

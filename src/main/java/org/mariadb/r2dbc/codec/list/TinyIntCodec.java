@@ -54,14 +54,8 @@ public class TinyIntCodec implements Codec<Byte> {
       case MEDIUMINT:
       case INTEGER:
       case YEAR:
-        result = LongCodec.parse(buf, length);
-        break;
-
       case BIGINT:
         result = LongCodec.parse(buf, length);
-        if (result < 0 & !column.isSigned()) {
-          throw new R2dbcNonTransientResourceException("int overflow");
-        }
         break;
 
       case BIT:
@@ -89,13 +83,13 @@ public class TinyIntCodec implements Codec<Byte> {
           break;
         } catch (NumberFormatException nfe) {
           throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' cannot be decoded as Integer", str));
+              String.format("value '%s' cannot be decoded as byte", str));
         }
 
       default:
         buf.skipBytes(length);
         throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Integer", column.getType()));
+            String.format("Data type %s cannot be decoded as byte", column.getType()));
     }
 
     if ((short) result != result || (result < 0 && !column.isSigned())) {
