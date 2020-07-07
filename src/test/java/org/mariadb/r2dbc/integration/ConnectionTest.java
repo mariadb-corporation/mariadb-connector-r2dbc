@@ -265,13 +265,18 @@ public class ConnectionTest extends BaseTest {
                 TestConfiguration.database));
     Connection connection = Mono.from(factory.create()).block();
     Flux.from(connection.createStatement("SELECT * FROM myTable").execute())
-        .flatMap(
-            r ->
-                r.map(
-                    (row, metadata) -> {
-                      return row.get(0, String.class);
-                    }));
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)));
     Mono.from(connection.close()).block();
+  }
+
+  @Test
+  void ensureUserInfoUrlEncoding() {
+    MariadbConnectionFactory factory =
+        (MariadbConnectionFactory)
+            ConnectionFactories.get(
+                "r2dbc:mariadb://root%40%C3%A5:p%40ssword@localhost:3305/%D1" + "%88db");
+    Assertions.assertTrue(factory.toString().contains("username='root@å'"));
+    Assertions.assertTrue(factory.toString().contains("database='шdb'"));
   }
 
   protected class ExecuteQueries implements Runnable {
