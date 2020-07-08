@@ -92,21 +92,6 @@ public class ClobCodec implements Codec<Clob> {
         .subscribe();
   }
 
-  @Override
-  public void encodeLongData(ByteBuf buf, Context context, Clob value) {
-    Flux.from(value.stream())
-        .handle(
-            (tempVal, sync) -> {
-              buf.writeCharSequence(tempVal, StandardCharsets.UTF_8);
-              sync.next(buf);
-            })
-        .subscribe();
-  }
-
-  public boolean canEncodeLongData() {
-    return true;
-  }
-
   public DataType getBinaryEncodeType() {
     return DataType.VARSTRING;
   }

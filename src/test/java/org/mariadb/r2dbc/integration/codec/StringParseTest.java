@@ -16,14 +16,20 @@
 
 package org.mariadb.r2dbc.integration.codec;
 
+import io.r2dbc.spi.Blob;
 import io.r2dbc.spi.Clob;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
@@ -417,6 +423,35 @@ public class StringParseTest extends BaseTest {
                     && throwable
                         .getMessage()
                         .equals("value 'some\uD83C\uDF1F' cannot be decoded as BigInteger"))
+        .verify();
+  }
+
+  @Test
+  void blobValue() {
+    blobValue(sharedConn);
+  }
+
+  @Test
+  void blobValuePrepare() {
+    blobValue(sharedConnPrepare);
+  }
+
+  private void blobValue(MariadbConnection connection) {
+
+    connection
+        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ? limit 3")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, Blob.class)))
+        .cast(Blob.class)
+        .flatMap(Blob::stream)
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable
+                    .getMessage()
+                    .equals("Data type VARSTRING (not binary) cannot be decoded as Blob"))
         .verify();
   }
 }

@@ -75,12 +75,9 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
 
       case BIT:
         long result = 0;
-        for (int i = 0; i < Math.min(length, 8); i++) {
+        for (int i = 0; i < length; i++) {
           byte b = buf.readByte();
           result = (result << 8) + (b & 0xff);
-        }
-        if (length > 8) {
-          buf.skipBytes(length - 8);
         }
         return BigDecimal.valueOf(result);
 
@@ -149,12 +146,9 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
 
       case BIT:
         long result = 0;
-        for (int i = 0; i < Math.min(length, 8); i++) {
+        for (int i = 0; i < length; i++) {
           byte b = buf.readByte();
           result = (result << 8) + (b & 0xff);
-        }
-        if (length > 8) {
-          buf.skipBytes(length - 8);
         }
         return BigDecimal.valueOf(result);
 

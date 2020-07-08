@@ -89,17 +89,6 @@ public class StreamCodec implements Codec<InputStream> {
     int initialPos = buf.writerIndex();
     buf.writerIndex(buf.writerIndex() + 8);
 
-    encodeLongData(buf, context, value);
-
-    // Write length
-    int endPos = buf.writerIndex();
-    buf.writerIndex(initialPos);
-    buf.writeLongLE(endPos - (initialPos + 8));
-    buf.writerIndex(endPos);
-  }
-
-  @Override
-  public void encodeLongData(ByteBuf buf, Context context, InputStream value) {
     byte[] array = new byte[4096];
     int len;
     try {
@@ -109,13 +98,16 @@ public class StreamCodec implements Codec<InputStream> {
     } catch (IOException ioe) {
       throw new R2dbcNonTransientResourceException("Failed to read InputStream", ioe);
     }
+
+    // Write length
+    int endPos = buf.writerIndex();
+    buf.writerIndex(initialPos);
+    buf.writeLongLE(endPos - (initialPos + 8));
+    buf.writerIndex(endPos);
   }
 
   public DataType getBinaryEncodeType() {
     return DataType.BLOB;
   }
 
-  public boolean canEncodeLongData() {
-    return true;
-  }
 }

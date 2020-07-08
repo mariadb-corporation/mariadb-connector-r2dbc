@@ -71,12 +71,9 @@ public class BigIntegerCodec implements Codec<BigInteger> {
 
       case BIT:
         long result = 0;
-        for (int i = 0; i < Math.min(length, 8); i++) {
+        for (int i = 0; i < length; i++) {
           byte b = buf.readByte();
           result = (result << 8) + (b & 0xff);
-        }
-        if (length > 8) {
-          buf.skipBytes(length - 8);
         }
         return BigInteger.valueOf(result);
 
@@ -107,12 +104,9 @@ public class BigIntegerCodec implements Codec<BigInteger> {
     switch (column.getType()) {
       case BIT:
         long result = 0;
-        for (int i = 0; i < Math.min(length, 8); i++) {
+        for (int i = 0; i < length; i++) {
           byte b = buf.readByte();
           result = (result << 8) + (b & 0xff);
-        }
-        if (length > 8) {
-          buf.skipBytes(length - 8);
         }
         return BigInteger.valueOf(result);
       case TINYINT:

@@ -146,22 +146,7 @@ public class BlobCodec implements Codec<Blob> {
         .subscribe();
   }
 
-  @Override
-  public void encodeLongData(ByteBuf buf, Context context, Blob value) {
-    Flux.from(value.stream())
-        .handle(
-            (tempVal, sync) -> {
-              buf.writeBytes(tempVal);
-              sync.next(buf);
-            })
-        .subscribe();
-  }
-
   public DataType getBinaryEncodeType() {
     return DataType.BLOB;
-  }
-
-  public boolean canEncodeLongData() {
-    return true;
   }
 }

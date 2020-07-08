@@ -82,15 +82,6 @@ public class ByteArrayCodec implements Codec<byte[]> {
     buf.writeBytes(value);
   }
 
-  @Override
-  public void encodeLongData(ByteBuf buf, Context context, byte[] value) {
-    buf.writeBytes(value);
-  }
-
-  public boolean canEncodeLongData() {
-    return true;
-  }
-
   public DataType getBinaryEncodeType() {
     return DataType.BLOB;
   }

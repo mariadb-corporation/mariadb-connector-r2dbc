@@ -35,13 +35,5 @@ public interface Codec<T> {
 
   void encodeBinary(ByteBuf buf, Context context, T value);
 
-  default void encodeLongData(ByteBuf buf, Context context, T value) {
-    throw new IllegalStateException("Must implement load long data");
-  }
-
-  default boolean canEncodeLongData() {
-    return false;
-  }
-
   DataType getBinaryEncodeType();
 }
