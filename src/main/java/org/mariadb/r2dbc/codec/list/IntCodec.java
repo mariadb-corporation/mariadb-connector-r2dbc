@@ -51,10 +51,6 @@ public class IntCodec implements Codec<Integer> {
           DataType.BIT,
           DataType.YEAR);
 
-  public String className() {
-    return Integer.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType())
         && ((type.isPrimitive() && type == Integer.TYPE) || type.isAssignableFrom(Integer.class));
@@ -95,14 +91,8 @@ public class IntCodec implements Codec<Integer> {
         }
         break;
 
-      case FLOAT:
-      case DOUBLE:
-      case OLDDECIMAL:
-      case VARCHAR:
-      case DECIMAL:
-      case ENUM:
-      case VARSTRING:
-      case STRING:
+      default:
+        // FLOAT, DOUBLE, OLDDECIMAL, VARCHAR, DECIMAL, ENUM, VARSTRING, STRING:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValue();
@@ -111,11 +101,6 @@ public class IntCodec implements Codec<Integer> {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Integer", str));
         }
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Integer", column.getType()));
     }
 
     if ((int) result != result) {
@@ -142,10 +127,6 @@ public class IntCodec implements Codec<Integer> {
 
       case MEDIUMINT:
         result = column.isSigned() ? buf.readMediumLE() : buf.readUnsignedMediumLE();
-        break;
-
-      case INTEGER:
-        result = column.isSigned() ? buf.readIntLE() : buf.readUnsignedIntLE();
         break;
 
       case BIGINT:
@@ -201,9 +182,9 @@ public class IntCodec implements Codec<Integer> {
         }
 
       default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Integer", column.getType()));
+        // INTEGER
+        result = column.isSigned() ? buf.readIntLE() : buf.readUnsignedIntLE();
+        break;
     }
 
     if ((int) result != result || (result < 0 && !column.isSigned())) {
@@ -225,10 +206,5 @@ public class IntCodec implements Codec<Integer> {
 
   public DataType getBinaryEncodeType() {
     return DataType.INTEGER;
-  }
-
-  @Override
-  public String toString() {
-    return "IntCodec{}";
   }
 }

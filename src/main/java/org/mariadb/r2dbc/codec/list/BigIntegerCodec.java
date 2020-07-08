@@ -49,10 +49,6 @@ public class BigIntegerCodec implements Codec<BigInteger> {
           DataType.VARSTRING,
           DataType.STRING);
 
-  public String className() {
-    return BigInteger.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(BigInteger.class);
   }
@@ -72,17 +68,6 @@ public class BigIntegerCodec implements Codec<BigInteger> {
       case OLDDECIMAL:
         String value = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         return new BigDecimal(value).toBigInteger();
-
-      case VARCHAR:
-      case VARSTRING:
-      case STRING:
-        String str2 = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-        try {
-          return new BigDecimal(str2).toBigInteger();
-        } catch (NumberFormatException nfe) {
-          throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' cannot be decoded as BigInteger", str2));
-        }
 
       case BIT:
         long result = 0;
@@ -104,9 +89,14 @@ public class BigIntegerCodec implements Codec<BigInteger> {
         return new BigInteger(buf.readCharSequence(length, StandardCharsets.UTF_8).toString());
 
       default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as BigInteger", column.getType()));
+        // VARCHAR, VARSTRING, STRING
+        String str2 = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          return new BigDecimal(str2).toBigInteger();
+        } catch (NumberFormatException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' cannot be decoded as BigInteger", str2));
+        }
     }
   }
 
@@ -169,9 +159,9 @@ public class BigIntegerCodec implements Codec<BigInteger> {
           bb[i] = buf.readByte();
         }
         return new BigInteger(1, bb);
-      case VARCHAR:
-      case VARSTRING:
-      case STRING:
+
+      default:
+        // VARCHAR, VARSTRING, STRING
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           return new BigInteger(str);
@@ -179,11 +169,6 @@ public class BigIntegerCodec implements Codec<BigInteger> {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as BigInteger", str));
         }
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as BigInteger", column.getType()));
     }
   }
 
@@ -201,10 +186,5 @@ public class BigIntegerCodec implements Codec<BigInteger> {
 
   public DataType getBinaryEncodeType() {
     return DataType.DECIMAL;
-  }
-
-  @Override
-  public String toString() {
-    return "BigIntegerCodec{}";
   }
 }

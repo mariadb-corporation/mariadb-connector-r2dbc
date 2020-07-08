@@ -49,10 +49,6 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
           DataType.VARSTRING,
           DataType.STRING);
 
-  public String className() {
-    return BigDecimal.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(BigDecimal.class);
   }
@@ -72,20 +68,10 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
       case BIGINT:
       case FLOAT:
       case DOUBLE:
+      case YEAR:
       case DECIMAL:
       case OLDDECIMAL:
         return new BigDecimal(buf.readCharSequence(length, StandardCharsets.UTF_8).toString());
-
-      case VARCHAR:
-      case VARSTRING:
-      case STRING:
-        String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-        try {
-          return new BigDecimal(str);
-        } catch (NumberFormatException nfe) {
-          throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' cannot be decoded as BigDecimal", str));
-        }
 
       case BIT:
         long result = 0;
@@ -99,9 +85,14 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
         return BigDecimal.valueOf(result);
 
       default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as BigDecimal", column.getType()));
+        // VARCHAR, VARSTRING, STRING
+        String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          return new BigDecimal(str);
+        } catch (NumberFormatException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' cannot be decoded as BigDecimal", str));
+        }
     }
   }
 
@@ -167,11 +158,8 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
         }
         return BigDecimal.valueOf(result);
 
-      case VARCHAR:
-      case VARSTRING:
-      case STRING:
-      case DECIMAL:
-      case OLDDECIMAL:
+      default:
+        // VARCHAR, VARSTRING, STRING, DECIMAL, OLDDECIMAL
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           return new BigDecimal(str);
@@ -179,11 +167,6 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as BigDecimal", str));
         }
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as BigDecimal", column.getType()));
     }
   }
 
@@ -201,10 +184,5 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
 
   public DataType getBinaryEncodeType() {
     return DataType.DECIMAL;
-  }
-
-  @Override
-  public String toString() {
-    return "BigDecimalCodec{}";
   }
 }

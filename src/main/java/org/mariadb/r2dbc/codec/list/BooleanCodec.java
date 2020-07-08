@@ -17,7 +17,6 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
@@ -47,10 +46,6 @@ public class BooleanCodec implements Codec<Boolean> {
           DataType.DOUBLE,
           DataType.BIT);
 
-  public String className() {
-    return Boolean.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType())
         && ((type.isPrimitive() && type == Boolean.TYPE) || type.isAssignableFrom(Boolean.class));
@@ -66,12 +61,6 @@ public class BooleanCodec implements Codec<Boolean> {
     switch (column.getType()) {
       case BIT:
         return ByteCodec.parseBit(buf, length) != 0;
-
-      case VARCHAR:
-      case VARSTRING:
-      case STRING:
-        String s = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-        return !"0".equals(s);
 
       case DECIMAL:
       case OLDDECIMAL:
@@ -91,9 +80,9 @@ public class BooleanCodec implements Codec<Boolean> {
         return !"0".equals(val);
 
       default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Boolean", column.getType()));
+        // VARCHAR, VARSTRING, STRING:
+        String s = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        return !"0".equals(s);
     }
   }
 
@@ -104,11 +93,6 @@ public class BooleanCodec implements Codec<Boolean> {
     switch (column.getType()) {
       case BIT:
         return ByteCodec.parseBit(buf, length) != 0;
-
-      case VARCHAR:
-      case VARSTRING:
-      case STRING:
-        return !"0".equals(buf.readCharSequence(length, StandardCharsets.UTF_8).toString());
 
       case DECIMAL:
       case OLDDECIMAL:
@@ -136,15 +120,9 @@ public class BooleanCodec implements Codec<Boolean> {
         return buf.readLongLE() != 0;
 
       default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Boolean", column.getType()));
+        // VARCHAR, VARSTRING, STRING:
+        return !"0".equals(buf.readCharSequence(length, StandardCharsets.UTF_8).toString());
     }
-  }
-
-  @Override
-  public String toString() {
-    return "BooleanCodec{}";
   }
 
   @Override

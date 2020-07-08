@@ -88,10 +88,6 @@ public class LocalTimeCodec implements Codec<LocalTime> {
     return parts;
   }
 
-  public String className() {
-    return LocalTime.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(LocalTime.class);
   }
@@ -125,9 +121,8 @@ public class LocalTimeCodec implements Codec<LocalTime> {
         }
         return LocalTime.of(parts[1] % 24, parts[2], parts[3], parts[4]);
 
-      case VARSTRING:
-      case VARCHAR:
-      case STRING:
+      default:
+        // STRING, VARCHAR, VARSTRING:
         String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           if (val.contains(" ")) {
@@ -141,11 +136,6 @@ public class LocalTimeCodec implements Codec<LocalTime> {
               String.format(
                   "value '%s' (%s) cannot be decoded as LocalTime", val, column.getType()));
         }
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as LocalTime", column.getType()));
     }
   }
 
@@ -192,9 +182,8 @@ public class LocalTimeCodec implements Codec<LocalTime> {
         }
         return LocalTime.of(hour % 24, minutes, seconds, (int) microseconds * 1000);
 
-      case VARSTRING:
-      case VARCHAR:
-      case STRING:
+      default:
+        // STRING, VARCHAR, VARSTRING:
         String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           if (val.contains(" ")) {
@@ -208,11 +197,6 @@ public class LocalTimeCodec implements Codec<LocalTime> {
               String.format(
                   "value '%s' (%s) cannot be decoded as LocalTime", val, column.getType()));
         }
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as LocalTime", column.getType()));
     }
   }
 
@@ -266,10 +250,5 @@ public class LocalTimeCodec implements Codec<LocalTime> {
 
   public DataType getBinaryEncodeType() {
     return DataType.TIME;
-  }
-
-  @Override
-  public String toString() {
-    return "LocalTimeCodec{}";
   }
 }

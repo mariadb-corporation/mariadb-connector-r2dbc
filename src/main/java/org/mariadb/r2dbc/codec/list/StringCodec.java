@@ -70,10 +70,6 @@ public class StringCodec implements Codec<String> {
     return value;
   }
 
-  public String className() {
-    return String.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(String.class);
   }
@@ -277,10 +273,5 @@ public class StringCodec implements Codec<String> {
 
   public DataType getBinaryEncodeType() {
     return DataType.VARSTRING;
-  }
-
-  @Override
-  public String toString() {
-    return "StringCodec{}";
   }
 }

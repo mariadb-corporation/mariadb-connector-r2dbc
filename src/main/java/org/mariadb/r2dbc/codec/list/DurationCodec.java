@@ -17,7 +17,6 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.EnumSet;
@@ -38,10 +37,6 @@ public class DurationCodec implements Codec<Duration> {
           DataType.VARSTRING,
           DataType.VARCHAR,
           DataType.STRING);
-
-  public String className() {
-    return Duration.class.getName();
-  }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(Duration.class);
@@ -70,10 +65,8 @@ public class DurationCodec implements Codec<Duration> {
             .plusSeconds(parts[5])
             .plusNanos(parts[6]);
 
-      case TIME:
-      case VARCHAR:
-      case VARSTRING:
-      case STRING:
+      default:
+        // TIME, VARCHAR, VARSTRING, STRING:
         parts = LocalTimeCodec.parseTime(buf, length, column);
         Duration d =
             Duration.ZERO
@@ -83,11 +76,6 @@ public class DurationCodec implements Codec<Duration> {
                 .plusNanos(parts[4]);
         if (parts[0] == 1) return d.negated();
         return d;
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Duration", column.getType()));
     }
   }
 
@@ -129,7 +117,8 @@ public class DurationCodec implements Codec<Duration> {
         if (negate) return duration.negated();
         return duration;
 
-      default:
+      case TIMESTAMP:
+      case DATETIME:
         buf.readUnsignedShortLE(); // skip year
         buf.readByte(); // skip month
         days = buf.readByte();
@@ -148,6 +137,17 @@ public class DurationCodec implements Codec<Duration> {
             .plusMinutes(minutes)
             .plusSeconds(seconds)
             .plusNanos(microseconds * 1000);
+      default:
+        // VARCHAR, VARSTRING, STRING:
+        int[] parts = LocalTimeCodec.parseTime(buf, length, column);
+        Duration d =
+            Duration.ZERO
+                .plusHours(parts[1])
+                .plusMinutes(parts[2])
+                .plusSeconds(parts[3])
+                .plusNanos(parts[4]);
+        if (parts[0] == 1) return d.negated();
+        return d;
     }
   }
 
@@ -191,10 +191,5 @@ public class DurationCodec implements Codec<Duration> {
 
   public DataType getBinaryEncodeType() {
     return DataType.TIME;
-  }
-
-  @Override
-  public String toString() {
-    return "DurationCodec{}";
   }
 }

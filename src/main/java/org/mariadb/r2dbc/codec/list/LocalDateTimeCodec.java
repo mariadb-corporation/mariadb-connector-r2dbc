@@ -96,10 +96,6 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
     return timestampsPart;
   }
 
-  public String className() {
-    return LocalDateTime.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType())
         && type.isAssignableFrom(LocalDateTime.class);
@@ -115,21 +111,6 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
 
     int[] parts;
     switch (column.getType()) {
-      case STRING:
-      case VARCHAR:
-      case VARSTRING:
-        String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-        try {
-          parts = parseTimestamp(val);
-          if (parts == null) return null;
-          return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
-              .plusNanos(parts[6]);
-        } catch (DateTimeException dte) {
-          throw new R2dbcNonTransientResourceException(
-              String.format(
-                  "value '%s' (%s) cannot be decoded as LocalDateTime", val, column.getType()));
-        }
-
       case DATE:
         parts = LocalDateCodec.parseDate(buf, length);
         if (parts == null) return null;
@@ -147,9 +128,18 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
         return LocalDateTime.of(1970, 1, 1, parts[1] % 24, parts[2], parts[3]).plusNanos(parts[4]);
 
       default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as LocalDateTime", column.getType()));
+        // STRING, VARCHAR, VARSTRING:
+        String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          parts = parseTimestamp(val);
+          if (parts == null) return null;
+          return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
+              .plusNanos(parts[6]);
+        } catch (DateTimeException dte) {
+          throw new R2dbcNonTransientResourceException(
+              String.format(
+                  "value '%s' (%s) cannot be decoded as LocalDateTime", val, column.getType()));
+        }
     }
   }
 
@@ -177,21 +167,6 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
         }
         break;
 
-      case STRING:
-      case VARCHAR:
-      case VARSTRING:
-        String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-        try {
-          int[] parts = parseTimestamp(val);
-          if (parts == null) return null;
-          return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
-              .plusNanos(parts[6]);
-        } catch (DateTimeException dte) {
-          throw new R2dbcNonTransientResourceException(
-              String.format(
-                  "value '%s' (%s) cannot be decoded as LocalDateTime", val, column.getType()));
-        }
-
       case DATE:
       case TIMESTAMP:
       case DATETIME:
@@ -211,9 +186,18 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
         break;
 
       default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as LocalDateTime", column.getType()));
+        // STRING, VARCHAR, VARSTRING:
+        String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          int[] parts = parseTimestamp(val);
+          if (parts == null) return null;
+          return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
+              .plusNanos(parts[6]);
+        } catch (DateTimeException dte) {
+          throw new R2dbcNonTransientResourceException(
+              String.format(
+                  "value '%s' (%s) cannot be decoded as LocalDateTime", val, column.getType()));
+        }
     }
 
     return LocalDateTime.of(year, month, (int) dayOfMonth, hour, minutes, seconds)
@@ -256,10 +240,5 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
 
   public DataType getBinaryEncodeType() {
     return DataType.DATETIME;
-  }
-
-  @Override
-  public String toString() {
-    return "LocalDateTimeCodec{}";
   }
 }

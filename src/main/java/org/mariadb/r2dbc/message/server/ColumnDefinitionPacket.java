@@ -306,7 +306,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
       case STRING:
         return isBinary() ? ByteArrayCodec.INSTANCE : StringCodec.INSTANCE;
       case TINYINT:
-        return isSigned() ? TinyIntCodec.INSTANCE : ShortCodec.INSTANCE;
+        return isSigned() ? ByteCodec.INSTANCE : ShortCodec.INSTANCE;
       case SMALLINT:
         return isSigned() ? ShortCodec.INSTANCE : IntCodec.INSTANCE;
       case INTEGER:

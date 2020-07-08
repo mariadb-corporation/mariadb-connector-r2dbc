@@ -63,10 +63,6 @@ public class LocalDateCodec implements Codec<LocalDate> {
     return datePart;
   }
 
-  public String className() {
-    return LocalDate.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(LocalDate.class);
   }
@@ -106,9 +102,8 @@ public class LocalDateCodec implements Codec<LocalDate> {
                 buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
         break;
 
-      case VARSTRING:
-      case VARCHAR:
-      case STRING:
+      default:
+        // VARSTRING, VARCHAR, STRING:
         String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         String[] stDatePart = val.split("-| ");
         if (stDatePart.length < 3) {
@@ -125,11 +120,6 @@ public class LocalDateCodec implements Codec<LocalDate> {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' (%s) cannot be decoded as Date", val, column.getType()));
         }
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Date", column.getType()));
     }
     if (parts == null) return null;
     return LocalDate.of(parts[0], parts[1], parts[2]);
@@ -175,8 +165,8 @@ public class LocalDateCodec implements Codec<LocalDate> {
               String.format("value '%s' (%s) cannot be decoded as Date", val, column.getType()));
         }
 
-      case DATE:
-      case YEAR:
+      default:
+        // DATE, YEAR:
         year = buf.readUnsignedShortLE();
 
         if (column.getLength() == 2) {
@@ -193,11 +183,6 @@ public class LocalDateCodec implements Codec<LocalDate> {
           dayOfMonth = buf.readByte();
         }
         return LocalDate.of(year, month, dayOfMonth);
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Date", column.getType()));
     }
   }
 
@@ -220,10 +205,5 @@ public class LocalDateCodec implements Codec<LocalDate> {
 
   public DataType getBinaryEncodeType() {
     return DataType.DATE;
-  }
-
-  @Override
-  public String toString() {
-    return "LocalDateCodec{}";
   }
 }

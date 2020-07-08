@@ -101,13 +101,14 @@ public class BitParameterTest extends BaseTest {
             .bind(0, Boolean.TRUE)
             .bind(1, Boolean.TRUE)
             .bind(2, Boolean.FALSE);
+
     Assertions.assertTrue(
         stmt.toString()
                 .contains(
-                    "parameters=[Parameter{codec=BooleanCodec{}, value=true}, Parameter{codec=BooleanCodec{}, value=true}, Parameter{codec=BooleanCodec{}, value=false}]")
+                    "parameters=[Parameter{codec=BooleanCodec, value=true}, Parameter{codec=BooleanCodec, value=true}, Parameter{codec=BooleanCodec, value=false}]")
             || stmt.toString()
                 .contains(
-                    "parameters={0=Parameter{codec=BooleanCodec{}, value=true}, 1=Parameter{codec=BooleanCodec{}, value=true}, 2=Parameter{codec=BooleanCodec{}, value=false}}"));
+                    "parameters={0=Parameter{codec=BooleanCodec, value=true}, 1=Parameter{codec=BooleanCodec, value=true}, 2=Parameter{codec=BooleanCodec, value=false}}"));
     stmt.execute().blockLast();
     validate(
         Optional.of(BitSet.valueOf(new byte[] {(byte) 1})),

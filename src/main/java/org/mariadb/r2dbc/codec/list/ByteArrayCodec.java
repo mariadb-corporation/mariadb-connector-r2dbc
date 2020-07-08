@@ -17,7 +17,6 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
@@ -37,15 +36,10 @@ public class ByteArrayCodec implements Codec<byte[]> {
           DataType.TINYBLOB,
           DataType.MEDIUMBLOB,
           DataType.LONGBLOB,
-          DataType.BIT,
           DataType.GEOMETRY,
           DataType.VARSTRING,
           DataType.VARCHAR,
           DataType.STRING);
-
-  public String className() {
-    return byte[].class.getName();
-  }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType())
@@ -56,45 +50,18 @@ public class ByteArrayCodec implements Codec<byte[]> {
   @Override
   public byte[] decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends byte[]> type) {
-    switch (column.getType()) {
-      case BLOB:
-      case TINYBLOB:
-      case MEDIUMBLOB:
-      case LONGBLOB:
-      case STRING:
-      case VARSTRING:
-      case VARCHAR:
-        byte[] arr = new byte[length];
-        buf.readBytes(arr);
-        return arr;
 
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as byte[]", column.getType()));
-    }
+    byte[] arr = new byte[length];
+    buf.readBytes(arr);
+    return arr;
   }
 
   @Override
   public byte[] decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends byte[]> type) {
-    switch (column.getType()) {
-      case BLOB:
-      case TINYBLOB:
-      case MEDIUMBLOB:
-      case LONGBLOB:
-      case STRING:
-      case VARSTRING:
-      case VARCHAR:
-        byte[] arr = new byte[length];
-        buf.readBytes(arr);
-        return arr;
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as byte[]", column.getType()));
-    }
+    byte[] arr = new byte[length];
+    buf.readBytes(arr);
+    return arr;
   }
 
   public boolean canEncode(Object value) {
@@ -126,10 +93,5 @@ public class ByteArrayCodec implements Codec<byte[]> {
 
   public DataType getBinaryEncodeType() {
     return DataType.BLOB;
-  }
-
-  @Override
-  public String toString() {
-    return "ByteArrayCodec{}";
   }
 }

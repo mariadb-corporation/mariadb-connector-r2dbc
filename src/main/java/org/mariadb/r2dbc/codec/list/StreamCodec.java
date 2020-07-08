@@ -42,10 +42,6 @@ public class StreamCodec implements Codec<InputStream> {
           DataType.VARSTRING,
           DataType.STRING);
 
-  public String className() {
-    return InputStream.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(InputStream.class);
   }
@@ -121,10 +117,5 @@ public class StreamCodec implements Codec<InputStream> {
 
   public boolean canEncodeLongData() {
     return true;
-  }
-
-  @Override
-  public String toString() {
-    return "StreamCodec{}";
   }
 }

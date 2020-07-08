@@ -315,20 +315,20 @@ public class YearParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Float.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcNonTransientResourceException
-                    && throwable.getMessage().equals("Data type YEAR cannot be decoded as Float"));
+        .expectNext(Optional.of(2060f), Optional.of(2071f), Optional.of(0f), Optional.empty())
+        .verifyComplete();
     connection
         .createStatement("SELECT t2 FROM YearTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Float.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcNonTransientResourceException
-                    && throwable.getMessage().equals("Data type YEAR cannot be decoded as Float"));
+        .expectNext(
+            Optional.of(meta.isMariaDBServer() ? 60F : 2060F),
+            Optional.of(meta.isMariaDBServer() ? 71F : 1971F),
+            Optional.of(0F),
+            Optional.empty())
+        .verifyComplete();
   }
 
   @Test
@@ -348,10 +348,8 @@ public class YearParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Double.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcNonTransientResourceException
-                    && throwable.getMessage().equals("Data type YEAR cannot be decoded as Double"));
+        .expectNext(Optional.of(2060D), Optional.of(2071D), Optional.of(0D), Optional.empty())
+        .verifyComplete();
 
     connection
         .createStatement("SELECT t2 FROM YearTable WHERE 1 = ?")
@@ -359,10 +357,12 @@ public class YearParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Double.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcNonTransientResourceException
-                    && throwable.getMessage().equals("Data type YEAR cannot be decoded as Double"));
+        .expectNext(
+            Optional.of(meta.isMariaDBServer() ? 60D : 2060D),
+            Optional.of(meta.isMariaDBServer() ? 71D : 1971D),
+            Optional.of(0D),
+            Optional.empty())
+        .verifyComplete();
   }
 
   @Test
@@ -452,24 +452,24 @@ public class YearParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BigDecimal.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcNonTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("Data type YEAR cannot be decoded as BigDecimal"));
+        .expectNext(
+            Optional.of(new BigDecimal("2060")),
+            Optional.of(new BigDecimal("2071")),
+            Optional.of(new BigDecimal("0000")),
+            Optional.empty())
+        .verifyComplete();
     connection
         .createStatement("SELECT t2 FROM YearTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BigDecimal.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcNonTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("Data type YEAR cannot be decoded as BigDecimal"));
+        .expectNext(
+            Optional.of(new BigDecimal(meta.isMariaDBServer() ? "60" : "2060")),
+            Optional.of(new BigDecimal(meta.isMariaDBServer() ? "71" : "1971")),
+            Optional.of(new BigDecimal(meta.isMariaDBServer() ? "00" : "0000")),
+            Optional.empty())
+        .verifyComplete();
   }
 
   @Test

@@ -68,10 +68,6 @@ public class ByteCodec implements Codec<Byte> {
     return val;
   }
 
-  public String className() {
-    return Byte.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType())
         && ((type.isPrimitive() && type == Byte.TYPE) || type.isAssignableFrom(Byte.class));
@@ -101,23 +97,6 @@ public class ByteCodec implements Codec<Byte> {
         if (length > 1) buf.skipBytes(length - 1);
         return val;
 
-      case FLOAT:
-      case DOUBLE:
-      case OLDDECIMAL:
-      case DECIMAL:
-      case ENUM:
-      case VARCHAR:
-      case VARSTRING:
-      case STRING:
-        String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-        try {
-          result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).byteValueExact();
-        } catch (NumberFormatException | ArithmeticException nfe) {
-          throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' (%s) cannot be decoded as Byte", str, column.getType()));
-        }
-        break;
-
       case BLOB:
       case TINYBLOB:
       case MEDIUMBLOB:
@@ -131,9 +110,15 @@ public class ByteCodec implements Codec<Byte> {
             "empty String value cannot be decoded as Byte");
 
       default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Byte", column.getType()));
+        // FLOAT, DOUBLE, OLDDECIMAL, DECIMAL, ENUM, VARCHAR, VARSTRING, STRING:
+        String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).byteValueExact();
+        } catch (NumberFormatException | ArithmeticException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' (%s) cannot be decoded as Byte", str, column.getType()));
+        }
+        break;
     }
 
     if ((byte) result != result || (result < 0 && !column.isSigned())) {
@@ -218,10 +203,8 @@ public class ByteCodec implements Codec<Byte> {
         }
         break;
 
-      case BLOB:
-      case TINYBLOB:
-      case MEDIUMBLOB:
-      case LONGBLOB:
+      default:
+        // BLOB, TINYBLOB, MEDIUMBLOB, LONGBLOB:
         if (length > 0) {
           byte b = buf.readByte();
           buf.skipBytes(length - 1);
@@ -229,11 +212,6 @@ public class ByteCodec implements Codec<Byte> {
         }
         throw new R2dbcNonTransientResourceException(
             "empty String value cannot be decoded as Byte");
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Byte", column.getType()));
     }
 
     if ((byte) result != result || (result < 0 && !column.isSigned())) {
@@ -255,10 +233,5 @@ public class ByteCodec implements Codec<Byte> {
 
   public DataType getBinaryEncodeType() {
     return DataType.TINYINT;
-  }
-
-  @Override
-  public String toString() {
-    return "ByteCodec{}";
   }
 }

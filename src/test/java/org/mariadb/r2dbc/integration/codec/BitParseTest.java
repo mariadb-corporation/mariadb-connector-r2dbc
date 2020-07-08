@@ -16,7 +16,6 @@
 
 package org.mariadb.r2dbc.integration.codec;
 
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -157,8 +156,10 @@ public class BitParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcNonTransientResourceException
-                    && throwable.getMessage().equals("Data type BIT cannot be decoded as byte[]"))
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable
+                        .getMessage()
+                        .equals("No decoder for type byte[] and column type BIT"))
         .verify();
   }
 

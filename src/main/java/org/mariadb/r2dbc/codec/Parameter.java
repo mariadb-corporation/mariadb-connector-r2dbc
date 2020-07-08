@@ -70,6 +70,6 @@ public class Parameter<T> {
 
   @Override
   public String toString() {
-    return "Parameter{codec=" + codec + ", value=" + value + '}';
+    return "Parameter{codec=" + codec.getClass().getSimpleName() + ", value=" + value + '}';
   }
 }

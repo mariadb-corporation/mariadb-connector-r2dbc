@@ -48,10 +48,6 @@ public class DoubleCodec implements Codec<Double> {
           DataType.VARSTRING,
           DataType.STRING);
 
-  public String className() {
-    return Double.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType())
         && ((type.isPrimitive() && type == Double.TYPE) || type.isAssignableFrom(Double.class));
@@ -74,11 +70,11 @@ public class DoubleCodec implements Codec<Double> {
       case DOUBLE:
       case OLDDECIMAL:
       case DECIMAL:
+      case YEAR:
         return Double.valueOf(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
 
-      case VARCHAR:
-      case VARSTRING:
-      case STRING:
+      default:
+        // VARCHAR, VARSTRING, STRING:
         String str2 = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           return Double.valueOf(str2);
@@ -86,11 +82,6 @@ public class DoubleCodec implements Codec<Double> {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Double", str2));
         }
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Double", column.getType()));
     }
   }
 
@@ -138,9 +129,6 @@ public class DoubleCodec implements Codec<Double> {
       case FLOAT:
         return (double) buf.readFloatLE();
 
-      case DOUBLE:
-        return buf.readDoubleLE();
-
       case OLDDECIMAL:
       case DECIMAL:
         return new BigDecimal(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString())
@@ -158,9 +146,8 @@ public class DoubleCodec implements Codec<Double> {
         }
 
       default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Double", column.getType()));
+        // DOUBLE
+        return buf.readDoubleLE();
     }
   }
 
@@ -176,10 +163,5 @@ public class DoubleCodec implements Codec<Double> {
 
   public DataType getBinaryEncodeType() {
     return DataType.DOUBLE;
-  }
-
-  @Override
-  public String toString() {
-    return "DoubleCodec{}";
   }
 }

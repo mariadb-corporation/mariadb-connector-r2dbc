@@ -44,16 +44,11 @@ public class BlobCodec implements Codec<Blob> {
           DataType.VARSTRING,
           DataType.VARCHAR);
 
-  public String className() {
-    return Blob.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(Blob.class);
   }
 
   @Override
-  @SuppressWarnings("fallthrough")
   public io.r2dbc.spi.Blob decodeText(
       ByteBuf buf,
       int length,
@@ -69,35 +64,18 @@ public class BlobCodec implements Codec<Blob> {
               String.format(
                   "Data type %s (not binary) cannot be decoded as Blob", column.getType()));
         }
-      case BIT:
-      case TINYBLOB:
-      case MEDIUMBLOB:
-      case LONGBLOB:
-      case BLOB:
-      case GEOMETRY:
         return io.r2dbc.spi.Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
 
       default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Blob", column.getType()));
+        // BIT, TINYBLOB, MEDIUMBLOB, LONGBLOB, BLOB, GEOMETRY
+        return io.r2dbc.spi.Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
     }
   }
 
   @Override
-  @SuppressWarnings("fallthrough")
   public Blob decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Blob> type) {
     switch (column.getType()) {
-      case STRING:
-      case VARCHAR:
-      case VARSTRING:
-        if (!column.isBinary()) {
-          buf.skipBytes(length);
-          throw new R2dbcNonTransientResourceException(
-              String.format(
-                  "Data type %s (not binary) cannot be decoded as Blob", column.getType()));
-        }
       case BIT:
       case TINYBLOB:
       case MEDIUMBLOB:
@@ -107,9 +85,14 @@ public class BlobCodec implements Codec<Blob> {
         return Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
 
       default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Blob", column.getType()));
+        // STRING, VARCHAR, VARSTRING:
+        if (!column.isBinary()) {
+          buf.skipBytes(length);
+          throw new R2dbcNonTransientResourceException(
+              String.format(
+                  "Data type %s (not binary) cannot be decoded as Blob", column.getType()));
+        }
+        return Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
     }
   }
 
@@ -180,10 +163,5 @@ public class BlobCodec implements Codec<Blob> {
 
   public boolean canEncodeLongData() {
     return true;
-  }
-
-  @Override
-  public String toString() {
-    return "BlobCodec{}";
   }
 }

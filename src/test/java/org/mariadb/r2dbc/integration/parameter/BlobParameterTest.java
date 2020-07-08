@@ -224,7 +224,7 @@ public class BlobParameterTest extends BaseTest {
             .bind(0, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 15}))))
             .bind(1, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127}))))
             .bind(2, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {0}))));
-    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=BlobCodec{},"));
+    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=BlobCodec,"));
     stmt.execute().blockLast();
     validateNotNull(
         ByteBuffer.wrap(new byte[] {(byte) 15}),
@@ -249,7 +249,7 @@ public class BlobParameterTest extends BaseTest {
             .bind(0, new ByteArrayInputStream(new byte[] {(byte) 15}))
             .bind(1, new ByteArrayInputStream((new byte[] {(byte) 1, 0, (byte) 127})))
             .bind(2, new ByteArrayInputStream((new byte[] {0})));
-    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=StreamCodec{},"));
+    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=StreamCodec,"));
     stmt.execute().blockLast();
     validateNotNull(
         ByteBuffer.wrap(new byte[] {(byte) 15}),

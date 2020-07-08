@@ -59,10 +59,6 @@ public class ShortCodec implements Codec<Short> {
     return value instanceof Short;
   }
 
-  public String className() {
-    return Short.class.getName();
-  }
-
   @Override
   public Short decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Short> type) {
@@ -88,14 +84,8 @@ public class ShortCodec implements Codec<Short> {
         }
         break;
 
-      case FLOAT:
-      case DOUBLE:
-      case OLDDECIMAL:
-      case VARCHAR:
-      case DECIMAL:
-      case ENUM:
-      case VARSTRING:
-      case STRING:
+      default:
+        // FLOAT, DOUBLE, OLDDECIMAL, VARCHAR, DECIMAL, ENUM, VARSTRING, STRING:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValue();
@@ -104,11 +94,6 @@ public class ShortCodec implements Codec<Short> {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Short", str));
         }
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Short", column.getType()));
     }
 
     if ((short) result != result || (result < 0 && !column.isSigned())) {
@@ -167,12 +152,8 @@ public class ShortCodec implements Codec<Short> {
         result = (long) buf.readDoubleLE();
         break;
 
-      case OLDDECIMAL:
-      case VARCHAR:
-      case DECIMAL:
-      case ENUM:
-      case VARSTRING:
-      case STRING:
+      default:
+        // OLDDECIMAL, VARCHAR, DECIMAL, ENUM, VARSTRING, STRING:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValue();
@@ -181,11 +162,6 @@ public class ShortCodec implements Codec<Short> {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Short", str));
         }
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Short", column.getType()));
     }
 
     if ((short) result != result || (result < 0 && !column.isSigned())) {
@@ -207,10 +183,5 @@ public class ShortCodec implements Codec<Short> {
 
   public DataType getBinaryEncodeType() {
     return DataType.SMALLINT;
-  }
-
-  @Override
-  public String toString() {
-    return "ShortCodec{}";
   }
 }

@@ -365,6 +365,47 @@ public class BlobParseTest extends BaseTest {
   }
 
   @Test
+  void blobValue() {
+    blobValue(sharedConn);
+  }
+
+  @Test
+  void blobValuePrepare() {
+    blobValue(sharedConnPrepare);
+  }
+
+  private void blobValue(MariadbConnection connection) {
+
+    String[] expectedVals = new String[] {"diego🤘💪", "georg", "lawrin"};
+    AtomicInteger index = new AtomicInteger();
+
+    Consumer<? super ByteBuffer> consumer =
+        actual -> {
+          byte[] expected = expectedVals[index.getAndIncrement()].getBytes(StandardCharsets.UTF_8);
+          if (actual.hasArray()) {
+            Assertions.assertArrayEquals(actual.array(), expected);
+          } else {
+            byte[] res = new byte[actual.remaining()];
+            actual.get(res);
+            Assertions.assertArrayEquals(res, expected);
+          }
+        };
+
+    connection
+        .createStatement("SELECT t1,t2 FROM BlobTable WHERE 1 = ? limit 3")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, Blob.class)))
+        .cast(Blob.class)
+        .flatMap(Blob::stream)
+        .as(StepVerifier::create)
+        .consumeNextWith(consumer)
+        .consumeNextWith(consumer)
+        .consumeNextWith(consumer)
+        .verifyComplete();
+  }
+
+  @Test
   void decimalValue() {
     decimalValue(sharedConn);
   }

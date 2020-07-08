@@ -18,7 +18,6 @@ package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Clob;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.client.Context;
@@ -36,10 +35,6 @@ public class ClobCodec implements Codec<Clob> {
   private static final EnumSet<DataType> COMPATIBLE_TYPES =
       EnumSet.of(DataType.VARCHAR, DataType.VARSTRING, DataType.STRING);
 
-  public String className() {
-    return Clob.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType()) && (type.isAssignableFrom(Clob.class));
   }
@@ -51,35 +46,15 @@ public class ClobCodec implements Codec<Clob> {
   @Override
   public Clob decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Clob> type) {
-    switch (column.getType()) {
-      case STRING:
-      case VARCHAR:
-      case VARSTRING:
-        String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-        return Clob.from(Mono.just(rawValue));
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Clob", column.getType()));
-    }
+    String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+    return Clob.from(Mono.just(rawValue));
   }
 
   @Override
   public Clob decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Clob> type) {
-    switch (column.getType()) {
-      case STRING:
-      case VARCHAR:
-      case VARSTRING:
-        String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-        return Clob.from(Mono.just(rawValue));
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Clob", column.getType()));
-    }
+    String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+    return Clob.from(Mono.just(rawValue));
   }
 
   @Override
@@ -134,10 +109,5 @@ public class ClobCodec implements Codec<Clob> {
 
   public DataType getBinaryEncodeType() {
     return DataType.VARSTRING;
-  }
-
-  @Override
-  public String toString() {
-    return "ClobCodec{}";
   }
 }

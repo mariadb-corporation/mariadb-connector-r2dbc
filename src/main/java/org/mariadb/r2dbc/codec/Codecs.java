@@ -42,8 +42,7 @@ public class Codecs {
         DurationCodec.INSTANCE,
         ShortCodec.INSTANCE,
         StreamCodec.INSTANCE,
-        StringCodec.INSTANCE,
-        TinyIntCodec.INSTANCE
+        StringCodec.INSTANCE
       };
 
   // association with enum, since doesn't supporting generics in enum :(
@@ -51,7 +50,7 @@ public class Codecs {
 
   static {
     CODEC_LIST.put(DataType.OLDDECIMAL, BigDecimalCodec.INSTANCE);
-    CODEC_LIST.put(DataType.TINYINT, TinyIntCodec.INSTANCE);
+    CODEC_LIST.put(DataType.TINYINT, ByteCodec.INSTANCE);
     CODEC_LIST.put(DataType.SMALLINT, ShortCodec.INSTANCE);
     CODEC_LIST.put(DataType.INTEGER, IntCodec.INSTANCE);
     CODEC_LIST.put(DataType.DOUBLE, DoubleCodec.INSTANCE);

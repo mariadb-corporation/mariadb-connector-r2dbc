@@ -49,10 +49,6 @@ public class BitSetCodec implements Codec<BitSet> {
     }
   }
 
-  public String className() {
-    return BitSet.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return column.getType() == DataType.BIT && type.isAssignableFrom(BitSet.class);
   }
@@ -96,10 +92,5 @@ public class BitSetCodec implements Codec<BitSet> {
 
   public DataType getBinaryEncodeType() {
     return DataType.BLOB;
-  }
-
-  @Override
-  public String toString() {
-    return "BitSetCodec{}";
   }
 }

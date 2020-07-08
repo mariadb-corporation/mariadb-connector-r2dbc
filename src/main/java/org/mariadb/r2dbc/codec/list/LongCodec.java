@@ -69,10 +69,6 @@ public class LongCodec implements Codec<Long> {
     return result;
   }
 
-  public String className() {
-    return Long.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType())
         && ((type.isPrimitive() && type == Long.TYPE) || type.isAssignableFrom(Long.class));
@@ -132,9 +128,8 @@ public class LongCodec implements Codec<Long> {
               String.format("value '%s' cannot be decoded as Long", str1));
         }
 
-      case VARCHAR:
-      case VARSTRING:
-      case STRING:
+      default:
+        // STRING, VARCHAR, VARSTRING:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           result = new BigInteger(str).longValueExact();
@@ -143,11 +138,6 @@ public class LongCodec implements Codec<Long> {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Long", str));
         }
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Long", column.getType()));
     }
 
     if (result < 0 & !column.isSigned()) {
@@ -221,11 +211,8 @@ public class LongCodec implements Codec<Long> {
       case DOUBLE:
         return (long) buf.readDoubleLE();
 
-      case VARSTRING:
-      case VARCHAR:
-      case STRING:
-      case OLDDECIMAL:
-      case DECIMAL:
+      default:
+        // VARSTRING, VARCHAR, STRING, OLDDECIMAL, DECIMAL:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           return new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValueExact();
@@ -233,11 +220,6 @@ public class LongCodec implements Codec<Long> {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Long", str));
         }
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Long", column.getType()));
     }
   }
 
@@ -253,10 +235,5 @@ public class LongCodec implements Codec<Long> {
 
   public DataType getBinaryEncodeType() {
     return DataType.BIGINT;
-  }
-
-  @Override
-  public String toString() {
-    return "LongCodec{}";
   }
 }

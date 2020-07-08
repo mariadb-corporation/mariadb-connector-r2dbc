@@ -48,10 +48,6 @@ public class FloatCodec implements Codec<Float> {
           DataType.VARSTRING,
           DataType.STRING);
 
-  public String className() {
-    return Float.class.getName();
-  }
-
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType())
         && ((type.isPrimitive() && type == Float.TYPE) || type.isAssignableFrom(Float.class));
@@ -73,12 +69,12 @@ public class FloatCodec implements Codec<Float> {
       case DOUBLE:
       case OLDDECIMAL:
       case DECIMAL:
+      case YEAR:
       case FLOAT:
         return Float.valueOf(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
 
-      case VARCHAR:
-      case VARSTRING:
-      case STRING:
+      default:
+        // VARCHAR, VARSTRING, STRING:
         String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           return Float.valueOf(val);
@@ -86,11 +82,6 @@ public class FloatCodec implements Codec<Float> {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Float", val));
         }
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Float", column.getType()));
     }
   }
 
@@ -136,9 +127,6 @@ public class FloatCodec implements Codec<Float> {
           return new BigInteger(1, bb).floatValue();
         }
 
-      case FLOAT:
-        return buf.readFloatLE();
-
       case DOUBLE:
         return (float) buf.readDoubleLE();
 
@@ -159,9 +147,8 @@ public class FloatCodec implements Codec<Float> {
         }
 
       default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Float", column.getType()));
+        // FLOAT
+        return buf.readFloatLE();
     }
   }
 
@@ -177,10 +164,5 @@ public class FloatCodec implements Codec<Float> {
 
   public DataType getBinaryEncodeType() {
     return DataType.FLOAT;
-  }
-
-  @Override
-  public String toString() {
-    return "FloatCodec{}";
   }
 }

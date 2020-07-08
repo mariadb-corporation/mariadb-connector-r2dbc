@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.integration.codec;
 
+import io.r2dbc.spi.Blob;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
@@ -350,6 +351,37 @@ public class DecimalParseTest extends BaseTest {
             Optional.of(new BigDecimal("9223372036854775807.92233720368547758070")),
             Optional.empty())
         .verifyComplete();
+  }
+
+  @Test
+  void blobValue() {
+    blobValue(sharedConn);
+  }
+
+  @Test
+  void blobValuePrepare() {
+    blobValue(sharedConnPrepare);
+  }
+
+  private void blobValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      return row.get(0, Blob.class);
+                    }))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable
+                        .getMessage()
+                        .equals("No decoder for type io.r2dbc.spi.Blob and column type DECIMAL"))
+        .verify();
   }
 
   @Test
