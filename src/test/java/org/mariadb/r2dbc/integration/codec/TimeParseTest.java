@@ -34,10 +34,13 @@ import reactor.test.StepVerifier;
 public class TimeParseTest extends BaseTest {
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("CREATE TABLE TimeParseTest (t1 TIME(6))").execute().blockLast();
+    sharedConn.createStatement("CREATE TABLE TimeParseTest (t1 TIME(6), t2 TIME(6))").execute().blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO TimeParseTest VALUES ('90:00:00.012340'), ('800:00:00.123'), (800), (22), (null)")
+            "INSERT INTO TimeParseTest VALUES ('90:00:00.012340', '-10:01:02.012340'), ('800:00:00.123', '-00:00:10"
+                + ".123'), (800, -800), "
+                + "(22, -22)"
+                + ", (null, null)")
         .execute()
         .blockLast();
     // ensure having same kind of result for truncation
@@ -126,6 +129,19 @@ public class TimeParseTest extends BaseTest {
             Optional.of(LocalTime.parse("08:00:00.123")),
             Optional.of(LocalTime.parse("00:08:00")),
             Optional.of(LocalTime.parse("00:00:22")),
+            Optional.empty())
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t2 FROM TimeParseTest WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalTime.class))))
+        .as(StepVerifier::create)
+        .expectNext(
+            Optional.of(LocalTime.parse("13:58:57.987660")),
+            Optional.of(LocalTime.parse("23:59:49.877")),
+            Optional.of(LocalTime.parse("23:52")),
+            Optional.of(LocalTime.parse("23:59:38")),
             Optional.empty())
         .verifyComplete();
   }

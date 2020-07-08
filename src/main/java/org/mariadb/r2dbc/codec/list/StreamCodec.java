@@ -49,21 +49,8 @@ public class StreamCodec implements Codec<InputStream> {
   @Override
   public InputStream decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends InputStream> type) {
-    switch (column.getType()) {
-      case STRING:
-      case VARCHAR:
-      case VARSTRING:
-      case BLOB:
-      case TINYBLOB:
-      case MEDIUMBLOB:
-      case LONGBLOB:
-        return new ByteBufInputStream(buf.readSlice(length));
-
-      default:
-        buf.skipBytes(length);
-        throw new R2dbcNonTransientResourceException(
-            String.format("Data type %s cannot be decoded as Stream", column.getType()));
-    }
+    // STRING, VARCHAR, VARSTRING, BLOB, TINYBLOB, MEDIUMBLOB, LONGBLOB:
+    return new ByteBufInputStream(buf.readSlice(length));
   }
 
   @Override

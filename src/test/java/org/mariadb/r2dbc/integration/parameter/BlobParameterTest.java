@@ -233,6 +233,31 @@ public class BlobParameterTest extends BaseTest {
   }
 
   @Test
+  void streamValue() {
+    streamValue(sharedConn);
+  }
+
+  @Test
+  void streamValuePrepare() {
+    streamValue(sharedConnPrepare);
+  }
+
+  private void streamValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BlobParam VALUES (?,?,?)")
+            .bind(0, new ByteArrayInputStream(new byte[] {(byte) 15}))
+            .bind(1, new ByteArrayInputStream(new byte[] {(byte) 1, 0, (byte) 127}))
+            .bind(2, new ByteArrayInputStream(new byte[] {0}));
+    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=StreamCodec,"));
+    stmt.execute().blockLast();
+    validateNotNull(
+        ByteBuffer.wrap(new byte[] {(byte) 15}),
+        ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127}),
+        ByteBuffer.wrap(new byte[] {0}));
+  }
+
+  @Test
   void inputStreamValue() {
     inputStreamValue(sharedConn);
   }

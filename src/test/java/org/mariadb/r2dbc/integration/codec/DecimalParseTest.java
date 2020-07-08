@@ -38,7 +38,8 @@ public class DecimalParseTest extends BaseTest {
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO DecimalTable VALUES (0.1),(1),(9223372036854775807.9223372036854775807), (null)")
+            "INSERT INTO DecimalTable VALUES (0.1),(1),(9223372036854775807.9223372036854775807),"
+                + " (null), (19223372036854775807.9223372036854775807)")
         .execute()
         .blockLast();
     // ensure having same kind of result for truncation
@@ -74,7 +75,8 @@ public class DecimalParseTest extends BaseTest {
             Optional.of(new BigDecimal("0.10000000000000000000")),
             Optional.of(new BigDecimal("1.00000000000000000000")),
             Optional.of(new BigDecimal("9223372036854775807.92233720368547758070")),
-            Optional.empty())
+            Optional.empty(),
+            Optional.of(new BigDecimal("19223372036854775807.92233720368547758070")))
         .verifyComplete();
   }
 
@@ -95,7 +97,7 @@ public class DecimalParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Boolean.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of(false), Optional.of(true), Optional.of(true), Optional.empty())
+        .expectNext(Optional.of(false), Optional.of(true), Optional.of(true), Optional.empty(), Optional.of(true))
         .verifyComplete();
   }
 
@@ -250,7 +252,11 @@ public class DecimalParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectNext(
             Optional.of(0L), Optional.of(1L), Optional.of(9223372036854775807L), Optional.empty())
-        .verifyComplete();
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("value '19223372036854775807.92233720368547758070' cannot be decoded as Long"))
+        .verify();
   }
 
   @Test
@@ -274,7 +280,8 @@ public class DecimalParseTest extends BaseTest {
             Optional.of(0.1F),
             Optional.of(1F),
             Optional.of(9223372036854775807.9223372036854775807F),
-            Optional.empty())
+            Optional.empty(),
+            Optional.of(19223372036854775807.9223372036854775807F))
         .verifyComplete();
   }
 
@@ -299,7 +306,8 @@ public class DecimalParseTest extends BaseTest {
             Optional.of(0.1D),
             Optional.of(1D),
             Optional.of(9223372036854775807.9223372036854775807D),
-            Optional.empty())
+            Optional.empty(),
+            Optional.of(19223372036854775807.9223372036854775807D))
         .verifyComplete();
   }
 
@@ -324,7 +332,8 @@ public class DecimalParseTest extends BaseTest {
             Optional.of("0.10000000000000000000"),
             Optional.of("1.00000000000000000000"),
             Optional.of("9223372036854775807.92233720368547758070"),
-            Optional.empty())
+            Optional.empty(),
+            Optional.of("19223372036854775807.92233720368547758070"))
         .verifyComplete();
   }
 
@@ -349,7 +358,8 @@ public class DecimalParseTest extends BaseTest {
             Optional.of(new BigDecimal("0.10000000000000000000")),
             Optional.of(new BigDecimal("1.00000000000000000000")),
             Optional.of(new BigDecimal("9223372036854775807.92233720368547758070")),
-            Optional.empty())
+            Optional.empty(),
+            Optional.of(new BigDecimal("19223372036854775807.92233720368547758070")))
         .verifyComplete();
   }
 
@@ -405,7 +415,8 @@ public class DecimalParseTest extends BaseTest {
             Optional.of(BigInteger.ZERO),
             Optional.of(BigInteger.ONE),
             Optional.of(new BigInteger("9223372036854775807")),
-            Optional.empty())
+            Optional.empty(),
+            Optional.of(new BigInteger("19223372036854775807")))
         .verifyComplete();
   }
 }

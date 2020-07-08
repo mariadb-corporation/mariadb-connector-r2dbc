@@ -31,9 +31,9 @@ import reactor.test.StepVerifier;
 public class ShortParseTest extends BaseTest {
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("CREATE TABLE ShortTable " + "(t1 SMALLINT)").execute().blockLast();
+    sharedConn.createStatement("CREATE TABLE ShortTable (t1 SMALLINT, t2 SMALLINT ZEROFILL)").execute().blockLast();
     sharedConn
-        .createStatement("INSERT INTO ShortTable VALUES (0),(1),(-1), (null)")
+        .createStatement("INSERT INTO ShortTable VALUES (0, 0),(1, 10),(-1, 100), (null,null)")
         .execute()
         .blockLast();
     sharedConn
@@ -439,6 +439,16 @@ public class ShortParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectNext(Optional.of("0"), Optional.of("1"), Optional.of("-1"), Optional.empty())
         .verifyComplete();
+
+    connection
+        .createStatement("SELECT t2 FROM ShortTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("00000"), Optional.of("00010"), Optional.of("00100"), Optional.empty())
+        .verifyComplete();
+
     connection
         .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ?")
         .bind(0, 1)

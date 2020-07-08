@@ -17,7 +17,7 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import java.math.BigDecimal;
+
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -58,16 +58,13 @@ public class StringCodec implements Codec<String> {
           DataType.VARSTRING,
           DataType.STRING);
 
-  public static String zeroFillingIfNeeded(String value, ColumnDefinitionPacket col) {
-    if (col.isZeroFill()) {
-      StringBuilder zeroAppendStr = new StringBuilder();
-      long zeroToAdd = col.getDisplaySize() - value.length();
-      while (zeroToAdd-- > 0) {
-        zeroAppendStr.append("0");
-      }
-      return zeroAppendStr.append(value).toString();
+  public static String zeroFilling(String value, ColumnDefinitionPacket col) {
+    StringBuilder zeroAppendStr = new StringBuilder();
+    long zeroToAdd = col.getDisplaySize() - value.length();
+    while (zeroToAdd-- > 0) {
+      zeroAppendStr.append("0");
     }
-    return value;
+    return zeroAppendStr.append(value).toString();
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
@@ -101,17 +98,13 @@ public class StringCodec implements Codec<String> {
       return sb.toString();
     }
 
-    String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-    //    if (column.isZeroFill()) {
-    //      return zeroFillingIfNeeded(rawValue, column);
-    //    }
-    return rawValue;
+    return buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
   }
 
   @Override
   public String decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends String> type) {
-
+    String rawValue;
     switch (column.getType()) {
       case BIT:
         byte[] bytes = new byte[length];
@@ -132,10 +125,11 @@ public class StringCodec implements Codec<String> {
         return sb.toString();
 
       case TINYINT:
-        if (!column.isSigned()) {
-          return String.valueOf(buf.readUnsignedByte());
+        rawValue = String.valueOf(column.isSigned() ? buf.readByte() : buf.readUnsignedByte());
+        if (column.isZeroFill()) {
+          return zeroFilling(rawValue, column);
         }
-        return String.valueOf(buf.readByte());
+        return rawValue;
 
       case YEAR:
         String s = String.valueOf(buf.readUnsignedShortLE());
@@ -143,22 +137,25 @@ public class StringCodec implements Codec<String> {
         return s;
 
       case SMALLINT:
-        if (!column.isSigned()) {
-          return String.valueOf(buf.readUnsignedShortLE());
+        rawValue = String.valueOf(column.isSigned() ? buf.readShortLE() : buf.readUnsignedShortLE());
+        if (column.isZeroFill()) {
+          return zeroFilling(rawValue, column);
         }
-        return String.valueOf(buf.readShortLE());
+        return rawValue;
 
       case MEDIUMINT:
-        if (!column.isSigned()) {
-          return String.valueOf((buf.readUnsignedMediumLE()));
+        rawValue = String.valueOf(column.isSigned() ? buf.readMediumLE() : buf.readUnsignedMediumLE());
+        if (column.isZeroFill()) {
+          return zeroFilling(rawValue, column);
         }
-        return String.valueOf(buf.readMediumLE());
+        return rawValue;
 
       case INTEGER:
-        if (!column.isSigned()) {
-          return String.valueOf(buf.readUnsignedIntLE());
+        rawValue = String.valueOf(column.isSigned() ? buf.readIntLE() : buf.readUnsignedIntLE());
+        if (column.isZeroFill()) {
+          return zeroFilling(rawValue, column);
         }
-        return String.valueOf(buf.readIntLE());
+        return rawValue;
 
       case BIGINT:
         BigInteger val;
@@ -172,8 +169,11 @@ public class StringCodec implements Codec<String> {
           }
           val = new BigInteger(1, bb);
         }
-
-        return new BigDecimal(String.valueOf(val)).setScale(column.getDecimals()).toPlainString();
+        rawValue = String.valueOf(val);
+        if (column.isZeroFill()) {
+          rawValue = zeroFilling(rawValue, column);
+        }
+        return rawValue;
 
       case FLOAT:
         return String.valueOf(buf.readFloatLE());
@@ -225,9 +225,6 @@ public class StringCodec implements Codec<String> {
         int dateYear = buf.readUnsignedShortLE();
         int dateMonth = buf.readByte();
         int dateDay = buf.readByte();
-        if (length > 4) {
-          buf.skipBytes(length - 4);
-        }
         return LocalDate.of(dateYear, dateMonth, dateDay).toString();
 
       case DATETIME:

@@ -101,13 +101,10 @@ public class ByteCodec implements Codec<Byte> {
       case TINYBLOB:
       case MEDIUMBLOB:
       case LONGBLOB:
-        if (length > 0) {
-          byte b = buf.readByte();
-          buf.skipBytes(length - 1);
-          return b;
-        }
-        throw new R2dbcNonTransientResourceException(
-            "empty String value cannot be decoded as Byte");
+        if (length == 0) return 0;
+        byte b = buf.readByte();
+        buf.skipBytes(length - 1);
+        return b;
 
       default:
         // FLOAT, DOUBLE, OLDDECIMAL, DECIMAL, ENUM, VARCHAR, VARSTRING, STRING:
@@ -205,13 +202,10 @@ public class ByteCodec implements Codec<Byte> {
 
       default:
         // BLOB, TINYBLOB, MEDIUMBLOB, LONGBLOB:
-        if (length > 0) {
-          byte b = buf.readByte();
-          buf.skipBytes(length - 1);
-          return b;
-        }
-        throw new R2dbcNonTransientResourceException(
-            "empty String value cannot be decoded as Byte");
+        if (length == 0) return 0;
+        byte b = buf.readByte();
+        buf.skipBytes(length - 1);
+        return b;
     }
 
     if ((byte) result != result || (result < 0 && !column.isSigned())) {

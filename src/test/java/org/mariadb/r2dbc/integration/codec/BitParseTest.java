@@ -109,6 +109,15 @@ public class BitParseTest extends BaseTest {
                 throwable instanceof R2dbcTransientResourceException
                     && throwable.getMessage().equals("Cannot return null for primitive boolean"))
         .verify();
+
+    connection
+        .createStatement("SELECT t3 FROM BitTable WHERE 1 = ? LIMIT 4")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, boolean.class))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of(false), Optional.of(true), Optional.of(true), Optional.of(true))
+        .verifyComplete();
   }
 
   @Test

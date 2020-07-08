@@ -32,12 +32,12 @@ public class BigIntegerParseTest extends BaseTest {
   @BeforeAll
   public static void before2() {
     sharedConn
-        .createStatement("CREATE TABLE BigIntTable (t1 BIGINT, t2 BIGINT)")
+        .createStatement("CREATE TABLE BigIntTable (t1 BIGINT, t2 BIGINT, t3 BIGINT(4) ZEROFILL)")
         .execute()
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO BigIntTable VALUES (0,1),(1,2),(9223372036854775807,3), (null,4)")
+            "INSERT INTO BigIntTable VALUES (0,1, 2),(1,2, 20),(9223372036854775807,3, 120), (null,4, 1250)")
         .execute()
         .blockLast();
     sharedConn
@@ -490,6 +490,20 @@ public class BigIntegerParseTest extends BaseTest {
             Optional.of("9223372036854775807"),
             Optional.empty())
         .verifyComplete();
+
+    connection
+        .createStatement("SELECT t3 FROM BigIntTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
+        .as(StepVerifier::create)
+        .expectNext(
+            Optional.of("0002"),
+            Optional.of("0020"),
+            Optional.of("0120"),
+            Optional.of("1250"))
+        .verifyComplete();
+
     connection
         .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)

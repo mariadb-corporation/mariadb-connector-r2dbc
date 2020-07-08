@@ -107,12 +107,9 @@ public class LongCodec implements Codec<Long> {
 
       case BIT:
         result = 0;
-        for (int i = 0; i < Math.min(length, 8); i++) {
+        for (int i = 0; i < length; i++) {
           byte b = buf.readByte();
           result = (result << 8) + (b & 0xff);
-        }
-        if (length > 8) {
-          buf.skipBytes(length - 8);
         }
         return result;
 
@@ -121,9 +118,8 @@ public class LongCodec implements Codec<Long> {
       case FLOAT:
         String str1 = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
         try {
-          result = new BigDecimal(str1).setScale(0, RoundingMode.DOWN).longValue();
-          break;
-        } catch (NumberFormatException nfe) {
+          return new BigDecimal(str1).setScale(0, RoundingMode.DOWN).longValueExact();
+        } catch (NumberFormatException | ArithmeticException nfe) {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Long", str1));
         }
@@ -132,17 +128,13 @@ public class LongCodec implements Codec<Long> {
         // STRING, VARCHAR, VARSTRING:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
-          result = new BigInteger(str).longValueExact();
-          break;
-        } catch (NumberFormatException nfe) {
+          return new BigInteger(str).longValueExact();
+        } catch (NumberFormatException | ArithmeticException nfe) {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Long", str));
         }
     }
 
-    if (result < 0 & !column.isSigned()) {
-      throw new R2dbcNonTransientResourceException("long overflow");
-    }
     return result;
   }
 
@@ -153,12 +145,9 @@ public class LongCodec implements Codec<Long> {
     switch (column.getType()) {
       case BIT:
         long result = 0;
-        for (int i = 0; i < Math.min(length, 8); i++) {
+        for (int i = 0; i < length; i++) {
           byte b = buf.readByte();
           result = (result << 8) + (b & 0xff);
-        }
-        if (length > 8) {
-          buf.skipBytes(length - 8);
         }
         return result;
 
@@ -216,7 +205,7 @@ public class LongCodec implements Codec<Long> {
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           return new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValueExact();
-        } catch (NumberFormatException nfe) {
+        } catch (NumberFormatException | ArithmeticException nfe) {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Long", str));
         }

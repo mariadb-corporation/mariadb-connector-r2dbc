@@ -89,8 +89,8 @@ public class BigIntegerCodec implements Codec<BigInteger> {
         // VARCHAR, VARSTRING, STRING
         String str2 = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
-          return new BigDecimal(str2).toBigInteger();
-        } catch (NumberFormatException nfe) {
+          return new BigDecimal(str2).toBigIntegerExact();
+        } catch (NumberFormatException | ArithmeticException nfe) {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as BigInteger", str2));
         }

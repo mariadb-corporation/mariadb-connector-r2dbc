@@ -31,9 +31,9 @@ import reactor.test.StepVerifier;
 public class MediumIntParseTest extends BaseTest {
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("CREATE TABLE MediumIntTable (t1 MEDIUMINT)").execute().blockLast();
+    sharedConn.createStatement("CREATE TABLE MediumIntTable (t1 MEDIUMINT, t2 MEDIUMINT ZEROFILL)").execute().blockLast();
     sharedConn
-        .createStatement("INSERT INTO MediumIntTable VALUES (0),(1),(-1), (null)")
+        .createStatement("INSERT INTO MediumIntTable VALUES (0, 0),(1, 10),(-1, 100), (null, null)")
         .execute()
         .blockLast();
     sharedConn
@@ -393,6 +393,15 @@ public class MediumIntParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectNext(Optional.of("0"), Optional.of("1"), Optional.of("-1"), Optional.empty())
         .verifyComplete();
+    connection
+        .createStatement("SELECT t2 FROM MediumIntTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("00000000"), Optional.of("00000010"), Optional.of("00000100"), Optional.empty())
+        .verifyComplete();
+
     connection
         .createStatement("SELECT t1 FROM MediumIntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)

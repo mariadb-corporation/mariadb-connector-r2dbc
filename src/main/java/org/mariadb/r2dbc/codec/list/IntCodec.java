@@ -82,12 +82,9 @@ public class IntCodec implements Codec<Integer> {
 
       case BIT:
         result = 0;
-        for (int i = 0; i < Math.min(length, 8); i++) {
+        for (int i = 0; i < length; i++) {
           byte b = buf.readByte();
           result = (result << 8) + (b & 0xff);
-        }
-        if (length > 8) {
-          buf.skipBytes(length - 8);
         }
         break;
 
@@ -95,9 +92,9 @@ public class IntCodec implements Codec<Integer> {
         // FLOAT, DOUBLE, OLDDECIMAL, VARCHAR, DECIMAL, ENUM, VARSTRING, STRING:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
-          result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValue();
+          result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValueExact();
           break;
-        } catch (NumberFormatException nfe) {
+        } catch (NumberFormatException | ArithmeticException nfe ) {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Integer", str));
         }
@@ -149,12 +146,9 @@ public class IntCodec implements Codec<Integer> {
 
       case BIT:
         result = 0;
-        for (int i = 0; i < Math.min(length, 8); i++) {
+        for (int i = 0; i < length; i++) {
           byte b = buf.readByte();
           result = (result << 8) + (b & 0xff);
-        }
-        if (length > 8) {
-          buf.skipBytes(length - 8);
         }
         break;
 
@@ -174,9 +168,9 @@ public class IntCodec implements Codec<Integer> {
       case STRING:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
-          result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValue();
+          result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValueExact();
           break;
-        } catch (NumberFormatException nfe) {
+        } catch (NumberFormatException | ArithmeticException nfe) {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Integer", str));
         }

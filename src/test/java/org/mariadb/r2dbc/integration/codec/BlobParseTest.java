@@ -17,7 +17,11 @@
 package org.mariadb.r2dbc.integration.codec;
 
 import io.r2dbc.spi.Blob;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
+
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -405,6 +409,51 @@ public class BlobParseTest extends BaseTest {
         .verifyComplete();
   }
 
+  @Test
+  void streamValue() {
+    streamValue(sharedConn);
+  }
+
+  @Test
+  void streamValuePrepare() {
+    streamValue(sharedConnPrepare);
+  }
+
+  String[] expectedVals = new String[] {"diego🤘💪", "georg", "lawrin"};
+  AtomicInteger index = new AtomicInteger();
+
+  private boolean inputStreamToByte(InputStream actual) {
+    byte[] expected = expectedVals[index.getAndIncrement()].getBytes(StandardCharsets.UTF_8);
+    byte[] val = new byte[expected.length];
+    byte[] array = new byte[4096];
+    int len;
+    int pos = 0;
+    try {
+      while ((len = actual.read(array)) > 0) {
+        System.arraycopy(array, 0, val, pos, len);
+        pos+=len;
+      }
+    } catch (IOException ioe) {
+      return false;
+    }
+    if (pos  != expected.length) return false;
+    Assertions.assertArrayEquals(val, expected);
+    return true;
+  }
+
+  private void streamValue(MariadbConnection connection) {
+    index.set(0);
+    connection
+        .createStatement("SELECT t1,t2 FROM BlobTable WHERE 1 = ? limit 3")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, InputStream.class)))
+        .as(StepVerifier::create)
+        .expectNextMatches(val -> inputStreamToByte(val))
+        .expectNextMatches(val -> inputStreamToByte(val))
+        .expectNextMatches(val -> inputStreamToByte(val))
+        .verifyComplete();
+  }
   @Test
   void decimalValue() {
     decimalValue(sharedConn);

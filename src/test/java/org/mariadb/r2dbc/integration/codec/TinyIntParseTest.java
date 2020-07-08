@@ -31,9 +31,9 @@ import reactor.test.StepVerifier;
 public class TinyIntParseTest extends BaseTest {
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("CREATE TABLE tinyIntTable (t1 TINYINT)").execute().blockLast();
+    sharedConn.createStatement("CREATE TABLE tinyIntTable (t1 TINYINT, t2 TINYINT ZEROFILL)").execute().blockLast();
     sharedConn
-        .createStatement("INSERT INTO tinyIntTable VALUES (0),(1),(-1), (null)")
+        .createStatement("INSERT INTO tinyIntTable VALUES (0, 0),(1, 10),(-1, 100), (null, null)")
         .execute()
         .blockLast();
     sharedConn
@@ -405,6 +405,16 @@ public class TinyIntParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectNext(Optional.of("0"), Optional.of("1"), Optional.of("-1"), Optional.empty())
         .verifyComplete();
+
+    connection
+        .createStatement("SELECT t2 FROM tinyIntTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("000"), Optional.of("010"), Optional.of("100"), Optional.empty())
+        .verifyComplete();
+
     connection
         .createStatement("SELECT t1 FROM tinyIntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
