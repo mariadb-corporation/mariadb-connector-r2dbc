@@ -498,10 +498,7 @@ public class BigIntegerParseTest extends BaseTest {
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
         .as(StepVerifier::create)
         .expectNext(
-            Optional.of("0002"),
-            Optional.of("0020"),
-            Optional.of("0120"),
-            Optional.of("1250"))
+            Optional.of("0002"), Optional.of("0020"), Optional.of("0120"), Optional.of("1250"))
         .verifyComplete();
 
     connection

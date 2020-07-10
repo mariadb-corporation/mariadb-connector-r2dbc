@@ -21,10 +21,12 @@ import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.function.Executable;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import reactor.test.StepVerifier;
@@ -77,6 +79,12 @@ public class BaseTest {
   public static boolean minVersion(int major, int minor, int patch) {
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     return meta.minVersion(major, minor, patch);
+  }
+
+  public void assertThrows(
+      Class<? extends Exception> expectedType, Executable executable, String expected) {
+    Exception e = Assertions.assertThrows(expectedType, executable);
+    Assertions.assertTrue(e.getMessage().contains(expected), "real message:" + e.getMessage());
   }
 
   @AfterEach

@@ -73,6 +73,20 @@ final class MariadbColumnMetadata implements ColumnMetadata {
 
   @Override
   public Integer getScale() {
-    return null;
+    switch (columnDefinitionPacket.getType()) {
+      case OLDDECIMAL:
+      case TINYINT:
+      case SMALLINT:
+      case INTEGER:
+      case FLOAT:
+      case DOUBLE:
+      case BIGINT:
+      case MEDIUMINT:
+      case BIT:
+      case DECIMAL:
+        return (int) columnDefinitionPacket.getDecimals();
+      default:
+        return 0;
+    }
   }
 }

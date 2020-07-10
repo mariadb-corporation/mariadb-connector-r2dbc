@@ -31,6 +31,7 @@ public class StatementTest extends BaseTest {
   void bindOnStatementWithoutParameter() {
     Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (1,2)");
     try {
+      stmt = stmt.add(); // mean nothing there
       stmt.bind(0, 1);
       Assertions.fail("must have thrown exception");
     } catch (UnsupportedOperationException e) {
@@ -138,6 +139,18 @@ public class StatementTest extends BaseTest {
               .contains(
                   "No encoder for class org.mariadb.r2dbc.MariadbConnection (parameter at index 0)"));
     }
+  }
+
+  @Test
+  void wrongSql() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> sharedConn.createStatement(null),
+        "sql must not be null");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> sharedConn.createStatement(""),
+        "Statement cannot be empty");
   }
 
   @Test

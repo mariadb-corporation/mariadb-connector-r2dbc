@@ -21,6 +21,7 @@ import java.math.BigInteger;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -279,6 +280,42 @@ public class ConnectionTest extends BaseTest {
     Assertions.assertTrue(factory.toString().contains("database='шdb'"));
   }
 
+  @Test
+  void checkOptions() {
+    MariadbConnectionFactory factory =
+        (MariadbConnectionFactory)
+            ConnectionFactories.get(
+                "r2dbc:mariadb://root:pwd@localhost:3306/db?socket=ff&allowMultiQueries=true&tlsProtocol=TLSv1"
+                    + ".2&serverSslCert=myCert&clientSslCert=myClientCert&allowPipelining=true&useServerPrepStmts"
+                    + "=true&prepareCacheSize=2560&sslMode=ENABLE_TRUST&connectionAttributes=test=2,h=4");
+    Assertions.assertTrue(factory.toString().contains("socket='ff'"));
+    Assertions.assertTrue(factory.toString().contains("allowMultiQueries=true"));
+    Assertions.assertTrue(factory.toString().contains("tlsProtocol=[TLSv1.2]"));
+    Assertions.assertTrue(factory.toString().contains("serverSslCert='myCert'"));
+    Assertions.assertTrue(factory.toString().contains("clientSslCert='myClientCert'"));
+    Assertions.assertTrue(factory.toString().contains("allowPipelining=true"));
+    Assertions.assertTrue(factory.toString().contains("useServerPrepStmts=true"));
+    Assertions.assertTrue(factory.toString().contains("prepareCacheSize=2560"));
+    Assertions.assertTrue(factory.toString().contains("sslMode=ENABLE_TRUST"));
+    Assertions.assertTrue(factory.toString().contains("connectionAttributes={test=2, h=4}"));
+  }
+
+  @Test
+  void confMinOption() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> MariadbConnectionConfiguration.builder().build(),
+        "host or socket must not be null");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> MariadbConnectionConfiguration.builder().host("jj").socket("dd").build(),
+        "Connection must be configured for either host/port or socket usage but not both");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> MariadbConnectionConfiguration.builder().host("jj").build(),
+        "username must not be null");
+  }
+
   protected class ExecuteQueries implements Runnable {
     private AtomicInteger i;
 
@@ -331,5 +368,114 @@ public class ConnectionTest extends BaseTest {
         e.printStackTrace();
       }
     }
+  }
+
+  @Test
+  void getTransactionIsolationLevel() {
+    Assertions.assertEquals(
+        IsolationLevel.REPEATABLE_READ, sharedConn.getTransactionIsolationLevel());
+    sharedConn.setTransactionIsolationLevel(IsolationLevel.READ_UNCOMMITTED).block();
+    Assertions.assertEquals(
+        IsolationLevel.READ_UNCOMMITTED, sharedConn.getTransactionIsolationLevel());
+    sharedConn.setTransactionIsolationLevel(IsolationLevel.REPEATABLE_READ).block();
+  }
+
+  @Test
+  void rollbackTransaction() {
+    sharedConn.createStatement("DROP TABLE IF EXISTS rollbackTable").execute().blockLast();
+    sharedConn
+        .createStatement("CREATE TABLE rollbackTable (t1 VARCHAR(256))")
+        .execute()
+        .blockLast();
+    sharedConn.setAutoCommit(false).block();
+    sharedConn.rollbackTransaction().block(); // must not do anything
+    sharedConn.createStatement("INSERT INTO rollbackTable VALUES ('a')").execute().blockLast();
+    sharedConn.rollbackTransaction().block();
+    sharedConn
+        .createStatement("SELECT * FROM rollbackTable")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .verifyComplete();
+    sharedConn.createStatement("DROP TABLE IF EXISTS rollbackTable").execute().blockLast();
+  }
+
+  @Test
+  void commitTransaction() {
+    sharedConn.createStatement("DROP TABLE IF EXISTS commitTransaction").execute().blockLast();
+    sharedConn
+        .createStatement("CREATE TABLE commitTransaction (t1 VARCHAR(256))")
+        .execute()
+        .blockLast();
+    sharedConn.setAutoCommit(false).block();
+    sharedConn.commitTransaction().block(); // must not do anything
+    sharedConn.createStatement("INSERT INTO commitTransaction VALUES ('a')").execute().blockLast();
+    sharedConn.commitTransaction().block();
+    sharedConn
+        .createStatement("SELECT * FROM commitTransaction")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("a"))
+        .verifyComplete();
+    sharedConn.createStatement("DROP TABLE IF EXISTS commitTransaction").execute().blockLast();
+    sharedConn.setAutoCommit(true).block();
+  }
+
+  @Test
+  void useTransaction() {
+    sharedConn.createStatement("DROP TABLE IF EXISTS useTransaction").execute().blockLast();
+    sharedConn
+        .createStatement("CREATE TABLE useTransaction (t1 VARCHAR(256))")
+        .execute()
+        .blockLast();
+    sharedConn.beginTransaction().block();
+    sharedConn.createStatement("INSERT INTO useTransaction VALUES ('a')").execute().blockLast();
+    sharedConn.commitTransaction().block();
+    sharedConn
+        .createStatement("SELECT * FROM useTransaction")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("a"))
+        .verifyComplete();
+    sharedConn.createStatement("DROP TABLE IF EXISTS useTransaction").execute().blockLast();
+  }
+
+  @Test
+  void useSavePoint() {
+    sharedConn.createStatement("DROP TABLE IF EXISTS useSavePoint").execute().blockLast();
+    sharedConn.createStatement("CREATE TABLE useSavePoint (t1 VARCHAR(256))").execute().blockLast();
+    Assertions.assertTrue(sharedConn.isAutoCommit());
+    sharedConn.setAutoCommit(false).block();
+    Assertions.assertFalse(sharedConn.isAutoCommit());
+    sharedConn.createSavepoint("point1").block();
+    sharedConn.releaseSavepoint("point1").block();
+    sharedConn.createSavepoint("point2").block();
+    sharedConn.createStatement("INSERT INTO useSavePoint VALUES ('a')").execute().blockLast();
+    sharedConn.rollbackTransactionToSavepoint("point2").block();
+    sharedConn.commitTransaction().block();
+    sharedConn
+        .createStatement("SELECT * FROM useSavePoint")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        //        .expectNext(Optional.of("a"))
+        .verifyComplete();
+    sharedConn.createStatement("DROP TABLE IF EXISTS useSavePoint").execute().blockLast();
+    sharedConn.setAutoCommit(true).block();
+  }
+
+  @Test
+  void toStringTest() {
+    Assertions.assertTrue(
+        sharedConn
+                .toString()
+                .contains(
+                    "MariadbConnection{client=Client{isClosed=false, "
+                        + "context=ConnectionContext{")
+            && sharedConn
+                .toString()
+                .contains(", isolationLevel=IsolationLevel{sql='REPEATABLE READ'}}"));
   }
 }

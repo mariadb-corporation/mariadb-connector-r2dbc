@@ -53,7 +53,7 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
   @Override
   public Flux<MariadbResult> execute() {
     if (configuration.allowMultiQueries()) {
-      return new MariadbSimpleQueryStatement(this.client, String.join("; ", this.statements))
+      return new MariadbSimpleQueryStatement(this.client, String.join(";", this.statements))
           .execute();
     } else {
 
@@ -81,10 +81,5 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
                       client.getVersion().isMariaDBServer()
                           && client.getVersion().versionGreaterOrEqual(10, 5, 1)));
     }
-  }
-
-  @Override
-  public String toString() {
-    return "MariadbBatch{client=" + this.client + ", statements=" + this.statements + '}';
   }
 }

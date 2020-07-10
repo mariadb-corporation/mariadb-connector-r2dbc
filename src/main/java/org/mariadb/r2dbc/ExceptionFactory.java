@@ -85,9 +85,4 @@ public final class ExceptionFactory {
       sink.next(message);
     }
   }
-
-  @Override
-  public String toString() {
-    return "ExceptionFactory{" + "sql='" + sql + '\'' + '}';
-  }
 }

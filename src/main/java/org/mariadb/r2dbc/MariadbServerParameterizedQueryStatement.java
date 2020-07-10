@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc;
 
+import io.netty.buffer.ByteBuf;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -23,15 +24,18 @@ import java.util.List;
 import java.util.Map;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.client.DecoderState;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.Codecs;
+import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.codec.Parameter;
 import org.mariadb.r2dbc.message.client.ExecutePacket;
 import org.mariadb.r2dbc.message.client.PreparePacket;
 import org.mariadb.r2dbc.message.server.PrepareResultPacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.Assert;
+import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -40,7 +44,7 @@ import reactor.util.annotation.Nullable;
 final class MariadbServerParameterizedQueryStatement implements MariadbStatement {
 
   private final Client client;
-  private final String sql;
+  private final String initialSql;
   private final MariadbConnectionConfiguration configuration;
   private Map<Integer, Parameter<?>> parameters;
   private List<Map<Integer, Parameter<?>>> batchingParameters;
@@ -51,7 +55,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
       Client client, String sql, MariadbConnectionConfiguration configuration) {
     this.client = client;
     this.configuration = configuration;
-    this.sql = Assert.requireNonNull(sql, "sql must not be null");
+    this.initialSql = Assert.requireNonNull(sql, "sql must not be null");
     this.parameters = new HashMap<>();
     this.prepareResult = client.getPrepareCache().get(sql);
   }
@@ -88,7 +92,12 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   @SuppressWarnings({"rawtypes", "unchecked"})
   @Override
   public MariadbServerParameterizedQueryStatement bind(int index, @Nullable Object value) {
-    if (prepareResult != null && index >= prepareResult.getNumParams() || index < 0) {
+    if (index < 0) {
+      throw new IndexOutOfBoundsException(
+          String.format("wrong index value %d, index must be positive", index));
+    }
+
+    if (prepareResult != null && index >= prepareResult.getNumParams()) {
       throw new IndexOutOfBoundsException(
           String.format(
               "index must be in 0-%d range but value is %d",
@@ -117,14 +126,46 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
 
   @Override
   public MariadbServerParameterizedQueryStatement bindNull(int index, @Nullable Class<?> type) {
-    if (prepareResult != null && index >= prepareResult.getNumParams() || index < 0) {
+    if (index < 0) {
       throw new IndexOutOfBoundsException(
-          String.format(
-              "index must be in 0-%d range but value is " + "%d",
-              prepareResult.getNumParams() - 1, index));
+          String.format("wrong index value %d, index must be positive", index));
     }
 
-    parameters.put(index, Parameter.NULL_PARAMETER);
+    if (prepareResult != null && index >= prepareResult.getNumParams()) {
+      throw new IndexOutOfBoundsException(
+          String.format(
+              "index must be in 0-%d range but value is %d",
+              prepareResult.getNumParams() - 1, index));
+    }
+    Parameter<?> parameter = null;
+    if (type != null) {
+      for (Codec<?> codec : Codecs.LIST) {
+        if (codec.canEncode(type)) {
+          parameter =
+              new Parameter(codec, null) {
+                @Override
+                public void encodeText(ByteBuf out, Context context) {
+                  BufferUtils.writeAscii(out, "null");
+                }
+
+                @Override
+                public DataType getBinaryEncodeType() {
+                  return DataType.VARCHAR;
+                }
+
+                @Override
+                public boolean isNull() {
+                  return true;
+                }
+              };
+          break;
+        }
+      }
+    }
+    if (parameter == null) {
+      parameter = Parameter.NULL_PARAMETER;
+    }
+    parameters.put(index, parameter);
     return this;
   }
 
@@ -149,15 +190,24 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   @Override
   public Flux<org.mariadb.r2dbc.api.MariadbResult> execute() {
     validateParameters();
+    String sql = this.initialSql;
+    if (generatedColumns != null) {
+      sql +=
+          generatedColumns.length == 0
+              ? " RETURNING *"
+              : " RETURNING " + String.join(", ", generatedColumns);
+      prepareResult = null;
+      prepareResult = client.getPrepareCache().get(sql);
+    }
 
     if (batchingParameters == null) {
-      return execute(this.sql, parameters, this.generatedColumns);
+      return execute(sql, parameters, this.generatedColumns);
     } else {
       add();
       if (prepareResult == null) {
         prepareResult = client.getPrepareCache().get(sql);
         if (prepareResult == null) {
-          sendPrepare().block();
+          sendPrepare(sql).block();
         }
       }
       Flux<ServerMessage> fluxMsg =
@@ -246,6 +296,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                     sink -> {
                       prepareResult.decrementUse(client);
                       sink.complete();
+                      parameters.clear();
                     }));
       }
     }
@@ -253,10 +304,10 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     if (configuration.allowPipelining()
         && client.getVersion().isMariaDBServer()
         && client.getVersion().versionGreaterOrEqual(10, 2, 0)) {
-      flux = sendPrepareAndExecute(factory, parameters, generatedColumns);
+      flux = sendPrepareAndExecute(sql, factory, parameters, generatedColumns);
     } else {
       flux =
-          sendPrepare()
+          sendPrepare(sql)
               .flatMapMany(prepareResult1 -> sendExecuteCmd(factory, parameters, generatedColumns));
     }
     return flux.concatWith(
@@ -267,11 +318,15 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                 prepareResult.decrementUse(client);
               }
               sink.complete();
+              parameters.clear();
             }));
   }
 
   private Flux<org.mariadb.r2dbc.api.MariadbResult> sendPrepareAndExecute(
-      ExceptionFactory factory, Map<Integer, Parameter<?>> parameters, String[] generatedColumns) {
+      String sql,
+      ExceptionFactory factory,
+      Map<Integer, Parameter<?>> parameters,
+      String[] generatedColumns) {
     return this.client
         .sendCommand(new PreparePacket(sql), new ExecutePacket(-1, parameters))
         .windowUntil(it -> it.resultSetEnd())
@@ -286,7 +341,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                         && client.getVersion().versionGreaterOrEqual(10, 5, 1)));
   }
 
-  private Mono<ServerPrepareResult> sendPrepare() {
+  private Mono<ServerPrepareResult> sendPrepare(String sql) {
     Flux<ServerPrepareResult> f =
         this.client
             .sendCommand(new PreparePacket(sql), DecoderState.PREPARE_RESPONSE, sql)
@@ -335,7 +390,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
         + "client="
         + client
         + ", sql='"
-        + sql
+        + initialSql
         + '\''
         + ", configuration="
         + configuration

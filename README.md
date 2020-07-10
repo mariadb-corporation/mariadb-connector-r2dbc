@@ -18,7 +18,7 @@ MariaDB and MySQL client, 100% Java, compatible with Java8+, apache 2.0 licensed
 - Driver permits ed25519, PAM authentication that comes with MariaDB.
 - use MariaDB 10.5 returning fonction to permit Statement.returnGeneratedValues 
 
-Driver follow [R2DBC 0.8.1 specifications](https://r2dbc.io/spec/0.8.1.RELEASE/spec/html/)
+Driver follow [R2DBC 0.8.2 specifications](https://r2dbc.io/spec/0.8.2.RELEASE/spec/html/)
 
 
 ## Quick Start

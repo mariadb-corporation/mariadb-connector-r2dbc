@@ -94,7 +94,7 @@ public class IntCodec implements Codec<Integer> {
         try {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValueExact();
           break;
-        } catch (NumberFormatException | ArithmeticException nfe ) {
+        } catch (NumberFormatException | ArithmeticException nfe) {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Integer", str));
         }

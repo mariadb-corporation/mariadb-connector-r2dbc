@@ -97,7 +97,12 @@ public class DecimalParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Boolean.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of(false), Optional.of(true), Optional.of(true), Optional.empty(), Optional.of(true))
+        .expectNext(
+            Optional.of(false),
+            Optional.of(true),
+            Optional.of(true),
+            Optional.empty(),
+            Optional.of(true))
         .verifyComplete();
   }
 
@@ -255,7 +260,10 @@ public class DecimalParseTest extends BaseTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && throwable.getMessage().equals("value '19223372036854775807.92233720368547758070' cannot be decoded as Long"))
+                    && throwable
+                        .getMessage()
+                        .equals(
+                            "value '19223372036854775807.92233720368547758070' cannot be decoded as Long"))
         .verify();
   }
 

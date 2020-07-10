@@ -298,13 +298,7 @@ public abstract class ClientBase implements Client {
     }
 
     public Mono<Void> createSavepoint(String name) {
-      if (!responseReceivers.isEmpty()
-          || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) > 0) {
-        return exchange(String.format("SAVEPOINT `%s`", name.replace("`", "``"))).then();
-      } else {
-        logger.debug("Skipping savepoint creation because no active transaction");
-        return Mono.empty();
-      }
+      return exchange(String.format("SAVEPOINT `%s`", name.replace("`", "``"))).then();
     }
 
     public Mono<Void> rollbackTransactionToSavepoint(String name) {

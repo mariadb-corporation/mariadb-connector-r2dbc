@@ -123,7 +123,7 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
 
   @Override
   public String toString() {
-    return "MariadbConnectionFactory{" + "configuration=" + this.configuration + '}';
+    return "MariadbConnectionFactory{configuration=" + this.configuration + '}';
   }
 
   private Mono<Void> setSessionVariables(Client client) {

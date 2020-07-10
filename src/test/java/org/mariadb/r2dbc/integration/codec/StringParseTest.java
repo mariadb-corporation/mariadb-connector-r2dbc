@@ -21,7 +21,6 @@ import io.r2dbc.spi.Clob;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -29,11 +28,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseTest;
@@ -186,7 +181,8 @@ public class StringParseTest extends BaseTest {
         .execute()
         .blockLast();
     sharedConn
-        .createStatement("INSERT INTO durationValue VALUES ('90:00:00.012340'), ('800:00:00.123'), ('800'), ('22'), (null)")
+        .createStatement(
+            "INSERT INTO durationValue VALUES ('90:00:00.012340'), ('800:00:00.123'), ('800'), ('22'), (null)")
         .execute()
         .blockLast();
 
@@ -203,8 +199,8 @@ public class StringParseTest extends BaseTest {
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
                     && throwable
-                    .getMessage()
-                    .equals("VARSTRING value '800' cannot be decoded as Time"))
+                        .getMessage()
+                        .equals("VARSTRING value '800' cannot be decoded as Time"))
         .verify();
   }
 
@@ -240,8 +236,9 @@ public class StringParseTest extends BaseTest {
         .execute()
         .blockLast();
     sharedConn
-        .createStatement("INSERT INTO localTimeValue VALUES ('18:00:00.012340'), ('08:01:18.123'), ('800'), ('22'), "
-            + "(null)")
+        .createStatement(
+            "INSERT INTO localTimeValue VALUES ('18:00:00.012340'), ('08:01:18.123'), ('800'), ('22'), "
+                + "(null)")
         .execute()
         .blockLast();
 
@@ -258,8 +255,8 @@ public class StringParseTest extends BaseTest {
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
                     && throwable
-                    .getMessage()
-                    .equals("value '800' (VARSTRING) cannot be decoded as LocalTime"))
+                        .getMessage()
+                        .equals("value '800' (VARSTRING) cannot be decoded as LocalTime"))
         .verify();
   }
 
@@ -294,7 +291,8 @@ public class StringParseTest extends BaseTest {
         .execute()
         .blockLast();
     sharedConn
-        .createStatement("INSERT INTO localDateValue VALUES ('2010-01-12'), ('2011-2-28'), (null), ('2011-a-28')")
+        .createStatement(
+            "INSERT INTO localDateValue VALUES ('2010-01-12'), ('2011-2-28'), (null), ('2011-a-28')")
         .execute()
         .blockLast();
 
@@ -312,8 +310,8 @@ public class StringParseTest extends BaseTest {
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
                     && throwable
-                    .getMessage()
-                    .equals("value '2011-a-28' (VARSTRING) cannot be decoded as Date"))
+                        .getMessage()
+                        .equals("value '2011-a-28' (VARSTRING) cannot be decoded as Date"))
         .verify();
   }
 
@@ -350,8 +348,9 @@ public class StringParseTest extends BaseTest {
         .execute()
         .blockLast();
     sharedConn
-        .createStatement("INSERT INTO localDateTimeValue VALUES ('2013-07-22 12:50:05.01230'), ('2035-01-31 "
-            + "10:45:01'), (null), ('2013-07-bb 12:50:05.01230')")
+        .createStatement(
+            "INSERT INTO localDateTimeValue VALUES ('2013-07-22 12:50:05.01230'), ('2035-01-31 "
+                + "10:45:01'), (null), ('2013-07-bb 12:50:05.01230')")
         .execute()
         .blockLast();
 
@@ -359,7 +358,8 @@ public class StringParseTest extends BaseTest {
         .createStatement("SELECT t1 FROM localDateTimeValue WHERE 1 = ?")
         .bind(0, 1)
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalDateTime.class))))
+        .flatMap(
+            r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalDateTime.class))))
         .as(StepVerifier::create)
         .expectNext(
             Optional.of(LocalDateTime.parse("2013-07-22T12:50:05.01230")),
@@ -369,8 +369,9 @@ public class StringParseTest extends BaseTest {
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
                     && throwable
-                    .getMessage()
-                    .equals("value '2013-07-bb 12:50:05.01230' (VARSTRING) cannot be decoded as LocalDateTime"))
+                        .getMessage()
+                        .equals(
+                            "value '2013-07-bb 12:50:05.01230' (VARSTRING) cannot be decoded as LocalDateTime"))
         .verify();
   }
 
@@ -678,8 +679,8 @@ public class StringParseTest extends BaseTest {
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
                     && throwable
-                    .getMessage()
-                    .equals("Data type VARSTRING (not binary) cannot be decoded as Blob"))
+                        .getMessage()
+                        .equals("Data type VARSTRING (not binary) cannot be decoded as Blob"))
         .verify();
   }
 }

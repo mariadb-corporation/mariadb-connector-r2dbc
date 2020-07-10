@@ -96,5 +96,4 @@ public class StreamCodec implements Codec<InputStream> {
   public DataType getBinaryEncodeType() {
     return DataType.BLOB;
   }
-
 }

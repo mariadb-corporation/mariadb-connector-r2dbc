@@ -20,15 +20,13 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.test.StepVerifier;
@@ -56,6 +54,7 @@ public class PrepareResultSetTest extends BaseTest {
 
   @BeforeAll
   public static void before2() {
+    sharedConn.createStatement("DROP TABLE IF EXISTS PrepareResultSetTest").execute().blockLast();
     sharedConn
         .createStatement(
             "CREATE TABLE PrepareResultSetTest("
@@ -110,6 +109,120 @@ public class PrepareResultSetTest extends BaseTest {
     }
   }
 
+  @Test
+  public void returning() {
+    Assumptions.assumeTrue(isMariaDBServer() && minVersion(10, 5, 1));
+
+    sharedConnPrepare
+        .createStatement(
+            "CREATE TEMPORARY TABLE INSERT_RETURNING (id int not null primary key auto_increment, test varchar(10))")
+        .execute()
+        .blockLast();
+
+    sharedConnPrepare
+        .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
+        .bind(0, "test1")
+        .bind(1, "test2")
+        .returnGeneratedValues("id", "test")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
+        .as(StepVerifier::create)
+        .expectNext("1test1", "2test2")
+        .verifyComplete();
+
+    sharedConnPrepare
+        .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
+        .returnGeneratedValues("id")
+        .bind(0, "test3")
+        .bind(1, "test4")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+        .as(StepVerifier::create)
+        .expectNext("3", "4")
+        .verifyComplete();
+
+    sharedConnPrepare
+        .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
+        .returnGeneratedValues()
+        .bind(0, "a")
+        .bind(1, "b")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
+        .as(StepVerifier::create)
+        .expectNext("5a", "6b")
+        .verifyComplete();
+  }
+
+  @Test
+  void parameterVerification() {
+    MariadbStatement stmt =
+        sharedConn.createStatement("SELECT * FROM PrepareResultSetTest WHERE 1 = ?");
+    assertThrows(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bind(-1, 1),
+        "index must be in 0-0 range but value is -1");
+    stmt.bind(0, 1).execute().blockLast();
+    assertThrows(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bind(2, 1),
+        "index must be in 0-0 range but value is 2");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.bind(0, this),
+        "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest (parameter at index 0) ");
+    assertThrows(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bindNull(-1, Integer.class),
+        "index must be in 0-0 range but value is -1");
+    assertThrows(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bindNull(2, Integer.class),
+        "index must be in 0-0 range but value is 2");
+    stmt.bindNull(0, this.getClass());
+    stmt.execute().blockLast();
+    // no parameter
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.execute().blockLast(),
+        "Parameter at position 0 is not " + "set");
+    assertThrows(
+        IllegalArgumentException.class, () -> stmt.add(), "Parameter at position 0 is not set");
+  }
+
+  @Test
+  void prepareReuse() {
+    MariadbStatement stmt =
+        sharedConnPrepare.createStatement("SELECT * FROM PrepareResultSetTest WHERE 1 = ?");
+    assertThrows(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bind(-1, 1),
+        "wrong index value -1, index must be positive");
+    stmt.bind(0, 1).execute().blockLast();
+    assertThrows(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bind(2, 1),
+        "index must be in 0-0 range but value is 2");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.bind(0, this),
+        "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest (parameter at index 0) ");
+    assertThrows(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bindNull(-1, Integer.class),
+        "wrong index value -1, index " + "must be " + "positive");
+    assertThrows(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bindNull(2, Integer.class),
+        "index must be in 0-0 range but value is 2");
+    stmt.bindNull(0, this.getClass());
+    stmt.execute().blockLast();
+    // no parameter
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.execute().blockLast(),
+        "Parameter at position 0 is not " + "set");
+  }
+
   private List<String> prepareInfo(MariadbConnection connection) {
     return connection
         .createStatement(
@@ -118,6 +231,20 @@ public class PrepareResultSetTest extends BaseTest {
         .flatMap(r -> r.map((row, metadata) -> row.get(1, String.class)))
         .collectList()
         .block();
+  }
+
+  @Test
+  void cache() throws Throwable {
+    MariadbConnectionConfiguration confPipeline =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .useServerPrepStmts(true)
+            .prepareCacheSize(3)
+            .build();
+    MariadbConnection connection = new MariadbConnectionFactory(confPipeline).create().block();
+    connection.createStatement("SELECT ?").bind(0, 1).execute().subscribe();
+    connection.createStatement("SELECT ?").bind(0, 1).execute().blockLast();
+    connection.close().block();
   }
 
   @Test

@@ -17,7 +17,6 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -137,14 +136,16 @@ public class StringCodec implements Codec<String> {
         return s;
 
       case SMALLINT:
-        rawValue = String.valueOf(column.isSigned() ? buf.readShortLE() : buf.readUnsignedShortLE());
+        rawValue =
+            String.valueOf(column.isSigned() ? buf.readShortLE() : buf.readUnsignedShortLE());
         if (column.isZeroFill()) {
           return zeroFilling(rawValue, column);
         }
         return rawValue;
 
       case MEDIUMINT:
-        rawValue = String.valueOf(column.isSigned() ? buf.readMediumLE() : buf.readUnsignedMediumLE());
+        rawValue =
+            String.valueOf(column.isSigned() ? buf.readMediumLE() : buf.readUnsignedMediumLE());
         if (column.isZeroFill()) {
           return zeroFilling(rawValue, column);
         }

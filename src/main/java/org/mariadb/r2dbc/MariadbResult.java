@@ -152,46 +152,7 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
     byte[] byteValue = Long.toString(value).getBytes(StandardCharsets.US_ASCII);
     byte[] encodedLength;
     int length = byteValue.length;
-    if (length < 251) {
-      encodedLength = new byte[] {(byte) length};
-    } else if (length < 65536) {
-      encodedLength = new byte[] {(byte) 0xfc, (byte) length, (byte) (length >>> 8)};
-    } else if (length < 16777216) {
-      encodedLength =
-          new byte[] {(byte) 0xfd, (byte) length, (byte) (length >>> 8), (byte) (length >>> 16)};
-    } else {
-      encodedLength =
-          new byte[] {
-            (byte) 0xfd,
-            (byte) length,
-            (byte) (length >>> 8),
-            (byte) (length >>> 16),
-            (byte) (length >>> 24),
-            (byte) (length >>> 32),
-            (byte) (length >>> 40),
-            (byte) (length >>> 48),
-            (byte) (length >>> 56)
-          };
-    }
+    encodedLength = new byte[] {(byte) length};
     return Unpooled.copiedBuffer(encodedLength, byteValue);
-  }
-
-  @Override
-  public String toString() {
-    StringBuilder sb = new StringBuilder("MariadbResult{messages=");
-    sb.append(dataRows).append(", factory=").append(factory).append(", metadataList=[");
-    if (metadataList == null) {
-      sb.append("null");
-    } else {
-      for (ColumnDefinitionPacket packet : metadataList) {
-        sb.append(packet).append(",");
-      }
-    }
-    sb.append("], columnNumber=")
-        .append(columnNumber)
-        .append(", rowMetadata=")
-        .append(rowMetadata)
-        .append("}");
-    return sb.toString();
   }
 }

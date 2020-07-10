@@ -34,7 +34,10 @@ import reactor.test.StepVerifier;
 public class TimeParseTest extends BaseTest {
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("CREATE TABLE TimeParseTest (t1 TIME(6), t2 TIME(6))").execute().blockLast();
+    sharedConn
+        .createStatement("CREATE TABLE TimeParseTest (t1 TIME(6), t2 TIME(6))")
+        .execute()
+        .blockLast();
     sharedConn
         .createStatement(
             "INSERT INTO TimeParseTest VALUES ('90:00:00.012340', '-10:01:02.012340'), ('800:00:00.123', '-00:00:10"

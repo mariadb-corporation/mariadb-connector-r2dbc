@@ -17,9 +17,7 @@
 package org.mariadb.r2dbc.integration.codec;
 
 import io.r2dbc.spi.Blob;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -431,12 +429,12 @@ public class BlobParseTest extends BaseTest {
     try {
       while ((len = actual.read(array)) > 0) {
         System.arraycopy(array, 0, val, pos, len);
-        pos+=len;
+        pos += len;
       }
     } catch (IOException ioe) {
       return false;
     }
-    if (pos  != expected.length) return false;
+    if (pos != expected.length) return false;
     Assertions.assertArrayEquals(val, expected);
     return true;
   }
@@ -454,6 +452,7 @@ public class BlobParseTest extends BaseTest {
         .expectNextMatches(val -> inputStreamToByte(val))
         .verifyComplete();
   }
+
   @Test
   void decimalValue() {
     decimalValue(sharedConn);

@@ -31,7 +31,10 @@ import reactor.test.StepVerifier;
 public class TinyIntParseTest extends BaseTest {
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("CREATE TABLE tinyIntTable (t1 TINYINT, t2 TINYINT ZEROFILL)").execute().blockLast();
+    sharedConn
+        .createStatement("CREATE TABLE tinyIntTable (t1 TINYINT, t2 TINYINT ZEROFILL)")
+        .execute()
+        .blockLast();
     sharedConn
         .createStatement("INSERT INTO tinyIntTable VALUES (0, 0),(1, 10),(-1, 100), (null, null)")
         .execute()
