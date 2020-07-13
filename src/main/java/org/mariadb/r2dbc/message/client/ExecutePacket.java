@@ -86,16 +86,4 @@ public final class ExecutePacket implements ClientMessage {
     }
     return buf;
   }
-
-  @Override
-  public String toString() {
-    return "ExecutePacket{"
-        + "statementId="
-        + statementId
-        + ", parameters="
-        + parameters
-        + ", sequencer="
-        + sequencer
-        + '}';
-  }
 }

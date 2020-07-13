@@ -64,10 +64,6 @@ public class EofPacket implements ServerMessage {
     return warningCount;
   }
 
-  public Sequencer getSequencer() {
-    return sequencer;
-  }
-
   @Override
   public boolean ending() {
     return this.ending;
@@ -78,32 +74,4 @@ public class EofPacket implements ServerMessage {
     return resultSetEnd;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    EofPacket okPacket = (EofPacket) o;
-    return serverStatus == okPacket.serverStatus
-        && warningCount == okPacket.warningCount
-        && sequencer.equals(okPacket.sequencer);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(sequencer, serverStatus, warningCount);
-  }
-
-  @Override
-  public String toString() {
-    return "EofPacket{"
-        + "sequencer="
-        + sequencer
-        + ", serverStatus="
-        + serverStatus
-        + ", warningCount="
-        + warningCount
-        + ", ending="
-        + ending
-        + '}';
-  }
 }

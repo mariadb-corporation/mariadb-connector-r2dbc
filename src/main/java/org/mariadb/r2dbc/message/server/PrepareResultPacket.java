@@ -76,22 +76,4 @@ public final class PrepareResultPacket implements ServerMessage {
     return eofDeprecated;
   }
 
-  @Override
-  public String toString() {
-    return "PrepareResultPacket{"
-        + "statementId="
-        + statementId
-        + ", numColumns="
-        + numColumns
-        + ", numParams="
-        + numParams
-        + ", sequencer="
-        + sequencer
-        + '}';
-  }
-
-  @Override
-  public Sequencer getSequencer() {
-    return sequencer;
-  }
 }

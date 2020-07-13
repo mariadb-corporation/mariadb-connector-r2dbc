@@ -81,6 +81,15 @@ public class BaseTest {
     return meta.minVersion(major, minor, patch);
   }
 
+  public static Integer maxAllowedPacket() {
+    return sharedConnPrepare
+        .createStatement("select @@max_allowed_packet")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.class)))
+        .single()
+        .block();
+  }
+
   public void assertThrows(
       Class<? extends Exception> expectedType, Executable executable, String expected) {
     Exception e = Assertions.assertThrows(expectedType, executable);

@@ -62,33 +62,4 @@ public class AuthSwitchPacket implements ServerMessage {
     return true;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    AuthSwitchPacket that = (AuthSwitchPacket) o;
-    return Objects.equals(sequencer, that.sequencer)
-        && Objects.equals(plugin, that.plugin)
-        && Arrays.equals(seed, that.seed);
-  }
-
-  @Override
-  public int hashCode() {
-    int result = Objects.hash(sequencer, plugin);
-    result = 31 * result + Arrays.hashCode(seed);
-    return result;
-  }
-
-  @Override
-  public String toString() {
-    return "AuthSwitchPacket{"
-        + "sequencer="
-        + sequencer
-        + ", plugin='"
-        + plugin
-        + '\''
-        + ", seed="
-        + Arrays.toString(seed)
-        + '}';
-  }
 }

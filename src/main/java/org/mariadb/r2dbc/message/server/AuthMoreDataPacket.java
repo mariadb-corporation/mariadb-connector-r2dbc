@@ -62,9 +62,4 @@ public class AuthMoreDataPacket extends AbstractReferenceCounted implements Serv
   public boolean ending() {
     return true;
   }
-
-  @Override
-  public String toString() {
-    return "AuthMoreDataPacket{" + "sequencer=" + sequencer + ", buf=" + buf + '}';
-  }
 }

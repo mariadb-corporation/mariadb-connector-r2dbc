@@ -46,9 +46,4 @@ public final class PreparePacket implements ClientMessage {
     buf.writeCharSequence(this.sql, StandardCharsets.UTF_8);
     return buf;
   }
-
-  @Override
-  public String toString() {
-    return "PreparePacket{" + "sql='" + sql + '\'' + ", sequencer=" + sequencer + '}';
-  }
 }

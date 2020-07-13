@@ -112,10 +112,6 @@ public class OkPacket implements ServerMessage {
     return warningCount;
   }
 
-  public Sequencer getSequencer() {
-    return sequencer;
-  }
-
   @Override
   public boolean ending() {
     return this.ending;
@@ -126,38 +122,4 @@ public class OkPacket implements ServerMessage {
     return true;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    OkPacket okPacket = (OkPacket) o;
-    return affectedRows == okPacket.affectedRows
-        && lastInsertId == okPacket.lastInsertId
-        && serverStatus == okPacket.serverStatus
-        && warningCount == okPacket.warningCount
-        && sequencer.equals(okPacket.sequencer);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(sequencer, affectedRows, lastInsertId, serverStatus, warningCount);
-  }
-
-  @Override
-  public String toString() {
-    return "OkPacket{"
-        + "sequencer="
-        + sequencer
-        + ", affectedRows="
-        + affectedRows
-        + ", lastInsertId="
-        + lastInsertId
-        + ", serverStatus="
-        + serverStatus
-        + ", warningCount="
-        + warningCount
-        + ", ending="
-        + ending
-        + '}';
-  }
 }

@@ -46,8 +46,4 @@ public final class RowPacket extends AbstractReferenceCounted implements ServerM
     return this;
   }
 
-  @Override
-  public String toString() {
-    return "RowPacket{raw=" + raw + '}';
-  }
 }

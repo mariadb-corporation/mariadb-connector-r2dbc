@@ -102,15 +102,4 @@ public final class Ed25519PasswordPacket implements ClientMessage {
   public Sequencer getSequencer() {
     return sequencer;
   }
-
-  @Override
-  public String toString() {
-    return "Ed25519PasswordPacket{"
-        + "sequencer="
-        + sequencer
-        + ", password=*******"
-        + ", seed="
-        + Arrays.toString(seed)
-        + '}';
-  }
 }

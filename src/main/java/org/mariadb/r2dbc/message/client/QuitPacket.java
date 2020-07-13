@@ -29,9 +29,4 @@ public final class QuitPacket implements ClientMessage {
     buf.writeByte(0x01);
     return buf;
   }
-
-  @Override
-  public String toString() {
-    return "QuitPacket{}";
-  }
 }

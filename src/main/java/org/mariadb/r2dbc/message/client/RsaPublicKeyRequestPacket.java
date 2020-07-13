@@ -40,9 +40,4 @@ public final class RsaPublicKeyRequestPacket implements ClientMessage {
   public Sequencer getSequencer() {
     return sequencer;
   }
-
-  @Override
-  public String toString() {
-    return "RsaPublicKeyRequestPacket{" + "sequencer=" + sequencer + '}';
-  }
 }

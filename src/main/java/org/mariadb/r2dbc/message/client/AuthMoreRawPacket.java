@@ -43,8 +43,4 @@ public final class AuthMoreRawPacket implements ClientMessage {
     return sequencer;
   }
 
-  @Override
-  public String toString() {
-    return "RawClientPacket{raw=******, sequencer=" + sequencer + '}';
-  }
 }

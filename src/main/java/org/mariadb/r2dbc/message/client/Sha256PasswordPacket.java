@@ -89,14 +89,4 @@ public final class Sha256PasswordPacket implements ClientMessage {
     return sequencer;
   }
 
-  @Override
-  public String toString() {
-    return "Sha256PasswordPacket{"
-        + "sequencer="
-        + sequencer
-        + ", password=*******"
-        + ", seed="
-        + Arrays.toString(seed)
-        + '}';
-  }
 }

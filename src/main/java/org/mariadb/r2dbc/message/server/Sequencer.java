@@ -27,8 +27,4 @@ public class Sequencer {
     return ++sequenceId;
   }
 
-  @Override
-  public String toString() {
-    return "Sequencer{sequenceId=" + sequenceId + '}';
-  }
 }

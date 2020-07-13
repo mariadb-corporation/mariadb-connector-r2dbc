@@ -42,29 +42,7 @@ public final class QueryPacket implements ClientMessage {
     return out;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    QueryPacket that = (QueryPacket) o;
-    return Objects.equals(this.sql, that.sql);
-  }
-
   public Sequencer getSequencer() {
     return sequencer;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(this.sql);
-  }
-
-  @Override
-  public String toString() {
-    return "QueryPacket{" + "sql='" + this.sql + '\'' + '}';
   }
 }

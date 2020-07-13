@@ -159,11 +159,6 @@ public class Sha256PasswordPluginFlow implements AuthenticationPlugin {
     }
   }
 
-  @Override
-  public String toString() {
-    return "Sha256PasswordPluginFlow{}";
-  }
-
   public enum State {
     INIT,
     REQUEST_SERVER_KEY,

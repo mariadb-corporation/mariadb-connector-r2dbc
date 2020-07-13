@@ -46,8 +46,4 @@ public final class ClearPasswordPacket implements ClientMessage {
     return sequencer;
   }
 
-  @Override
-  public String toString() {
-    return "ClearPasswordPacket{password=******, sequencer=" + sequencer + '}';
-  }
 }

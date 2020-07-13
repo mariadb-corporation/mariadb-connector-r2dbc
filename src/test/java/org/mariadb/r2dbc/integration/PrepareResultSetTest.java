@@ -26,6 +26,7 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
@@ -87,6 +88,113 @@ public class PrepareResultSetTest extends BaseTest {
   @AfterAll
   public static void after2() {
     sharedConn.createStatement("DROP TABLE PrepareResultSetTest").execute().blockLast();
+  }
+
+  @Test
+  void parameterLengthEncoded() {
+    Assumptions.assumeTrue(maxAllowedPacket() >= 16 * 1024 * 1024);
+
+    char[] arr1024 = new char[1024];
+    for (int i = 0; i < arr1024.length; i++) {
+      arr1024[i] = (char) ('a' + (i % 10));
+    }
+
+    char[] arr = new char[16000000];
+    for (int i = 0; i < arr.length; i++) {
+      arr[i] = (char) ('a' + (i % 10));
+    }
+
+    sharedConnPrepare
+        .createStatement(
+            "CREATE TEMPORARY TABLE parameterLengthEncoded"
+                + "(t0 VARCHAR(1024),t1 MEDIUMTEXT) DEFAULT CHARSET=utf8mb4")
+        .execute()
+        .blockLast();
+    sharedConnPrepare
+        .createStatement(
+            "INSERT INTO parameterLengthEncoded VALUES (?, ?)")
+        .bind(0, String.valueOf(arr1024))
+        .bind(1, String.valueOf(arr))
+        .execute().blockLast();
+    sharedConnPrepare
+        .createStatement("SELECT * FROM parameterLengthEncoded")
+        .execute()
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      String t0 = row.get(0, String.class);
+                      String t1 = row.get(1, String.class);
+                      Assertions.assertEquals(String.valueOf(arr1024), t0);
+                      Assertions.assertEquals(String.valueOf(arr), t1);
+                      return t0;
+                    }))
+        .as(StepVerifier::create)
+        .expectNext(String.valueOf(arr1024))
+        .verifyComplete();
+  }
+
+  @Test
+  void parameterLengthEncodedLong() {
+    Assumptions.assumeTrue(maxAllowedPacket() >= 20 * 1024 * 1024);
+
+    char[] arr = new char[20000000];
+    for (int i = 0; i < arr.length; i++) {
+      arr[i] = (char) ('a' + (i % 10));
+    }
+
+    sharedConnPrepare
+        .createStatement(
+            "CREATE TEMPORARY TABLE parameterLengthEncodedLong"
+                + "(t0 LONGTEXT) DEFAULT CHARSET=utf8mb4")
+        .execute()
+        .blockLast();
+    sharedConnPrepare
+        .createStatement(
+            "INSERT INTO parameterLengthEncodedLong VALUES (?)")
+        .bind(0, String.valueOf(arr))
+        .execute().blockLast();
+    sharedConnPrepare
+        .createStatement("SELECT * FROM parameterLengthEncodedLong")
+        .execute()
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> row.get(0, String.class)))
+        .as(StepVerifier::create)
+        .expectNext(String.valueOf(arr))
+        .verifyComplete();
+  }
+
+  @Test
+  void missingParameter() {
+    sharedConnPrepare
+        .createStatement(
+            "CREATE TEMPORARY TABLE missingParameter"
+                + "(t1 VARCHAR(256),t2 VARCHAR(256)) DEFAULT CHARSET=utf8mb4")
+        .execute()
+        .blockLast();
+
+    // missing first parameter
+    sharedConnPrepare
+        .createStatement("INSERT INTO missingParameter(t1, t2) VALUES (?, ?)")
+        .bind(1, "test")
+        .execute()
+        .blockLast();
+
+    sharedConnPrepare
+        .createStatement("SELECT * FROM missingParameter")
+        .execute()
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      Assertions.assertNull(row.get(0));
+                      return row.get(1, String.class);
+                    }))
+        .as(StepVerifier::create)
+        .expectNext("test")
+        .verifyComplete();
   }
 
   @Test

@@ -42,8 +42,4 @@ public final class ClearPasswordPluginFlow implements AuthenticationPlugin {
     return new ClearPasswordPacket(authSwitchPacket.getSequencer(), configuration.getPassword());
   }
 
-  @Override
-  public String toString() {
-    return "ClearPasswordPluginFlow{}";
-  }
 }

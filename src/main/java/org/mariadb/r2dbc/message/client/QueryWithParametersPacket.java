@@ -75,29 +75,4 @@ public final class QueryWithParametersPacket implements ClientMessage {
     return sequencer;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    QueryWithParametersPacket that = (QueryWithParametersPacket) o;
-    return Objects.equals(prepareResult, that.prepareResult)
-        && Arrays.equals(parameters, that.parameters);
-  }
-
-  @Override
-  public int hashCode() {
-    int result = Objects.hash(prepareResult);
-    result = 31 * result + Arrays.hashCode(parameters);
-    return result;
-  }
-
-  @Override
-  public String toString() {
-    return "QueryWithParametersPacket{"
-        + "prepareResult="
-        + prepareResult
-        + ", parameters="
-        + Arrays.toString(parameters)
-        + '}';
-  }
 }

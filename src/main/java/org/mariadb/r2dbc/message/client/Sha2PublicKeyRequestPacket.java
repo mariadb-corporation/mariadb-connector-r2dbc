@@ -41,8 +41,4 @@ public final class Sha2PublicKeyRequestPacket implements ClientMessage {
     return sequencer;
   }
 
-  @Override
-  public String toString() {
-    return "RsaPublicKeyRequestPacket{" + "sequencer=" + sequencer + '}';
-  }
 }

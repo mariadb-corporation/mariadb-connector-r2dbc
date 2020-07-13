@@ -39,9 +39,4 @@ public final class ClosePreparePacket implements ClientMessage {
     buf.writeIntLE(statementId);
     return buf;
   }
-
-  @Override
-  public String toString() {
-    return "ClosePreparePacket{" + "statementId=" + statementId + '}';
-  }
 }

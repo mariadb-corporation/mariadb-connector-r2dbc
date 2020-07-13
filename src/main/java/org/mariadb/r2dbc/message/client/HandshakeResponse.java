@@ -212,25 +212,4 @@ public final class HandshakeResponse implements ClientMessage {
           });
     }
   }
-
-  @Override
-  public String toString() {
-    return "HandshakeResponse{"
-        + "initialHandshakePacket="
-        + initialHandshakePacket
-        + ", username='"
-        + username
-        + '\''
-        + ", database='"
-        + database
-        + '\''
-        + ", connectionAttributes="
-        + connectionAttributes
-        + ", host='"
-        + host
-        + '\''
-        + ", clientCapabilities="
-        + clientCapabilities
-        + '}';
-  }
 }

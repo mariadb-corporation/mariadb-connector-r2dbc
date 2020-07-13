@@ -69,44 +69,9 @@ public final class ErrorPacket implements ServerMessage {
     return sqlState;
   }
 
-  public Sequencer getSequencer() {
-    return sequencer;
-  }
-
   @Override
   public boolean ending() {
     return true;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    ErrorPacket that = (ErrorPacket) o;
-    return errorCode == that.errorCode
-        && sequencer.equals(that.sequencer)
-        && message.equals(that.message)
-        && Objects.equals(sqlState, that.sqlState);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(sequencer, errorCode, message, sqlState);
-  }
-
-  @Override
-  public String toString() {
-    return "ErrorPacket{"
-        + "errorCode="
-        + errorCode
-        + ", message='"
-        + message
-        + '\''
-        + ", sqlState='"
-        + sqlState
-        + '\''
-        + ", sequencer="
-        + sequencer
-        + '}';
-  }
 }

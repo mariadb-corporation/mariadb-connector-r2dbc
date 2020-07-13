@@ -37,8 +37,4 @@ public class SkipPacket implements ServerMessage {
     return null;
   }
 
-  @Override
-  public String toString() {
-    return "SkipPacket{ending=" + ending + '}';
-  }
 }

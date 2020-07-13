@@ -347,40 +347,8 @@ public final class ColumnDefinitionPacket implements ServerMessage {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    ColumnDefinitionPacket that = (ColumnDefinitionPacket) o;
-    return charset == that.charset
-        && length == that.length
-        && dataType == that.dataType
-        && decimals == that.decimals
-        && flags == that.flags;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(charset, length, dataType, decimals, flags);
-  }
-
-  @Override
   public boolean ending() {
     return this.ending;
   }
 
-  @Override
-  public String toString() {
-    return "ColumnDefinitionPacket{"
-        + "charset="
-        + charset
-        + ", length="
-        + length
-        + ", dataType="
-        + dataType
-        + ", decimals="
-        + decimals
-        + ", flags="
-        + flags
-        + '}';
-  }
 }

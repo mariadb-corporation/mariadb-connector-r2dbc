@@ -44,8 +44,4 @@ public final class Ed25519PasswordPluginFlow implements AuthenticationPlugin {
         authSwitchPacket.getSequencer(), configuration.getPassword(), authSwitchPacket.getSeed());
   }
 
-  @Override
-  public String toString() {
-    return "Ed25519PasswordPluginFlow{}";
-  }
 }
