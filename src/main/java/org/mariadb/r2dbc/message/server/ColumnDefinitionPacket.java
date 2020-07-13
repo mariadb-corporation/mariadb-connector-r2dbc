@@ -26,7 +26,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Objects;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
@@ -350,5 +349,4 @@ public final class ColumnDefinitionPacket implements ServerMessage {
   public boolean ending() {
     return this.ending;
   }
-
 }

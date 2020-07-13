@@ -40,5 +40,4 @@ public final class Sha2PublicKeyRequestPacket implements ClientMessage {
   public Sequencer getSequencer() {
     return sequencer;
   }
-
 }

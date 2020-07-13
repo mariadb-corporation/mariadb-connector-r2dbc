@@ -19,8 +19,6 @@ package org.mariadb.r2dbc.message.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Objects;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Parameter;
 import org.mariadb.r2dbc.message.server.Sequencer;
@@ -74,5 +72,4 @@ public final class QueryWithParametersPacket implements ClientMessage {
   public Sequencer getSequencer() {
     return sequencer;
   }
-
 }

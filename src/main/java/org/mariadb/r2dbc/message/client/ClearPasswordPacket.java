@@ -45,5 +45,4 @@ public final class ClearPasswordPacket implements ClientMessage {
   public Sequencer getSequencer() {
     return sequencer;
   }
-
 }

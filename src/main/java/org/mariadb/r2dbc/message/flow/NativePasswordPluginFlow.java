@@ -42,5 +42,4 @@ public final class NativePasswordPluginFlow implements AuthenticationPlugin {
     return new NativePasswordPacket(
         authSwitchPacket.getSequencer(), configuration.getPassword(), authSwitchPacket.getSeed());
   }
-
 }

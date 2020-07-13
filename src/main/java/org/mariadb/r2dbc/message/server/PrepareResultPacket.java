@@ -75,5 +75,4 @@ public final class PrepareResultPacket implements ServerMessage {
   public boolean isEofDeprecated() {
     return eofDeprecated;
   }
-
 }

@@ -36,5 +36,4 @@ public class SkipPacket implements ServerMessage {
   public Sequencer getSequencer() {
     return null;
   }
-
 }

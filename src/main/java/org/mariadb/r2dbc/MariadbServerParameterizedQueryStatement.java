@@ -125,6 +125,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   }
 
   @Override
+  @SuppressWarnings({"unchecked", "rawtypes"})
   public MariadbServerParameterizedQueryStatement bindNull(int index, @Nullable Class<?> type) {
     if (index < 0) {
       throw new IndexOutOfBoundsException(
@@ -141,6 +142,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     if (type != null) {
       for (Codec<?> codec : Codecs.LIST) {
         if (codec.canEncode(type)) {
+
           parameter =
               new Parameter(codec, null) {
                 @Override

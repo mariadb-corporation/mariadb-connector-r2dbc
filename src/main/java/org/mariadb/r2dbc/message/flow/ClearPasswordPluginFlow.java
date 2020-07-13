@@ -41,5 +41,4 @@ public final class ClearPasswordPluginFlow implements AuthenticationPlugin {
       AuthMoreDataPacket authMoreDataPacket) {
     return new ClearPasswordPacket(authSwitchPacket.getSequencer(), configuration.getPassword());
   }
-
 }

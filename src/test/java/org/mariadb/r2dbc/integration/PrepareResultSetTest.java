@@ -26,7 +26,6 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
-import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
@@ -111,11 +110,11 @@ public class PrepareResultSetTest extends BaseTest {
         .execute()
         .blockLast();
     sharedConnPrepare
-        .createStatement(
-            "INSERT INTO parameterLengthEncoded VALUES (?, ?)")
+        .createStatement("INSERT INTO parameterLengthEncoded VALUES (?, ?)")
         .bind(0, String.valueOf(arr1024))
         .bind(1, String.valueOf(arr))
-        .execute().blockLast();
+        .execute()
+        .blockLast();
     sharedConnPrepare
         .createStatement("SELECT * FROM parameterLengthEncoded")
         .execute()
@@ -142,7 +141,8 @@ public class PrepareResultSetTest extends BaseTest {
     for (int i = 0; i < arr.length; i++) {
       arr[i] = (char) ('a' + (i % 10));
     }
-
+    String val = String.valueOf(arr);
+    arr = null;
     sharedConnPrepare
         .createStatement(
             "CREATE TEMPORARY TABLE parameterLengthEncodedLong"
@@ -150,19 +150,16 @@ public class PrepareResultSetTest extends BaseTest {
         .execute()
         .blockLast();
     sharedConnPrepare
-        .createStatement(
-            "INSERT INTO parameterLengthEncodedLong VALUES (?)")
-        .bind(0, String.valueOf(arr))
-        .execute().blockLast();
+        .createStatement("INSERT INTO parameterLengthEncodedLong VALUES (?)")
+        .bind(0, val)
+        .execute()
+        .blockLast();
     sharedConnPrepare
         .createStatement("SELECT * FROM parameterLengthEncodedLong")
         .execute()
-        .flatMap(
-            r ->
-                r.map(
-                    (row, metadata) -> row.get(0, String.class)))
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
         .as(StepVerifier::create)
-        .expectNext(String.valueOf(arr))
+        .expectNext(val)
         .verifyComplete();
   }
 

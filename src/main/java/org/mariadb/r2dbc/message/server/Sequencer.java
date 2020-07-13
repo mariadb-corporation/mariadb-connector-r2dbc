@@ -26,5 +26,4 @@ public class Sequencer {
   public byte next() {
     return ++sequenceId;
   }
-
 }

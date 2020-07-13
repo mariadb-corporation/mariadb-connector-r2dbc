@@ -17,7 +17,6 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
-import java.util.Objects;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.constants.Capabilities;
@@ -121,5 +120,4 @@ public class OkPacket implements ServerMessage {
   public boolean resultSetEnd() {
     return true;
   }
-
 }

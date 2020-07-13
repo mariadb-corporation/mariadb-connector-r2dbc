@@ -18,8 +18,6 @@ package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Objects;
 import org.mariadb.r2dbc.client.Context;
 
 public class AuthSwitchPacket implements ServerMessage {
@@ -61,5 +59,4 @@ public class AuthSwitchPacket implements ServerMessage {
   public boolean ending() {
     return true;
   }
-
 }

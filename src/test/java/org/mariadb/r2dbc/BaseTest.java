@@ -19,13 +19,12 @@ package org.mariadb.r2dbc;
 import io.r2dbc.spi.ValidationDepth;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Random;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeEachCallback;
-import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.*;
 import org.junit.jupiter.api.function.Executable;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
@@ -35,6 +34,7 @@ public class BaseTest {
   public static MariadbConnectionFactory factory = TestConfiguration.defaultFactory;
   public static MariadbConnection sharedConn;
   public static MariadbConnection sharedConnPrepare;
+  private static Random rand = new Random();
 
   @BeforeAll
   public static void beforeAll() throws Exception {
@@ -45,21 +45,23 @@ public class BaseTest {
   }
 
   @AfterEach
-  public void after1() throws Throwable {
-    System.gc();
-  }
-
-  @AfterEach
   public void afterEach1() {
+    int i = rand.nextInt();
     sharedConn
-        .validate(ValidationDepth.REMOTE)
+        .createStatement("SELECT " + i)
+        .execute()
+        .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
         .as(StepVerifier::create)
-        .expectNext(Boolean.TRUE)
+        .expectNext(i)
         .verifyComplete();
+
+    int j = rand.nextInt();
     sharedConnPrepare
-        .validate(ValidationDepth.REMOTE)
+        .createStatement("SELECT " + j)
+        .execute()
+        .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
         .as(StepVerifier::create)
-        .expectNext(Boolean.TRUE)
+        .expectNext(j)
         .verifyComplete();
   }
 
@@ -69,7 +71,7 @@ public class BaseTest {
     sharedConnPrepare.close().block();
   }
 
-  //  @RegisterExtension public Extension watcher = new Follow();
+  @RegisterExtension public Extension watcher = new Follow();
 
   public static boolean isMariaDBServer() {
     MariadbConnectionMetadata meta = sharedConn.getMetadata();

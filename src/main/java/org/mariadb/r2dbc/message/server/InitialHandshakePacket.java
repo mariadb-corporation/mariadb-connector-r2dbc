@@ -237,5 +237,4 @@ public final class InitialHandshakePacket implements ServerMessage {
   public boolean ending() {
     return true;
   }
-
 }

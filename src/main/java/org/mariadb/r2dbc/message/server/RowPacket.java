@@ -45,5 +45,4 @@ public final class RowPacket extends AbstractReferenceCounted implements ServerM
   public ReferenceCounted touch(Object hint) {
     return this;
   }
-
 }

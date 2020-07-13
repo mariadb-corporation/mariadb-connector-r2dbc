@@ -42,5 +42,4 @@ public final class AuthMoreRawPacket implements ClientMessage {
   public Sequencer getSequencer() {
     return sequencer;
   }
-
 }

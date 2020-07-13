@@ -88,5 +88,4 @@ public final class Sha256PasswordPacket implements ClientMessage {
   public Sequencer getSequencer() {
     return sequencer;
   }
-
 }
