@@ -49,11 +49,6 @@ public class BigIntegerParseTest extends BaseTest {
             "INSERT INTO BigIntUnsignedTable VALUES (0), (1), (18446744073709551615), (null)")
         .execute()
         .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
-        .execute()
-        .blockLast();
   }
 
   @AfterAll

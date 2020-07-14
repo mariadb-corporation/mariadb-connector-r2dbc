@@ -48,11 +48,6 @@ public class BlobParameterTest extends BaseTest {
         .createStatement("CREATE TABLE BlobParam (t1 BLOB, t2 BLOB, t3 BLOB)")
         .execute()
         .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
-        .execute()
-        .blockLast();
   }
 
   @AfterAll

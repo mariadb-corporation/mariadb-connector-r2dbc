@@ -47,11 +47,6 @@ public class MediumIntParseTest extends BaseTest {
         .createStatement("INSERT INTO MediumIntUnsignedTable VALUES (0), (1), (16777215), (null)")
         .execute()
         .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
-        .execute()
-        .blockLast();
   }
 
   @AfterAll

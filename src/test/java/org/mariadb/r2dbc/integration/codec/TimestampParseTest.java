@@ -52,12 +52,6 @@ public class TimestampParseTest extends BaseTest {
             "INSERT INTO TimestampTable2 VALUES('1970-01-02 12:50:05.01230'), ('1970-01-01 10:45:01'), (null)")
         .execute()
         .blockLast();
-
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
-        .execute()
-        .blockLast();
   }
 
   @AfterAll

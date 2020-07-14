@@ -45,14 +45,21 @@ public class BaseTest {
     MariadbConnectionConfiguration confPipeline =
         TestConfiguration.defaultBuilder.clone().useServerPrepStmts(true).build();
     sharedConnPrepare = new MariadbConnectionFactory(confPipeline).create().block();
-
+    String sqlModeAddition = "";
+    MariadbConnectionMetadata meta = sharedConn.getMetadata();
+    if (meta.isMariaDBServer() && !meta.minVersion(10, 2, 4) || !meta.isMariaDBServer()) {
+      sqlModeAddition += ",STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION";
+    }
     if (backslashEscape) {
+      sqlModeAddition += ",NO_BACKSLASH_ESCAPES";
+    }
+    if (!"".equals(sqlModeAddition)) {
       sharedConn
-          .createStatement("set sql_mode= concat(@@sql_mode,',NO_BACKSLASH_ESCAPES'))")
+          .createStatement("SET @@sql_mode = concat(@@sql_mode,',NO_BACKSLASH_ESCAPES')")
           .execute()
           .blockLast();
       sharedConnPrepare
-          .createStatement("set sql_mode= concat(@@sql_mode,',NO_BACKSLASH_ESCAPES'))")
+          .createStatement("set sql_mode= concat(@@sql_mode,',NO_BACKSLASH_ESCAPES')")
           .execute()
           .blockLast();
     }

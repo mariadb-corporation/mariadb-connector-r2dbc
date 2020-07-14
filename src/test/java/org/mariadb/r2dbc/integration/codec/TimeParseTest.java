@@ -46,11 +46,6 @@ public class TimeParseTest extends BaseTest {
                 + ", (null, null)")
         .execute()
         .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
-        .execute()
-        .blockLast();
   }
 
   @AfterAll

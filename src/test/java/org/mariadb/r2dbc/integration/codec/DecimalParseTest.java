@@ -42,11 +42,6 @@ public class DecimalParseTest extends BaseTest {
                 + " (null), (19223372036854775807.9223372036854775807)")
         .execute()
         .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
-        .execute()
-        .blockLast();
   }
 
   @AfterAll

@@ -47,11 +47,6 @@ public class ShortParseTest extends BaseTest {
         .createStatement("INSERT INTO ShortUnsignedTable VALUES (0), (1), (65535), (null)")
         .execute()
         .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
-        .execute()
-        .blockLast();
   }
 
   @AfterAll

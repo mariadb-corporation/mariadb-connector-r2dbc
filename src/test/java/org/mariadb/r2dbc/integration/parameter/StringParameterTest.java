@@ -49,11 +49,6 @@ public class StringParameterTest extends BaseTest {
             "CREATE TABLE StringParam (t1 VARCHAR(256), t2 VARCHAR(256), t3 VARCHAR(256)) DEFAULT CHARSET=utf8mb4")
         .execute()
         .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
-        .execute()
-        .blockLast();
   }
 
   @AfterAll
@@ -136,6 +131,7 @@ public class StringParameterTest extends BaseTest {
   }
 
   private void byteArrayValue(MariadbConnection connection) {
+
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO StringParam VALUES (?,?,?)")

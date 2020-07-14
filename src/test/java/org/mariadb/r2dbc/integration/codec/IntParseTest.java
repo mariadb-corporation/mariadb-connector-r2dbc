@@ -48,11 +48,6 @@ public class IntParseTest extends BaseTest {
         .createStatement("INSERT INTO IntUnsignedTable VALUES (0), (1), (4294967295), (null)")
         .execute()
         .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
-        .execute()
-        .blockLast();
   }
 
   @AfterAll

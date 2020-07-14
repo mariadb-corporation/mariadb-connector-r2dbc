@@ -38,11 +38,6 @@ public class DateParseTest extends BaseTest {
         .createStatement("INSERT INTO DateTable VALUES('2010-01-12',1), ('2011-2-28',2), (null,3)")
         .execute()
         .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
-        .execute()
-        .blockLast();
   }
 
   @AfterAll

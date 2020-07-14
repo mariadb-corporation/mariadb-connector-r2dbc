@@ -41,11 +41,6 @@ public class TinyIntParameterTest extends BaseTest {
         .createStatement("CREATE TABLE TinyIntParam (t1 TINYINT, t2 TINYINT, t3 TINYINT)")
         .execute()
         .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
-        .execute()
-        .blockLast();
   }
 
   @AfterAll
