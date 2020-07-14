@@ -499,4 +499,25 @@ public class BlobParseTest extends BaseTest {
                         .equals("No decoder for type java.math.BigInteger and column type BLOB"))
         .verify();
   }
+
+  @Test
+  void meta() {
+    meta(sharedConn);
+  }
+
+  @Test
+  void metaPrepare() {
+    meta(sharedConnPrepare);
+  }
+
+  private void meta(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Blob.class))
+        .verifyComplete();
+  }
 }

@@ -48,6 +48,7 @@ public final class ErrorPacket implements ServerMessage {
       sqlState = buf.readCharSequence(5, StandardCharsets.UTF_8).toString();
       msg = buf.toString(StandardCharsets.UTF_8);
     } else {
+      // Pre-4.1 message, still can be output in newer versions (e.g with 'Too many connections')
       msg = buf.toString(StandardCharsets.UTF_8);
       sqlState = "HY000";
     }

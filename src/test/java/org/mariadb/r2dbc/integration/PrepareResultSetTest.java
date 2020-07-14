@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.integration;
 
+import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
@@ -176,12 +177,19 @@ public class PrepareResultSetTest extends BaseTest {
         .blockLast();
 
     // missing first parameter
-    sharedConnPrepare
-        .createStatement("INSERT INTO missingParameter(t1, t2) VALUES (?, ?)")
-        .bind(1, "test")
-        .execute()
-        .blockLast();
+    MariadbStatement stmt =
+        sharedConnPrepare.createStatement("INSERT INTO missingParameter(t1, t2) VALUES (?, ?)");
 
+    stmt.bind(1, "test").execute().blockLast();
+
+    assertThrows(
+        IllegalArgumentException.class, () -> stmt.bind(null, null), "identifier cannot be null");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.bind("test", null),
+        "Cannot use getColumn(name) with prepared statement");
+    assertThrows(
+        IllegalArgumentException.class, () -> stmt.add(), "Parameter at position 0 is not set");
     sharedConnPrepare
         .createStatement("SELECT * FROM missingParameter")
         .execute()
@@ -258,6 +266,76 @@ public class PrepareResultSetTest extends BaseTest {
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
         .as(StepVerifier::create)
         .expectNext("5a", "6b")
+        .verifyComplete();
+  }
+
+  @Test
+  public void returningBefore105() {
+    Assumptions.assumeFalse((isMariaDBServer() && minVersion(10, 5, 1)));
+
+    sharedConnPrepare
+        .createStatement(
+            "CREATE TEMPORARY TABLE returningBefore105 (id int not null primary key auto_increment, test varchar(10))")
+        .execute()
+        .blockLast();
+
+    try {
+      sharedConnPrepare
+          .createStatement("INSERT INTO returningBefore105(test) VALUES (?), (?)")
+          .bind(0, "test1")
+          .bind(1, "test2")
+          .returnGeneratedValues("id", "test")
+          .execute();
+      Assertions.fail();
+    } catch (IllegalArgumentException e) {
+      Assertions.assertTrue(
+          e.getMessage()
+              .contains("returnGeneratedValues can have only one column before MariaDB 10.5.1"));
+    }
+
+    sharedConnPrepare
+        .createStatement("INSERT INTO returningBefore105(test) VALUES (?), (?)")
+        .bind(0, "test1")
+        .bind(1, "test2")
+        .returnGeneratedValues("id")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && ((R2dbcTransientResourceException) throwable).getSqlState().equals("HY000")
+                    && ((throwable.getMessage().contains("Connector cannot get generated ID"))))
+        .verify();
+
+    sharedConnPrepare
+        .createStatement("INSERT INTO returningBefore105(test) VALUES (?)")
+        .bind(0, "test1")
+        .returnGeneratedValues("id")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+        .as(StepVerifier::create)
+        .expectNext("3")
+        .verifyComplete();
+
+    sharedConnPrepare
+        .createStatement("INSERT INTO returningBefore105(test) VALUES (?)")
+        .bind(0, "test3")
+        .returnGeneratedValues("TEST_COL_NAME")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get("TEST_COL_NAME", String.class)))
+        .as(StepVerifier::create)
+        .expectNext("4")
+        .verifyComplete();
+
+    sharedConnPrepare
+        .createStatement("INSERT INTO returningBefore105(test) VALUES (?)")
+        .bind(0, "a")
+        .returnGeneratedValues()
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get("id", String.class)))
+        .as(StepVerifier::create)
+        .expectNext("5")
         .verifyComplete();
   }
 

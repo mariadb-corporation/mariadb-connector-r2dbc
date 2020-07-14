@@ -217,7 +217,10 @@ public class BlobParameterTest extends BaseTest {
         connection
             .createStatement("INSERT INTO BlobParam VALUES (?,?,?)")
             .bind(0, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 15}))))
-            .bind(1, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127, (byte) 92}))))
+            .bind(
+                1,
+                Blob.from(
+                    Mono.just(ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127, (byte) 92}))))
             .bind(2, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {0}))));
     Assertions.assertTrue(stmt.toString().contains("Parameter{codec=BlobCodec,"));
     stmt.execute().blockLast();

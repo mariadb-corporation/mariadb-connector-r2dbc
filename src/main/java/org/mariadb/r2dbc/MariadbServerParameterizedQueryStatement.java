@@ -72,7 +72,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
       for (int i = 0; i < prepareResult.getNumParams(); i++) {
         if (parameters.get(i) == null) {
           throw new IllegalArgumentException(
-              String.format("Parameter at position %i is not set", i));
+              String.format("Parameter at position %s is not set", i));
         }
       }
     }
@@ -172,7 +172,6 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   }
 
   private int getColumn(String name) {
-    // TODO handle prepare response first ?
     throw new IllegalArgumentException("Cannot use getColumn(name) with prepared statement");
   }
 
@@ -193,7 +192,9 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   public Flux<org.mariadb.r2dbc.api.MariadbResult> execute() {
     validateParameters();
     String sql = this.initialSql;
-    if (generatedColumns != null) {
+    if (client.getVersion().isMariaDBServer()
+        && client.getVersion().versionGreaterOrEqual(10, 5, 1)
+        && generatedColumns != null) {
       sql +=
           generatedColumns.length == 0
               ? " RETURNING *"

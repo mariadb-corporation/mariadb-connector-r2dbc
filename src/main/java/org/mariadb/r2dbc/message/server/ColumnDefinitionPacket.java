@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.BitSet;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
@@ -158,10 +159,6 @@ public final class ColumnDefinitionPacket implements ServerMessage {
     return new String(this.meta, pos, length, StandardCharsets.UTF_8);
   }
 
-  public Sequencer getSequencer() {
-    return null;
-  }
-
   public String getSchema() {
     return this.getString(1);
   }
@@ -209,11 +206,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
         || dataType == DataType.SET
         || dataType == DataType.VARSTRING
         || dataType == DataType.STRING) {
-      int maxWidth = maxCharlen[charset];
-      if (maxWidth == 0) {
-        maxWidth = 1;
-      }
-      return (int) length / maxWidth;
+      return (int) (length / (maxCharlen[charset] == 0 ? 1 : maxCharlen[charset]));
     }
     return (int) length;
   }
@@ -285,7 +278,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
       case DECIMAL:
         return BigDecimal.class;
       case BIT:
-        return BitSetCodec.class;
+        return BitSet.class;
       case TINYBLOB:
       case MEDIUMBLOB:
       case LONGBLOB:

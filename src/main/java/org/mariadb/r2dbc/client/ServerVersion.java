@@ -16,7 +16,6 @@
 
 package org.mariadb.r2dbc.client;
 
-import java.util.Objects;
 
 public class ServerVersion {
 
@@ -126,19 +125,6 @@ public class ServerVersion {
       patchVersion = val;
     }
     return new int[] {majorVersion, minorVersion, patchVersion};
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    ServerVersion that = (ServerVersion) o;
-    return mariaDBServer == that.mariaDBServer && serverVersion.equals(that.serverVersion);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(serverVersion, mariaDBServer);
   }
 
   @Override

@@ -32,10 +32,6 @@ public final class RowPacket extends AbstractReferenceCounted implements ServerM
     return raw;
   }
 
-  public Sequencer getSequencer() {
-    return null;
-  }
-
   @Override
   public void deallocate() {
     raw.release();

@@ -56,10 +56,6 @@ public class Parameter<T> {
     codec.encodeBinary(out, context, this.value);
   }
 
-  public void encodeLongData(ByteBuf out, Context context) {
-    codec.encodeBinary(out, context, this.value);
-  }
-
   public DataType getBinaryEncodeType() {
     return codec.getBinaryEncodeType();
   }

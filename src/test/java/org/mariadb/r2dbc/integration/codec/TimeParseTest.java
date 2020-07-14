@@ -511,4 +511,25 @@ public class TimeParseTest extends BaseTest {
                         .equals("No decoder for type java.time.LocalDate and column type TIME"))
         .verify();
   }
+
+  @Test
+  void meta() {
+    meta(sharedConn);
+  }
+
+  @Test
+  void metaPrepare() {
+    meta(sharedConnPrepare);
+  }
+
+  private void meta(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Duration.class))
+        .verifyComplete();
+  }
 }

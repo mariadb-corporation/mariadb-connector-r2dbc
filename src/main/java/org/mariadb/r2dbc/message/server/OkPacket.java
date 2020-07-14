@@ -77,10 +77,6 @@ public class OkPacket implements ServerMessage {
               context.setDatabase(database);
               logger.debug("Database change : now is '{}'", database);
               break;
-
-            default:
-              int len = (int) BufferUtils.readLengthEncodedInt(stateInfo);
-              stateInfo.skipBytes(len);
           }
         }
       }

@@ -20,6 +20,7 @@ import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -532,6 +533,63 @@ public class IntParseTest extends BaseTest {
             Optional.of(BigInteger.ONE),
             Optional.of(BigInteger.valueOf(4294967295L)),
             Optional.empty())
+        .verifyComplete();
+  }
+
+  @Test
+  void localDateTimeValue() {
+    localDateTimeValue(sharedConn);
+  }
+
+  @Test
+  void localDateTimeValuePrepare() {
+    localDateTimeValue(sharedConnPrepare);
+  }
+
+  private void localDateTimeValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(
+            r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalDateTime.class))))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable
+                        .getMessage()
+                        .equals(
+                            "No decoder for type java.time.LocalDateTime and column type INTEGER(signed)"))
+        .verify();
+  }
+
+  @Test
+  void meta() {
+    meta(sharedConn);
+  }
+
+  @Test
+  void metaPrepare() {
+    meta(sharedConnPrepare);
+  }
+
+  private void meta(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Integer.class))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Long.class))
         .verifyComplete();
   }
 }

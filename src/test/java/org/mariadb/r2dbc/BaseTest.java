@@ -66,14 +66,6 @@ public class BaseTest {
           .execute()
           .blockLast();
     }
-
-//    System.out.println(sharedConn
-//        .createStatement("SELECT @@sql_mode")
-//        .execute()
-//        .flatMap(r -> r.map((row, rowMetadata) -> row.get(0, String.class)))
-//        .single()
-//        .block());
-
   }
 
   @AfterEach

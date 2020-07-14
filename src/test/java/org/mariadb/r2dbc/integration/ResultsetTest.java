@@ -192,9 +192,7 @@ public class ResultsetTest extends BaseTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("Column index 5 not in range [0-2]"))
+                    && throwable.getMessage().equals("Column index 5 not in range [0-2]"))
         .verify();
   }
 

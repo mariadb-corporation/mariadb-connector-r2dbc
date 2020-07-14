@@ -442,4 +442,25 @@ public class DoubleParseTest extends BaseTest {
             Optional.empty())
         .verifyComplete();
   }
+
+  @Test
+  void meta() {
+    meta(sharedConn);
+  }
+
+  @Test
+  void metaPrepare() {
+    meta(sharedConnPrepare);
+  }
+
+  private void meta(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM DoubleTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Double.class))
+        .verifyComplete();
+  }
 }
