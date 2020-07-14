@@ -194,7 +194,7 @@ public class ResultsetTest extends BaseTest {
                 throwable instanceof R2dbcTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals("Column index 5 is larger than the number of columns 3"))
+                        .equals("Column index 5 not in range [0-2]"))
         .verify();
   }
 
