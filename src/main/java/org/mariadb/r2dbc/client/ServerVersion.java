@@ -16,7 +16,6 @@
 
 package org.mariadb.r2dbc.client;
 
-
 public class ServerVersion {
 
   public static final ServerVersion UNKNOWN_VERSION = new ServerVersion("0.0.0", true);
