@@ -58,21 +58,21 @@ public class BaseTest {
     }
     if (!"".equals(sqlModeAddition)) {
       sharedConn
-          .createStatement("SET @@sql_mode = concat(@@sql_mode,',NO_BACKSLASH_ESCAPES')")
+          .createStatement("SET @@sql_mode = concat(@@sql_mode,'" + sqlModeAddition + "')")
           .execute()
           .blockLast();
       sharedConnPrepare
-          .createStatement("set sql_mode= concat(@@sql_mode,',NO_BACKSLASH_ESCAPES')")
+          .createStatement("set sql_mode= concat(@@sql_mode,'" + sqlModeAddition + "')")
           .execute()
           .blockLast();
     }
 
-    System.out.println(sharedConn
-        .createStatement("SELECT @@sql_mode")
-        .execute()
-        .flatMap(r -> r.map((row, rowMetadata) -> row.get(0, String.class)))
-        .single()
-        .block());
+//    System.out.println(sharedConn
+//        .createStatement("SELECT @@sql_mode")
+//        .execute()
+//        .flatMap(r -> r.map((row, rowMetadata) -> row.get(0, String.class)))
+//        .single()
+//        .block());
 
   }
 
