@@ -121,13 +121,13 @@ public class BlobParameterTest extends BaseTest {
         .createStatement("INSERT INTO BlobParam VALUES (?,?,?)")
         .bind(0, "\1")
         .bind(1, "A")
-        .bind(2, "ô\0你好")
+        .bind(2, "ô\0你好\\")
         .execute()
         .blockLast();
     validateNotNull(
         ByteBuffer.wrap("\1".getBytes(StandardCharsets.UTF_8)),
         ByteBuffer.wrap("A".getBytes(StandardCharsets.UTF_8)),
-        ByteBuffer.wrap("ô\0你好".getBytes(StandardCharsets.UTF_8)));
+        ByteBuffer.wrap("ô\0你好\\".getBytes(StandardCharsets.UTF_8)));
   }
 
   @Test
@@ -217,13 +217,13 @@ public class BlobParameterTest extends BaseTest {
         connection
             .createStatement("INSERT INTO BlobParam VALUES (?,?,?)")
             .bind(0, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 15}))))
-            .bind(1, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127}))))
+            .bind(1, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127, (byte) 92}))))
             .bind(2, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {0}))));
     Assertions.assertTrue(stmt.toString().contains("Parameter{codec=BlobCodec,"));
     stmt.execute().blockLast();
     validateNotNull(
         ByteBuffer.wrap(new byte[] {(byte) 15}),
-        ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127}),
+        ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127, (byte) 92}),
         ByteBuffer.wrap(new byte[] {0}));
   }
 

@@ -110,14 +110,14 @@ public class StringParameterTest extends BaseTest {
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO StringParam VALUES (?,?,?)")
-            .bind(0, BitSet.valueOf(revertOrder("çà¤".getBytes(StandardCharsets.UTF_8))))
+            .bind(0, BitSet.valueOf(revertOrder("çà¤\\".getBytes(StandardCharsets.UTF_8))))
             .bind(1, BitSet.valueOf(revertOrder("你好".getBytes(StandardCharsets.UTF_8))))
-            .bind(2, BitSet.valueOf(revertOrder("🌟hello".getBytes(StandardCharsets.UTF_8))));
+            .bind(2, BitSet.valueOf(revertOrder("🌟hello\\".getBytes(StandardCharsets.UTF_8))));
     Assertions.assertTrue(
         stmt.toString().contains("parameters=[Parameter{codec=BitSetCodec, value={")
             || stmt.toString().contains("parameters={0=Parameter{codec=BitSetCodec, value={"));
     stmt.execute().blockLast();
-    validate(Optional.of("çà¤"), Optional.of("你好"), Optional.of("🌟hello"));
+    validate(Optional.of("çà¤\\"), Optional.of("你好"), Optional.of("🌟hello\\"));
   }
 
   @Test
@@ -135,14 +135,14 @@ public class StringParameterTest extends BaseTest {
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO StringParam VALUES (?,?,?)")
-            .bind(0, "çà¤".getBytes(StandardCharsets.UTF_8))
+            .bind(0, "çà¤\\".getBytes(StandardCharsets.UTF_8))
             .bind(1, "你好".getBytes(StandardCharsets.UTF_8))
-            .bind(2, "🌟hello".getBytes(StandardCharsets.UTF_8));
+            .bind(2, "🌟hello\\".getBytes(StandardCharsets.UTF_8));
     Assertions.assertTrue(
         stmt.toString().contains("parameters=[Parameter{codec=ByteArrayCodec, value=")
             || stmt.toString().contains("parameters={0=Parameter{codec=ByteArrayCodec, value="));
     stmt.execute().blockLast();
-    validate(Optional.of("çà¤"), Optional.of("你好"), Optional.of("🌟hello"));
+    validate(Optional.of("çà¤\\"), Optional.of("你好"), Optional.of("🌟hello\\"));
   }
 
   @Test
@@ -203,10 +203,10 @@ public class StringParameterTest extends BaseTest {
             .createStatement("INSERT INTO StringParam VALUES (?,?,?)")
             .bind(0, Clob.from(Mono.just("123")))
             .bind(1, Clob.from(Mono.just("你好")))
-            .bind(2, Clob.from(Mono.just("🌟hello")));
+            .bind(2, Clob.from(Mono.just("🌟hello\\")));
     Assertions.assertTrue(stmt.toString().contains("Parameter{codec=ClobCodec,"));
     stmt.execute().blockLast();
-    validate(Optional.of("123"), Optional.of("你好"), Optional.of("🌟hello"));
+    validate(Optional.of("123"), Optional.of("你好"), Optional.of("🌟hello\\"));
   }
 
   @Test
