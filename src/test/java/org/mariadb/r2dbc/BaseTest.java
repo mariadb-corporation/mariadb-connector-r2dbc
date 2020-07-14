@@ -47,8 +47,11 @@ public class BaseTest {
     sharedConnPrepare = new MariadbConnectionFactory(confPipeline).create().block();
     String sqlModeAddition = "";
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
-    if (meta.isMariaDBServer() && !meta.minVersion(10, 2, 4) || !meta.isMariaDBServer()) {
-      sqlModeAddition += ",STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION";
+    if ((meta.isMariaDBServer() && !meta.minVersion(10, 2, 4)) || !meta.isMariaDBServer()) {
+      sqlModeAddition += ",STRICT_TRANS_TABLES";
+    }
+    if ((meta.isMariaDBServer() && !meta.minVersion(10, 1, 7)) || !meta.isMariaDBServer()) {
+      sqlModeAddition += ",NO_ENGINE_SUBSTITUTION";
     }
     if (backslashEscape) {
       sqlModeAddition += ",NO_BACKSLASH_ESCAPES";
