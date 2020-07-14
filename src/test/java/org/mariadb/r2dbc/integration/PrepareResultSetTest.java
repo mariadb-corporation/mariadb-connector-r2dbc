@@ -136,6 +136,8 @@ public class PrepareResultSetTest extends BaseTest {
   @Test
   void parameterLengthEncodedLong() {
     Assumptions.assumeTrue(maxAllowedPacket() >= 20 * 1024 * 1024);
+    // out of memory on travis and 10.1
+    Assumptions.assumeFalse("mariadb:10.1".equals(System.getenv("DB")));
 
     char[] arr = new char[20000000];
     for (int i = 0; i < arr.length; i++) {

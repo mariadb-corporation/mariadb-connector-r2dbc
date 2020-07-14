@@ -185,7 +185,8 @@
         <version>0.8.5</version>
         <configuration>
           <includes>
-            <include>org.mariadb.r2dbc.*</include>
+            <include>org/mariadb/r2dbc</include>
+            <include>org/mariadb/r2dbc/**</include>
           </includes>
         </configuration>
         <executions>
@@ -200,27 +201,6 @@
             <goals>
               <goal>report</goal>
             </goals>
-          </execution>
-          <!-- Add this checking -->
-          <execution>
-            <id>jacoco-check</id>
-            <goals>
-              <goal>check</goal>
-            </goals>
-            <configuration>
-              <rules>
-                <rule>
-                  <element>PACKAGE</element>
-                  <limits>
-                    <limit>
-                      <counter>LINE</counter>
-                      <value>COVEREDRATIO</value>
-                      <minimum>0.5</minimum>
-                    </limit>
-                  </limits>
-                </rule>
-              </rules>
-            </configuration>
           </execution>
         </executions>
       </plugin>
@@ -319,7 +299,7 @@
         <version>1.6</version>
         <executions>
           <execution>
-            <phase>verify</phase>
+            <phase>install</phase>
             <goals>
               <goal>sign</goal>
             </goals>
