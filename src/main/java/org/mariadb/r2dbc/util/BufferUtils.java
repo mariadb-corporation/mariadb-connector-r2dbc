@@ -17,21 +17,10 @@
 package org.mariadb.r2dbc.util;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.Blob;
-import io.r2dbc.spi.Clob;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.BitSet;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
-import reactor.core.publisher.Flux;
 
 public class BufferUtils {
 
@@ -43,41 +32,6 @@ public class BufferUtils {
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
   private static final DateTimeFormatter TIMESTAMP_FORMAT_NO_FRACTIONAL =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-  public static int skipLengthEncode(byte[] buf, int pos) {
-    int type = buf[pos++] & 0xff;
-    switch (type) {
-      case 251:
-        break;
-      case 252:
-        pos += 2 + (0xffff & (((buf[pos] & 0xff) + ((buf[pos + 1] & 0xff) << 8))));
-        break;
-      case 253:
-        pos +=
-            3
-                + (0xffffff
-                    & ((buf[pos] & 0xff)
-                        + ((buf[pos + 1] & 0xff) << 8)
-                        + ((buf[pos + 2] & 0xff) << 16)));
-        break;
-      case 254:
-        pos +=
-            8
-                + ((buf[pos] & 0xff)
-                    + ((long) (buf[pos + 1] & 0xff) << 8)
-                    + ((long) (buf[pos + 2] & 0xff) << 16)
-                    + ((long) (buf[pos + 3] & 0xff) << 24)
-                    + ((long) (buf[pos + 4] & 0xff) << 32)
-                    + ((long) (buf[pos + 5] & 0xff) << 40)
-                    + ((long) (buf[pos + 6] & 0xff) << 48)
-                    + ((long) (buf[pos + 7] & 0xff) << 56));
-        break;
-      default:
-        pos += type;
-        break;
-    }
-    return pos;
-  }
 
   public static void skipLengthEncode(ByteBuf buf) {
     short type = buf.readUnsignedByte();
@@ -117,43 +71,6 @@ public class BufferUtils {
     int length = (int) readLengthEncodedInt(buf);
     if (length == -1) return null;
     return buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-  }
-
-  public static String readLengthEncodedString(byte[] buf, int pos) {
-    int length;
-    int type = buf[pos++] & 0xff;
-    switch (type) {
-      case 251:
-        return null;
-      case 252:
-        length = (0xffff & (((buf[pos++] & 0xff) + ((buf[pos++] & 0xff) << 8))));
-        break;
-      case 253:
-        length =
-            (0xffffff
-                & ((buf[pos] & 0xff)
-                    + ((buf[pos + 1] & 0xff) << 8)
-                    + ((buf[pos + 2] & 0xff) << 16)));
-        length += 3;
-        break;
-      case 254:
-        length =
-            (int)
-                (+((buf[pos] & 0xff)
-                    + ((long) (buf[pos + 1] & 0xff) << 8)
-                    + ((long) (buf[pos + 2] & 0xff) << 16)
-                    + ((long) (buf[pos + 3] & 0xff) << 24)
-                    + ((long) (buf[pos + 4] & 0xff) << 32)
-                    + ((long) (buf[pos + 5] & 0xff) << 40)
-                    + ((long) (buf[pos + 6] & 0xff) << 48)
-                    + ((long) (buf[pos + 7] & 0xff) << 56)));
-        pos += 8;
-        break;
-      default:
-        length = type;
-    }
-
-    return new String(buf, pos, length, StandardCharsets.UTF_8);
   }
 
   public static ByteBuf readLengthEncodedBuffer(ByteBuf buf) {
@@ -203,138 +120,6 @@ public class BufferUtils {
 
   public static void writeAscii(ByteBuf buf, String str) {
     buf.writeCharSequence(str, StandardCharsets.US_ASCII);
-  }
-
-  public static void write(ByteBuf buf, LocalDate val) {
-    buf.writeByte(QUOTE);
-    buf.writeCharSequence(val.format(DateTimeFormatter.ISO_LOCAL_DATE), StandardCharsets.US_ASCII);
-    buf.writeByte(QUOTE);
-  }
-
-  public static void write(ByteBuf buf, Duration val) {
-    long s = val.getSeconds();
-    long microSecond = val.getNano() / 1000;
-    buf.writeByte(QUOTE);
-    if (microSecond != 0) {
-      buf.writeCharSequence(
-          String.format("%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), microSecond),
-          StandardCharsets.US_ASCII);
-    } else {
-      buf.writeCharSequence(
-          String.format("%d:%02d:%02d", s / 3600, (s % 3600) / 60, (s % 60)),
-          StandardCharsets.US_ASCII);
-    }
-    buf.writeByte(QUOTE);
-  }
-
-  public static void write(ByteBuf buf, LocalTime val) {
-    StringBuilder dateString = new StringBuilder(15);
-    dateString
-        .append(val.getHour() < 10 ? "0" : "")
-        .append(val.getHour())
-        .append(val.getMinute() < 10 ? ":0" : ":")
-        .append(val.getMinute())
-        .append(val.getSecond() < 10 ? ":0" : ":")
-        .append(val.getSecond());
-
-    int microseconds = val.getNano() / 1000;
-    if (microseconds > 0) {
-      dateString.append(".");
-      if (microseconds % 1000 == 0) {
-        dateString.append(Integer.toString(microseconds / 1000 + 1000).substring(1));
-      } else {
-        dateString.append(Integer.toString(microseconds + 1000000).substring(1));
-      }
-    }
-
-    buf.ensureWritable(17);
-    buf.writeByte(QUOTE);
-    buf.writeCharSequence(dateString.toString(), StandardCharsets.US_ASCII);
-    buf.writeByte(QUOTE);
-  }
-
-  public static void write(ByteBuf buf, LocalDateTime val) {
-    buf.writeByte(QUOTE);
-    buf.writeCharSequence(
-        val.format(val.getNano() != 0 ? TIMESTAMP_FORMAT : TIMESTAMP_FORMAT_NO_FRACTIONAL),
-        StandardCharsets.US_ASCII);
-    buf.writeByte(QUOTE);
-  }
-
-  public static void write(ByteBuf buf, BitSet val) {
-    StringBuilder sb = new StringBuilder(val.length() * 8 + 3);
-    sb.append("b'");
-    int i = val.length();
-    while (i-- > 0) {
-      sb.append(val.get(i) ? "1" : "0");
-    }
-    sb.append("'");
-    buf.writeCharSequence(sb.toString(), StandardCharsets.US_ASCII);
-  }
-
-  public static void write(ByteBuf buf, byte[] val, Context context) {
-    buf.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
-    writeEscaped(buf, val, 0, val.length, context);
-    buf.writeByte(QUOTE);
-  }
-
-  public static void write(ByteBuf buffer, Clob val, Context context) {
-    buffer.writeByte(QUOTE);
-    Flux.from(val.stream())
-        .handle(
-            (tempVal, sync) -> {
-              write(buffer, tempVal.toString(), false, true, context);
-              sync.next(buffer);
-            })
-        .subscribe();
-    buffer.writeByte(QUOTE);
-  }
-
-  public static void write(ByteBuf buffer, Blob val, Context context) {
-    buffer.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
-    Flux.from(val.stream())
-        .handle(
-            (tempVal, sync) -> {
-              if (tempVal.hasArray()) {
-                writeEscaped(
-                    buffer, tempVal.array(), tempVal.arrayOffset(), tempVal.remaining(), context);
-              } else {
-                byte[] intermediaryBuf = new byte[tempVal.remaining()];
-                tempVal.get(intermediaryBuf);
-                writeEscaped(buffer, intermediaryBuf, 0, intermediaryBuf.length, context);
-              }
-              sync.next(buffer);
-            })
-        .doOnComplete(
-            () -> {
-              buffer.writeByte((byte) '\'');
-            })
-        .subscribe();
-  }
-
-  public static void write(ByteBuf buf, InputStream val, Context context) {
-    try {
-      buf.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
-      BufferUtils.write(buf, val, true, context);
-      buf.writeByte(QUOTE);
-    } catch (IOException ioe) {
-      throw new R2dbcNonTransientResourceException("Failed to read InputStream", ioe);
-    }
-  }
-
-  private static void write(ByteBuf buf, InputStream is, boolean escape, Context context)
-      throws IOException {
-    byte[] array = new byte[4096];
-    int len;
-    if (escape) {
-      while ((len = is.read(array)) > 0) {
-        writeEscaped(buf, array, 0, len, context);
-      }
-    } else {
-      while ((len = is.read(array)) > 0) {
-        buf.writeBytes(array, 0, len);
-      }
-    }
   }
 
   public static void writeEscaped(ByteBuf buf, byte[] bytes, int offset, int len, Context context) {

@@ -6,6 +6,9 @@ set -e
 ###################################################################################################################
 # test different type of configuration
 ###################################################################################################################
+if [ -z "NO_BACKSLASH_ESCAPES" ]; then
+  export NO_BACKSLASH_ESCAPES=false
+fi
 
 if [ -n "$BENCHMARK" ]; then
   cmd=(mvn clean package -P bench -Dmaven.test.skip)
@@ -20,6 +23,7 @@ else
     -DRUN_LONG_TEST=false \
     -DkeystorePassword="kspass" \
     -DserverCertificatePath="$SSLCERT/server.crt" \
+    -DNO_BACKSLASH_ESCAPES="$NO_BACKSLASH_ESCAPES"
     -Dkeystore2Path="$SSLCERT/fullclient-keystore.jks" \
     -Dkeystore2Password="kspass" -DkeyPassword="kspasskey" \
     -Dkeystore2PathP12="$SSLCERT/fullclient-keystore.p12" \

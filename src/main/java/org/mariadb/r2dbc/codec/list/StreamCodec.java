@@ -21,6 +21,7 @@ import io.netty.buffer.ByteBufInputStream;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
@@ -64,8 +65,18 @@ public class StreamCodec implements Codec<InputStream> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, InputStream value) {
-    BufferUtils.write(buf, value, context);
+  public void encodeText(ByteBuf buf, Context context, InputStream is) {
+    try {
+      buf.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
+      byte[] array = new byte[4096];
+      int len;
+      while ((len = is.read(array)) > 0) {
+        BufferUtils.writeEscaped(buf, array, 0, len, context);
+      }
+      buf.writeByte('\'');
+    } catch (IOException ioe) {
+      throw new R2dbcNonTransientResourceException("Failed to read InputStream", ioe);
+    }
   }
 
   @Override

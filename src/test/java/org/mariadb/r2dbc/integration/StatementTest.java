@@ -415,4 +415,54 @@ public class StatementTest extends BaseTest {
         .expectNext("5")
         .verifyComplete();
   }
+
+  @Test
+  public void generatedId() {
+
+    sharedConn
+        .createStatement(
+            "CREATE TEMPORARY TABLE generatedId (id int not null primary key auto_increment, test varchar(10))")
+        .execute()
+        .blockLast();
+
+    sharedConn
+        .createStatement("INSERT INTO generatedId(test) VALUES (?)")
+        .bind(0, "test0")
+        .returnGeneratedValues()
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get("id", Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(1)
+        .verifyComplete();
+
+    sharedConn
+        .createStatement("ALTER TABLE generatedId AUTO_INCREMENT = 70000")
+        .execute()
+        .blockLast();
+
+    sharedConn
+        .createStatement("INSERT INTO generatedId(test) VALUES (?)")
+        .bind(0, "test1")
+        .returnGeneratedValues()
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get("id", Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(70000)
+        .verifyComplete();
+
+    sharedConn
+        .createStatement("ALTER TABLE generatedId AUTO_INCREMENT = 20000000")
+        .execute()
+        .blockLast();
+
+    sharedConn
+        .createStatement("INSERT INTO generatedId(test) VALUES (?)")
+        .bind(0, "test1")
+        .returnGeneratedValues()
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get("id", Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(20000000)
+        .verifyComplete();
+  }
 }

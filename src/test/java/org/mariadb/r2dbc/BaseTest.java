@@ -35,13 +35,27 @@ public class BaseTest {
   public static MariadbConnection sharedConn;
   public static MariadbConnection sharedConnPrepare;
   private static Random rand = new Random();
+  public static final Boolean backslashEscape =
+      Boolean.valueOf(System.getProperty("NO_BACKSLASH_ESCAPES", "false"));
 
   @BeforeAll
   public static void beforeAll() throws Exception {
+
     sharedConn = factory.create().block();
     MariadbConnectionConfiguration confPipeline =
         TestConfiguration.defaultBuilder.clone().useServerPrepStmts(true).build();
     sharedConnPrepare = new MariadbConnectionFactory(confPipeline).create().block();
+
+    if (backslashEscape) {
+      sharedConn
+          .createStatement("set sql_mode= concat(@@sql_mode,',NO_BACKSLASH_ESCAPES'))")
+          .execute()
+          .blockLast();
+      sharedConnPrepare
+          .createStatement("set sql_mode= concat(@@sql_mode,',NO_BACKSLASH_ESCAPES'))")
+          .execute()
+          .blockLast();
+    }
   }
 
   @AfterEach

@@ -30,7 +30,6 @@ import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.codec.list.*;
-import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.constants.ColumnFlags;
 import reactor.util.Logger;
 import reactor.util.Loggers;
@@ -150,9 +149,13 @@ public final class ColumnDefinitionPacket implements ServerMessage {
   private String getString(int idx) {
     int pos = 0;
     for (int i = 0; i < idx; i++) {
-      pos = BufferUtils.skipLengthEncode(this.meta, pos);
+      // maximum length of 64 characters.
+      // so length encode is just encoded on one byte
+      int len = this.meta[pos++] & 0xff;
+      pos += len;
     }
-    return BufferUtils.readLengthEncodedString(this.meta, pos);
+    int length = this.meta[pos++] & 0xff;
+    return new String(this.meta, pos, length, StandardCharsets.UTF_8);
   }
 
   public Sequencer getSequencer() {
