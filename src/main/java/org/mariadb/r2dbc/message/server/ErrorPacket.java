@@ -53,7 +53,7 @@ public final class ErrorPacket implements ServerMessage {
       sqlState = "HY000";
     }
     ErrorPacket err = new ErrorPacket(sequencer, errorCode, sqlState, msg);
-    logger.warn("Error: {}", err.toString());
+    logger.warn("Error: '{}' sqlState='{}' code={} ", msg, sqlState, errorCode);
     return err;
   }
 
