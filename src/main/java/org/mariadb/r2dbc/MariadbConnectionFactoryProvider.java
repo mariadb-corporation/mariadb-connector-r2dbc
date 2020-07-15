@@ -21,7 +21,6 @@ import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryProvider;
 import io.r2dbc.spi.Option;
-import java.util.Map;
 import org.mariadb.r2dbc.util.Assert;
 
 public final class MariadbConnectionFactoryProvider implements ConnectionFactoryProvider {
@@ -36,7 +35,7 @@ public final class MariadbConnectionFactoryProvider implements ConnectionFactory
   public static final Option<Integer> PREPARE_CACHE_SIZE = Option.valueOf("prepareCacheSize");
   public static final Option<String> SSL_MODE = Option.valueOf("sslMode");
   public static final Option<String> CONNECTION_ATTRIBUTES = Option.valueOf("connectionAttributes");
-  public static final Option<Map<String, String>> OPTIONS = Option.valueOf("options");
+  public static final Option<String> PAM_OTHER_PASSWORD = Option.valueOf("pamOtherPwd");
 
   static MariadbConnectionConfiguration createConfiguration(
       ConnectionFactoryOptions connectionFactoryOptions) {

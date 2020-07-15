@@ -20,6 +20,9 @@ import static io.r2dbc.spi.ConnectionFactoryOptions.*;
 
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.IsolationLevel;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 import org.mariadb.r2dbc.util.Assert;
@@ -33,6 +36,7 @@ public final class MariadbConnectionConfiguration {
   private final String host;
   private final Duration connectTimeout;
   private final CharSequence password;
+  private final CharSequence[] pamOtherPwd;
   private final int port;
   private final int prepareCacheSize;
   private final String socket;
@@ -70,7 +74,8 @@ public final class MariadbConnectionConfiguration {
       @Nullable String cachingRsaPublicKey,
       boolean allowPublicKeyRetrieval,
       boolean useServerPrepStmts,
-      @Nullable Integer prepareCacheSize) {
+      @Nullable Integer prepareCacheSize,
+      @Nullable CharSequence[] pamOtherPwd) {
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
     this.database = database;
     this.host = host;
@@ -94,6 +99,7 @@ public final class MariadbConnectionConfiguration {
     this.allowPublicKeyRetrieval = allowPublicKeyRetrieval;
     this.useServerPrepStmts = useServerPrepStmts;
     this.prepareCacheSize = (prepareCacheSize == null) ? 250 : prepareCacheSize.intValue();
+    this.pamOtherPwd = pamOtherPwd;
   }
 
   static boolean boolValue(Object value) {
@@ -192,12 +198,21 @@ public final class MariadbConnectionConfiguration {
     if (connectionFactoryOptions.hasOption(PORT)) {
       builder.port(intValue(connectionFactoryOptions.getValue(PORT)));
     }
-
-    Map<String, String> options =
-        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.OPTIONS);
-    if (options != null) {
-      builder.options(options);
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.PAM_OTHER_PASSWORD)) {
+      String s =
+          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES);
+      String[] pairs = s.split(",");
+      try {
+        for (int i = 0; i < pairs.length; i++) {
+          pairs[i] = URLDecoder.decode(pairs[i], StandardCharsets.UTF_8.toString());
+          ;
+        }
+      } catch (UnsupportedEncodingException e) {
+        // eat
+      }
+      builder.pamOtherPwd(pairs);
     }
+
     return builder;
   }
 
@@ -216,6 +231,10 @@ public final class MariadbConnectionConfiguration {
   @Nullable
   public Duration getConnectTimeout() {
     return this.connectTimeout;
+  }
+
+  public CharSequence[] getPamOtherPwd() {
+    return pamOtherPwd;
   }
 
   @Nullable
@@ -372,6 +391,7 @@ public final class MariadbConnectionConfiguration {
     @Nullable private String clientSslKey;
     @Nullable private CharSequence clientSslPassword;
     private SslMode sslMode = SslMode.DISABLED;
+    private CharSequence[] pamOtherPwd;
 
     private Builder() {}
 
@@ -417,7 +437,8 @@ public final class MariadbConnectionConfiguration {
           this.cachingRsaPublicKey,
           this.allowPublicKeyRetrieval,
           this.useServerPrepStmts,
-          this.prepareCacheSize);
+          this.prepareCacheSize,
+          this.pamOtherPwd);
     }
 
     /**
@@ -441,6 +462,11 @@ public final class MariadbConnectionConfiguration {
       return this;
     }
 
+    public Builder pamOtherPwd(@Nullable CharSequence[] pamOtherPwd) {
+      this.pamOtherPwd = pamOtherPwd;
+      return this;
+    }
+
     /**
      * Configure the database.
      *
@@ -461,19 +487,6 @@ public final class MariadbConnectionConfiguration {
      */
     public Builder host(String host) {
       this.host = Assert.requireNonNull(host, "host must not be null");
-      return this;
-    }
-
-    public Builder options(Map<String, String> options) {
-      Assert.requireNonNull(options, "options map must not be null");
-
-      options.forEach(
-          (k, v) -> {
-            Assert.requireNonNull(k, "option keys must not be null");
-            Assert.requireNonNull(v, "option values must not be null");
-          });
-
-      this.connectionAttributes = options;
       return this;
     }
 

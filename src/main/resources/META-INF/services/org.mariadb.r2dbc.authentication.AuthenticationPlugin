@@ -19,3 +19,4 @@ org.mariadb.r2dbc.message.flow.ClearPasswordPluginFlow
 org.mariadb.r2dbc.message.flow.Ed25519PasswordPluginFlow
 org.mariadb.r2dbc.message.flow.Sha256PasswordPluginFlow
 org.mariadb.r2dbc.message.flow.CachingSha2PasswordFlow
+org.mariadb.r2dbc.message.flow.PamPluginFlow
