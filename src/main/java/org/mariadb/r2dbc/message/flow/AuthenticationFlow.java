@@ -136,7 +136,7 @@ public final class AuthenticationFlow {
       Mono<State> handle(AuthenticationFlow flow) {
         // Server send first, so no need send anything to server in here.
         return flow.client
-            .receive()
+            .receive(DecoderState.INIT_HANDSHAKE)
             .<State>handle(
                 (message, sink) -> {
                   if (message instanceof InitialHandshakePacket) {
@@ -238,7 +238,7 @@ public final class AuthenticationFlow {
           flux =
               flow.client.sendCommand(clientMessage, DecoderState.AUTHENTICATION_SWITCH_RESPONSE);
         } else {
-          flux = flow.client.receive();
+          flux = flow.client.receive(DecoderState.AUTHENTICATION_SWITCH_RESPONSE);
         }
 
         return flux.<State>handle(

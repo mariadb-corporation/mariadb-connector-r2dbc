@@ -158,10 +158,10 @@ public abstract class ClientBase implements Client {
       ClientMessage message, DecoderState initialState, String sql);
 
   @Override
-  public Flux<ServerMessage> receive() {
+  public Flux<ServerMessage> receive(DecoderState initialState) {
     return Flux.create(
         sink -> {
-          this.responseReceivers.add(new CmdElement(sink, DecoderState.INIT_HANDSHAKE));
+          this.responseReceivers.add(new CmdElement(sink, initialState));
         });
   }
 
