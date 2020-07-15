@@ -297,72 +297,56 @@ public class ClientPrepareResultTest {
         true,
         false,
         true,
-        new String[] {
-            "INSERT INTO tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ", _RETURNING)"
-        });
+        new String[] {"INSERT INTO tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ", _RETURNING)"});
     checkParsing(
         "INSERT INTO tt (tt, tt2) VALUES (LAST_INSERT_ID(), ?, _RETURNING)",
         1,
         true,
         false,
         true,
-        new String[] {
-            "INSERT INTO tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ", _RETURNING)"
-        });
+        new String[] {"INSERT INTO tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ", _RETURNING)"});
     checkParsing(
         "DELETE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ?) RETURNING ID",
         1,
         true,
         true,
         false,
-        new String[] {
-            "DELETE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ") RETURNING ID"
-        });
+        new String[] {"DELETE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ") RETURNING ID"});
     checkParsing(
         "DELETE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ?, _RETURNING)",
         1,
         true,
         false,
         true,
-        new String[] {
-            "DELETE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ", _RETURNING)"
-        });
+        new String[] {"DELETE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ", _RETURNING)"});
     checkParsing(
         "DELETE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ?, _RETURNING)",
         1,
         true,
         false,
         true,
-        new String[] {
-            "DELETE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ", _RETURNING)"
-        });
+        new String[] {"DELETE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ", _RETURNING)"});
     checkParsing(
         "UPDATE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ?) RETURNING ID",
         1,
         true,
         true,
         false,
-        new String[] {
-            "UPDATE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ") RETURNING ID"
-        });
+        new String[] {"UPDATE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ") RETURNING ID"});
     checkParsing(
         "UPDATE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ?, _RETURNING)",
         1,
         true,
         false,
         true,
-        new String[] {
-            "UPDATE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ", _RETURNING)"
-        });
+        new String[] {"UPDATE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ", _RETURNING)"});
     checkParsing(
         "UPDATE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ?, _RETURNING)",
         1,
         true,
         false,
         true,
-        new String[] {
-            "UPDATE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ", _RETURNING)"
-        });
+        new String[] {"UPDATE tt (tt, tt2) VALUES (LAST_INSERT_ID(), ", ", _RETURNING)"});
   }
 
   @Test

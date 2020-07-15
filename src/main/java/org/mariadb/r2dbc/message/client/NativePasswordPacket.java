@@ -21,7 +21,6 @@ import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.message.server.Sequencer;
 
@@ -75,16 +74,5 @@ public final class NativePasswordPacket implements ClientMessage {
   @Override
   public Sequencer getSequencer() {
     return sequencer;
-  }
-
-  @Override
-  public String toString() {
-    return "NativePasswordPacket{"
-        + "sequencer="
-        + sequencer
-        + ", password=*******"
-        + ", seed="
-        + Arrays.toString(seed)
-        + '}';
   }
 }
