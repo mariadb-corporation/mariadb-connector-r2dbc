@@ -47,15 +47,17 @@ public class BatchTest extends BaseTest {
         .as(StepVerifier::create)
         .expectNext(1, 1, 1, 1, 1)
         .expectNextCount(95)
-        .verifyComplete();
-    sharedConn
-        .createStatement("SELECT id FROM basicBatch")
-        .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(0)))
-        .as(StepVerifier::create)
-        .expectNext(0, 1, 2, 3, 4)
-        .expectNextCount(95)
-        .verifyComplete();
+        .then(() -> {
+          sharedConn
+              .createStatement("SELECT id FROM basicBatch")
+              .execute()
+              .flatMap(r -> r.map((row, metadata) -> row.get(0)))
+              .as(StepVerifier::create)
+              .expectNext(0, 1, 2, 3, 4)
+              .expectNextCount(95)
+              .verifyComplete();
+        });
+
   }
 
   @Test
@@ -80,16 +82,18 @@ public class BatchTest extends BaseTest {
         .as(StepVerifier::create)
         .expectNext(1, 1, 1, 1, 1)
         .expectNextCount(95)
-        .verifyComplete();
-    multiConn
-        .createStatement("SELECT id FROM multiBatch")
-        .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(0)))
-        .as(StepVerifier::create)
-        .expectNext(0, 1, 2, 3, 4)
-        .expectNextCount(95)
-        .verifyComplete();
-    multiConn.close().block();
+        .then(() -> {
+          multiConn
+              .createStatement("SELECT id FROM multiBatch")
+              .execute()
+              .flatMap(r -> r.map((row, metadata) -> row.get(0)))
+              .as(StepVerifier::create)
+              .expectNext(0, 1, 2, 3, 4)
+              .expectNextCount(95)
+              .verifyComplete();
+          multiConn.close().block();
+        });
+
   }
 
   @Test
