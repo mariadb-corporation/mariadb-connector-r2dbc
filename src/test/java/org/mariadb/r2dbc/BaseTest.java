@@ -95,7 +95,7 @@ public class BaseTest {
     sharedConnPrepare.close().block();
   }
 
-  //  @RegisterExtension public Extension watcher = new Follow();
+  @RegisterExtension public Extension watcher = new Follow();
 
   public static boolean isMariaDBServer() {
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
