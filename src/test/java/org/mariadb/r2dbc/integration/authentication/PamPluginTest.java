@@ -18,13 +18,13 @@ package org.mariadb.r2dbc.integration.authentication;
 
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
 
-public class PamPluginTest extends BaseTest {
+public class PamPluginTest extends BaseConnectionTest {
 
   @Test
   public void pamAuthPlugin() throws Throwable {

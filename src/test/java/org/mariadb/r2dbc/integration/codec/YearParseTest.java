@@ -25,12 +25,12 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import reactor.test.StepVerifier;
 
-public class YearParseTest extends BaseTest {
+public class YearParseTest extends BaseConnectionTest {
   private static MariadbConnectionMetadata meta = sharedConn.getMetadata();
 
   @BeforeAll

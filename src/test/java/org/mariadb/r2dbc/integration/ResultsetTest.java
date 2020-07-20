@@ -22,11 +22,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-public class ResultsetTest extends BaseTest {
+public class ResultsetTest extends BaseConnectionTest {
   private static String vals = "azertyuiopqsdfghjklmwxcvbn";
 
   @Test

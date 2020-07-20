@@ -30,12 +30,12 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
-public class DecimalParameterTest extends BaseTest {
+public class DecimalParameterTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     sharedConn

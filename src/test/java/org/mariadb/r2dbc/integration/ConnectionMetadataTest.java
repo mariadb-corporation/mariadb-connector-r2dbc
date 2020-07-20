@@ -21,9 +21,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import io.r2dbc.spi.ConnectionFactoryMetadata;
 import io.r2dbc.spi.ConnectionMetadata;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 
-public class ConnectionMetadataTest extends BaseTest {
+public class ConnectionMetadataTest extends BaseConnectionTest {
 
   @Test
   void connectionMeta() {

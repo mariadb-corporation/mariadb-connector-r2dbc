@@ -25,11 +25,11 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-public class FloatParseTest extends BaseTest {
+public class FloatParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     sharedConn.createStatement("CREATE TABLE FloatTable (t1 FLOAT)").execute().blockLast();

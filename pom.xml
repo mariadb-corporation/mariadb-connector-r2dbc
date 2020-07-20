@@ -36,12 +36,12 @@
     <junit.version>5.6.2</junit.version>
     <jmh.version>1.23</jmh.version>
     <logback.version>1.2.3</logback.version>
-    <netty.version>4.1.48.Final</netty.version>
+    <netty.version>4.1.51.Final</netty.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <r2dbc-spi.version>0.8.2.RELEASE</r2dbc-spi.version>
-    <reactor.version>Dysprosium-SR6</reactor.version>
-    <mariadb-jdbc.version>2.6.0</mariadb-jdbc.version>
-    <r2dbc-mysql.version>0.8.1.RELEASE</r2dbc-mysql.version>
+    <reactor.version>Dysprosium-SR9</reactor.version>
+    <mariadb-jdbc.version>2.6.1</mariadb-jdbc.version>
+    <r2dbc-mysql.version>0.8.2.RELEASE</r2dbc-mysql.version>
     <uberjar.name>benchmarks</uberjar.name>
   </properties>
 

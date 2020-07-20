@@ -117,6 +117,13 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
     }
   }
 
+  public void connectionError(Throwable err) {
+    if (cmdElement != null) {
+      cmdElement.getSink().error(err);
+      cmdElement = null;
+    }
+  }
+
   public Client getClient() {
     return client;
   }

@@ -315,6 +315,16 @@ public final class MariadbConnectionConfiguration {
         hiddenPwd.append("*");
       }
     }
+    StringBuilder hiddenPamPwd = new StringBuilder();
+    if (pamOtherPwd != null) {
+      for (CharSequence s : pamOtherPwd) {
+        for (int i = 0; i < s.length(); i++) {
+          hiddenPamPwd.append("*");
+        }
+        hiddenPamPwd.append(",");
+      }
+      hiddenPamPwd.deleteCharAt(hiddenPamPwd.length() - 1);
+    }
 
     return "MariadbConnectionConfiguration{"
         + "database='"
@@ -359,6 +369,8 @@ public final class MariadbConnectionConfiguration {
         + isolationLevel
         + ", useServerPrepStmts="
         + useServerPrepStmts
+        + ", pamOtherPwd="
+        + hiddenPamPwd
         + '}';
   }
 
@@ -710,6 +722,17 @@ public final class MariadbConnectionConfiguration {
           hiddenPwd.append("*");
         }
       }
+      StringBuilder hiddenPamPwd = new StringBuilder();
+      if (pamOtherPwd != null) {
+        for (CharSequence s : pamOtherPwd) {
+          for (int i = 0; i < s.length(); i++) {
+            hiddenPamPwd.append("*");
+          }
+          hiddenPamPwd.append(",");
+        }
+        hiddenPamPwd.deleteCharAt(hiddenPamPwd.length() - 1);
+      }
+
       return "Builder{"
           + "rsaPublicKey='"
           + rsaPublicKey
@@ -764,6 +787,8 @@ public final class MariadbConnectionConfiguration {
           + clientSslPassword
           + ", sslMode="
           + sslMode
+          + ", pamOtherPwd="
+          + hiddenPamPwd
           + '}';
     }
   }

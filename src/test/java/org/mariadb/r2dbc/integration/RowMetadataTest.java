@@ -28,29 +28,32 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import reactor.test.StepVerifier;
 
-public class RowMetadataTest extends BaseTest {
+public class RowMetadataTest extends BaseConnectionTest {
 
   @BeforeAll
   public static void before2() {
     sharedConn.createStatement("DROP TABLE IF EXISTS rowmeta").execute().blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE rowmeta (t1 varchar(256) NOT NULL, t2 int ZEROFILL, t3 DECIMAL(10,6), t4 DECIMAL"
-                + "(10,6) unsigned)"
-                + " CHARACTER SET "
-                + "utf8mb4 "
-                + "COLLATE "
-                + "utf8mb4_unicode_ci")
+            "CREATE TABLE rowmeta (t1 varchar(256) NOT NULL,"
+                + "t2 int ZEROFILL, "
+                + "t3 DECIMAL(10,6), "
+                + "t4 DECIMAL (10,6) unsigned, "
+                + "t5 DECIMAL(20,0), "
+                + "t6 DECIMAL (20,0) unsigned "
+                + ") CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
         .execute()
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO rowmeta VALUES ('some🌟', 1, 2, 2),('1', 2, 10, 11),('0', 3, 100, 101), ('3', null, null, "
-                + "null)")
+            "INSERT INTO rowmeta VALUES ('some🌟', 1, 2, 2, 2, 2),"
+                + "('1', 2, 10, 11, 10, 11),"
+                + "('0', 3, 100, 101, 100, 101), "
+                + "('3', null, null, null, null, null)")
         .execute()
         .blockLast();
   }
@@ -64,24 +67,25 @@ public class RowMetadataTest extends BaseTest {
   void rowMeta() {
     sharedConn
         .createStatement(
-            "SELECT t1 as t1Alias, t2, t3, t4 FROM rowmeta as rowMetaAlias WHERE 1 = ?")
+            "SELECT t1 as t1Alias, t2, t3, t4, t5, t6 FROM rowmeta as rowMetaAlias WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(
             r ->
                 r.map(
                     (row, metadata) -> {
-                      List<String> expected = Arrays.asList("t1Alias", "t2", "t3", "t4");
+                      List<String> expected =
+                          Arrays.asList("t1Alias", "t2", "t3", "t4", "t5", "t6");
                       assertEquals(expected.size(), metadata.getColumnNames().size());
                       assertArrayEquals(expected.toArray(), metadata.getColumnNames().toArray());
                       this.assertThrows(
                           IllegalArgumentException.class,
                           () -> metadata.getColumnMetadata(-1),
-                          "Column index -1 is not in permit range[0,3]");
+                          "Column index -1 is not in permit range[0,5]");
                       this.assertThrows(
                           IllegalArgumentException.class,
-                          () -> metadata.getColumnMetadata(5),
-                          "Column index 5 is not in permit range[0,3]");
+                          () -> metadata.getColumnMetadata(6),
+                          "Column index 6 is not in permit range[0,5]");
                       ColumnMetadata colMeta = metadata.getColumnMetadata(0);
                       assertEquals(String.class, colMeta.getJavaType());
                       assertEquals("t1Alias", colMeta.getName());
@@ -115,7 +119,7 @@ public class RowMetadataTest extends BaseTest {
                       this.assertThrows(
                           IllegalArgumentException.class,
                           () -> metadata.getColumnMetadata("wrongName"),
-                          "Column name 'wrongName' does not exist in column names [t1Alias, t2, t3, t4]");
+                          "Column name 'wrongName' does not exist in column names [t1Alias, t2, t3, t4, t5, t6]");
 
                       colMeta = metadata.getColumnMetadata(1);
                       assertEquals(Long.class, colMeta.getJavaType());
@@ -168,7 +172,16 @@ public class RowMetadataTest extends BaseTest {
                       assertEquals("t2", metas.next().getName());
                       assertEquals("t3", metas.next().getName());
                       assertEquals("t4", metas.next().getName());
+                      assertEquals("t5", metas.next().getName());
+                      assertEquals("t6", metas.next().getName());
                       assertFalse(metas.hasNext());
+
+                      colMeta = metadata.getColumnMetadata(4);
+                      assertEquals(20, colMeta.getPrecision());
+
+                      colMeta = metadata.getColumnMetadata(5);
+                      assertEquals(20, colMeta.getPrecision());
+
                       return Optional.ofNullable(row.get(0));
                     }))
         .as(StepVerifier::create)
@@ -187,7 +200,8 @@ public class RowMetadataTest extends BaseTest {
                 r.map(
                     (row, metadata) -> {
                       assertEquals(
-                          "MariadbRowMetadata{columnNames=[t1, t2, t3, t4]}", metadata.toString());
+                          "MariadbRowMetadata{columnNames=[t1, t2, t3, t4, t5, t6]}",
+                          metadata.toString());
                       return Optional.ofNullable(row.get(0));
                     }))
         .as(StepVerifier::create)

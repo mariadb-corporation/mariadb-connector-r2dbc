@@ -174,7 +174,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
                       true,
                       dataRow,
                       ExceptionFactory.INSTANCE,
-                      null,
+                      generatedColumns,
                       client.getVersion().isMariaDBServer()
                           && client.getVersion().versionGreaterOrEqual(10, 5, 1)));
     }

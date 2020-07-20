@@ -21,11 +21,11 @@ import io.r2dbc.spi.Statement;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import reactor.test.StepVerifier;
 
-public class StatementTest extends BaseTest {
+public class StatementTest extends BaseConnectionTest {
 
   @Test
   void bindOnStatementWithoutParameter() {
@@ -68,6 +68,21 @@ public class StatementTest extends BaseTest {
               .contains(
                   "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'"));
     }
+  }
+
+  @Test
+  void bindOnNamedParameterStatement() {
+    Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (:1,:2)");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.bind("bla", "nok"),
+        "No parameter with name 'bla' found (possible values [1, 2])");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.bindNull("bla", String.class),
+        "No parameter with name 'bla' found (possible values [1, 2])");
+    stmt.bind("1", "ok").bindNull("2", String.class);
   }
 
   @Test
@@ -370,6 +385,18 @@ public class StatementTest extends BaseTest {
         .as(StepVerifier::create)
         .expectNext("5")
         .verifyComplete();
+
+    sharedConn
+        .createStatement("INSERT INTO returningBefore105WithParameter(test) VALUES (?)")
+        .returnGeneratedValues()
+        .bind(0, "b")
+        .add()
+        .bind(0, "c")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get("id", String.class)))
+        .as(StepVerifier::create)
+        .expectNext("6", "7")
+        .verifyComplete();
   }
 
   @Test
@@ -413,6 +440,18 @@ public class StatementTest extends BaseTest {
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
         .as(StepVerifier::create)
         .expectNext("5a", "6b")
+        .verifyComplete();
+
+    sharedConn
+        .createStatement("INSERT INTO prepareReturning(test) VALUES (?)")
+        .returnGeneratedValues()
+        .bind(0, "c")
+        .add()
+        .bind(0, "d")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get("id", String.class)))
+        .as(StepVerifier::create)
+        .expectNext("7", "8")
         .verifyComplete();
   }
 

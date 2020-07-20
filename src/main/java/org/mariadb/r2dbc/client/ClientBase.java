@@ -87,10 +87,17 @@ public abstract class ClientBase implements Client {
         .subscribe();
   }
 
-  private Mono<Void> handleConnectionError(Throwable throwable) {
-    clearWaitingListWithError(new MariadbConnectionException(throwable));
-    logger.error("Connection Error", throwable);
-    return close();
+  private void handleConnectionError(Throwable throwable) {
+    R2dbcNonTransientResourceException err;
+    if (this.isClosed.compareAndSet(false, true)) {
+      err =
+          new R2dbcNonTransientResourceException("Connection unexpected error", "08000", throwable);
+      logger.error("Connection unexpected error", throwable);
+    } else {
+      err = new R2dbcNonTransientResourceException("Connection error", "08000", throwable);
+      logger.error("Connection error", throwable);
+    }
+    clearWaitingListWithError(err);
   }
 
   @Override
@@ -207,9 +214,7 @@ public abstract class ClientBase implements Client {
     if (this.isClosed.get()) {
       return false;
     }
-
-    Channel channel = this.connection.channel();
-    return channel.isOpen();
+    return this.connection.channel().isOpen();
   }
 
   private void closedServlet() {
@@ -223,6 +228,7 @@ public abstract class ClientBase implements Client {
   }
 
   private void clearWaitingListWithError(Throwable exception) {
+    mariadbPacketDecoder.connectionError(exception);
     CmdElement response;
     while ((response = this.responseReceivers.poll()) != null) {
       response.getSink().error(exception);
@@ -238,13 +244,6 @@ public abstract class ClientBase implements Client {
   @Override
   public String toString() {
     return "Client{isClosed=" + isClosed + ", context=" + context + '}';
-  }
-
-  @SuppressWarnings("serial")
-  static class MariadbConnectionException extends R2dbcNonTransientResourceException {
-    public MariadbConnectionException(Throwable cause) {
-      super(cause);
-    }
   }
 
   public class LockAction implements AutoCloseable {

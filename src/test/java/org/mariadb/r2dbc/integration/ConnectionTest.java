@@ -28,17 +28,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class ConnectionTest extends BaseTest {
+public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void localValidation() {
@@ -58,6 +57,57 @@ public class ConnectionTest extends BaseTest {
         .as(StepVerifier::create)
         .expectNext(Boolean.FALSE)
         .verifyComplete();
+  }
+
+  @Test
+  void connectionError() throws Exception {
+    MariadbConnection connection = createProxyCon();
+    try {
+      proxy.stop();
+      connection.setAutoCommit(false).block();
+      Assertions.fail("must have throw exception");
+    } catch (Throwable t) {
+      Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
+      Assertions.assertTrue(
+          t.getMessage().contains("Connection is close. Cannot send anything")
+              || t.getMessage().contains("Connection unexpectedly closed")
+              || t.getMessage().contains("Connection unexpected error"));
+    }
+  }
+
+  @Test
+  void connectionDuringError() throws Exception {
+    MariadbConnection connection = createProxyCon();
+    new java.util.Timer()
+        .schedule(
+            new java.util.TimerTask() {
+              @Override
+              public void run() {
+                proxy.stop();
+              }
+            },
+            1000);
+
+    try {
+      connection
+          .createStatement(
+              "select * from information_schema.columns as c1, "
+                  + "information_schema.tables, information_schema.tables as t2")
+          .execute()
+          .flatMap(
+              r ->
+                  r.map(
+                      (rows, meta) -> {
+                        return "";
+                      }))
+          .blockLast();
+      Assertions.fail("must have throw exception");
+    } catch (Throwable t) {
+      System.out.println("ERROR THROWN :");
+      System.out.println(t);
+      Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
+      Assertions.assertTrue(t.getMessage().contains("Connection unexpected error"));
+    }
   }
 
   @Test
@@ -251,69 +301,6 @@ public class ConnectionTest extends BaseTest {
         .blockLast();
 
     connection.close().block();
-  }
-
-  @Test
-  void usingOption() {
-    ConnectionFactory factory =
-        ConnectionFactories.get(
-            String.format(
-                "r2dbc:mariadb://%s:%s@%s:%s/%s",
-                TestConfiguration.username,
-                TestConfiguration.password,
-                TestConfiguration.host,
-                TestConfiguration.port,
-                TestConfiguration.database));
-    Connection connection = Mono.from(factory.create()).block();
-    Flux.from(connection.createStatement("SELECT * FROM myTable").execute())
-        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)));
-    Mono.from(connection.close()).block();
-  }
-
-  @Test
-  void ensureUserInfoUrlEncoding() {
-    MariadbConnectionFactory factory =
-        (MariadbConnectionFactory)
-            ConnectionFactories.get(
-                "r2dbc:mariadb://root%40%C3%A5:p%40ssword@localhost:3305/%D1" + "%88db");
-    Assertions.assertTrue(factory.toString().contains("username='root@å'"));
-    Assertions.assertTrue(factory.toString().contains("database='шdb'"));
-  }
-
-  @Test
-  void checkOptions() {
-    MariadbConnectionFactory factory =
-        (MariadbConnectionFactory)
-            ConnectionFactories.get(
-                "r2dbc:mariadb://root:pwd@localhost:3306/db?socket=ff&allowMultiQueries=true&tlsProtocol=TLSv1"
-                    + ".2&serverSslCert=myCert&clientSslCert=myClientCert&allowPipelining=true&useServerPrepStmts"
-                    + "=true&prepareCacheSize=2560&sslMode=ENABLE_TRUST&connectionAttributes=test=2,h=4");
-    Assertions.assertTrue(factory.toString().contains("socket='ff'"));
-    Assertions.assertTrue(factory.toString().contains("allowMultiQueries=true"));
-    Assertions.assertTrue(factory.toString().contains("tlsProtocol=[TLSv1.2]"));
-    Assertions.assertTrue(factory.toString().contains("serverSslCert='myCert'"));
-    Assertions.assertTrue(factory.toString().contains("clientSslCert='myClientCert'"));
-    Assertions.assertTrue(factory.toString().contains("allowPipelining=true"));
-    Assertions.assertTrue(factory.toString().contains("useServerPrepStmts=true"));
-    Assertions.assertTrue(factory.toString().contains("prepareCacheSize=2560"));
-    Assertions.assertTrue(factory.toString().contains("sslMode=ENABLE_TRUST"));
-    Assertions.assertTrue(factory.toString().contains("connectionAttributes={test=2, h=4}"));
-  }
-
-  @Test
-  void confMinOption() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> MariadbConnectionConfiguration.builder().build(),
-        "host or socket must not be null");
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> MariadbConnectionConfiguration.builder().host("jj").socket("dd").build(),
-        "Connection must be configured for either host/port or socket usage but not both");
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> MariadbConnectionConfiguration.builder().host("jj").build(),
-        "username must not be null");
   }
 
   protected class ExecuteQueries implements Runnable {

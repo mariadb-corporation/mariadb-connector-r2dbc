@@ -26,7 +26,7 @@ import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class Sha256PluginTest extends BaseTest {
+public class Sha256PluginTest extends BaseConnectionTest {
 
   private static String rsaPublicKey;
   private static String cachingRsaPublicKey;

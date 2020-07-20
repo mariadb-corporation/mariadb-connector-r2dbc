@@ -31,12 +31,12 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class StringParseTest extends BaseTest {
+public class StringParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     sharedConn.createStatement("DROP TABLE IF EXISTS StringTable").execute().blockLast();

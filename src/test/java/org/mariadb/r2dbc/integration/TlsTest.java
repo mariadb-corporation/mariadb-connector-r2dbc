@@ -29,7 +29,7 @@ import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class TlsTest extends BaseTest {
+public class TlsTest extends BaseConnectionTest {
 
   public static String serverSslCert;
   public static String clientSslCert;

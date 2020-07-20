@@ -22,7 +22,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.*;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
@@ -32,7 +32,7 @@ import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.test.StepVerifier;
 
-public class PrepareResultSetTest extends BaseTest {
+public class PrepareResultSetTest extends BaseConnectionTest {
   private static List<String> stringList =
       Arrays.asList(
           "456",
