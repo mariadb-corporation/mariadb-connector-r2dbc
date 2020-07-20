@@ -21,6 +21,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
@@ -239,6 +240,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
         .bind(0, "test1")
         .bind(1, "test2")
+        .fetchSize(44)
         .returnGeneratedValues("id", "test")
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
@@ -373,6 +375,48 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         "Parameter at position 0 is not " + "set");
     assertThrows(
         IllegalArgumentException.class, () -> stmt.add(), "Parameter at position 0 is not set");
+  }
+
+  @Test
+  void parameterNull() {
+    sharedConnPrepare
+        .createStatement("CREATE TEMPORARY TABLE parameterNull(t varchar(10), t2 varchar(10))")
+        .execute()
+        .blockLast();
+    sharedConnPrepare
+        .createStatement("INSERT INTO parameterNull VALUES ('1', '1'), (null, '2'), (null, null)")
+        .execute()
+        .blockLast();
+    MariadbStatement stmt =
+        sharedConnPrepare.createStatement(
+            "SELECT t2 FROM parameterNull WHERE COALESCE(t,?) is null");
+    stmt.bindNull(0, Integer.class)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("2"), Optional.empty())
+        .verifyComplete();
+    stmt.bindNull(0, String.class)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("2"), Optional.empty())
+        .verifyComplete();
+
+    stmt.bindNull(0, this.getClass())
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("2"), Optional.empty())
+        .verifyComplete();
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.bindNull(null, String.class),
+        "identifier cannot be null");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.bindNull("fff", String.class),
+        "Cannot use getColumn(name) with prepared statement");
   }
 
   @Test

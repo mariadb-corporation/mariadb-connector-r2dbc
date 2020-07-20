@@ -25,6 +25,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
@@ -32,6 +34,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.MariadbConnectionFactory;
+import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.api.MariadbStatement;
@@ -265,18 +270,44 @@ public class BlobParameterTest extends BaseConnectionTest {
     inputStreamValue(sharedConnPrepare);
   }
 
+  @Test
+  void inputStreamValueNoBackslash() throws Exception {
+    Map<String, String> sessionMap = new HashMap<>();
+    sessionMap.put("SQL_MODE", "NO_BACKSLASH_ESCAPES");
+    MariadbConnectionConfiguration confNoBackSlash =
+        TestConfiguration.defaultBuilder.clone().sessionVariables(sessionMap).build();
+    MariadbConnection con = new MariadbConnectionFactory(confNoBackSlash).create().block();
+    inputStreamValue(con);
+    con.close().block();
+  }
+
+  @Test
+  void inputStreamValueNoBackslashPrepare() throws Exception {
+    Map<String, String> sessionMap = new HashMap<>();
+    sessionMap.put("SQL_MODE", "NO_BACKSLASH_ESCAPES");
+    MariadbConnectionConfiguration confNoBackSlash =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .sessionVariables(sessionMap)
+            .useServerPrepStmts(true)
+            .build();
+    MariadbConnection con = new MariadbConnectionFactory(confNoBackSlash).create().block();
+    inputStreamValue(con);
+    con.close().block();
+  }
+
   private void inputStreamValue(MariadbConnection connection) {
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BlobParam VALUES (?,?,?)")
             .bind(0, new ByteArrayInputStream(new byte[] {(byte) 15}))
-            .bind(1, new ByteArrayInputStream((new byte[] {(byte) 1, 0, (byte) 127})))
+            .bind(1, new ByteArrayInputStream((new byte[] {(byte) 1, 39, (byte) 127})))
             .bind(2, new ByteArrayInputStream((new byte[] {0})));
     Assertions.assertTrue(stmt.toString().contains("Parameter{codec=StreamCodec,"));
     stmt.execute().blockLast();
     validateNotNull(
         ByteBuffer.wrap(new byte[] {(byte) 15}),
-        ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127}),
+        ByteBuffer.wrap(new byte[] {(byte) 1, 39, (byte) 127}),
         ByteBuffer.wrap(new byte[] {0}));
   }
 

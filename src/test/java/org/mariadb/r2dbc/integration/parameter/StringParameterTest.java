@@ -25,6 +25,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
@@ -32,6 +34,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.MariadbConnectionFactory;
+import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.api.MariadbStatement;
@@ -195,6 +200,28 @@ public class StringParameterTest extends BaseConnectionTest {
   @Test
   void clobValuePrepare() {
     clobValue(sharedConnPrepare);
+  }
+
+  @Test
+  void clobValueNoBackslash() throws Exception {
+    Map<String, String> sessionMap = new HashMap<>();
+    sessionMap.put("SQL_MODE", "NO_BACKSLASH_ESCAPES");
+    MariadbConnectionConfiguration confNoBackSlash =
+        TestConfiguration.defaultBuilder.clone().sessionVariables(sessionMap).build();
+    MariadbConnection con = new MariadbConnectionFactory(confNoBackSlash).create().block();
+    clobValue(con);
+    con.close().block();
+  }
+
+  @Test
+  void clobValuePrepareNoBackslash() throws Exception {
+    Map<String, String> sessionMap = new HashMap<>();
+    sessionMap.put("SQL_MODE", "NO_BACKSLASH_ESCAPES");
+    MariadbConnectionConfiguration confNoBackSlash =
+        TestConfiguration.defaultBuilder.clone().sessionVariables(sessionMap).build();
+    MariadbConnection con = new MariadbConnectionFactory(confNoBackSlash).create().block();
+    clobValue(con);
+    con.close().block();
   }
 
   private void clobValue(MariadbConnection connection) {

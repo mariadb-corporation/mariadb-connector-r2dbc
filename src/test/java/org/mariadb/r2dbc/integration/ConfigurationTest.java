@@ -73,30 +73,35 @@ public class ConfigurationTest extends BaseTest {
     Assertions.assertTrue(factory.toString().contains("connectionAttributes={test=2, h=4}"));
     Assertions.assertTrue(factory.toString().contains("pamOtherPwd=******,***"));
   }
-@Test
-void factory() {
-  ConnectionFactoryOptions options =
-      ConnectionFactoryOptions.builder()
-          .option(ConnectionFactoryOptions.DRIVER, "mariadb")
-          .option(ConnectionFactoryOptions.HOST, "someHost")
-          .option(ConnectionFactoryOptions.PORT, 43306)
-          .option(ConnectionFactoryOptions.USER, "myUser")
-          .option(ConnectionFactoryOptions.DATABASE, "myDb")
-          .option(MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES, true)
-          .option(Option.valueOf("locale"), "en_US")
-          .build();
-  MariadbConnectionConfiguration conf =
-      MariadbConnectionConfiguration.fromOptions(options).build();
-  MariadbConnectionFactory factory = MariadbConnectionFactory.from(conf);
-    System.out.println(factory);
-  Assertions.assertTrue(factory.toString().contains("database='myDb'"));
-  Assertions.assertTrue(factory.toString().contains("host='someHost'"));
-  Assertions.assertTrue(factory.toString().contains("allowMultiQueries=true"));
-  Assertions.assertTrue(factory.toString().contains("allowPipelining=true"));
-  Assertions.assertTrue(factory.toString().contains("username='myUser'"));
-  Assertions.assertTrue(factory.toString().contains("port=43306"));
-}
 
+  @Test
+  void factory() {
+    ConnectionFactoryOptions options =
+        ConnectionFactoryOptions.builder()
+            .option(ConnectionFactoryOptions.DRIVER, "mariadb")
+            .option(ConnectionFactoryOptions.HOST, "someHost")
+            .option(ConnectionFactoryOptions.PORT, 43306)
+            .option(ConnectionFactoryOptions.USER, "myUser")
+            .option(ConnectionFactoryOptions.DATABASE, "myDb")
+            .option(MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES, true)
+            .option(Option.valueOf("locale"), "en_US")
+            .build();
+    MariadbConnectionConfiguration conf =
+        MariadbConnectionConfiguration.fromOptions(options).build();
+    MariadbConnectionFactory factory = MariadbConnectionFactory.from(conf);
+    System.out.println(factory);
+    Assertions.assertTrue(factory.toString().contains("database='myDb'"));
+    Assertions.assertTrue(factory.toString().contains("host='someHost'"));
+    Assertions.assertTrue(factory.toString().contains("allowMultiQueries=true"));
+    Assertions.assertTrue(factory.toString().contains("allowPipelining=true"));
+    Assertions.assertTrue(factory.toString().contains("username='myUser'"));
+    Assertions.assertTrue(factory.toString().contains("port=43306"));
+  }
+
+  @Test
+  void provider() {
+    Assertions.assertEquals("mariadb", new MariadbConnectionFactoryProvider().getDriver());
+  }
 
   @Test
   void confError() {
@@ -109,7 +114,8 @@ void factory() {
             .option(MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES, true)
             .option(Option.valueOf("locale"), "en_US")
             .build();
-    assertThrows(IllegalStateException.class,
+    assertThrows(
+        IllegalStateException.class,
         () -> MariadbConnectionConfiguration.fromOptions(options).build(),
         "No value found for host");
   }

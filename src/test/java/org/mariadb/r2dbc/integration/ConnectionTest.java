@@ -158,17 +158,55 @@ public class ConnectionTest extends BaseConnectionTest {
   @Test
   void basicConnectionWithoutPipeline() throws Exception {
     MariadbConnectionConfiguration noPipeline =
-        TestConfiguration.defaultBuilder.clone().allowPipelining(false).build();
+        TestConfiguration.defaultBuilder
+            .clone()
+            .allowPipelining(false)
+            .useServerPrepStmts(true)
+            .prepareCacheSize(1)
+            .build();
     MariadbConnection connection = new MariadbConnectionFactory(noPipeline).create().block();
-    connection.createStatement("SELECT 5")
+    connection
+        .createStatement("SELECT 5")
         .execute()
         .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
         .as(StepVerifier::create)
         .expectNext(5)
         .verifyComplete();
+    connection
+        .createStatement("SELECT 6")
+        .execute()
+        .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(6)
+        .verifyComplete();
+    connection
+        .createStatement("SELECT ?")
+        .bind(0, 7)
+        .execute()
+        .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(7)
+        .verifyComplete();
+    connection
+        .createStatement("SELECT 1, ?")
+        .bind(0, 8)
+        .execute()
+        .flatMap(r -> r.map((row, meta) -> row.get(1, Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(8)
+        .verifyComplete();
     connection.close().block();
+    connection
+        .createStatement("SELECT 7")
+        .execute()
+        .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("Connection is close. Cannot send anything"))
+        .verify();
   }
-
 
   @Test
   void basicConnectionWithSessionVariable() throws Exception {
@@ -178,13 +216,14 @@ public class ConnectionTest extends BaseConnectionTest {
     MariadbConnectionConfiguration cnf =
         TestConfiguration.defaultBuilder.clone().sessionVariables(sessionVariable).build();
     MariadbConnection connection = new MariadbConnectionFactory(cnf).create().block();
-    connection.createStatement("SELECT 5")
+    connection
+        .createStatement("SELECT 5")
         .execute()
         .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
         .as(StepVerifier::create)
         .expectNext(5)
         .verifyComplete();
-    connection.close().block();
+
     sessionVariable.put("test", null);
     MariadbConnectionConfiguration cnf2 =
         TestConfiguration.defaultBuilder.clone().sessionVariables(sessionVariable).build();
@@ -195,12 +234,10 @@ public class ConnectionTest extends BaseConnectionTest {
       Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
       Assertions.assertNotNull(t.getCause());
       Assertions.assertEquals(IllegalArgumentException.class, t.getCause().getClass());
-      Assertions.assertTrue(t.getCause().getMessage().contains("Session variable 'test' has no value"));
-
+      Assertions.assertTrue(
+          t.getCause().getMessage().contains("Session variable 'test' has no value"));
     }
-
   }
-
 
   @Test
   void multipleClose() throws Exception {

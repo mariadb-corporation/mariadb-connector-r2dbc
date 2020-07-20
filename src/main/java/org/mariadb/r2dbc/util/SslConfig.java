@@ -71,18 +71,6 @@ public class SslConfig {
     return sslMode;
   }
 
-  public String getServerSslCert() {
-    return serverSslCert;
-  }
-
-  public String getClientSslCert() {
-    return clientSslCert;
-  }
-
-  public List<String> getTlsProtocol() {
-    return tlsProtocol;
-  }
-
   public SslContext getSslContext() throws R2dbcTransientResourceException, SSLException {
     final SslContextBuilder sslCtxBuilder = SslContextBuilder.forClient();
 

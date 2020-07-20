@@ -18,11 +18,13 @@ package org.mariadb.r2dbc.integration;
 
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import io.r2dbc.spi.Statement;
+import java.util.Optional;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
+import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.test.StepVerifier;
 
 public class StatementTest extends BaseConnectionTest {
@@ -456,6 +458,39 @@ public class StatementTest extends BaseConnectionTest {
   }
 
   @Test
+  void parameterNull() {
+    sharedConn
+        .createStatement("CREATE TEMPORARY TABLE parameterNull(t varchar(10), t2 varchar(10))")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement("INSERT INTO parameterNull VALUES ('1', '1'), (null, '2'), (null, null)")
+        .execute()
+        .blockLast();
+    MariadbStatement stmt =
+        sharedConn.createStatement("SELECT t2 FROM parameterNull WHERE COALESCE(t,?) is null");
+    stmt.bindNull(0, Integer.class)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("2"), Optional.empty())
+        .verifyComplete();
+    stmt.bindNull(0, String.class)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("2"), Optional.empty())
+        .verifyComplete();
+
+    stmt.bindNull(0, this.getClass())
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("2"), Optional.empty())
+        .verifyComplete();
+  }
+
+  @Test
   public void prepareReturningBefore105() {
     Assumptions.assumeFalse((isMariaDBServer() && minVersion(10, 5, 1)));
 
@@ -542,6 +577,21 @@ public class StatementTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> row.get("id", Integer.class)))
         .as(StepVerifier::create)
         .expectNext(1)
+        .verifyComplete();
+
+    sharedConn
+        .createStatement("ALTER TABLE generatedId AUTO_INCREMENT = 60000")
+        .execute()
+        .blockLast();
+
+    sharedConn
+        .createStatement("INSERT INTO generatedId(test) VALUES (?)")
+        .bind(0, "test1")
+        .returnGeneratedValues()
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get("id", Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(60000)
         .verifyComplete();
 
     sharedConn
