@@ -156,6 +156,53 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
+  void basicConnectionWithoutPipeline() throws Exception {
+    MariadbConnectionConfiguration noPipeline =
+        TestConfiguration.defaultBuilder.clone().allowPipelining(false).build();
+    MariadbConnection connection = new MariadbConnectionFactory(noPipeline).create().block();
+    connection.createStatement("SELECT 5")
+        .execute()
+        .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(5)
+        .verifyComplete();
+    connection.close().block();
+  }
+
+
+  @Test
+  void basicConnectionWithSessionVariable() throws Exception {
+    Map<String, String> sessionVariable = new HashMap<>();
+    sessionVariable.put("collation_connection", "utf8_slovenian_ci");
+    sessionVariable.put("wait_timeout", "3600");
+    MariadbConnectionConfiguration cnf =
+        TestConfiguration.defaultBuilder.clone().sessionVariables(sessionVariable).build();
+    MariadbConnection connection = new MariadbConnectionFactory(cnf).create().block();
+    connection.createStatement("SELECT 5")
+        .execute()
+        .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(5)
+        .verifyComplete();
+    connection.close().block();
+    sessionVariable.put("test", null);
+    MariadbConnectionConfiguration cnf2 =
+        TestConfiguration.defaultBuilder.clone().sessionVariables(sessionVariable).build();
+    try {
+      new MariadbConnectionFactory(cnf2).create().block();
+      Assertions.fail("must have throw exception");
+    } catch (Throwable t) {
+      Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
+      Assertions.assertNotNull(t.getCause());
+      Assertions.assertEquals(IllegalArgumentException.class, t.getCause().getClass());
+      Assertions.assertTrue(t.getCause().getMessage().contains("Session variable 'test' has no value"));
+
+    }
+
+  }
+
+
+  @Test
   void multipleClose() throws Exception {
     MariadbConnection connection = factory.create().block();
     connection.close().subscribe();

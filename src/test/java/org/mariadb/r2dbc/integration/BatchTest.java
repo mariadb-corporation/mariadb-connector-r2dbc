@@ -47,8 +47,7 @@ public class BatchTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext(1, 1, 1, 1, 1)
         .expectNextCount(95)
-        .then(
-            () -> {
+        .then(() -> {
               sharedConn
                   .createStatement("SELECT id FROM basicBatch")
                   .execute()
@@ -56,8 +55,9 @@ public class BatchTest extends BaseConnectionTest {
                   .as(StepVerifier::create)
                   .expectNext(0, 1, 2, 3, 4)
                   .expectNextCount(95)
-                  .verifyComplete();
-            });
+              .verifyComplete();
+                  }).verifyComplete();
+
   }
 
   @Test
@@ -93,7 +93,7 @@ public class BatchTest extends BaseConnectionTest {
                   .expectNextCount(95)
                   .verifyComplete();
               multiConn.close().block();
-            });
+            }).verifyComplete();
   }
 
   @Test
@@ -129,7 +129,7 @@ public class BatchTest extends BaseConnectionTest {
                   .expectNextCount(95)
                   .verifyComplete();
               multiConn.close().block();
-            });
+            }).verifyComplete();
   }
 
   @Test

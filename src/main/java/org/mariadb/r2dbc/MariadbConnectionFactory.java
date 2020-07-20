@@ -49,9 +49,6 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
     if (configuration.getSocket() != null) {
       return new DomainSocketAddress(configuration.getSocket());
     } else {
-      if (configuration.getHost() == null || configuration.getHost().isEmpty()) {
-        throw new IllegalStateException("Host is mandatory if socket is not set");
-      }
       return InetSocketAddress.createUnresolved(configuration.getHost(), configuration.getPort());
     }
   }
