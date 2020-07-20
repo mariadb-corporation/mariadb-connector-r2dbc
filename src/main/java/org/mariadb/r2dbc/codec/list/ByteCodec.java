@@ -73,8 +73,8 @@ public class ByteCodec implements Codec<Byte> {
         && ((type.isPrimitive() && type == Byte.TYPE) || type.isAssignableFrom(Byte.class));
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof Byte;
+  public boolean canEncode(Class value) {
+    return Byte.class.isAssignableFrom(value);
   }
 
   @Override

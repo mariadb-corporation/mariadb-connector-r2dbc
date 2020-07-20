@@ -24,6 +24,7 @@ public class ServerVersion {
   private final int minorVersion;
   private final int patchVersion;
   private final boolean mariaDBServer;
+  private final boolean supportReturning;
 
   public ServerVersion(String serverVersion, boolean mariaDBServer) {
     this.serverVersion = serverVersion;
@@ -32,6 +33,7 @@ public class ServerVersion {
     this.majorVersion = parsed[0];
     this.minorVersion = parsed[1];
     this.patchVersion = parsed[2];
+    this.supportReturning = mariaDBServer && versionGreaterOrEqual(10, 5, 1);
   }
 
   public boolean isMariaDBServer() {
@@ -52,6 +54,10 @@ public class ServerVersion {
 
   public String getServerVersion() {
     return serverVersion;
+  }
+
+  public boolean supportReturning() {
+    return supportReturning;
   }
 
   /**

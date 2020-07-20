@@ -17,6 +17,7 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.r2dbc.spi.Clob;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -53,8 +54,8 @@ public class DoubleCodec implements Codec<Double> {
         && ((type.isPrimitive() && type == Double.TYPE) || type.isAssignableFrom(Double.class));
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof Double;
+  public boolean canEncode(Class value) {
+    return Double.class.isAssignableFrom(value);
   }
 
   @Override

@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalTime;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
@@ -74,8 +75,8 @@ public class LongCodec implements Codec<Long> {
         && ((type.isPrimitive() && type == Long.TYPE) || type.isAssignableFrom(Long.class));
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof Long;
+  public boolean canEncode(Class value) {
+    return Long.class.isAssignableFrom(value);
   }
 
   @Override

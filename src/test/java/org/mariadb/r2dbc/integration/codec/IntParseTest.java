@@ -116,6 +116,46 @@ public class IntParseTest extends BaseConnectionTest {
   }
 
   @Test
+  void unknownValue() {
+    unknownValue(sharedConn);
+  }
+
+  @Test
+  void unknownValuePrepare() {
+    unknownValue(sharedConnPrepare);
+  }
+
+  private void unknownValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, this.getClass()))))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable
+                    .getMessage()
+                    .equals("No decoder for type org.mariadb.r2dbc.integration.codec.IntParseTest and column type INTEGER(signed)"))
+        .verify();
+    connection
+        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, this.getClass()))))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable
+                    .getMessage()
+                    .equals("No decoder for type org.mariadb.r2dbc.integration.codec.IntParseTest and column type "
+                        + "INTEGER(unsigned)"))
+        .verify();
+  }
+
+  @Test
   void byteArrayValue() {
     byteArrayValue(sharedConn);
   }

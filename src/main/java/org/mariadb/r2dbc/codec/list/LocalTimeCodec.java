@@ -92,8 +92,8 @@ public class LocalTimeCodec implements Codec<LocalTime> {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(LocalTime.class);
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof LocalTime;
+  public boolean canEncode(Class value) {
+    return LocalTime.class.isAssignableFrom(value);
   }
 
   @Override

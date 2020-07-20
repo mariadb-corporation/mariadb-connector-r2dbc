@@ -42,8 +42,8 @@ public class DurationCodec implements Codec<Duration> {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(Duration.class);
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof Duration;
+  public boolean canEncode(Class value) {
+    return Duration.class.isAssignableFrom(value);
   }
 
   @Override

@@ -67,8 +67,8 @@ public class LocalDateCodec implements Codec<LocalDate> {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(LocalDate.class);
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof LocalDate;
+  public boolean canEncode(Class value) {
+    return LocalDate.class.isAssignableFrom(value);
   }
 
   @Override

@@ -28,6 +28,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Optional;
+
+import io.r2dbc.spi.R2dbcTransientResourceException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -142,6 +144,32 @@ public class StringParseTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext(Optional.of(true), Optional.of(true), Optional.of(false), Optional.empty())
         .verifyComplete();
+  }
+
+  @Test
+  void unknownValue() {
+    unknownValue(sharedConn);
+  }
+
+  @Test
+  void unknownValuePrepare() {
+    unknownValue(sharedConnPrepare);
+  }
+
+  private void unknownValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, this.getClass()))))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable
+                    .getMessage()
+                    .equals("No decoder for type org.mariadb.r2dbc.integration.codec.StringParseTest and column type VARSTRING"))
+        .verify();
   }
 
   @Test

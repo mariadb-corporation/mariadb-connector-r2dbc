@@ -55,8 +55,8 @@ public class ShortCodec implements Codec<Short> {
         && ((type.isPrimitive() && type == Short.TYPE) || type.isAssignableFrom(Short.class));
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof Short;
+  public boolean canEncode(Class value) {
+    return Short.class.isAssignableFrom(value);
   }
 
   @Override

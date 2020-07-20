@@ -21,6 +21,7 @@ import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
@@ -53,8 +54,8 @@ public class FloatCodec implements Codec<Float> {
         && ((type.isPrimitive() && type == Float.TYPE) || type.isAssignableFrom(Float.class));
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof Float;
+  public boolean canEncode(Class value) {
+    return Float.class.isAssignableFrom(value);
   }
 
   @Override

@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.integration;
 
+import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import io.r2dbc.spi.Statement;
 import java.util.Optional;
@@ -215,6 +216,66 @@ public class StatementTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> row.get(0)))
         .as(StepVerifier::create)
         .expectNextCount(200)
+        .verifyComplete();
+  }
+
+  @Test
+  public void dupplicate() {
+    sharedConn
+        .createStatement(
+            "CREATE TEMPORARY TABLE dupplicate (id int not null primary key auto_increment, test varchar(10))")
+        .execute()
+        .blockLast();
+
+    sharedConn
+        .createStatement("INSERT INTO dupplicate(test) VALUES ('test1'), ('test2')")
+        .execute()
+        .flatMap(r -> r.getRowsUpdated())
+        .as(StepVerifier::create)
+        .expectNext(2)
+        .verifyComplete();
+
+    sharedConn
+        .createStatement("INSERT INTO dupplicate(id, test) VALUES (1, 'dupplicate')")
+        .execute()
+        .flatMap(r -> r.getRowsUpdated())
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcDataIntegrityViolationException
+                    && throwable
+                    .getMessage()
+                    .contains("Duplicate entry '1' for key 'PRIMARY'"))
+        .verify();
+    }
+
+  @Test
+  public void getPosition() {
+    sharedConn
+        .createStatement(
+            "CREATE TEMPORARY TABLE get_pos (t1 varchar(10), t2 varchar(10), t3 varchar(10), t4 varchar(10))")
+        .execute()
+        .blockLast();
+
+    sharedConn
+        .createStatement("INSERT INTO get_pos VALUES ('test1', 'test2', 'test3', 'test4')")
+        .execute()
+        .flatMap(r -> r.getRowsUpdated())
+        .as(StepVerifier::create)
+        .expectNext(1)
+        .verifyComplete();
+
+    sharedConn
+        .createStatement("SELECT * FROM get_pos")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> {
+          Assertions.assertEquals("test4", row.get(3, String.class));
+          Assertions.assertEquals("test3", row.get(2, String.class));
+          Assertions.assertEquals("test2", row.get(1, String.class));
+          return row.get(0, String.class);
+        }))
+        .as(StepVerifier::create)
+        .expectNext("test1")
         .verifyComplete();
   }
 

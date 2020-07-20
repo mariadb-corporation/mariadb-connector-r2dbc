@@ -56,8 +56,8 @@ public class IntCodec implements Codec<Integer> {
         && ((type.isPrimitive() && type == Integer.TYPE) || type.isAssignableFrom(Integer.class));
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof Integer;
+  public boolean canEncode(Class value) {
+    return Integer.class.isAssignableFrom(value);
   }
 
   @Override

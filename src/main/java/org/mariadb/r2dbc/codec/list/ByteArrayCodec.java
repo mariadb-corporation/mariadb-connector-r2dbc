@@ -64,8 +64,8 @@ public class ByteArrayCodec implements Codec<byte[]> {
     return arr;
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof byte[];
+  public boolean canEncode(Class value) {
+    return byte[].class.isAssignableFrom(value);
   }
 
   @Override

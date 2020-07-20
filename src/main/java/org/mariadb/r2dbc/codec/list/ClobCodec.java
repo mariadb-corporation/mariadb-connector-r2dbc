@@ -39,8 +39,8 @@ public class ClobCodec implements Codec<Clob> {
     return COMPATIBLE_TYPES.contains(column.getType()) && (type.isAssignableFrom(Clob.class));
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof Clob;
+  public boolean canEncode(Class value) {
+    return Clob.class.isAssignableFrom(value);
   }
 
   @Override

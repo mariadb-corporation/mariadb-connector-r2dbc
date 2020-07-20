@@ -53,8 +53,8 @@ public class BigIntegerCodec implements Codec<BigInteger> {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(BigInteger.class);
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof BigInteger;
+  public boolean canEncode(Class value) {
+    return BigInteger.class.isAssignableFrom(value);
   }
 
   @Override

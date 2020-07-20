@@ -84,7 +84,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
     }
 
     for (Codec<?> codec : Codecs.LIST) {
-      if (codec.canEncode(value)) {
+      if (codec.canEncode(value.getClass())) {
         parameters[index] = (Parameter<?>) new Parameter(codec, value);
         return this;
       }
@@ -143,9 +143,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
               new QueryWithParametersPacket(
                   prepareResult,
                   this.batchingParameters.get(0),
-                  generatedColumns != null
-                          && client.getVersion().isMariaDBServer()
-                          && client.getVersion().versionGreaterOrEqual(10, 5, 1)
+                  generatedColumns != null && client.getVersion().supportReturning()
                       ? generatedColumns
                       : null));
       int index = 1;
@@ -156,9 +154,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
                     new QueryWithParametersPacket(
                         prepareResult,
                         this.batchingParameters.get(index++),
-                        generatedColumns != null
-                                && client.getVersion().isMariaDBServer()
-                                && client.getVersion().versionGreaterOrEqual(10, 5, 1)
+                        generatedColumns != null && client.getVersion().supportReturning()
                             ? generatedColumns
                             : null)));
       }
@@ -175,8 +171,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
                       dataRow,
                       ExceptionFactory.INSTANCE,
                       generatedColumns,
-                      client.getVersion().isMariaDBServer()
-                          && client.getVersion().versionGreaterOrEqual(10, 5, 1)));
+                      client.getVersion().supportReturning()));
     }
   }
 
@@ -189,9 +184,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
   public MariadbClientParameterizedQueryStatement returnGeneratedValues(String... columns) {
     Assert.requireNonNull(columns, "columns must not be null");
 
-    if (!(client.getVersion().isMariaDBServer()
-            && client.getVersion().versionGreaterOrEqual(10, 5, 1))
-        && columns.length > 1) {
+    if (!client.getVersion().supportReturning() && columns.length > 1) {
       throw new IllegalArgumentException(
           "returnGeneratedValues can have only one column before MariaDB 10.5.1");
     }
@@ -210,9 +203,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
                 new QueryWithParametersPacket(
                     prepareResult,
                     parameters,
-                    generatedColumns != null
-                            && client.getVersion().isMariaDBServer()
-                            && client.getVersion().versionGreaterOrEqual(10, 5, 1)
+                    generatedColumns != null && client.getVersion().supportReturning()
                         ? generatedColumns
                         : null))
             .windowUntil(it -> it.resultSetEnd())
@@ -223,8 +214,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
                         dataRow,
                         factory,
                         generatedColumns,
-                        client.getVersion().isMariaDBServer()
-                            && client.getVersion().versionGreaterOrEqual(10, 5, 1)));
+                        client.getVersion().supportReturning()));
     return response.concatWith(
         Flux.create(
             sink -> {

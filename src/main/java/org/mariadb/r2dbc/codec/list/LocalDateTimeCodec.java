@@ -20,6 +20,7 @@ import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -101,8 +102,8 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
         && type.isAssignableFrom(LocalDateTime.class);
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof LocalDateTime;
+  public boolean canEncode(Class value) {
+    return LocalDateTime.class.isAssignableFrom(value);
   }
 
   @Override

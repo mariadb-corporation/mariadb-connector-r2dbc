@@ -35,8 +35,8 @@ public class BatchTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     MariadbBatch batch = sharedConn.createBatch();
-    int[] res = new int[100];
-    for (int i = 0; i < 100; i++) {
+    int[] res = new int[20];
+    for (int i = 0; i < 20; i++) {
       batch.add("INSERT INTO basicBatch VALUES (" + i + ", 'test" + i + "')");
       res[i] = i;
     }
@@ -46,7 +46,7 @@ public class BatchTest extends BaseConnectionTest {
         .flatMap(it -> it.getRowsUpdated())
         .as(StepVerifier::create)
         .expectNext(1, 1, 1, 1, 1)
-        .expectNextCount(95)
+        .expectNextCount(15)
         .then(
             () -> {
               sharedConn
@@ -55,7 +55,7 @@ public class BatchTest extends BaseConnectionTest {
                   .flatMap(r -> r.map((row, metadata) -> row.get(0)))
                   .as(StepVerifier::create)
                   .expectNext(0, 1, 2, 3, 4)
-                  .expectNextCount(95)
+                  .expectNextCount(15)
                   .verifyComplete();
             })
         .verifyComplete();
@@ -71,8 +71,8 @@ public class BatchTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     MariadbBatch batch = multiConn.createBatch();
-    int[] res = new int[100];
-    for (int i = 0; i < 100; i++) {
+    int[] res = new int[20];
+    for (int i = 0; i < 20; i++) {
       batch.add("INSERT INTO multiBatch VALUES (" + i + ", 'test" + i + "')");
       res[i] = i;
     }
@@ -82,7 +82,7 @@ public class BatchTest extends BaseConnectionTest {
         .flatMap(it -> it.getRowsUpdated())
         .as(StepVerifier::create)
         .expectNext(1, 1, 1, 1, 1)
-        .expectNextCount(95)
+        .expectNextCount(15)
         .then(
             () -> {
               multiConn
@@ -91,7 +91,7 @@ public class BatchTest extends BaseConnectionTest {
                   .flatMap(r -> r.map((row, metadata) -> row.get(0)))
                   .as(StepVerifier::create)
                   .expectNext(0, 1, 2, 3, 4)
-                  .expectNextCount(95)
+                  .expectNextCount(15)
                   .verifyComplete();
               multiConn.close().block();
             })
@@ -108,8 +108,8 @@ public class BatchTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     MariadbBatch batch = multiConn.createBatch();
-    int[] res = new int[100];
-    for (int i = 0; i < 100; i++) {
+    int[] res = new int[20];
+    for (int i = 0; i < 20; i++) {
       batch.add("INSERT INTO multiBatch VALUES (" + i + ", 'test" + i + "')");
       res[i] = i;
     }
@@ -119,7 +119,7 @@ public class BatchTest extends BaseConnectionTest {
         .flatMap(it -> it.getRowsUpdated())
         .as(StepVerifier::create)
         .expectNext(1, 1, 1, 1, 1)
-        .expectNextCount(95)
+        .expectNextCount(15)
         .then(
             () -> {
               multiConn
@@ -128,7 +128,7 @@ public class BatchTest extends BaseConnectionTest {
                   .flatMap(r -> r.map((row, metadata) -> row.get(0)))
                   .as(StepVerifier::create)
                   .expectNext(0, 1, 2, 3, 4)
-                  .expectNextCount(95)
+                  .expectNextCount(15)
                   .verifyComplete();
               multiConn.close().block();
             })

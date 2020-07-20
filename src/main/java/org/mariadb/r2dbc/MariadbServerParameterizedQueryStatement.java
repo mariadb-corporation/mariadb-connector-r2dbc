@@ -106,7 +106,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     if (value == null) return bindNull(index, null);
 
     for (Codec<?> codec : Codecs.LIST) {
-      if (codec.canEncode(value)) {
+      if (codec.canEncode(value.getClass())) {
 
         parameters.put(index, (Parameter<?>) new Parameter(codec, value));
         return this;
@@ -145,11 +145,6 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
 
           parameter =
               new Parameter(codec, null) {
-                @Override
-                public void encodeText(ByteBuf out, Context context) {
-                  BufferUtils.writeAscii(out, "null");
-                }
-
                 @Override
                 public DataType getBinaryEncodeType() {
                   return DataType.VARCHAR;
@@ -192,9 +187,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   public Flux<org.mariadb.r2dbc.api.MariadbResult> execute() {
     validateParameters();
     String sql = this.initialSql;
-    if (client.getVersion().isMariaDBServer()
-        && client.getVersion().versionGreaterOrEqual(10, 5, 1)
-        && generatedColumns != null) {
+    if (client.getVersion().supportReturning() && generatedColumns != null) {
       sql +=
           generatedColumns.length == 0
               ? " RETURNING *"
@@ -244,8 +237,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                       dataRow,
                       ExceptionFactory.INSTANCE,
                       null,
-                      client.getVersion().isMariaDBServer()
-                          && client.getVersion().versionGreaterOrEqual(10, 5, 1)));
+                      client.getVersion().supportReturning()));
     }
   }
 
@@ -258,9 +250,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   public MariadbServerParameterizedQueryStatement returnGeneratedValues(String... columns) {
     Assert.requireNonNull(columns, "columns must not be null");
 
-    if (!(client.getVersion().isMariaDBServer()
-            && client.getVersion().versionGreaterOrEqual(10, 5, 1))
-        && columns.length > 1) {
+    if (!client.getVersion().supportReturning() && columns.length > 1) {
       throw new IllegalArgumentException(
           "returnGeneratedValues can have only one column before MariaDB 10.5.1");
     }
@@ -340,8 +330,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                     dataRow,
                     factory,
                     generatedColumns,
-                    client.getVersion().isMariaDBServer()
-                        && client.getVersion().versionGreaterOrEqual(10, 5, 1)));
+                    client.getVersion().supportReturning()));
   }
 
   private Mono<ServerPrepareResult> sendPrepare(String sql) {
@@ -383,8 +372,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                     dataRow,
                     factory,
                     generatedColumns,
-                    client.getVersion().isMariaDBServer()
-                        && client.getVersion().versionGreaterOrEqual(10, 5, 1)));
+                    client.getVersion().supportReturning()));
   }
 
   @Override

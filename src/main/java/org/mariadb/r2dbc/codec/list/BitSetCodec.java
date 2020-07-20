@@ -17,6 +17,9 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
 import org.mariadb.r2dbc.client.Context;
@@ -65,8 +68,8 @@ public class BitSetCodec implements Codec<BitSet> {
     return parseBit(buf, length);
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof BitSet;
+  public boolean canEncode(Class value) {
+    return BitSet.class.isAssignableFrom(value);
   }
 
   @Override

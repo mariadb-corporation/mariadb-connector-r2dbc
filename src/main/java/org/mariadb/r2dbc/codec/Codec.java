@@ -24,7 +24,7 @@ public interface Codec<T> {
 
   boolean canDecode(ColumnDefinitionPacket column, Class<?> type);
 
-  boolean canEncode(Object value);
+  boolean canEncode(Class value);
 
   T decodeText(ByteBuf buffer, int length, ColumnDefinitionPacket column, Class<? extends T> type);
 
