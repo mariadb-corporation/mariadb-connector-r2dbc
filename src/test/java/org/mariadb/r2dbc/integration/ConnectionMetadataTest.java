@@ -39,10 +39,17 @@ public class ConnectionMetadataTest extends BaseConnectionTest {
     }
     String value = System.getenv("DB");
     if (value != null) {
+      String type;
+      String version;
       // testing env
-      String type = value.substring(0, value.indexOf(":"));
-      String version = value.substring(value.indexOf(":") + 1);
-
+      if (System.getenv("TRAVIS") != null) {
+        type = value.substring(0, value.indexOf(":"));
+        version = value.substring(value.indexOf(":") + 1);
+      } else {
+        // appveyor test only mariadb
+        type = "MariaDB";
+        version = value;
+      }
       assertTrue(meta.getDatabaseVersion().contains(version));
       assertEquals(type.toLowerCase(), meta.getDatabaseProductName().toLowerCase());
     }
