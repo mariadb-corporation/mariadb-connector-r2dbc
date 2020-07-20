@@ -46,7 +46,7 @@ public final class ClientImpl extends ClientBase {
       SocketAddress socketAddress,
       MariadbConnectionConfiguration configuration) {
 
-    TcpClient tcpClient = TcpClient.create(connectionProvider).addressSupplier(() -> socketAddress);
+    TcpClient tcpClient = TcpClient.create(connectionProvider).remoteAddress(() -> socketAddress);
     if (configuration.getConnectTimeout() != null) {
       tcpClient =
           tcpClient.option(

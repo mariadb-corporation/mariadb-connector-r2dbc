@@ -71,7 +71,8 @@ public class ConnectionTest extends BaseConnectionTest {
       Assertions.assertTrue(
           t.getMessage().contains("Connection is close. Cannot send anything")
               || t.getMessage().contains("Connection unexpectedly closed")
-              || t.getMessage().contains("Connection unexpected error"));
+              || t.getMessage().contains("Connection unexpected error"),
+          "real msg:" + t.getMessage());
     }
   }
 
@@ -103,10 +104,12 @@ public class ConnectionTest extends BaseConnectionTest {
           .blockLast();
       Assertions.fail("must have throw exception");
     } catch (Throwable t) {
-      System.out.println("ERROR THROWN :");
-      System.out.println(t);
       Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
-      Assertions.assertTrue(t.getMessage().contains("Connection unexpected error"));
+      Assertions.assertTrue(
+          t.getMessage().contains("Connection is close. Cannot send anything")
+              || t.getMessage().contains("Connection unexpectedly closed")
+              || t.getMessage().contains("Connection unexpected error"),
+          "real msg:" + t.getMessage());
     }
   }
 
