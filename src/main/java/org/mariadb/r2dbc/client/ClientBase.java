@@ -262,13 +262,7 @@ public abstract class ClientBase implements Client {
     }
 
     public Mono<Void> releaseSavepoint(String name) {
-      if (!responseReceivers.isEmpty()
-          || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) > 0) {
-        return exchange(String.format("RELEASE SAVEPOINT `%s`", name.replace("`", "``"))).then();
-      } else {
-        logger.debug("Skipping savepoint release because no active transaction");
-        return Mono.empty();
-      }
+      return exchange(String.format("RELEASE SAVEPOINT `%s`", name.replace("`", "``"))).then();
     }
 
     public Mono<Void> beginTransaction() {

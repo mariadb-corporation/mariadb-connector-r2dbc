@@ -33,6 +33,7 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
@@ -74,6 +75,40 @@ public class ConnectionTest extends BaseConnectionTest {
               || t.getMessage().contains("Connection unexpected error"),
           "real msg:" + t.getMessage());
     }
+  }
+
+  @Test
+  void multipleCommandStack() throws Exception {
+    MariadbConnection connection = createProxyCon();
+    Runnable runnable = () -> proxy.stop();
+    Thread th = new Thread(runnable);
+
+    try {
+      Flux<MariadbResult>[] results = new Flux[100];
+      for (int i = 0; i < 100; i++) {
+        results[i] = connection.createStatement("SELECT * from mysql.user").execute();
+      }
+      for (int i = 0; i < 50; i++) {
+        results[i].subscribe();
+      }
+      th.start();
+
+
+    } catch (Throwable t) {
+      Assertions.assertNotNull(t.getCause());
+      Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getCause().getClass());
+      Assertions.assertTrue(
+          t.getCause().getMessage().contains("Connection is close. Cannot send anything")
+              || t.getCause().getMessage().contains("Connection unexpectedly closed")
+              || t.getCause().getMessage().contains("Connection unexpected error"),
+          "real msg:" + t.getCause().getMessage());
+    }
+  }
+  @Test
+  void connectionWithoutErrorOnClose() throws Exception {
+    MariadbConnection connection = createProxyCon();
+    proxy.stop();
+    connection.close().block();
   }
 
   @Test
