@@ -36,7 +36,7 @@
     <junit.version>5.6.2</junit.version>
     <jmh.version>1.23</jmh.version>
     <logback.version>1.2.3</logback.version>
-    <netty.version>4.1.51.Final</netty.version>
+    <netty.version>4.1.49.Final</netty.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <r2dbc-spi.version>0.8.2.RELEASE</r2dbc-spi.version>
     <reactor.version>Dysprosium-SR9</reactor.version>

@@ -20,7 +20,6 @@ import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Blob;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.nio.charset.StandardCharsets;
-import java.util.BitSet;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
@@ -97,7 +96,7 @@ public class BlobCodec implements Codec<Blob> {
     }
   }
 
-  public boolean canEncode(Class value) {
+  public boolean canEncode(Class<?> value) {
     return Blob.class.isAssignableFrom(value);
   }
 

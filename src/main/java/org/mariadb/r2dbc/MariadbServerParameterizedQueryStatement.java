@@ -16,7 +16,6 @@
 
 package org.mariadb.r2dbc;
 
-import io.netty.buffer.ByteBuf;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -24,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
-import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.client.DecoderState;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.Codecs;
@@ -35,7 +33,6 @@ import org.mariadb.r2dbc.message.client.PreparePacket;
 import org.mariadb.r2dbc.message.server.PrepareResultPacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.Assert;
-import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -390,7 +387,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
         + ", batchingParameters="
         + batchingParameters
         + ", generatedColumns="
-        + Arrays.toString(generatedColumns)
+        + (generatedColumns != null ? Arrays.toString(generatedColumns) : null)
         + ", prepareResult="
         + prepareResult
         + '}';

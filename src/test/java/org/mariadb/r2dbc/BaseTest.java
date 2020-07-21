@@ -37,13 +37,16 @@ public class BaseTest {
   private class Follow implements BeforeEachCallback, AfterEachCallback {
     @Override
     public void afterEach(ExtensionContext extensionContext) throws Exception {
-      System.out.println(Duration.between(initialTest, Instant.now()).toString());
+      System.out.println(
+          "       test : "
+              + extensionContext.getTestMethod().get().getName()
+              + " "
+              + Duration.between(initialTest, Instant.now()).toString());
     }
 
     @Override
     public void beforeEach(ExtensionContext extensionContext) throws Exception {
       initialTest = Instant.now();
-      System.out.print("       test : " + extensionContext.getTestMethod().get() + " ");
     }
   }
 }

@@ -19,6 +19,7 @@ package org.mariadb.r2dbc.integration.codec;
 import io.r2dbc.spi.Blob;
 import io.r2dbc.spi.Clob;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -28,8 +29,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Optional;
-
-import io.r2dbc.spi.R2dbcTransientResourceException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -167,8 +166,9 @@ public class StringParseTest extends BaseConnectionTest {
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
                     && throwable
-                    .getMessage()
-                    .equals("No decoder for type org.mariadb.r2dbc.integration.codec.StringParseTest and column type VARSTRING"))
+                        .getMessage()
+                        .equals(
+                            "No decoder for type org.mariadb.r2dbc.integration.codec.StringParseTest and column type VARSTRING"))
         .verify();
   }
 

@@ -17,8 +17,6 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-
-import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -72,7 +70,7 @@ public class StringCodec implements Codec<String> {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(String.class);
   }
 
-  public boolean canEncode(Class value) {
+  public boolean canEncode(Class<?> value) {
     return String.class.isAssignableFrom(value);
   }
 

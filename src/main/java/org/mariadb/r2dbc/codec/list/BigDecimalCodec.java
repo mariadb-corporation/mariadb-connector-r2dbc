@@ -53,7 +53,7 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(BigDecimal.class);
   }
 
-  public boolean canEncode(Class value) {
+  public boolean canEncode(Class<?> value) {
     return BigDecimal.class.isAssignableFrom(value);
   }
 

@@ -60,7 +60,7 @@ public class StreamCodec implements Codec<InputStream> {
     return decodeText(buf, length, column, type);
   }
 
-  public boolean canEncode(Class value) {
+  public boolean canEncode(Class<?> value) {
     return InputStream.class.isAssignableFrom(value);
   }
 

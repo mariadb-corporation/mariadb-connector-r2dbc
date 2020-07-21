@@ -19,9 +19,7 @@ package org.mariadb.r2dbc.integration;
 import io.r2dbc.spi.*;
 import java.math.BigInteger;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -84,15 +82,14 @@ public class ConnectionTest extends BaseConnectionTest {
     Thread th = new Thread(runnable);
 
     try {
-      Flux<MariadbResult>[] results = new Flux[100];
+      List<Flux<MariadbResult>> results = new ArrayList<>();
       for (int i = 0; i < 100; i++) {
-        results[i] = connection.createStatement("SELECT * from mysql.user").execute();
+        results.add(connection.createStatement("SELECT * from mysql.user").execute());
       }
       for (int i = 0; i < 50; i++) {
-        results[i].subscribe();
+        results.get(i).subscribe();
       }
       th.start();
-
 
     } catch (Throwable t) {
       Assertions.assertNotNull(t.getCause());
@@ -104,6 +101,7 @@ public class ConnectionTest extends BaseConnectionTest {
           "real msg:" + t.getCause().getMessage());
     }
   }
+
   @Test
   void connectionWithoutErrorOnClose() throws Exception {
     MariadbConnection connection = createProxyCon();

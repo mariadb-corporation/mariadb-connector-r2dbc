@@ -20,8 +20,6 @@ import io.netty.buffer.ByteBuf;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-
-import io.r2dbc.spi.Blob;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
@@ -53,7 +51,7 @@ public class BooleanCodec implements Codec<Boolean> {
         && ((type.isPrimitive() && type == Boolean.TYPE) || type.isAssignableFrom(Boolean.class));
   }
 
-  public boolean canEncode(Class value) {
+  public boolean canEncode(Class<?> value) {
     return Boolean.class.isAssignableFrom(value);
   }
 

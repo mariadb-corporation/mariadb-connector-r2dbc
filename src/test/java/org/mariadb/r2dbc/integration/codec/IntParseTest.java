@@ -136,8 +136,9 @@ public class IntParseTest extends BaseConnectionTest {
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
                     && throwable
-                    .getMessage()
-                    .equals("No decoder for type org.mariadb.r2dbc.integration.codec.IntParseTest and column type INTEGER(signed)"))
+                        .getMessage()
+                        .equals(
+                            "No decoder for type org.mariadb.r2dbc.integration.codec.IntParseTest and column type INTEGER(signed)"))
         .verify();
     connection
         .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ?")
@@ -149,9 +150,10 @@ public class IntParseTest extends BaseConnectionTest {
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
                     && throwable
-                    .getMessage()
-                    .equals("No decoder for type org.mariadb.r2dbc.integration.codec.IntParseTest and column type "
-                        + "INTEGER(unsigned)"))
+                        .getMessage()
+                        .equals(
+                            "No decoder for type org.mariadb.r2dbc.integration.codec.IntParseTest and column type "
+                                + "INTEGER(unsigned)"))
         .verify();
   }
 

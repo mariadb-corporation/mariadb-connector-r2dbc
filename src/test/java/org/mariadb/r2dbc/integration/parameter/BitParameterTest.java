@@ -103,7 +103,9 @@ public class BitParameterTest extends BaseConnectionTest {
                     "parameters=[Parameter{codec=BooleanCodec, value=true}, Parameter{codec=BooleanCodec, value=true}, Parameter{codec=BooleanCodec, value=false}]")
             || stmt.toString()
                 .contains(
-                    "parameters={0=Parameter{codec=BooleanCodec, value=true}, 1=Parameter{codec=BooleanCodec, value=true}, 2=Parameter{codec=BooleanCodec, value=false}}"));
+                    "parameters={0=Parameter{codec=BooleanCodec, value=true}, 1=Parameter{codec=BooleanCodec, "
+                        + "value=true}, 2=Parameter{codec=BooleanCodec, value=false}}"),
+        stmt.toString());
     stmt.execute().blockLast();
     validate(
         Optional.of(BitSet.valueOf(new byte[] {(byte) 1})),

@@ -104,7 +104,7 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
       msg = state.decode(packet, sequencer, this, cmdElement);
       cmdElement.getSink().next(msg);
       if (msg.ending()) {
-        cmdElement.getSink().complete();
+        if (cmdElement != null) cmdElement.getSink().complete();
         loadNextResponse();
         client.sendNext();
       } else {
@@ -121,6 +121,7 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
     if (cmdElement != null) {
       cmdElement.getSink().error(err);
       cmdElement = null;
+      state = null;
     }
   }
 

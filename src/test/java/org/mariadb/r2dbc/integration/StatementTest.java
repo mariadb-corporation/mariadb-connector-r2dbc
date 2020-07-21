@@ -243,11 +243,9 @@ public class StatementTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcDataIntegrityViolationException
-                    && throwable
-                    .getMessage()
-                    .contains("Duplicate entry '1' for key 'PRIMARY'"))
+                    && throwable.getMessage().contains("Duplicate entry '1' for key 'PRIMARY'"))
         .verify();
-    }
+  }
 
   @Test
   public void getPosition() {
@@ -268,12 +266,15 @@ public class StatementTest extends BaseConnectionTest {
     sharedConn
         .createStatement("SELECT * FROM get_pos")
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> {
-          Assertions.assertEquals("test4", row.get(3, String.class));
-          Assertions.assertEquals("test3", row.get(2, String.class));
-          Assertions.assertEquals("test2", row.get(1, String.class));
-          return row.get(0, String.class);
-        }))
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      Assertions.assertEquals("test4", row.get(3, String.class));
+                      Assertions.assertEquals("test3", row.get(2, String.class));
+                      Assertions.assertEquals("test2", row.get(1, String.class));
+                      return row.get(0, String.class);
+                    }))
         .as(StepVerifier::create)
         .expectNext("test1")
         .verifyComplete();

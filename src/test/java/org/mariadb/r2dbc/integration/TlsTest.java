@@ -25,7 +25,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.stream.Stream;
-import javax.net.ssl.SSLHandshakeException;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -125,41 +124,38 @@ public class TlsTest extends BaseConnectionTest {
   @Test
   void wrongCertificateFiles() throws Exception {
     Assumptions.assumeTrue(haveSsl(sharedConn));
-    MariadbConnectionConfiguration conf =
-        TestConfiguration.defaultBuilder
-            .clone()
-            .sslMode(SslMode.ENABLE_WITHOUT_HOSTNAME_VERIFICATION)
-            .serverSslCert("wrongFile")
-            .build();
     assertThrows(
         R2dbcTransientResourceException.class,
-        () -> new MariadbConnectionFactory(conf).create().block(),
-        "Failed to find serverSslCert file. serverSslCert=wrongFile");
-    if (serverSslCert != null) {
-      MariadbConnectionConfiguration conf2 =
-          TestConfiguration.defaultBuilder
-              .clone()
-              .sslMode(SslMode.ENABLE_WITHOUT_HOSTNAME_VERIFICATION)
-              .serverSslCert(serverSslCert)
-              .clientSslCert("wrongFile")
-              .clientSslKey("dd")
-              .build();
-      assertThrows(
-          R2dbcTransientResourceException.class,
-          () -> new MariadbConnectionFactory(conf2).create().block(),
-          "Failed to find clientSslCert file. clientSslCert=wrongFile");
-      if (clientSslCert != null) {
-        MariadbConnectionConfiguration conf3 =
+        () ->
             TestConfiguration.defaultBuilder
                 .clone()
                 .sslMode(SslMode.ENABLE_WITHOUT_HOSTNAME_VERIFICATION)
-                .serverSslCert(serverSslCert)
-                .clientSslCert(clientSslCert)
-                .clientSslKey("dd")
-                .build();
+                .serverSslCert("wrongFile")
+                .build(),
+        "Failed to find serverSslCert file. serverSslCert=wrongFile");
+    if (serverSslCert != null) {
+      assertThrows(
+          R2dbcTransientResourceException.class,
+          () ->
+              TestConfiguration.defaultBuilder
+                  .clone()
+                  .sslMode(SslMode.ENABLE_WITHOUT_HOSTNAME_VERIFICATION)
+                  .serverSslCert(serverSslCert)
+                  .clientSslCert("wrongFile")
+                  .clientSslKey("dd")
+                  .build(),
+          "Failed to find clientSslCert file. clientSslCert=wrongFile");
+      if (clientSslCert != null) {
         assertThrows(
             R2dbcTransientResourceException.class,
-            () -> new MariadbConnectionFactory(conf3).create().block(),
+            () ->
+                TestConfiguration.defaultBuilder
+                    .clone()
+                    .sslMode(SslMode.ENABLE_WITHOUT_HOSTNAME_VERIFICATION)
+                    .serverSslCert(serverSslCert)
+                    .clientSslCert(clientSslCert)
+                    .clientSslKey("dd")
+                    .build(),
             "Failed to find clientSslKey file. clientSslKey=dd");
       }
     }
@@ -231,17 +227,10 @@ public class TlsTest extends BaseConnectionTest {
   @Test
   void fullWithoutServerCert() throws Exception {
     Assumptions.assumeTrue(haveSsl(sharedConn));
-    MariadbConnectionConfiguration conf =
-        TestConfiguration.defaultBuilder.clone().sslMode(SslMode.ENABLE).build();
-    new MariadbConnectionFactory(conf)
-        .create()
-        .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcNonTransientException
-                    && (throwable.getCause().getCause() instanceof SSLHandshakeException
-                        || throwable.getCause() instanceof SSLHandshakeException))
-        .verify();
+    assertThrows(
+        R2dbcTransientResourceException.class,
+        () -> TestConfiguration.defaultBuilder.clone().sslMode(SslMode.ENABLE).build(),
+        "Server certificate needed (option `serverSslCert`) for ssl mode ENABLE");
   }
 
   @Test

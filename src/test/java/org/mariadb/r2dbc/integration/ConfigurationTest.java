@@ -89,7 +89,7 @@ public class ConfigurationTest extends BaseTest {
     MariadbConnectionConfiguration conf =
         MariadbConnectionConfiguration.fromOptions(options).build();
     MariadbConnectionFactory factory = MariadbConnectionFactory.from(conf);
-    System.out.println(factory);
+
     Assertions.assertTrue(factory.toString().contains("database='myDb'"));
     Assertions.assertTrue(factory.toString().contains("host='someHost'"));
     Assertions.assertTrue(factory.toString().contains("allowMultiQueries=true"));

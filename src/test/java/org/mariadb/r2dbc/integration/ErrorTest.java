@@ -38,8 +38,7 @@ public class ErrorTest extends BaseConnectionTest {
   @Test
   void queryTimeout() throws Exception {
     Assumptions.assumeTrue(isMariaDBServer() && minVersion(10, 2, 0));
-    MariadbConnection connection = factory.create().block();
-    connection
+    sharedConn
         .createStatement(
             "SET STATEMENT max_statement_time=0.01 FOR "
                 + "SELECT * FROM information_schema.tables, information_schema.tables as t2")

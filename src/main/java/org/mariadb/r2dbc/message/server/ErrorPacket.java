@@ -46,10 +46,10 @@ public final class ErrorPacket implements ServerMessage {
     if (next == (byte) '#') {
       buf.skipBytes(1); // skip '#'
       sqlState = buf.readCharSequence(5, StandardCharsets.UTF_8).toString();
-      msg = buf.toString(StandardCharsets.UTF_8);
+      msg = buf.readCharSequence(buf.readableBytes(), StandardCharsets.UTF_8).toString();
     } else {
       // Pre-4.1 message, still can be output in newer versions (e.g with 'Too many connections')
-      msg = buf.toString(StandardCharsets.UTF_8);
+      msg = buf.readCharSequence(buf.readableBytes(), StandardCharsets.UTF_8).toString();
       sqlState = "HY000";
     }
     ErrorPacket err = new ErrorPacket(sequencer, errorCode, sqlState, msg);
