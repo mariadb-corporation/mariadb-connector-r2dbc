@@ -33,6 +33,7 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.slf4j.LoggerFactory;
 import reactor.test.StepVerifier;
 
@@ -75,6 +76,7 @@ public class LoggingTest extends BaseConnectionTest {
         .expectNext(1)
         .then(
             () -> {
+              MariadbConnectionMetadata meta = connection.getMetadata();
               connection.close().block();
               try {
                 String contents = new String(Files.readAllBytes(Paths.get(tempFile.getPath())));
@@ -85,9 +87,26 @@ public class LoggingTest extends BaseConnectionTest {
                         + "|00000000| 16 00 00 00 03 53 45 4c 45 43 54 20 40 40 74 78 |.....SELECT @@tx|\r\n"
                         + "|00000010| 5f 69 73 6f 6c 61 74 69 6f 6e                   |_isolation      |\r\n"
                         + "+--------+-------------------------------------------------+----------------+";
-                Assertions.assertTrue(
-                    contents.contains(selectIsolation)
-                        || contents.contains(selectIsolation.replace("\r\n", "\n")));
+                String mysqlIsolation = "         +-------------------------------------------------+\r\n"
+                    + "         |  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f |\r\n"
+                    + "+--------+-------------------------------------------------+----------------+\r\n"
+                    + "|00000000| 1f 00 00 00 03 53 45 4c 45 43 54 20 40 40 74 72 |.....SELECT @@tr|\r\n"
+                    + "|00000010| 61 6e 73 61 63 74 69 6f 6e 5f 69 73 6f 6c 61 74 |ansaction_isolat|\r\n"
+                    + "|00000020| 69 6f 6e                                        |ion             |\r\n"
+                    + "+--------+-------------------------------------------------+----------------+";
+
+                if (meta.isMariaDBServer()
+                    || (meta.getMajorVersion() < 8 && !meta.minVersion(5, 7, 20))
+                    || (meta.getMajorVersion() >= 8 && !meta.minVersion(8, 0, 3))) {
+                  Assertions.assertTrue(
+                      contents.contains(selectIsolation)
+                          || contents.contains(selectIsolation.replace("\r\n", "\n")));
+                } else {
+                  Assertions.assertTrue(
+                      contents.contains(mysqlIsolation)
+                          || contents.contains(mysqlIsolation.replace("\r\n", "\n")));
+                }
+
                 String selectOne =
                     "         +-------------------------------------------------+\r\n"
                         + "         |  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f |\r\n"
