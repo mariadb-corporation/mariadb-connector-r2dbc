@@ -45,27 +45,23 @@ public interface MariadbConnectionMetadata extends ConnectionMetadata {
   boolean minVersion(int major, int minor, int patch);
 
   /**
-   * Indicate server major version.
-   * in 10.5.4, return 10
+   * Indicate server major version. in 10.5.4, return 10
    *
    * @return server major version
    */
   int getMajorVersion();
 
   /**
-   * Indicate server minor version.
-   * in 10.5.4, return 5
+   * Indicate server minor version. in 10.5.4, return 5
    *
    * @return server minor version
    */
   int getMinorVersion();
 
   /**
-   * Indicate server patch version.
-   * in 10.5.4, return 4
+   * Indicate server patch version. in 10.5.4, return 4
    *
    * @return server patch version
    */
   int getPatchVersion();
-
 }

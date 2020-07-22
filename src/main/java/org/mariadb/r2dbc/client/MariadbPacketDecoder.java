@@ -106,7 +106,7 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
       if (msg.ending()) {
         if (cmdElement != null) {
           // complete executed only after setting next element.
-          CmdElement element= cmdElement;
+          CmdElement element = cmdElement;
           loadNextResponse();
           element.getSink().complete();
         }

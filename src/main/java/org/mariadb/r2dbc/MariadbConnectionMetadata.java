@@ -39,6 +39,7 @@ public final class MariadbConnectionMetadata
   public boolean minVersion(int major, int minor, int patch) {
     return this.version.versionGreaterOrEqual(major, minor, patch);
   }
+
   public int getMajorVersion() {
     return version.getMajorVersion();
   }
