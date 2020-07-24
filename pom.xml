@@ -53,15 +53,15 @@
   </licenses>
 
   <organization>
-    <name>mariadb.com</name>
-    <url>https://mariadb.com</url>
+    <name>MariaDB Corporation Ab</name>
+    <url>https://www.mariadb.com</url>
   </organization>
 
   <developers>
     <developer>
-      <id>mariadbJdbcDevelopers</id>
-      <name>mariadb jdbc developers</name>
-      <url>http://mariadb.org/</url>
+      <id>mariadbDevelopers</id>
+      <name>mariadb developers</name>
+      <url>http://www.mariadb.com</url>
     </developer>
   </developers>
 
