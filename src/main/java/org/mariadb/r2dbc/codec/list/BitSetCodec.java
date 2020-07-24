@@ -19,7 +19,7 @@ package org.mariadb.r2dbc.codec.list;
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
@@ -50,7 +50,7 @@ public class BitSetCodec implements Codec<BitSet> {
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return column.getDataType() == DataType.BIT && type.isAssignableFrom(BitSet.class);
+    return column.getType() == DataType.BIT && type.isAssignableFrom(BitSet.class);
   }
 
   @Override
@@ -65,12 +65,12 @@ public class BitSetCodec implements Codec<BitSet> {
     return parseBit(buf, length);
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof BitSet;
+  public boolean canEncode(Class<?> value) {
+    return BitSet.class.isAssignableFrom(value);
   }
 
   @Override
-  public void encodeText(ByteBuf buf, ConnectionContext context, BitSet value) {
+  public void encodeText(ByteBuf buf, Context context, BitSet value) {
     byte[] bytes = value.toByteArray();
     revertOrder(bytes);
 
@@ -83,7 +83,7 @@ public class BitSetCodec implements Codec<BitSet> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, ConnectionContext context, BitSet value) {
+  public void encodeBinary(ByteBuf buf, Context context, BitSet value) {
     byte[] bytes = value.toByteArray();
     revertOrder(bytes);
     BufferUtils.writeLengthEncode(bytes.length, buf);
@@ -92,10 +92,5 @@ public class BitSetCodec implements Codec<BitSet> {
 
   public DataType getBinaryEncodeType() {
     return DataType.BLOB;
-  }
-
-  @Override
-  public String toString() {
-    return "BitSetCodec{}";
   }
 }

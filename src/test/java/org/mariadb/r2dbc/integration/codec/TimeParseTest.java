@@ -27,29 +27,30 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-public class TimeParseTest extends BaseTest {
+public class TimeParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("CREATE TABLE TimeTable (t1 TIME(6))").execute().blockLast();
     sharedConn
-        .createStatement(
-            "INSERT INTO TimeTable VALUES ('90:00:00.012340'), ('800:00:00.123'), (800), (22), (null)")
+        .createStatement("CREATE TABLE TimeParseTest (t1 TIME(6), t2 TIME(6))")
         .execute()
         .blockLast();
-    // ensure having same kind of result for truncation
     sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
+        .createStatement(
+            "INSERT INTO TimeParseTest VALUES ('90:00:00.012340', '-10:01:02.012340'), ('800:00:00.123', '-00:00:10"
+                + ".123'), (800, -800), "
+                + "(22, -22)"
+                + ", (null, null)")
         .execute()
         .blockLast();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE TimeTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE TimeParseTest").execute().blockLast();
   }
 
   @Test
@@ -64,7 +65,7 @@ public class TimeParseTest extends BaseTest {
 
   private void defaultValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
@@ -90,7 +91,7 @@ public class TimeParseTest extends BaseTest {
 
   private void durationValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Duration.class))))
@@ -116,7 +117,7 @@ public class TimeParseTest extends BaseTest {
 
   private void localTimeValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalTime.class))))
@@ -126,6 +127,19 @@ public class TimeParseTest extends BaseTest {
             Optional.of(LocalTime.parse("08:00:00.123")),
             Optional.of(LocalTime.parse("00:08:00")),
             Optional.of(LocalTime.parse("00:00:22")),
+            Optional.empty())
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t2 FROM TimeParseTest WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalTime.class))))
+        .as(StepVerifier::create)
+        .expectNext(
+            Optional.of(LocalTime.parse("13:58:57.987660")),
+            Optional.of(LocalTime.parse("23:59:49.877")),
+            Optional.of(LocalTime.parse("23:52")),
+            Optional.of(LocalTime.parse("23:59:38")),
             Optional.empty())
         .verifyComplete();
   }
@@ -142,7 +156,7 @@ public class TimeParseTest extends BaseTest {
 
   private void booleanValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Boolean.class))))
@@ -168,7 +182,7 @@ public class TimeParseTest extends BaseTest {
 
   private void byteArrayValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, byte[].class)))
@@ -194,7 +208,7 @@ public class TimeParseTest extends BaseTest {
 
   private void ByteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
@@ -220,7 +234,7 @@ public class TimeParseTest extends BaseTest {
 
   private void byteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
@@ -246,7 +260,7 @@ public class TimeParseTest extends BaseTest {
 
   private void shortValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
@@ -272,7 +286,7 @@ public class TimeParseTest extends BaseTest {
 
   private void intValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Integer.class))))
@@ -298,7 +312,7 @@ public class TimeParseTest extends BaseTest {
 
   private void longValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Long.class))))
@@ -324,7 +338,7 @@ public class TimeParseTest extends BaseTest {
 
   private void floatValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Float.class))))
@@ -350,7 +364,7 @@ public class TimeParseTest extends BaseTest {
 
   private void doubleValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Double.class))))
@@ -372,13 +386,18 @@ public class TimeParseTest extends BaseTest {
 
   @Test
   void stringValuePrepare() {
-    stringValue(sharedConnPrepare, "PT90H0.01234S", "PT800H0.123S", "PT8M", "PT22S");
+    stringValue(
+        sharedConnPrepare,
+        "90:00:00.012340",
+        "800:00:00.123000",
+        "00:08:00.000000",
+        "00:00:22.000000");
   }
 
   private void stringValue(
       MariadbConnection connection, String t1, String t2, String t3, String t4) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
@@ -400,7 +419,7 @@ public class TimeParseTest extends BaseTest {
 
   private void decimalValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BigDecimal.class))))
@@ -426,7 +445,7 @@ public class TimeParseTest extends BaseTest {
 
   private void bigintValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BigInteger.class))))
@@ -452,19 +471,19 @@ public class TimeParseTest extends BaseTest {
 
   private void localDateTimeValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(
             r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalDateTime.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.time.LocalDateTime and column type TIME"))
-        .verify();
+        .expectNext(
+            Optional.of(LocalDateTime.parse("1970-01-01T18:00:00.012340")),
+            Optional.of(LocalDateTime.parse("1970-01-01T08:00:00.123")),
+            Optional.of(LocalDateTime.parse("1970-01-01T00:08:00")),
+            Optional.of(LocalDateTime.parse("1970-01-01T00:00:22")),
+            Optional.empty())
+        .verifyComplete();
   }
 
   @Test
@@ -479,7 +498,7 @@ public class TimeParseTest extends BaseTest {
 
   private void localDateValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM TimeTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalDate.class))))
@@ -491,5 +510,26 @@ public class TimeParseTest extends BaseTest {
                         .getMessage()
                         .equals("No decoder for type java.time.LocalDate and column type TIME"))
         .verify();
+  }
+
+  @Test
+  void meta() {
+    meta(sharedConn);
+  }
+
+  @Test
+  void metaPrepare() {
+    meta(sharedConnPrepare);
+  }
+
+  private void meta(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Duration.class))
+        .verifyComplete();
   }
 }

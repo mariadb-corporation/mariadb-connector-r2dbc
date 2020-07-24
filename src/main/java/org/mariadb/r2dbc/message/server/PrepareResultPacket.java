@@ -17,7 +17,7 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 
 public final class PrepareResultPacket implements ServerMessage {
@@ -46,8 +46,7 @@ public final class PrepareResultPacket implements ServerMessage {
     return numParams == 0 && numColumns == 0 && eofDeprecated;
   }
 
-  public static PrepareResultPacket decode(
-      Sequencer sequencer, ByteBuf buffer, ConnectionContext context) {
+  public static PrepareResultPacket decode(Sequencer sequencer, ByteBuf buffer, Context context) {
     /* Prepared Statement OK */
     buffer.readByte(); /* skip field count */
     final int statementId = buffer.readIntLE();
@@ -75,24 +74,5 @@ public final class PrepareResultPacket implements ServerMessage {
 
   public boolean isEofDeprecated() {
     return eofDeprecated;
-  }
-
-  @Override
-  public String toString() {
-    return "PrepareResultPacket{"
-        + "statementId="
-        + statementId
-        + ", numColumns="
-        + numColumns
-        + ", numParams="
-        + numParams
-        + ", sequencer="
-        + sequencer
-        + '}';
-  }
-
-  @Override
-  public Sequencer getSequencer() {
-    return sequencer;
   }
 }

@@ -51,17 +51,12 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
     this.parameters = new Parameter<?>[prepareResult.getParamCount()];
   }
 
-  static boolean supports(String sql) {
-    Assert.requireNonNull(sql, "sql must not be null");
-    return !sql.trim().isEmpty();
-  }
-
   @Override
   public MariadbClientParameterizedQueryStatement add() {
     // check valid parameters
     for (int i = 0; i < prepareResult.getParamCount(); i++) {
       if (parameters[i] == null) {
-        throw new IllegalArgumentException(String.format("Parameter at position %i is not set", i));
+        throw new IllegalArgumentException(String.format("Parameter at position %s is not set", i));
       }
     }
     if (batchingParameters == null) batchingParameters = new ArrayList<>();
@@ -89,7 +84,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
     }
 
     for (Codec<?> codec : Codecs.LIST) {
-      if (codec.canEncode(value)) {
+      if (codec.canEncode(value.getClass())) {
         parameters[index] = (Parameter<?>) new Parameter(codec, value);
         return this;
       }
@@ -139,7 +134,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
     }
 
     if (batchingParameters == null) {
-      return execute(this.sql, this.prepareResult, parameters, this.generatedColumns);
+      return execute(this.sql, this.prepareResult, this.generatedColumns);
     } else {
       add();
 
@@ -148,9 +143,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
               new QueryWithParametersPacket(
                   prepareResult,
                   this.batchingParameters.get(0),
-                  generatedColumns != null
-                          && client.getVersion().isMariaDBServer()
-                          && client.getVersion().versionGreaterOrEqual(10, 5, 1)
+                  generatedColumns != null && client.getVersion().supportReturning()
                       ? generatedColumns
                       : null));
       int index = 1;
@@ -161,9 +154,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
                     new QueryWithParametersPacket(
                         prepareResult,
                         this.batchingParameters.get(index++),
-                        generatedColumns != null
-                                && client.getVersion().isMariaDBServer()
-                                && client.getVersion().versionGreaterOrEqual(10, 5, 1)
+                        generatedColumns != null && client.getVersion().supportReturning()
                             ? generatedColumns
                             : null)));
       }
@@ -179,9 +170,8 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
                       true,
                       dataRow,
                       ExceptionFactory.INSTANCE,
-                      null,
-                      client.getVersion().isMariaDBServer()
-                          && client.getVersion().versionGreaterOrEqual(10, 5, 1)));
+                      generatedColumns,
+                      client.getVersion().supportReturning()));
     }
   }
 
@@ -194,9 +184,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
   public MariadbClientParameterizedQueryStatement returnGeneratedValues(String... columns) {
     Assert.requireNonNull(columns, "columns must not be null");
 
-    if (!(client.getVersion().isMariaDBServer()
-            && client.getVersion().versionGreaterOrEqual(10, 5, 1))
-        && columns.length > 1) {
+    if (!client.getVersion().supportReturning() && columns.length > 1) {
       throw new IllegalArgumentException(
           "returnGeneratedValues can have only one column before MariaDB 10.5.1");
     }
@@ -206,33 +194,33 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
   }
 
   private Flux<org.mariadb.r2dbc.api.MariadbResult> execute(
-      String sql,
-      ClientPrepareResult prepareResult,
-      Parameter<?>[] parameters,
-      String[] generatedColumns) {
+      String sql, ClientPrepareResult prepareResult, String[] generatedColumns) {
     ExceptionFactory factory = ExceptionFactory.withSql(sql);
 
-    Flux<ServerMessage> response =
-        this.client.sendCommand(
-            new QueryWithParametersPacket(
-                prepareResult,
-                parameters,
-                generatedColumns != null
-                        && client.getVersion().isMariaDBServer()
-                        && client.getVersion().versionGreaterOrEqual(10, 5, 1)
-                    ? generatedColumns
-                    : null));
-    return response
-        .windowUntil(it -> it.resultSetEnd())
-        .map(
-            dataRow ->
-                new MariadbResult(
-                    true,
-                    dataRow,
-                    factory,
-                    generatedColumns,
-                    client.getVersion().isMariaDBServer()
-                        && client.getVersion().versionGreaterOrEqual(10, 5, 1)));
+    Flux<org.mariadb.r2dbc.api.MariadbResult> response =
+        this.client
+            .sendCommand(
+                new QueryWithParametersPacket(
+                    prepareResult,
+                    parameters,
+                    generatedColumns != null && client.getVersion().supportReturning()
+                        ? generatedColumns
+                        : null))
+            .windowUntil(it -> it.resultSetEnd())
+            .map(
+                dataRow ->
+                    new MariadbResult(
+                        true,
+                        dataRow,
+                        factory,
+                        generatedColumns,
+                        client.getVersion().supportReturning()));
+    return response.concatWith(
+        Flux.create(
+            sink -> {
+              sink.complete();
+              parameters = new Parameter<?>[prepareResult.getParamCount()];
+            }));
   }
 
   @Override

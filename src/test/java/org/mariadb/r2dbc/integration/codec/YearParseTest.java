@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.integration.codec;
 
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -24,12 +25,12 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import reactor.test.StepVerifier;
 
-public class YearParseTest extends BaseTest {
+public class YearParseTest extends BaseConnectionTest {
   private static MariadbConnectionMetadata meta = sharedConn.getMetadata();
 
   @BeforeAll
@@ -45,11 +46,6 @@ public class YearParseTest extends BaseTest {
 
     sharedConn.createStatement(sqlCreate).execute().blockLast();
     sharedConn.createStatement(sqlInsert).execute().blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
-        .execute()
-        .blockLast();
   }
 
   @AfterAll
@@ -165,10 +161,8 @@ public class YearParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Byte and column type YEAR"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
         .verify();
   }
 
@@ -191,10 +185,8 @@ public class YearParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type byte and column type YEAR"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
         .verify();
   }
 
@@ -318,7 +310,7 @@ public class YearParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Float.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of(2060F), Optional.of(2071F), Optional.of(0F), Optional.empty())
+        .expectNext(Optional.of(2060f), Optional.of(2071f), Optional.of(0f), Optional.empty())
         .verifyComplete();
     connection
         .createStatement("SELECT t2 FROM YearTable WHERE 1 = ?")
@@ -353,6 +345,7 @@ public class YearParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectNext(Optional.of(2060D), Optional.of(2071D), Optional.of(0D), Optional.empty())
         .verifyComplete();
+
     connection
         .createStatement("SELECT t2 FROM YearTable WHERE 1 = ?")
         .bind(0, 1)
@@ -457,7 +450,7 @@ public class YearParseTest extends BaseTest {
         .expectNext(
             Optional.of(new BigDecimal("2060")),
             Optional.of(new BigDecimal("2071")),
-            Optional.of(new BigDecimal("0")),
+            Optional.of(new BigDecimal("0000")),
             Optional.empty())
         .verifyComplete();
     connection
@@ -469,7 +462,7 @@ public class YearParseTest extends BaseTest {
         .expectNext(
             Optional.of(new BigDecimal(meta.isMariaDBServer() ? "60" : "2060")),
             Optional.of(new BigDecimal(meta.isMariaDBServer() ? "71" : "1971")),
-            Optional.of(BigDecimal.ZERO),
+            Optional.of(new BigDecimal(meta.isMariaDBServer() ? "00" : "0000")),
             Optional.empty())
         .verifyComplete();
   }
@@ -508,6 +501,27 @@ public class YearParseTest extends BaseTest {
             Optional.of(new BigInteger(meta.isMariaDBServer() ? "71" : "1971")),
             Optional.of(BigInteger.ZERO),
             Optional.empty())
+        .verifyComplete();
+  }
+
+  @Test
+  void meta() {
+    meta(sharedConn);
+  }
+
+  @Test
+  void metaPrepare() {
+    meta(sharedConnPrepare);
+  }
+
+  private void meta(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM YearTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Short.class))
         .verifyComplete();
   }
 }

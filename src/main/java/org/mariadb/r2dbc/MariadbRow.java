@@ -80,8 +80,8 @@ public class MariadbRow implements Row {
     if (index >= this.columnDefinitionPackets.length) {
       throw new IllegalArgumentException(
           String.format(
-              "Column index %d is larger than the number of columns %d",
-              index, this.columnDefinitionPackets.length));
+              "Column index %d not in range [0-%s]",
+              index, this.columnDefinitionPackets.length - 1));
     }
     return this.columnDefinitionPackets[index];
   }

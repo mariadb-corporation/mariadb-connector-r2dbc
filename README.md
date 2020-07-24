@@ -18,7 +18,7 @@ MariaDB and MySQL client, 100% Java, compatible with Java8+, apache 2.0 licensed
 - Driver permits ed25519, PAM authentication that comes with MariaDB.
 - use MariaDB 10.5 returning fonction to permit Statement.returnGeneratedValues 
 
-Driver follow [R2DBC 0.8.1 specifications](https://r2dbc.io/spec/0.8.1.RELEASE/spec/html/)
+Driver follow [R2DBC 0.8.2 specifications](https://r2dbc.io/spec/0.8.2.RELEASE/spec/html/)
 
 
 ## Quick Start
@@ -29,7 +29,7 @@ The MariaDB Connector is available through maven using :
     <dependency>
         <groupId>org.mariadb</groupId>
         <artifactId>r2dbc-mariadb</artifactId>
-        <version>0.8.2-alpha2</version>
+        <version>0.8.3-beta1</version>
     </dependency>
 ```
 
@@ -95,9 +95,10 @@ Basic example:
 | **`rsaPublicKey`** | <i>only for MySQL server</i><br/> Server RSA public key, for SHA256 authentication |*String* | |
 | **`cachingRsaPublicKey`** | <i>only for MySQL server</i><br/> Server caching RSA public key, for cachingSHA256 authentication |*String* | |
 | **`allowPublicKeyRetrieval`** | <i>only for MySQL server</i><br/> Permit retrieved Server RSA public key from server. This can create a security issue |*boolean* | true | 
-| **`allowPipelining`** | Permit to send queries to server without waiting for previous query to finish |*boolean* | | 
-| **`useServerPrepStmts`** | Permit to indicate to use text or binary protocol for query with parameter |*boolean* |false | 
-| **`prepareCacheSize`** | if useServerPrepStmts = true, cache the prepared informations in a LRU cache to avoid re-preparation of command. Next use of that command, only prepared identifier and parameters (if any) will be sent to server. This mainly permit for server to avoid reparsing query. |*int* |256 | 
+| **`allowPipelining`** | Permit to send queries to server without waiting for previous query to finish |*boolean* | true | 
+| **`useServerPrepStmts`** | Permit to indicate to use text or binary protocol for query with parameter |*boolean* | false | 
+| **`prepareCacheSize`** | if useServerPrepStmts = true, cache the prepared informations in a LRU cache to avoid re-preparation of command. Next use of that command, only prepared identifier and parameters (if any) will be sent to server. This mainly permit for server to avoid reparsing query. |*int* |256 |
+| **`pamOtherPwd`** | Permit to provide additional password for PAM authentication with multiple authentication step. If multiple passwords, value must be URL encoded.|*string* | |  
       
 ## Roadmap
 
@@ -112,11 +113,11 @@ Basic example:
 To file an issue or follow the development, see [JIRA](https://jira.mariadb.org/projects/R2DBC/issues/).
 
 
-[travis-image]:https://travis-ci.org/mariadb-corporation/mariadb-connector-r2dbc.svg?branch=master
-[travis-url]:https://travis-ci.org/mariadb-corporation/mariadb-connector-r2dbc
-[maven-image]:https://maven-badges.herokuapp.com/maven-central/org.mariadb/r2dbc-mariadb/badge.svg
+[travis-image]:https://travis-ci.com/mariadb-corporation/mariadb-connector-r2dbc.svg?branch=master
+[travis-url]:https://travis-ci.com/mariadb-corporation/mariadb-connector-r2dbc
+[maven-image]:https://maven-badges.herokuapp.com/maven-central/org.mariadb/r2dbc-maria
 [maven-url]:https://maven-badges.herokuapp.com/maven-central/org.mariadb/r2dbc-mariadb
-[appveyor-image]:https://ci.appveyor.com/api/projects/status/hbfar9vg8w0rw15f/branch/master
-[appveyor-url]:https://ci.appveyor.com/project/rusher/mariadb-connector-r2dbc-57na3
+[appveyor-image]:https://ci.appveyor.com/api/projects/status/hbfar9vg8w0rw15f/branch/master?svg=true
+[appveyor-url]:https://ci.appveyor.com/project/rusher/mariadb-connector-r2dbc-57na3/branch/master
 [license-image]:https://img.shields.io/badge/License-Apache%202.0-blue.svg
 [license-url]:https://opensource.org/licenses/Apache-2.0

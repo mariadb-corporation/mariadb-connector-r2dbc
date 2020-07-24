@@ -46,6 +46,7 @@ public class SslConfig {
   private String clientSslKey;
   private CharSequence clientSslPassword;
   private List<String> tlsProtocol;
+  private SslContextBuilder sslContextBuilder;
 
   public SslConfig(
       SslMode sslMode,
@@ -53,7 +54,8 @@ public class SslConfig {
       String clientSslCert,
       String clientSslKey,
       CharSequence clientSslPassword,
-      List<String> tlsProtocol) {
+      List<String> tlsProtocol)
+      throws R2dbcTransientResourceException {
     this.sslMode = sslMode;
     this.serverSslCert = serverSslCert;
     this.clientSslCert = clientSslCert;
@@ -61,6 +63,9 @@ public class SslConfig {
     this.clientSslCert = clientSslCert;
     this.clientSslKey = clientSslKey;
     this.clientSslPassword = clientSslPassword;
+    if (sslMode != SslMode.DISABLED) {
+      sslContextBuilder = getSslContextBuilder();
+    }
   }
 
   public SslConfig(SslMode sslMode) {
@@ -71,19 +76,7 @@ public class SslConfig {
     return sslMode;
   }
 
-  public String getServerSslCert() {
-    return serverSslCert;
-  }
-
-  public String getClientSslCert() {
-    return clientSslCert;
-  }
-
-  public List<String> getTlsProtocol() {
-    return tlsProtocol;
-  }
-
-  public SslContext getSslContext() throws R2dbcTransientResourceException, SSLException {
+  private SslContextBuilder getSslContextBuilder() throws R2dbcTransientResourceException {
     final SslContextBuilder sslCtxBuilder = SslContextBuilder.forClient();
 
     if (sslMode == SslMode.ENABLE_TRUST) {
@@ -100,6 +93,9 @@ public class SslConfig {
               "08000",
               fileNotFoundEx);
         }
+      } else {
+        throw new R2dbcTransientResourceException(
+            "Server certificate needed (option `serverSslCert`) for ssl mode " + sslMode, "08000");
       }
 
       if (clientSslCert != null && clientSslKey != null) {
@@ -131,7 +127,11 @@ public class SslConfig {
     if (tlsProtocol != null) {
       sslCtxBuilder.protocols(tlsProtocol.toArray(new String[tlsProtocol.size()]));
     }
-    return sslCtxBuilder.build();
+    return sslCtxBuilder;
+  }
+
+  public SslContext getSslContext() throws R2dbcTransientResourceException, SSLException {
+    return sslContextBuilder.build();
   }
 
   private InputStream loadCert(String path) throws FileNotFoundException {

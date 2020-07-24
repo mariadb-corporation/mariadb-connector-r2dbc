@@ -18,6 +18,8 @@ package org.mariadb.r2dbc.integration.codec;
 
 import io.r2dbc.spi.Blob;
 import io.r2dbc.spi.R2dbcTransientResourceException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -30,22 +32,17 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-public class BlobParseTest extends BaseTest {
+public class BlobParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     sharedConn.createStatement("CREATE TABLE BlobTable (t1 BLOB, t2 int)").execute().blockLast();
     sharedConn
         .createStatement(
             "INSERT INTO BlobTable VALUES ('diego🤘💪',1),('georg',2),('lawrin',3), (null,4)")
-        .execute()
-        .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
         .execute()
         .blockLast();
   }
@@ -170,18 +167,17 @@ public class BlobParseTest extends BaseTest {
 
   private void ByteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Byte and column type BLOB"))
-        .verify();
+        .expectNext(
+            Optional.of((byte) 100),
+            Optional.of((byte) 103),
+            Optional.of((byte) 108),
+            Optional.empty())
+        .verifyComplete();
   }
 
   @Test
@@ -196,17 +192,16 @@ public class BlobParseTest extends BaseTest {
 
   private void byteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 100), Optional.of((byte) 103), Optional.of((byte) 108))
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type byte and column type BLOB"))
+                    && throwable.getMessage().equals("Cannot return null for primitive byte"))
         .verify();
   }
 
@@ -367,6 +362,93 @@ public class BlobParseTest extends BaseTest {
   }
 
   @Test
+  void blobValue() {
+    blobValue(sharedConn);
+  }
+
+  @Test
+  void blobValuePrepare() {
+    blobValue(sharedConnPrepare);
+  }
+
+  private void blobValue(MariadbConnection connection) {
+
+    String[] expectedVals = new String[] {"diego🤘💪", "georg", "lawrin"};
+    AtomicInteger index = new AtomicInteger();
+
+    Consumer<? super ByteBuffer> consumer =
+        actual -> {
+          byte[] expected = expectedVals[index.getAndIncrement()].getBytes(StandardCharsets.UTF_8);
+          if (actual.hasArray()) {
+            Assertions.assertArrayEquals(actual.array(), expected);
+          } else {
+            byte[] res = new byte[actual.remaining()];
+            actual.get(res);
+            Assertions.assertArrayEquals(res, expected);
+          }
+        };
+
+    connection
+        .createStatement("SELECT t1,t2 FROM BlobTable WHERE 1 = ? limit 3")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, Blob.class)))
+        .cast(Blob.class)
+        .flatMap(Blob::stream)
+        .as(StepVerifier::create)
+        .consumeNextWith(consumer)
+        .consumeNextWith(consumer)
+        .consumeNextWith(consumer)
+        .verifyComplete();
+  }
+
+  @Test
+  void streamValue() {
+    streamValue(sharedConn);
+  }
+
+  @Test
+  void streamValuePrepare() {
+    streamValue(sharedConnPrepare);
+  }
+
+  String[] expectedVals = new String[] {"diego🤘💪", "georg", "lawrin"};
+  AtomicInteger index = new AtomicInteger();
+
+  private boolean inputStreamToByte(InputStream actual) {
+    byte[] expected = expectedVals[index.getAndIncrement()].getBytes(StandardCharsets.UTF_8);
+    byte[] val = new byte[expected.length];
+    byte[] array = new byte[4096];
+    int len;
+    int pos = 0;
+    try {
+      while ((len = actual.read(array)) > 0) {
+        System.arraycopy(array, 0, val, pos, len);
+        pos += len;
+      }
+    } catch (IOException ioe) {
+      return false;
+    }
+    if (pos != expected.length) return false;
+    Assertions.assertArrayEquals(val, expected);
+    return true;
+  }
+
+  private void streamValue(MariadbConnection connection) {
+    index.set(0);
+    connection
+        .createStatement("SELECT t1,t2 FROM BlobTable WHERE 1 = ? limit 3")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, InputStream.class)))
+        .as(StepVerifier::create)
+        .expectNextMatches(val -> inputStreamToByte(val))
+        .expectNextMatches(val -> inputStreamToByte(val))
+        .expectNextMatches(val -> inputStreamToByte(val))
+        .verifyComplete();
+  }
+
+  @Test
   void decimalValue() {
     decimalValue(sharedConn);
   }
@@ -416,5 +498,26 @@ public class BlobParseTest extends BaseTest {
                         .getMessage()
                         .equals("No decoder for type java.math.BigInteger and column type BLOB"))
         .verify();
+  }
+
+  @Test
+  void meta() {
+    meta(sharedConn);
+  }
+
+  @Test
+  void metaPrepare() {
+    meta(sharedConnPrepare);
+  }
+
+  private void meta(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Blob.class))
+        .verifyComplete();
   }
 }

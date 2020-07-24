@@ -25,13 +25,18 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.MariadbConnectionFactory;
+import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.api.MariadbStatement;
@@ -39,7 +44,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class StringParameterTest extends BaseTest {
+public class StringParameterTest extends BaseConnectionTest {
   private static MariadbConnectionMetadata meta = sharedConn.getMetadata();
 
   @BeforeAll
@@ -47,11 +52,6 @@ public class StringParameterTest extends BaseTest {
     sharedConn
         .createStatement(
             "CREATE TABLE StringParam (t1 VARCHAR(256), t2 VARCHAR(256), t3 VARCHAR(256)) DEFAULT CHARSET=utf8mb4")
-        .execute()
-        .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
         .execute()
         .blockLast();
   }
@@ -115,14 +115,14 @@ public class StringParameterTest extends BaseTest {
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO StringParam VALUES (?,?,?)")
-            .bind(0, BitSet.valueOf(revertOrder("çà¤".getBytes(StandardCharsets.UTF_8))))
+            .bind(0, BitSet.valueOf(revertOrder("çà¤\\".getBytes(StandardCharsets.UTF_8))))
             .bind(1, BitSet.valueOf(revertOrder("你好".getBytes(StandardCharsets.UTF_8))))
-            .bind(2, BitSet.valueOf(revertOrder("🌟hello".getBytes(StandardCharsets.UTF_8))));
+            .bind(2, BitSet.valueOf(revertOrder("🌟hello\\".getBytes(StandardCharsets.UTF_8))));
     Assertions.assertTrue(
-        stmt.toString().contains("parameters=[Parameter{codec=BitSetCodec{}, value={")
-            || stmt.toString().contains("parameters={0=Parameter{codec=BitSetCodec{}, value={"));
+        stmt.toString().contains("parameters=[Parameter{codec=BitSetCodec, value={")
+            || stmt.toString().contains("parameters={0=Parameter{codec=BitSetCodec, value={"));
     stmt.execute().blockLast();
-    validate(Optional.of("çà¤"), Optional.of("你好"), Optional.of("🌟hello"));
+    validate(Optional.of("çà¤\\"), Optional.of("你好"), Optional.of("🌟hello\\"));
   }
 
   @Test
@@ -136,17 +136,18 @@ public class StringParameterTest extends BaseTest {
   }
 
   private void byteArrayValue(MariadbConnection connection) {
+
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO StringParam VALUES (?,?,?)")
-            .bind(0, "çà¤".getBytes(StandardCharsets.UTF_8))
+            .bind(0, "çà¤\\".getBytes(StandardCharsets.UTF_8))
             .bind(1, "你好".getBytes(StandardCharsets.UTF_8))
-            .bind(2, "🌟hello".getBytes(StandardCharsets.UTF_8));
+            .bind(2, "🌟hello\\".getBytes(StandardCharsets.UTF_8));
     Assertions.assertTrue(
-        stmt.toString().contains("parameters=[Parameter{codec=ByteArrayCodec{}, value=")
-            || stmt.toString().contains("parameters={0=Parameter{codec=ByteArrayCodec{}, value="));
+        stmt.toString().contains("parameters=[Parameter{codec=ByteArrayCodec, value=")
+            || stmt.toString().contains("parameters={0=Parameter{codec=ByteArrayCodec, value="));
     stmt.execute().blockLast();
-    validate(Optional.of("çà¤"), Optional.of("你好"), Optional.of("🌟hello"));
+    validate(Optional.of("çà¤\\"), Optional.of("你好"), Optional.of("🌟hello\\"));
   }
 
   @Test
@@ -201,16 +202,38 @@ public class StringParameterTest extends BaseTest {
     clobValue(sharedConnPrepare);
   }
 
+  @Test
+  void clobValueNoBackslash() throws Exception {
+    Map<String, String> sessionMap = new HashMap<>();
+    sessionMap.put("SQL_MODE", "NO_BACKSLASH_ESCAPES");
+    MariadbConnectionConfiguration confNoBackSlash =
+        TestConfiguration.defaultBuilder.clone().sessionVariables(sessionMap).build();
+    MariadbConnection con = new MariadbConnectionFactory(confNoBackSlash).create().block();
+    clobValue(con);
+    con.close().block();
+  }
+
+  @Test
+  void clobValuePrepareNoBackslash() throws Exception {
+    Map<String, String> sessionMap = new HashMap<>();
+    sessionMap.put("SQL_MODE", "NO_BACKSLASH_ESCAPES");
+    MariadbConnectionConfiguration confNoBackSlash =
+        TestConfiguration.defaultBuilder.clone().sessionVariables(sessionMap).build();
+    MariadbConnection con = new MariadbConnectionFactory(confNoBackSlash).create().block();
+    clobValue(con);
+    con.close().block();
+  }
+
   private void clobValue(MariadbConnection connection) {
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO StringParam VALUES (?,?,?)")
             .bind(0, Clob.from(Mono.just("123")))
             .bind(1, Clob.from(Mono.just("你好")))
-            .bind(2, Clob.from(Mono.just("🌟hello")));
-    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=ClobCodec{},"));
+            .bind(2, Clob.from(Mono.just("🌟hello\\")));
+    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=ClobCodec,"));
     stmt.execute().blockLast();
-    validate(Optional.of("123"), Optional.of("你好"), Optional.of("🌟hello"));
+    validate(Optional.of("123"), Optional.of("你好"), Optional.of("🌟hello\\"));
   }
 
   @Test
@@ -467,7 +490,7 @@ public class StringParameterTest extends BaseTest {
             .bind(0, Duration.parse("P3DT18H0.012340S"))
             .bind(1, Duration.parse("PT8M"))
             .bind(2, Duration.parse("PT22S"));
-    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=DurationCodec{},"));
+    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=DurationCodec,"));
     stmt.execute().blockLast();
   }
 

@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Supplier;
 import org.mariadb.r2dbc.MariadbConnectionFactoryProvider;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.message.flow.ClearPasswordPluginFlow;
 import org.mariadb.r2dbc.message.flow.NativePasswordPluginFlow;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
@@ -85,7 +85,7 @@ public final class HandshakeResponse implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(ConnectionContext context, ByteBufAllocator allocator) {
+  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
 
     byte exchangeCharset =
         decideLanguage(
@@ -211,26 +211,5 @@ public final class HandshakeResponse implements ClientMessage {
             BufferUtils.writeLengthEncode(val, buf);
           });
     }
-  }
-
-  @Override
-  public String toString() {
-    return "HandshakeResponse{"
-        + "initialHandshakePacket="
-        + initialHandshakePacket
-        + ", username='"
-        + username
-        + '\''
-        + ", database='"
-        + database
-        + '\''
-        + ", connectionAttributes="
-        + connectionAttributes
-        + ", host='"
-        + host
-        + '\''
-        + ", clientCapabilities="
-        + clientCapabilities
-        + '}';
   }
 }

@@ -237,32 +237,4 @@ public final class InitialHandshakePacket implements ServerMessage {
   public boolean ending() {
     return true;
   }
-
-  @Override
-  public String toString() {
-    return "InitialHandshakePacket{"
-        + "serverVersion='"
-        + serverVersion
-        + '\''
-        + ", threadId="
-        + threadId
-        + ", capabilities="
-        + capabilities
-        + ", defaultCollation="
-        + defaultCollation
-        + ", serverStatus="
-        + serverStatus
-        + ", mariaDBServer="
-        + mariaDBServer
-        + ", authenticationPluginType='"
-        + authenticationPluginType
-        + '\''
-        + ", majorVersion="
-        + majorVersion
-        + ", minorVersion="
-        + minorVersion
-        + ", patchVersion="
-        + patchVersion
-        + '}';
-  }
 }

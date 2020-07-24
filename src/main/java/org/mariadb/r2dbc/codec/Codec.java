@@ -17,23 +17,23 @@
 package org.mariadb.r2dbc.codec;
 
 import io.netty.buffer.ByteBuf;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
 public interface Codec<T> {
 
   boolean canDecode(ColumnDefinitionPacket column, Class<?> type);
 
-  boolean canEncode(Object value);
+  boolean canEncode(Class<?> value);
 
   T decodeText(ByteBuf buffer, int length, ColumnDefinitionPacket column, Class<? extends T> type);
 
-  void encodeText(ByteBuf buf, ConnectionContext context, T value);
+  void encodeText(ByteBuf buf, Context context, T value);
 
   T decodeBinary(
       ByteBuf buffer, int length, ColumnDefinitionPacket column, Class<? extends T> type);
 
-  void encodeBinary(ByteBuf buf, ConnectionContext context, T value);
+  void encodeBinary(ByteBuf buf, Context context, T value);
 
   DataType getBinaryEncodeType();
 }

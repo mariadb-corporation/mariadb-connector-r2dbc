@@ -17,8 +17,7 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
-import java.util.Objects;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 
 public class EofPacket implements ServerMessage {
@@ -43,7 +42,7 @@ public class EofPacket implements ServerMessage {
   }
 
   public static EofPacket decode(
-      Sequencer sequencer, ByteBuf buf, ConnectionContext context, boolean resultSetEnd) {
+      Sequencer sequencer, ByteBuf buf, Context context, boolean resultSetEnd) {
     buf.skipBytes(1);
     short warningCount = buf.readShortLE();
     short serverStatus = buf.readShortLE();
@@ -64,10 +63,6 @@ public class EofPacket implements ServerMessage {
     return warningCount;
   }
 
-  public Sequencer getSequencer() {
-    return sequencer;
-  }
-
   @Override
   public boolean ending() {
     return this.ending;
@@ -76,34 +71,5 @@ public class EofPacket implements ServerMessage {
   @Override
   public boolean resultSetEnd() {
     return resultSetEnd;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    EofPacket okPacket = (EofPacket) o;
-    return serverStatus == okPacket.serverStatus
-        && warningCount == okPacket.warningCount
-        && sequencer.equals(okPacket.sequencer);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(sequencer, serverStatus, warningCount);
-  }
-
-  @Override
-  public String toString() {
-    return "EofPacket{"
-        + "sequencer="
-        + sequencer
-        + ", serverStatus="
-        + serverStatus
-        + ", warningCount="
-        + warningCount
-        + ", ending="
-        + ending
-        + '}';
   }
 }

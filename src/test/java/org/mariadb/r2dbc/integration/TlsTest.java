@@ -17,9 +17,14 @@
 package org.mariadb.r2dbc.integration;
 
 import io.r2dbc.spi.R2dbcNonTransientException;
+import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
-import javax.net.ssl.SSLHandshakeException;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -29,7 +34,7 @@ import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class TlsTest extends BaseTest {
+public class TlsTest extends BaseConnectionTest {
 
   public static String serverSslCert;
   public static String clientSslCert;
@@ -117,6 +122,46 @@ public class TlsTest extends BaseTest {
   }
 
   @Test
+  void wrongCertificateFiles() throws Exception {
+    Assumptions.assumeTrue(haveSsl(sharedConn));
+    assertThrows(
+        R2dbcTransientResourceException.class,
+        () ->
+            TestConfiguration.defaultBuilder
+                .clone()
+                .sslMode(SslMode.ENABLE_WITHOUT_HOSTNAME_VERIFICATION)
+                .serverSslCert("wrongFile")
+                .build(),
+        "Failed to find serverSslCert file. serverSslCert=wrongFile");
+    if (serverSslCert != null) {
+      assertThrows(
+          R2dbcTransientResourceException.class,
+          () ->
+              TestConfiguration.defaultBuilder
+                  .clone()
+                  .sslMode(SslMode.ENABLE_WITHOUT_HOSTNAME_VERIFICATION)
+                  .serverSslCert(serverSslCert)
+                  .clientSslCert("wrongFile")
+                  .clientSslKey("dd")
+                  .build(),
+          "Failed to find clientSslCert file. clientSslCert=wrongFile");
+      if (clientSslCert != null) {
+        assertThrows(
+            R2dbcTransientResourceException.class,
+            () ->
+                TestConfiguration.defaultBuilder
+                    .clone()
+                    .sslMode(SslMode.ENABLE_WITHOUT_HOSTNAME_VERIFICATION)
+                    .serverSslCert(serverSslCert)
+                    .clientSslCert(clientSslCert)
+                    .clientSslKey("dd")
+                    .build(),
+            "Failed to find clientSslKey file. clientSslKey=dd");
+      }
+    }
+  }
+
+  @Test
   void trustForceProtocol() throws Exception {
     String trustProtocol = minVersion(8, 0, 0) ? "TLSv1.2" : "TLSv1.1";
     Assumptions.assumeTrue(haveSsl(sharedConn));
@@ -138,7 +183,7 @@ public class TlsTest extends BaseTest {
   }
 
   @Test
-  void withoutHostnameValidation() throws Exception {
+  void withoutHostnameValidation() throws Throwable {
     Assumptions.assumeTrue(haveSsl(sharedConn));
     Assumptions.assumeTrue(serverSslCert != null);
     MariadbConnectionConfiguration conf =
@@ -160,22 +205,32 @@ public class TlsTest extends BaseTest {
             })
         .verifyComplete();
     connection.close().block();
+    String serverCertString = readLine(serverSslCert);
+    MariadbConnectionConfiguration conf2 =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .sslMode(SslMode.ENABLE_WITHOUT_HOSTNAME_VERIFICATION)
+            .serverSslCert(serverCertString)
+            .build();
+    MariadbConnection con2 = new MariadbConnectionFactory(conf2).create().block();
+    con2.close().block();
+  }
+
+  private static String readLine(String filePath) throws IOException {
+    StringBuilder contentBuilder = new StringBuilder();
+    try (Stream<String> stream = Files.lines(Paths.get(filePath), StandardCharsets.UTF_8)) {
+      stream.forEach(s -> contentBuilder.append(s).append("\n"));
+    }
+    return contentBuilder.toString();
   }
 
   @Test
   void fullWithoutServerCert() throws Exception {
     Assumptions.assumeTrue(haveSsl(sharedConn));
-    MariadbConnectionConfiguration conf =
-        TestConfiguration.defaultBuilder.clone().sslMode(SslMode.ENABLE).build();
-    new MariadbConnectionFactory(conf)
-        .create()
-        .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcNonTransientException
-                    && (throwable.getCause().getCause() instanceof SSLHandshakeException
-                        || throwable.getCause() instanceof SSLHandshakeException))
-        .verify();
+    assertThrows(
+        R2dbcTransientResourceException.class,
+        () -> TestConfiguration.defaultBuilder.clone().sslMode(SslMode.ENABLE).build(),
+        "Server certificate needed (option `serverSslCert`) for ssl mode ENABLE");
   }
 
   @Test

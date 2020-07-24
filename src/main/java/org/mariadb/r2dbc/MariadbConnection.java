@@ -144,25 +144,22 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
   @Override
   public Mono<Void> setTransactionIsolationLevel(IsolationLevel isolationLevel) {
     Assert.requireNonNull(isolationLevel, "isolationLevel must not be null");
+    final IsolationLevel newIsolation = isolationLevel;
     String sql = String.format("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel.asSql());
     ExceptionFactory exceptionFactory = ExceptionFactory.withSql(sql);
     return client
         .sendCommand(new QueryPacket(sql))
         .handle(exceptionFactory::handleErrorResponse)
         .then()
-        .doOnSuccess(ignore -> this.isolationLevel = isolationLevel);
+        .doOnSuccess(
+            ignore -> {
+              this.isolationLevel = newIsolation;
+            });
   }
 
   @Override
   public String toString() {
-    return "MariadbConnection{"
-        + "logger="
-        + logger
-        + ", client="
-        + client
-        + ", isolationLevel="
-        + isolationLevel
-        + '}';
+    return "MariadbConnection{client=" + client + ", isolationLevel=" + isolationLevel + '}';
   }
 
   @Override

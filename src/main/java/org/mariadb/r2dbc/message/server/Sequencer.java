@@ -26,9 +26,4 @@ public class Sequencer {
   public byte next() {
     return ++sequenceId;
   }
-
-  @Override
-  public String toString() {
-    return "Sequencer{sequenceId=" + sequenceId + '}';
-  }
 }

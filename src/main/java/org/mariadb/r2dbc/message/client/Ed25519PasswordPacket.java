@@ -27,7 +27,7 @@ import org.mariadb.r2dbc.authentication.ed25519.math.GroupElement;
 import org.mariadb.r2dbc.authentication.ed25519.math.ed25519.ScalarOps;
 import org.mariadb.r2dbc.authentication.ed25519.spec.EdDSANamedCurveTable;
 import org.mariadb.r2dbc.authentication.ed25519.spec.EdDSAParameterSpec;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.message.server.Sequencer;
 
 public final class Ed25519PasswordPacket implements ClientMessage {
@@ -91,7 +91,7 @@ public final class Ed25519PasswordPacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(ConnectionContext context, ByteBufAllocator allocator) {
+  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
     if (password == null || password.toString().isEmpty()) return allocator.ioBuffer(0);
     ByteBuf buf = allocator.ioBuffer(64);
     buf.writeBytes(ed25519SignWithPassword(password, seed));
@@ -101,16 +101,5 @@ public final class Ed25519PasswordPacket implements ClientMessage {
   @Override
   public Sequencer getSequencer() {
     return sequencer;
-  }
-
-  @Override
-  public String toString() {
-    return "Ed25519PasswordPacket{"
-        + "sequencer="
-        + sequencer
-        + ", password=*******"
-        + ", seed="
-        + Arrays.toString(seed)
-        + '}';
   }
 }

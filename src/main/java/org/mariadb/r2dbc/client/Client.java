@@ -31,7 +31,7 @@ public interface Client {
 
   Mono<Void> close();
 
-  Flux<ServerMessage> receive();
+  Flux<ServerMessage> receive(DecoderState initialState);
 
   void sendCommandWithoutResult(ClientMessage requests);
 

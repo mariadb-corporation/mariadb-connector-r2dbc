@@ -25,8 +25,8 @@
   </appender>
 
   <logger level="ERROR" name="org.mariadb.r2dbc"/>
-  <logger level="WARN" name="io.netty.buffer"/>
-  <logger level="WARN" name="reactor.ipc.netty"/>
+  <logger level="ERROR" name="io.netty.buffer"/>
+  <logger level="ERROR" name="reactor.ipc.netty"/>
 
   <root level="WARN">
     <appender-ref ref="STDOUT"/>

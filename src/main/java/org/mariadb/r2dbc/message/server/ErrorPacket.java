@@ -18,7 +18,6 @@ package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 import org.mariadb.r2dbc.util.Assert;
 import reactor.util.Logger;
 import reactor.util.Loggers;
@@ -47,13 +46,14 @@ public final class ErrorPacket implements ServerMessage {
     if (next == (byte) '#') {
       buf.skipBytes(1); // skip '#'
       sqlState = buf.readCharSequence(5, StandardCharsets.UTF_8).toString();
-      msg = buf.toString(StandardCharsets.UTF_8);
+      msg = buf.readCharSequence(buf.readableBytes(), StandardCharsets.UTF_8).toString();
     } else {
-      msg = buf.toString(StandardCharsets.UTF_8);
+      // Pre-4.1 message, still can be output in newer versions (e.g with 'Too many connections')
+      msg = buf.readCharSequence(buf.readableBytes(), StandardCharsets.UTF_8).toString();
       sqlState = "HY000";
     }
     ErrorPacket err = new ErrorPacket(sequencer, errorCode, sqlState, msg);
-    logger.warn("Error: {}", err.toString());
+    logger.warn("Error: '{}' sqlState='{}' code={} ", msg, sqlState, errorCode);
     return err;
   }
 
@@ -69,44 +69,8 @@ public final class ErrorPacket implements ServerMessage {
     return sqlState;
   }
 
-  public Sequencer getSequencer() {
-    return sequencer;
-  }
-
   @Override
   public boolean ending() {
     return true;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    ErrorPacket that = (ErrorPacket) o;
-    return errorCode == that.errorCode
-        && sequencer.equals(that.sequencer)
-        && message.equals(that.message)
-        && Objects.equals(sqlState, that.sqlState);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(sequencer, errorCode, message, sqlState);
-  }
-
-  @Override
-  public String toString() {
-    return "ErrorPacket{"
-        + "errorCode="
-        + errorCode
-        + ", message='"
-        + message
-        + '\''
-        + ", sqlState='"
-        + sqlState
-        + '\''
-        + ", sequencer="
-        + sequencer
-        + '}';
   }
 }

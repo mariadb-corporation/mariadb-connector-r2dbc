@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.integration.codec;
 
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -23,16 +24,19 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-public class TinyIntParseTest extends BaseTest {
+public class TinyIntParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("CREATE TABLE tinyIntTable (t1 TINYINT)").execute().blockLast();
     sharedConn
-        .createStatement("INSERT INTO tinyIntTable VALUES (0),(1),(-1), (null)")
+        .createStatement("CREATE TABLE tinyIntTable (t1 TINYINT, t2 TINYINT ZEROFILL)")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement("INSERT INTO tinyIntTable VALUES (0, 0),(1, 10),(-1, 100), (null, null)")
         .execute()
         .blockLast();
     sharedConn
@@ -41,11 +45,6 @@ public class TinyIntParseTest extends BaseTest {
         .blockLast();
     sharedConn
         .createStatement("INSERT INTO tinyIntUnsignedTable VALUES (0), (1), (255), (null)")
-        .execute()
-        .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
         .execute()
         .blockLast();
   }
@@ -187,12 +186,12 @@ public class TinyIntParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
         .as(StepVerifier::create)
-        .expectNext(
-            Optional.of(Byte.valueOf((byte) 0)),
-            Optional.of(Byte.valueOf((byte) 1)),
-            Optional.of(Byte.valueOf((byte) 255)),
-            Optional.empty())
-        .verifyComplete();
+        .expectNext(Optional.of(Byte.valueOf((byte) 0)), Optional.of(Byte.valueOf((byte) 1)))
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
+        .verify();
   }
 
   @Test
@@ -224,11 +223,11 @@ public class TinyIntParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1), Optional.of((byte) 255))
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable.getMessage().equals("Cannot return null for primitive byte"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
         .verify();
   }
 
@@ -404,6 +403,16 @@ public class TinyIntParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectNext(Optional.of("0"), Optional.of("1"), Optional.of("-1"), Optional.empty())
         .verifyComplete();
+
+    connection
+        .createStatement("SELECT t2 FROM tinyIntTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("000"), Optional.of("010"), Optional.of("100"), Optional.empty())
+        .verifyComplete();
+
     connection
         .createStatement("SELECT t1 FROM tinyIntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
@@ -485,6 +494,35 @@ public class TinyIntParseTest extends BaseTest {
             Optional.of(BigInteger.ONE),
             Optional.of(BigInteger.valueOf(255)),
             Optional.empty())
+        .verifyComplete();
+  }
+
+  @Test
+  void meta() {
+    meta(sharedConn);
+  }
+
+  @Test
+  void metaPrepare() {
+    meta(sharedConnPrepare);
+  }
+
+  private void meta(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM tinyIntTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Byte.class))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM tinyIntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Short.class))
         .verifyComplete();
   }
 }

@@ -16,6 +16,8 @@
 
 package org.mariadb.r2dbc.integration.codec;
 
+import io.r2dbc.spi.Blob;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -23,11 +25,11 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-public class DecimalParseTest extends BaseTest {
+public class DecimalParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     sharedConn
@@ -36,12 +38,8 @@ public class DecimalParseTest extends BaseTest {
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO DecimalTable VALUES (0.1),(1),(9223372036854775807.9223372036854775807), (null)")
-        .execute()
-        .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
+            "INSERT INTO DecimalTable VALUES (0.1),(1),(9223372036854775807.9223372036854775807),"
+                + " (null), (19223372036854775807.9223372036854775807)")
         .execute()
         .blockLast();
   }
@@ -72,7 +70,8 @@ public class DecimalParseTest extends BaseTest {
             Optional.of(new BigDecimal("0.10000000000000000000")),
             Optional.of(new BigDecimal("1.00000000000000000000")),
             Optional.of(new BigDecimal("9223372036854775807.92233720368547758070")),
-            Optional.empty())
+            Optional.empty(),
+            Optional.of(new BigDecimal("19223372036854775807.92233720368547758070")))
         .verifyComplete();
   }
 
@@ -88,18 +87,18 @@ public class DecimalParseTest extends BaseTest {
 
   private void booleanValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Boolean.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Boolean and column type DECIMAL"))
-        .verify();
+        .expectNext(
+            Optional.of(false),
+            Optional.of(true),
+            Optional.of(true),
+            Optional.empty(),
+            Optional.of(true))
+        .verifyComplete();
   }
 
   @Test
@@ -140,17 +139,19 @@ public class DecimalParseTest extends BaseTest {
 
   private void ByteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
+                throwable instanceof R2dbcNonTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals("No decoder for type java.lang.Byte and column type DECIMAL"))
+                        .equals(
+                            "value '9223372036854775807.92233720368547758070' (DECIMAL) cannot be decoded as Byte"))
         .verify();
   }
 
@@ -166,17 +167,19 @@ public class DecimalParseTest extends BaseTest {
 
   private void byteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
+                throwable instanceof R2dbcNonTransientResourceException
                     && throwable
                         .getMessage()
-                        .equals("No decoder for type byte and column type DECIMAL"))
+                        .equals(
+                            "value '9223372036854775807.92233720368547758070' (DECIMAL) cannot be decoded as Byte"))
         .verify();
   }
 
@@ -192,17 +195,16 @@ public class DecimalParseTest extends BaseTest {
 
   private void shortValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((short) 0), Optional.of((short) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Short and column type DECIMAL"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("Short overflow"))
         .verify();
   }
 
@@ -223,16 +225,12 @@ public class DecimalParseTest extends BaseTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Integer.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of(0), Optional.of(1), Optional.of(-1), Optional.empty())
-        //        .expectErrorMatches(
-        //            throwable ->
-        //                throwable instanceof R2dbcTransientResourceException
-        //                    && throwable
-        //                        .getMessage()
-        //                        .equals(
-        //                            "Out of range value for column 't1' : value
-        // 9223372036854775807  is not in java.lang.Integer range"))
-        .verifyComplete();
+        .expectNext(Optional.of(0), Optional.of(1))
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("integer overflow"))
+        .verify();
   }
 
   @Test
@@ -254,7 +252,14 @@ public class DecimalParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectNext(
             Optional.of(0L), Optional.of(1L), Optional.of(9223372036854775807L), Optional.empty())
-        .verifyComplete();
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable
+                        .getMessage()
+                        .equals(
+                            "value '19223372036854775807.92233720368547758070' cannot be decoded as Long"))
+        .verify();
   }
 
   @Test
@@ -278,7 +283,8 @@ public class DecimalParseTest extends BaseTest {
             Optional.of(0.1F),
             Optional.of(1F),
             Optional.of(9223372036854775807.9223372036854775807F),
-            Optional.empty())
+            Optional.empty(),
+            Optional.of(19223372036854775807.9223372036854775807F))
         .verifyComplete();
   }
 
@@ -303,7 +309,8 @@ public class DecimalParseTest extends BaseTest {
             Optional.of(0.1D),
             Optional.of(1D),
             Optional.of(9223372036854775807.9223372036854775807D),
-            Optional.empty())
+            Optional.empty(),
+            Optional.of(19223372036854775807.9223372036854775807D))
         .verifyComplete();
   }
 
@@ -328,7 +335,8 @@ public class DecimalParseTest extends BaseTest {
             Optional.of("0.10000000000000000000"),
             Optional.of("1.00000000000000000000"),
             Optional.of("9223372036854775807.92233720368547758070"),
-            Optional.empty())
+            Optional.empty(),
+            Optional.of("19223372036854775807.92233720368547758070"))
         .verifyComplete();
   }
 
@@ -353,8 +361,40 @@ public class DecimalParseTest extends BaseTest {
             Optional.of(new BigDecimal("0.10000000000000000000")),
             Optional.of(new BigDecimal("1.00000000000000000000")),
             Optional.of(new BigDecimal("9223372036854775807.92233720368547758070")),
-            Optional.empty())
+            Optional.empty(),
+            Optional.of(new BigDecimal("19223372036854775807.92233720368547758070")))
         .verifyComplete();
+  }
+
+  @Test
+  void blobValue() {
+    blobValue(sharedConn);
+  }
+
+  @Test
+  void blobValuePrepare() {
+    blobValue(sharedConnPrepare);
+  }
+
+  private void blobValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      return row.get(0, Blob.class);
+                    }))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable
+                        .getMessage()
+                        .equals("No decoder for type io.r2dbc.spi.Blob and column type DECIMAL"))
+        .verify();
   }
 
   @Test
@@ -378,7 +418,29 @@ public class DecimalParseTest extends BaseTest {
             Optional.of(BigInteger.ZERO),
             Optional.of(BigInteger.ONE),
             Optional.of(new BigInteger("9223372036854775807")),
-            Optional.empty())
+            Optional.empty(),
+            Optional.of(new BigInteger("19223372036854775807")))
+        .verifyComplete();
+  }
+
+  @Test
+  void meta() {
+    meta(sharedConn);
+  }
+
+  @Test
+  void metaPrepare() {
+    meta(sharedConnPrepare);
+  }
+
+  private void meta(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(BigDecimal.class))
         .verifyComplete();
   }
 }

@@ -16,23 +16,29 @@
 
 package org.mariadb.r2dbc.integration.codec;
 
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-public class IntParseTest extends BaseTest {
+public class IntParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("CREATE TABLE IntTable (t1 INT)").execute().blockLast();
     sharedConn
-        .createStatement("INSERT INTO IntTable VALUES (0),(1),(-1), (null)")
+        .createStatement("CREATE TABLE IntTable (t1 INT, t2 INT ZEROFILL)")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "INSERT INTO IntTable VALUES (0, 0),(1, 10),(-1, 1294967295), (null, null)")
         .execute()
         .blockLast();
     sharedConn
@@ -41,11 +47,6 @@ public class IntParseTest extends BaseTest {
         .blockLast();
     sharedConn
         .createStatement("INSERT INTO IntUnsignedTable VALUES (0), (1), (4294967295), (null)")
-        .execute()
-        .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
         .execute()
         .blockLast();
   }
@@ -115,6 +116,48 @@ public class IntParseTest extends BaseTest {
   }
 
   @Test
+  void unknownValue() {
+    unknownValue(sharedConn);
+  }
+
+  @Test
+  void unknownValuePrepare() {
+    unknownValue(sharedConnPrepare);
+  }
+
+  private void unknownValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, this.getClass()))))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable
+                        .getMessage()
+                        .equals(
+                            "No decoder for type org.mariadb.r2dbc.integration.codec.IntParseTest and column type INTEGER(signed)"))
+        .verify();
+    connection
+        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, this.getClass()))))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable
+                        .getMessage()
+                        .equals(
+                            "No decoder for type org.mariadb.r2dbc.integration.codec.IntParseTest and column type "
+                                + "INTEGER(unsigned)"))
+        .verify();
+  }
+
+  @Test
   void byteArrayValue() {
     byteArrayValue(sharedConn);
   }
@@ -165,32 +208,25 @@ public class IntParseTest extends BaseTest {
 
   private void ByteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Byte and column type INTEGER(signed)"))
-        .verify();
+        .expectNext(
+            Optional.of((byte) 0), Optional.of((byte) 1), Optional.of((byte) -1), Optional.empty())
+        .verifyComplete();
     connection
-        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Byte and column type INTEGER(unsigned)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
         .verify();
   }
 
@@ -206,30 +242,28 @@ public class IntParseTest extends BaseTest {
 
   private void byteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1), Optional.of((byte) -1))
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type byte and column type INTEGER(signed)"))
+                    && throwable.getMessage().equals("Cannot return null for primitive byte"))
         .verify();
     connection
-        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type byte and column type INTEGER(unsigned)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
         .verify();
   }
 
@@ -245,32 +279,28 @@ public class IntParseTest extends BaseTest {
 
   private void shortValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Short and column type INTEGER(signed)"))
-        .verify();
+        .expectNext(
+            Optional.of((short) 0),
+            Optional.of((short) 1),
+            Optional.of((short) -1),
+            Optional.empty())
+        .verifyComplete();
     connection
-        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((short) 0), Optional.of((short) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Short and column type INTEGER(unsigned)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("Short overflow"))
         .verify();
   }
 
@@ -289,23 +319,59 @@ public class IntParseTest extends BaseTest {
         .createStatement("SELECT t1 FROM IntTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, int.class))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of(0), Optional.of(1), Optional.of(-1))
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable.getMessage().equals("Cannot return null for primitive int"))
+        .verify();
+
+    connection
+        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Integer.class))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of(0), Optional.of(1))
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("integer overflow"))
+        .verify();
+  }
+
+  @Test
+  void intObjectValue() {
+    intObjectValue(sharedConn);
+  }
+
+  @Test
+  void intObjectValuePrepare() {
+    intObjectValue(sharedConnPrepare);
+  }
+
+  private void intObjectValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Integer.class))))
         .as(StepVerifier::create)
         .expectNext(Optional.of(0), Optional.of(1), Optional.of(-1), Optional.empty())
         .verifyComplete();
     connection
-        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Integer.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of(0), Optional.of(1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Integer and column type INTEGER(unsigned)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("integer overflow"))
         .verify();
   }
 
@@ -416,6 +482,19 @@ public class IntParseTest extends BaseTest {
         .expectNext(Optional.of("0"), Optional.of("1"), Optional.of("-1"), Optional.empty())
         .verifyComplete();
     connection
+        .createStatement("SELECT t2 FROM IntTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
+        .as(StepVerifier::create)
+        .expectNext(
+            Optional.of("0000000000"),
+            Optional.of("0000000010"),
+            Optional.of("1294967295"),
+            Optional.empty())
+        .verifyComplete();
+
+    connection
         .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
@@ -496,6 +575,63 @@ public class IntParseTest extends BaseTest {
             Optional.of(BigInteger.ONE),
             Optional.of(BigInteger.valueOf(4294967295L)),
             Optional.empty())
+        .verifyComplete();
+  }
+
+  @Test
+  void localDateTimeValue() {
+    localDateTimeValue(sharedConn);
+  }
+
+  @Test
+  void localDateTimeValuePrepare() {
+    localDateTimeValue(sharedConnPrepare);
+  }
+
+  private void localDateTimeValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(
+            r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalDateTime.class))))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable
+                        .getMessage()
+                        .equals(
+                            "No decoder for type java.time.LocalDateTime and column type INTEGER(signed)"))
+        .verify();
+  }
+
+  @Test
+  void meta() {
+    meta(sharedConn);
+  }
+
+  @Test
+  void metaPrepare() {
+    meta(sharedConnPrepare);
+  }
+
+  private void meta(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Integer.class))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Long.class))
         .verifyComplete();
   }
 }

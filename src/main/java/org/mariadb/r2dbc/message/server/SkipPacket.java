@@ -36,9 +36,4 @@ public class SkipPacket implements ServerMessage {
   public Sequencer getSequencer() {
     return null;
   }
-
-  @Override
-  public String toString() {
-    return "SkipPacket{ending=" + ending + '}';
-  }
 }

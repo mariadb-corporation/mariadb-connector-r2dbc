@@ -19,7 +19,7 @@ package org.mariadb.r2dbc.message.server;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.AbstractReferenceCounted;
 import io.netty.util.ReferenceCounted;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 
 public class AuthMoreDataPacket extends AbstractReferenceCounted implements ServerMessage {
 
@@ -31,8 +31,7 @@ public class AuthMoreDataPacket extends AbstractReferenceCounted implements Serv
     this.buf = buf;
   }
 
-  public static AuthMoreDataPacket decode(
-      Sequencer sequencer, ByteBuf buf, ConnectionContext context) {
+  public static AuthMoreDataPacket decode(Sequencer sequencer, ByteBuf buf, Context context) {
     buf.skipBytes(1);
     ByteBuf data = buf.readRetainedSlice(buf.readableBytes());
     return new AuthMoreDataPacket(sequencer, data);
@@ -62,10 +61,5 @@ public class AuthMoreDataPacket extends AbstractReferenceCounted implements Serv
   @Override
   public boolean ending() {
     return true;
-  }
-
-  @Override
-  public String toString() {
-    return "AuthMoreDataPacket{" + "sequencer=" + sequencer + ", buf=" + buf + '}';
   }
 }

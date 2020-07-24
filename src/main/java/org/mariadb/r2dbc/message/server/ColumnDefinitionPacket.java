@@ -17,6 +17,7 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
+import io.r2dbc.spi.Blob;
 import io.r2dbc.spi.Nullability;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -25,12 +26,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Objects;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import java.util.BitSet;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.codec.list.*;
-import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.constants.ColumnFlags;
 import reactor.util.Logger;
 import reactor.util.Loggers;
@@ -132,7 +132,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
   }
 
   public static ColumnDefinitionPacket decode(
-      Sequencer sequencer, ByteBuf buf, ConnectionContext context, boolean ending) {
+      Sequencer sequencer, ByteBuf buf, Context context, boolean ending) {
     byte[] meta = new byte[buf.readableBytes() - 12];
     buf.readBytes(meta);
     int charset = buf.readUnsignedShortLE();
@@ -150,13 +150,13 @@ public final class ColumnDefinitionPacket implements ServerMessage {
   private String getString(int idx) {
     int pos = 0;
     for (int i = 0; i < idx; i++) {
-      pos = BufferUtils.skipLengthEncode(this.meta, pos);
+      // maximum length of 64 characters.
+      // so length encode is just encoded on one byte
+      int len = this.meta[pos++] & 0xff;
+      pos += len;
     }
-    return BufferUtils.readLengthEncodedString(this.meta, pos);
-  }
-
-  public Sequencer getSequencer() {
-    return null;
+    int length = this.meta[pos++] & 0xff;
+    return new String(this.meta, pos, length, StandardCharsets.UTF_8);
   }
 
   public String getSchema() {
@@ -187,7 +187,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
     return length;
   }
 
-  public DataType getDataType() {
+  public DataType getType() {
     return dataType;
   }
 
@@ -206,11 +206,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
         || dataType == DataType.SET
         || dataType == DataType.VARSTRING
         || dataType == DataType.STRING) {
-      int maxWidth = maxCharlen[charset];
-      if (maxWidth == 0) {
-        maxWidth = 1;
-      }
-      return (int) length / maxWidth;
+      return (int) (length / (maxCharlen[charset] == 0 ? 1 : maxCharlen[charset]));
     }
     return (int) length;
   }
@@ -282,13 +278,13 @@ public final class ColumnDefinitionPacket implements ServerMessage {
       case DECIMAL:
         return BigDecimal.class;
       case BIT:
-        return BitSetCodec.class;
+        return BitSet.class;
       case TINYBLOB:
       case MEDIUMBLOB:
       case LONGBLOB:
       case BLOB:
       case GEOMETRY:
-        return ByteBuffer.class;
+        return Blob.class;
 
       default:
         return null;
@@ -305,7 +301,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
       case STRING:
         return isBinary() ? ByteArrayCodec.INSTANCE : StringCodec.INSTANCE;
       case TINYINT:
-        return isSigned() ? TinyIntCodec.INSTANCE : ShortCodec.INSTANCE;
+        return isSigned() ? ByteCodec.INSTANCE : ShortCodec.INSTANCE;
       case SMALLINT:
         return isSigned() ? ShortCodec.INSTANCE : IntCodec.INSTANCE;
       case INTEGER:
@@ -346,40 +342,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    ColumnDefinitionPacket that = (ColumnDefinitionPacket) o;
-    return charset == that.charset
-        && length == that.length
-        && dataType == that.dataType
-        && decimals == that.decimals
-        && flags == that.flags;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(charset, length, dataType, decimals, flags);
-  }
-
-  @Override
   public boolean ending() {
     return this.ending;
-  }
-
-  @Override
-  public String toString() {
-    return "ColumnDefinitionPacket{"
-        + "charset="
-        + charset
-        + ", length="
-        + length
-        + ", dataType="
-        + dataType
-        + ", decimals="
-        + decimals
-        + ", flags="
-        + flags
-        + '}';
   }
 }

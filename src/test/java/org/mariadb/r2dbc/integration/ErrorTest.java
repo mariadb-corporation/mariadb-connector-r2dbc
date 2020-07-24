@@ -20,7 +20,7 @@ import io.r2dbc.spi.*;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
@@ -28,7 +28,7 @@ import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class ErrorTest extends BaseTest {
+public class ErrorTest extends BaseConnectionTest {
 
   @AfterAll
   public static void after2() {
@@ -38,8 +38,7 @@ public class ErrorTest extends BaseTest {
   @Test
   void queryTimeout() throws Exception {
     Assumptions.assumeTrue(isMariaDBServer() && minVersion(10, 2, 0));
-    MariadbConnection connection = factory.create().block();
-    connection
+    sharedConn
         .createStatement(
             "SET STATEMENT max_statement_time=0.01 FOR "
                 + "SELECT * FROM information_schema.tables, information_schema.tables as t2")
@@ -90,12 +89,6 @@ public class ErrorTest extends BaseTest {
 
   @Test
   void dataIntegrity() throws Exception {
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
-        .execute()
-        .blockLast();
-
     sharedConn
         .createStatement("CREATE TEMPORARY TABLE dataIntegrity(t1 VARCHAR(5))")
         .execute()

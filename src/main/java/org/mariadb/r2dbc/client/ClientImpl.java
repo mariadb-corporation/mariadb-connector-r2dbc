@@ -46,7 +46,7 @@ public final class ClientImpl extends ClientBase {
       SocketAddress socketAddress,
       MariadbConnectionConfiguration configuration) {
 
-    TcpClient tcpClient = TcpClient.create(connectionProvider).addressSupplier(() -> socketAddress);
+    TcpClient tcpClient = TcpClient.create(connectionProvider).remoteAddress(() -> socketAddress);
     if (configuration.getConnectTimeout() != null) {
       tcpClient =
           tcpClient.option(
@@ -87,11 +87,11 @@ public final class ClientImpl extends ClientBase {
           if (atomicBoolean.compareAndSet(false, true)) {
             try {
               lock.lock();
-              this.responseReceivers.add(new CmdElement(sink, initialState, sql));
-
               if (this.responseReceivers.isEmpty()) {
+                this.responseReceivers.add(new CmdElement(sink, initialState, sql));
                 connection.channel().writeAndFlush(message);
               } else {
+                this.responseReceivers.add(new CmdElement(sink, initialState, sql));
                 sendingQueue.add(message);
               }
             } finally {

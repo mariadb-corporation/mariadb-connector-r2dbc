@@ -35,7 +35,7 @@ final class MariadbColumnMetadata implements ColumnMetadata {
 
   @Override
   public Class<?> getJavaType() {
-    return columnDefinitionPacket.getDataType().getDeclaringClass();
+    return columnDefinitionPacket.getJavaClass();
   }
 
   @Override
@@ -50,7 +50,7 @@ final class MariadbColumnMetadata implements ColumnMetadata {
 
   @Override
   public Integer getPrecision() {
-    switch (columnDefinitionPacket.getDataType()) {
+    switch (columnDefinitionPacket.getType()) {
       case OLDDECIMAL:
       case DECIMAL:
         // DECIMAL and OLDDECIMAL are  "exact" fixed-point number.
@@ -73,6 +73,20 @@ final class MariadbColumnMetadata implements ColumnMetadata {
 
   @Override
   public Integer getScale() {
-    return null;
+    switch (columnDefinitionPacket.getType()) {
+      case OLDDECIMAL:
+      case TINYINT:
+      case SMALLINT:
+      case INTEGER:
+      case FLOAT:
+      case DOUBLE:
+      case BIGINT:
+      case MEDIUMINT:
+      case BIT:
+      case DECIMAL:
+        return (int) columnDefinitionPacket.getDecimals();
+      default:
+        return 0;
+    }
   }
 }

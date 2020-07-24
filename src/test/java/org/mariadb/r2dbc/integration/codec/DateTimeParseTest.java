@@ -26,11 +26,11 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-public class DateTimeParseTest extends BaseTest {
+public class DateTimeParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     sharedConn
@@ -40,11 +40,6 @@ public class DateTimeParseTest extends BaseTest {
     sharedConn
         .createStatement(
             "INSERT INTO DateTimeTable VALUES('2013-07-22 12:50:05.01230'), ('2035-01-31 10:45:01'), (null)")
-        .execute()
-        .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
         .execute()
         .blockLast();
   }
@@ -373,8 +368,8 @@ public class DateTimeParseTest extends BaseTest {
   void stringValuePrepare() {
     stringValue(
         sharedConnPrepare,
-        Optional.of("2013-07-22T12:50:05.012300"),
-        Optional.of("2035-01-31T10:45:01"),
+        Optional.of("2013-07-22 12:50:05.012300"),
+        Optional.of("2035-01-31 10:45:01"),
         Optional.empty());
   }
 
@@ -466,6 +461,27 @@ public class DateTimeParseTest extends BaseTest {
             Optional.of(LocalDateTime.parse("2013-07-22T12:50:05.01230")),
             Optional.of(LocalDateTime.parse("2035-01-31T10:45:01")),
             Optional.empty())
+        .verifyComplete();
+  }
+
+  @Test
+  void meta() {
+    meta(sharedConn);
+  }
+
+  @Test
+  void metaPrepare() {
+    meta(sharedConnPrepare);
+  }
+
+  private void meta(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(LocalDateTime.class))
         .verifyComplete();
   }
 }

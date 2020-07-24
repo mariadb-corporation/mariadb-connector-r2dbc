@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.integration.codec;
 
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -24,21 +25,16 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-public class FloatParseTest extends BaseTest {
+public class FloatParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     sharedConn.createStatement("CREATE TABLE FloatTable (t1 FLOAT)").execute().blockLast();
     sharedConn
         .createStatement("INSERT INTO FloatTable VALUES (0.1),(1),(922.92233), (null)")
-        .execute()
-        .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
         .execute()
         .blockLast();
   }
@@ -96,18 +92,13 @@ public class FloatParseTest extends BaseTest {
 
   private void booleanValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Boolean.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Boolean and column type FLOAT"))
-        .verify();
+        .expectNext(Optional.of(false), Optional.of(true), Optional.of(true), Optional.empty())
+        .verifyComplete();
   }
 
   @Test
@@ -148,17 +139,21 @@ public class FloatParseTest extends BaseTest {
 
   private void ByteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Byte and column type FLOAT"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && (throwable
+                            .getMessage()
+                            .equals("value '922.922' (FLOAT) cannot be decoded as Byte")
+                        | throwable
+                            .getMessage()
+                            .equals("value '922.9223' (FLOAT) cannot be decoded as Byte")))
         .verify();
   }
 
@@ -174,17 +169,21 @@ public class FloatParseTest extends BaseTest {
 
   private void byteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ? LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type byte and column type FLOAT"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && (throwable
+                            .getMessage()
+                            .equals("value '922.922' (FLOAT) cannot be decoded as Byte")
+                        | throwable
+                            .getMessage()
+                            .equals("value '922.9223' (FLOAT) cannot be decoded as Byte")))
         .verify();
   }
 
@@ -266,6 +265,45 @@ public class FloatParseTest extends BaseTest {
   }
 
   private void floatValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, float.class))))
+        .as(StepVerifier::create)
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(0.1F, val.get(), 0.0000001);
+              return true;
+            })
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(1F, val.get(), 0.0000001);
+              return true;
+            })
+        .expectNextMatches(
+            val -> {
+              Assertions.assertEquals(922.922F, val.get(), 0.001);
+              return true;
+            })
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable.getMessage().equals("Cannot return null for primitive float"))
+        .verify();
+  }
+
+  @Test
+  void floatObjectValue() {
+    floatObjectValue(sharedConn);
+  }
+
+  @Test
+  void floatObjectValuePrepare() {
+    floatObjectValue(sharedConnPrepare);
+  }
+
+  private void floatObjectValue(MariadbConnection connection) {
     connection
         .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ?")
         .bind(0, 1)
@@ -407,6 +445,27 @@ public class FloatParseTest extends BaseTest {
             Optional.of(BigInteger.ONE),
             Optional.of(BigInteger.valueOf(922)),
             Optional.empty())
+        .verifyComplete();
+  }
+
+  @Test
+  void meta() {
+    meta(sharedConn);
+  }
+
+  @Test
+  void metaPrepare() {
+    meta(sharedConnPrepare);
+  }
+
+  private void meta(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM FloatTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Float.class))
         .verifyComplete();
   }
 }

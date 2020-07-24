@@ -19,14 +19,14 @@ package org.mariadb.r2dbc.integration;
 import io.r2dbc.spi.R2dbcBadGrammarException;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-public class MultiQueriesTest extends BaseTest {
+public class MultiQueriesTest extends BaseConnectionTest {
 
   @Test
   void multiQueryDefault() {

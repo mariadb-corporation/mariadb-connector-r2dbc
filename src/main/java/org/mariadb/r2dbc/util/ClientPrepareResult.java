@@ -51,7 +51,7 @@ public class ClientPrepareResult implements PrepareResult {
 
   /**
    * Separate query in a String list and set flag isQueryMultipleRewritable. The resulting string
-   * list is separed by ? or :name that are not in comments.
+   * list is separated by ? or :name that are not in comments.
    *
    * @param queryString query
    * @param noBackslashEscapes escape mode
@@ -76,12 +76,12 @@ public class ClientPrepareResult implements PrepareResult {
     for (int i = 0; i < queryLength; i++) {
 
       char car = query[i];
-      if (state == LexState.Escape
-          && !((car == '\'' && singleQuotes) || (car == '"' && !singleQuotes))) {
+      if (state == LexState.Escape) {
         state = LexState.String;
         lastChar = car;
         continue;
       }
+
       switch (car) {
         case '*':
           if (state == LexState.Normal && lastChar == '/') {
@@ -204,6 +204,7 @@ public class ClientPrepareResult implements PrepareResult {
               break;
             }
             returning = true;
+            supportAddingReturning = false;
             i += 8;
           }
           break;
@@ -220,10 +221,12 @@ public class ClientPrepareResult implements PrepareResult {
               && (query[i + 5] == 't' || query[i + 5] == 'T')) {
 
             if (i > 0 && (query[i - 1] > ' ' && "();><=-+,".indexOf(query[i - 1]) == -1)) {
+              i += 6;
               break;
             }
 
             if (query[i + 6] > ' ' && "();><=-+,".indexOf(query[i + 6]) == -1) {
+              i += 6;
               break;
             }
 
@@ -244,10 +247,12 @@ public class ClientPrepareResult implements PrepareResult {
               && (query[i + 5] == 'e' || query[i + 5] == 'E')) {
 
             if (i > 0 && (query[i - 1] > ' ' && "();><=-+,".indexOf(query[i - 1]) == -1)) {
+              i += 6;
               break;
             }
 
             if (query[i + 6] > ' ' && "();><=-+,".indexOf(query[i + 6]) == -1) {
+              i += 6;
               break;
             }
 
@@ -268,10 +273,12 @@ public class ClientPrepareResult implements PrepareResult {
               && (query[i + 5] == 'e' || query[i + 5] == 'E')) {
 
             if (i > 0 && (query[i - 1] > ' ' && "();><=-+,".indexOf(query[i - 1]) == -1)) {
+              i += 6;
               break;
             }
 
             if (query[i + 6] > ' ' && "();><=-+,".indexOf(query[i + 6]) == -1) {
+              i += 6;
               break;
             }
 
@@ -328,7 +335,6 @@ public class ClientPrepareResult implements PrepareResult {
 
     LexState state = LexState.Normal;
     char lastChar = '\0';
-    boolean endingSemicolon = false;
     boolean singleQuotes = false;
 
     char[] query = queryString.toCharArray();
@@ -336,8 +342,7 @@ public class ClientPrepareResult implements PrepareResult {
     for (int i = 0; i < queryLength; i++) {
 
       char car = query[i];
-      if (state == LexState.Escape
-          && !((car == '\'' && singleQuotes) || (car == '"' && !singleQuotes))) {
+      if (state == LexState.Escape) {
         state = LexState.String;
         lastChar = car;
         continue;
@@ -405,17 +410,13 @@ public class ClientPrepareResult implements PrepareResult {
             state = LexState.Escape;
           }
           break;
-        case ';':
-          if (state == LexState.Normal) {
-            endingSemicolon = true;
-          }
-          break;
 
         case '?':
           if (state == LexState.Normal) {
             return true;
           }
           break;
+
         case ':':
           if (state == LexState.Normal) {
             while (++i < queryLength
@@ -434,13 +435,6 @@ public class ClientPrepareResult implements PrepareResult {
             state = LexState.Normal;
           } else if (state == LexState.Normal) {
             state = LexState.Backtick;
-          }
-          break;
-
-        default:
-          // multiple queries
-          if (state == LexState.Normal && endingSemicolon && ((byte) car >= 40)) {
-            endingSemicolon = false;
           }
           break;
       }

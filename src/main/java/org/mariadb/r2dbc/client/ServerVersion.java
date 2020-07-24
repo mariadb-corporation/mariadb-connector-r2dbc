@@ -16,8 +16,6 @@
 
 package org.mariadb.r2dbc.client;
 
-import java.util.Objects;
-
 public class ServerVersion {
 
   public static final ServerVersion UNKNOWN_VERSION = new ServerVersion("0.0.0", true);
@@ -26,6 +24,7 @@ public class ServerVersion {
   private final int minorVersion;
   private final int patchVersion;
   private final boolean mariaDBServer;
+  private final boolean supportReturning;
 
   public ServerVersion(String serverVersion, boolean mariaDBServer) {
     this.serverVersion = serverVersion;
@@ -34,6 +33,7 @@ public class ServerVersion {
     this.majorVersion = parsed[0];
     this.minorVersion = parsed[1];
     this.patchVersion = parsed[2];
+    this.supportReturning = mariaDBServer && versionGreaterOrEqual(10, 5, 1);
   }
 
   public boolean isMariaDBServer() {
@@ -54,6 +54,10 @@ public class ServerVersion {
 
   public String getServerVersion() {
     return serverVersion;
+  }
+
+  public boolean supportReturning() {
+    return supportReturning;
   }
 
   /**
@@ -129,32 +133,7 @@ public class ServerVersion {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    ServerVersion that = (ServerVersion) o;
-    return mariaDBServer == that.mariaDBServer && serverVersion.equals(that.serverVersion);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(serverVersion, mariaDBServer);
-  }
-
-  @Override
   public String toString() {
-    return "ServerVersion{"
-        + "serverVersion='"
-        + serverVersion
-        + '\''
-        + ", majorVersion="
-        + majorVersion
-        + ", minorVersion="
-        + minorVersion
-        + ", patchVersion="
-        + patchVersion
-        + ", mariaDBServer="
-        + mariaDBServer
-        + '}';
+    return "ServerVersion{" + serverVersion + '}';
   }
 }

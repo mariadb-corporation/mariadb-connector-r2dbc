@@ -17,8 +17,7 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
-import java.util.Objects;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
@@ -51,7 +50,7 @@ public class OkPacket implements ServerMessage {
     this.ending = ending;
   }
 
-  public static OkPacket decode(Sequencer sequencer, ByteBuf buf, ConnectionContext context) {
+  public static OkPacket decode(Sequencer sequencer, ByteBuf buf, Context context) {
     buf.skipBytes(1);
     long affectedRows = BufferUtils.readLengthEncodedInt(buf);
     long lastInsertId = BufferUtils.readLengthEncodedInt(buf);
@@ -78,10 +77,6 @@ public class OkPacket implements ServerMessage {
               context.setDatabase(database);
               logger.debug("Database change : now is '{}'", database);
               break;
-
-            default:
-              int len = (int) BufferUtils.readLengthEncodedInt(stateInfo);
-              stateInfo.skipBytes(len);
           }
         }
       }
@@ -112,10 +107,6 @@ public class OkPacket implements ServerMessage {
     return warningCount;
   }
 
-  public Sequencer getSequencer() {
-    return sequencer;
-  }
-
   @Override
   public boolean ending() {
     return this.ending;
@@ -124,40 +115,5 @@ public class OkPacket implements ServerMessage {
   @Override
   public boolean resultSetEnd() {
     return true;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    OkPacket okPacket = (OkPacket) o;
-    return affectedRows == okPacket.affectedRows
-        && lastInsertId == okPacket.lastInsertId
-        && serverStatus == okPacket.serverStatus
-        && warningCount == okPacket.warningCount
-        && sequencer.equals(okPacket.sequencer);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(sequencer, affectedRows, lastInsertId, serverStatus, warningCount);
-  }
-
-  @Override
-  public String toString() {
-    return "OkPacket{"
-        + "sequencer="
-        + sequencer
-        + ", affectedRows="
-        + affectedRows
-        + ", lastInsertId="
-        + lastInsertId
-        + ", serverStatus="
-        + serverStatus
-        + ", warningCount="
-        + warningCount
-        + ", ending="
-        + ending
-        + '}';
   }
 }

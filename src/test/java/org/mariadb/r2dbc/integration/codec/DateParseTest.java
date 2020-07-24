@@ -26,21 +26,16 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-public class DateParseTest extends BaseTest {
+public class DateParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     sharedConn.createStatement("CREATE TABLE DateTable (t1 DATE, t2 int)").execute().blockLast();
     sharedConn
         .createStatement("INSERT INTO DateTable VALUES('2010-01-12',1), ('2011-2-28',2), (null,3)")
-        .execute()
-        .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
         .execute()
         .blockLast();
   }
@@ -452,18 +447,37 @@ public class DateParseTest extends BaseTest {
 
   private void localDateTimeValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM DateTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(
             r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalDateTime.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.time.LocalDateTime and column type DATE"))
-        .verify();
+        .expectNext(
+            Optional.of(LocalDateTime.parse("2010-01-12T00:00")),
+            Optional.of(LocalDateTime.parse("2011-02" + "-28T00:00")),
+            Optional.empty())
+        .verifyComplete();
+  }
+
+  @Test
+  void meta() {
+    meta(sharedConn);
+  }
+
+  @Test
+  void metaPrepare() {
+    meta(sharedConnPrepare);
+  }
+
+  private void meta(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM DateTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(LocalDate.class))
+        .verifyComplete();
   }
 }

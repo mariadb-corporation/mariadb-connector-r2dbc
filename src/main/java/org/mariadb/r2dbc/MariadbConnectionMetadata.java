@@ -40,6 +40,18 @@ public final class MariadbConnectionMetadata
     return this.version.versionGreaterOrEqual(major, minor, patch);
   }
 
+  public int getMajorVersion() {
+    return version.getMajorVersion();
+  }
+
+  public int getMinorVersion() {
+    return version.getMinorVersion();
+  }
+
+  public int getPatchVersion() {
+    return version.getPatchVersion();
+  }
+
   @Override
   public String getDatabaseVersion() {
     return this.version.getServerVersion();

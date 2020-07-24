@@ -294,7 +294,12 @@ public enum DecoderState implements DecoderStateInterface {
     PrepareResultPacket packet;
 
     public DecoderState decoder(short val, int len, long serverCapabilities) {
-      return this;
+      switch (val) {
+        case 255: // 0xFF
+          return ERROR_AND_EXECUTE_RESPONSE;
+        default:
+          return this;
+      }
     }
 
     @Override
@@ -385,6 +390,23 @@ public enum DecoderState implements DecoderStateInterface {
     @Override
     public DecoderState next(MariadbPacketDecoder decoder) {
       throw new IllegalArgumentException("unexpected state");
+    }
+  },
+
+  ERROR_AND_EXECUTE_RESPONSE {
+    public DecoderState decoder(short val, int len, long serverCapabilities) {
+      return this;
+    }
+
+    @Override
+    public ServerMessage decode(
+        ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
+      return ErrorPacket.decode(sequencer, body);
+    }
+
+    @Override
+    public DecoderState next(MariadbPacketDecoder decoder) {
+      return SKIP_EXECUTE;
     }
   }
 }

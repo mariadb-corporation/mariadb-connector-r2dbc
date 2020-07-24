@@ -25,13 +25,18 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.MariadbConnectionFactory;
+import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.api.MariadbStatement;
@@ -39,18 +44,13 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class BlobParameterTest extends BaseTest {
+public class BlobParameterTest extends BaseConnectionTest {
   private static MariadbConnectionMetadata meta = sharedConn.getMetadata();
 
   @BeforeAll
   public static void before2() {
     sharedConn
         .createStatement("CREATE TABLE BlobParam (t1 BLOB, t2 BLOB, t3 BLOB)")
-        .execute()
-        .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
         .execute()
         .blockLast();
   }
@@ -126,13 +126,13 @@ public class BlobParameterTest extends BaseTest {
         .createStatement("INSERT INTO BlobParam VALUES (?,?,?)")
         .bind(0, "\1")
         .bind(1, "A")
-        .bind(2, "ô\0你好")
+        .bind(2, "ô\0你好\\")
         .execute()
         .blockLast();
     validateNotNull(
         ByteBuffer.wrap("\1".getBytes(StandardCharsets.UTF_8)),
         ByteBuffer.wrap("A".getBytes(StandardCharsets.UTF_8)),
-        ByteBuffer.wrap("ô\0你好".getBytes(StandardCharsets.UTF_8)));
+        ByteBuffer.wrap("ô\0你好\\".getBytes(StandardCharsets.UTF_8)));
   }
 
   @Test
@@ -222,9 +222,37 @@ public class BlobParameterTest extends BaseTest {
         connection
             .createStatement("INSERT INTO BlobParam VALUES (?,?,?)")
             .bind(0, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 15}))))
-            .bind(1, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127}))))
+            .bind(
+                1,
+                Blob.from(
+                    Mono.just(ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127, (byte) 92}))))
             .bind(2, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {0}))));
-    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=BlobCodec{},"));
+    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=BlobCodec,"));
+    stmt.execute().blockLast();
+    validateNotNull(
+        ByteBuffer.wrap(new byte[] {(byte) 15}),
+        ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127, (byte) 92}),
+        ByteBuffer.wrap(new byte[] {0}));
+  }
+
+  @Test
+  void streamValue() {
+    streamValue(sharedConn);
+  }
+
+  @Test
+  void streamValuePrepare() {
+    streamValue(sharedConnPrepare);
+  }
+
+  private void streamValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BlobParam VALUES (?,?,?)")
+            .bind(0, new ByteArrayInputStream(new byte[] {(byte) 15}))
+            .bind(1, new ByteArrayInputStream(new byte[] {(byte) 1, 0, (byte) 127}))
+            .bind(2, new ByteArrayInputStream(new byte[] {0}));
+    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=StreamCodec,"));
     stmt.execute().blockLast();
     validateNotNull(
         ByteBuffer.wrap(new byte[] {(byte) 15}),
@@ -242,18 +270,44 @@ public class BlobParameterTest extends BaseTest {
     inputStreamValue(sharedConnPrepare);
   }
 
+  @Test
+  void inputStreamValueNoBackslash() throws Exception {
+    Map<String, String> sessionMap = new HashMap<>();
+    sessionMap.put("SQL_MODE", "NO_BACKSLASH_ESCAPES");
+    MariadbConnectionConfiguration confNoBackSlash =
+        TestConfiguration.defaultBuilder.clone().sessionVariables(sessionMap).build();
+    MariadbConnection con = new MariadbConnectionFactory(confNoBackSlash).create().block();
+    inputStreamValue(con);
+    con.close().block();
+  }
+
+  @Test
+  void inputStreamValueNoBackslashPrepare() throws Exception {
+    Map<String, String> sessionMap = new HashMap<>();
+    sessionMap.put("SQL_MODE", "NO_BACKSLASH_ESCAPES");
+    MariadbConnectionConfiguration confNoBackSlash =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .sessionVariables(sessionMap)
+            .useServerPrepStmts(true)
+            .build();
+    MariadbConnection con = new MariadbConnectionFactory(confNoBackSlash).create().block();
+    inputStreamValue(con);
+    con.close().block();
+  }
+
   private void inputStreamValue(MariadbConnection connection) {
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BlobParam VALUES (?,?,?)")
             .bind(0, new ByteArrayInputStream(new byte[] {(byte) 15}))
-            .bind(1, new ByteArrayInputStream((new byte[] {(byte) 1, 0, (byte) 127})))
+            .bind(1, new ByteArrayInputStream((new byte[] {(byte) 1, 39, (byte) 127})))
             .bind(2, new ByteArrayInputStream((new byte[] {0})));
-    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=StreamCodec{},"));
+    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=StreamCodec,"));
     stmt.execute().blockLast();
     validateNotNull(
         ByteBuffer.wrap(new byte[] {(byte) 15}),
-        ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127}),
+        ByteBuffer.wrap(new byte[] {(byte) 1, 39, (byte) 127}),
         ByteBuffer.wrap(new byte[] {0}));
   }
 

@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.api.MariadbStatement;
@@ -39,16 +39,11 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class BitParameterTest extends BaseTest {
+public class BitParameterTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     sharedConn
         .createStatement("CREATE TABLE ByteParam (t1 BIT(4), t2 BIT(20), t3 BIT(1))")
-        .execute()
-        .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
         .execute()
         .blockLast();
   }
@@ -101,13 +96,16 @@ public class BitParameterTest extends BaseTest {
             .bind(0, Boolean.TRUE)
             .bind(1, Boolean.TRUE)
             .bind(2, Boolean.FALSE);
+
     Assertions.assertTrue(
         stmt.toString()
                 .contains(
-                    "parameters=[Parameter{codec=BooleanCodec{}, value=true}, Parameter{codec=BooleanCodec{}, value=true}, Parameter{codec=BooleanCodec{}, value=false}]")
+                    "parameters=[Parameter{codec=BooleanCodec, value=true}, Parameter{codec=BooleanCodec, value=true}, Parameter{codec=BooleanCodec, value=false}]")
             || stmt.toString()
                 .contains(
-                    "parameters={0=Parameter{codec=BooleanCodec{}, value=true}, 1=Parameter{codec=BooleanCodec{}, value=true}, 2=Parameter{codec=BooleanCodec{}, value=false}}"));
+                    "parameters={0=Parameter{codec=BooleanCodec, value=true}, 1=Parameter{codec=BooleanCodec, "
+                        + "value=true}, 2=Parameter{codec=BooleanCodec, value=false}}"),
+        stmt.toString());
     stmt.execute().blockLast();
     validate(
         Optional.of(BitSet.valueOf(new byte[] {(byte) 1})),

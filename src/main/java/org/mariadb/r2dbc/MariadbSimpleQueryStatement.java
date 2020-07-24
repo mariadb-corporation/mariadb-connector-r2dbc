@@ -88,9 +88,7 @@ final class MariadbSimpleQueryStatement implements MariadbStatement {
   public MariadbSimpleQueryStatement returnGeneratedValues(String... columns) {
     Assert.requireNonNull(columns, "columns must not be null");
 
-    if (!(client.getVersion().isMariaDBServer()
-            && client.getVersion().versionGreaterOrEqual(10, 5, 1))
-        && columns.length > 1) {
+    if (!client.getVersion().supportReturning() && columns.length > 1) {
       throw new IllegalArgumentException(
           "returnGeneratedValues can have only one column before MariaDB 10.5.1");
     }
@@ -117,9 +115,7 @@ final class MariadbSimpleQueryStatement implements MariadbStatement {
   private Flux<org.mariadb.r2dbc.api.MariadbResult> execute(String sql, String[] generatedColumns) {
     ExceptionFactory factory = ExceptionFactory.withSql(sql);
 
-    if (generatedColumns != null
-        && client.getVersion().isMariaDBServer()
-        && client.getVersion().versionGreaterOrEqual(10, 5, 1)) {
+    if (generatedColumns != null && client.getVersion().supportReturning()) {
       sql =
           String.format(
               "%s RETURNING %s",
@@ -136,7 +132,6 @@ final class MariadbSimpleQueryStatement implements MariadbStatement {
                     dataRow,
                     factory,
                     generatedColumns,
-                    client.getVersion().isMariaDBServer()
-                        && client.getVersion().versionGreaterOrEqual(10, 5, 1)));
+                    client.getVersion().supportReturning()));
   }
 }

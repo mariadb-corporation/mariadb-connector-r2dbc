@@ -24,7 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
 import java.util.Arrays;
 import javax.crypto.Cipher;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.message.server.Sequencer;
 
 public final class Sha256PasswordPacket implements ClientMessage {
@@ -77,7 +77,7 @@ public final class Sha256PasswordPacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(ConnectionContext context, ByteBufAllocator allocator) {
+  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
     if (password == null) return allocator.ioBuffer(0);
     ByteBuf buf = allocator.ioBuffer(256);
     buf.writeBytes(encrypt(publicKey, password, seed));
@@ -87,16 +87,5 @@ public final class Sha256PasswordPacket implements ClientMessage {
   @Override
   public Sequencer getSequencer() {
     return sequencer;
-  }
-
-  @Override
-  public String toString() {
-    return "Sha256PasswordPacket{"
-        + "sequencer="
-        + sequencer
-        + ", password=*******"
-        + ", seed="
-        + Arrays.toString(seed)
-        + '}';
   }
 }

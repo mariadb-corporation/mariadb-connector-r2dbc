@@ -18,9 +18,7 @@ package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Objects;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 
 public class AuthSwitchPacket implements ServerMessage {
 
@@ -34,8 +32,7 @@ public class AuthSwitchPacket implements ServerMessage {
     this.seed = seed;
   }
 
-  public static AuthSwitchPacket decode(
-      Sequencer sequencer, ByteBuf buf, ConnectionContext context) {
+  public static AuthSwitchPacket decode(Sequencer sequencer, ByteBuf buf, Context context) {
     buf.skipBytes(1);
     int nullLength = buf.bytesBefore((byte) 0x00);
     String plugin = buf.toString(buf.readerIndex(), nullLength, StandardCharsets.US_ASCII);
@@ -61,35 +58,5 @@ public class AuthSwitchPacket implements ServerMessage {
   @Override
   public boolean ending() {
     return true;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    AuthSwitchPacket that = (AuthSwitchPacket) o;
-    return Objects.equals(sequencer, that.sequencer)
-        && Objects.equals(plugin, that.plugin)
-        && Arrays.equals(seed, that.seed);
-  }
-
-  @Override
-  public int hashCode() {
-    int result = Objects.hash(sequencer, plugin);
-    result = 31 * result + Arrays.hashCode(seed);
-    return result;
-  }
-
-  @Override
-  public String toString() {
-    return "AuthSwitchPacket{"
-        + "sequencer="
-        + sequencer
-        + ", plugin='"
-        + plugin
-        + '\''
-        + ", seed="
-        + Arrays.toString(seed)
-        + '}';
   }
 }

@@ -27,24 +27,19 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.api.MariadbResult;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
-public class DateTimeParameterTest extends BaseTest {
+public class DateTimeParameterTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     sharedConn
         .createStatement(
             "CREATE TABLE DateTimeParam (t1 DATETIME(6), t2 DATETIME(6), t3 DATETIME(6))")
-        .execute()
-        .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
         .execute()
         .blockLast();
   }

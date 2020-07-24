@@ -18,8 +18,10 @@ package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Blob;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
@@ -31,36 +33,98 @@ public class BlobCodec implements Codec<Blob> {
 
   public static final BlobCodec INSTANCE = new BlobCodec();
 
-  private static EnumSet<DataType> COMPATIBLE_TYPES =
-      EnumSet.of(DataType.BLOB, DataType.TINYBLOB, DataType.MEDIUMBLOB, DataType.LONGBLOB);
+  private static final EnumSet<DataType> COMPATIBLE_TYPES =
+      EnumSet.of(
+          DataType.BIT,
+          DataType.BLOB,
+          DataType.TINYBLOB,
+          DataType.MEDIUMBLOB,
+          DataType.LONGBLOB,
+          DataType.STRING,
+          DataType.VARSTRING,
+          DataType.VARCHAR);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getDataType()) && type.isAssignableFrom(Blob.class);
+    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(Blob.class);
   }
 
   @Override
-  public Blob decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Blob> type) {
-    return Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
+  public io.r2dbc.spi.Blob decodeText(
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends io.r2dbc.spi.Blob> type) {
+    switch (column.getType()) {
+      case STRING:
+      case VARCHAR:
+      case VARSTRING:
+        if (!column.isBinary()) {
+          buf.skipBytes(length);
+          throw new R2dbcNonTransientResourceException(
+              String.format(
+                  "Data type %s (not binary) cannot be decoded as Blob", column.getType()));
+        }
+        return io.r2dbc.spi.Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
+
+      default:
+        // BIT, TINYBLOB, MEDIUMBLOB, LONGBLOB, BLOB, GEOMETRY
+        return io.r2dbc.spi.Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
+    }
   }
 
   @Override
   public Blob decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Blob> type) {
-    return Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
+    switch (column.getType()) {
+      case BIT:
+      case TINYBLOB:
+      case MEDIUMBLOB:
+      case LONGBLOB:
+      case BLOB:
+      case GEOMETRY:
+        return Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
+
+      default:
+        // STRING, VARCHAR, VARSTRING:
+        if (!column.isBinary()) {
+          buf.skipBytes(length);
+          throw new R2dbcNonTransientResourceException(
+              String.format(
+                  "Data type %s (not binary) cannot be decoded as Blob", column.getType()));
+        }
+        return Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
+    }
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof Blob;
+  public boolean canEncode(Class<?> value) {
+    return Blob.class.isAssignableFrom(value);
   }
 
   @Override
-  public void encodeText(ByteBuf buf, ConnectionContext context, Blob value) {
-    BufferUtils.write(buf, value, context);
+  public void encodeText(ByteBuf buf, Context context, Blob value) {
+    buf.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
+    Flux.from(value.stream())
+        .handle(
+            (tempVal, sync) -> {
+              if (tempVal.hasArray()) {
+                BufferUtils.writeEscaped(
+                    buf, tempVal.array(), tempVal.arrayOffset(), tempVal.remaining(), context);
+              } else {
+                byte[] intermediaryBuf = new byte[tempVal.remaining()];
+                tempVal.get(intermediaryBuf);
+                BufferUtils.writeEscaped(buf, intermediaryBuf, 0, intermediaryBuf.length, context);
+              }
+              sync.next(buf);
+            })
+        .doOnComplete(
+            () -> {
+              buf.writeByte((byte) '\'');
+            })
+        .subscribe();
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, ConnectionContext context, Blob value) {
+  public void encodeBinary(ByteBuf buf, Context context, Blob value) {
     buf.writeByte(0xfe);
     int initialPos = buf.writerIndex();
     buf.writerIndex(buf.writerIndex() + 8); // reserve length encoded length bytes
@@ -84,10 +148,5 @@ public class BlobCodec implements Codec<Blob> {
 
   public DataType getBinaryEncodeType() {
     return DataType.BLOB;
-  }
-
-  @Override
-  public String toString() {
-    return "BlobCodec{}";
   }
 }

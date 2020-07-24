@@ -28,21 +28,16 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
-public class FloatParameterTest extends BaseTest {
+public class FloatParameterTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     sharedConn
         .createStatement("CREATE TABLE FloatParam (t1 FLOAT, t2 FLOAT, t3 FLOAT)")
-        .execute()
-        .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
         .execute()
         .blockLast();
   }

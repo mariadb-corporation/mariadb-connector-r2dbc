@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.integration.codec;
 
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -23,16 +24,19 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-public class ShortParseTest extends BaseTest {
+public class ShortParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("CREATE TABLE ShortTable " + "(t1 SMALLINT)").execute().blockLast();
     sharedConn
-        .createStatement("INSERT INTO ShortTable VALUES (0),(1),(-1), (null)")
+        .createStatement("CREATE TABLE ShortTable (t1 SMALLINT, t2 SMALLINT ZEROFILL)")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement("INSERT INTO ShortTable VALUES (0, 0),(1, 10),(-1, 100), (null,null)")
         .execute()
         .blockLast();
     sharedConn
@@ -41,11 +45,6 @@ public class ShortParseTest extends BaseTest {
         .blockLast();
     sharedConn
         .createStatement("INSERT INTO ShortUnsignedTable VALUES (0), (1), (65535), (null)")
-        .execute()
-        .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
         .execute()
         .blockLast();
   }
@@ -169,32 +168,25 @@ public class ShortParseTest extends BaseTest {
 
   private void ByteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM ShortTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM ShortTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Byte and column type SMALLINT(signed)"))
-        .verify();
+        .expectNext(
+            Optional.of((byte) 0), Optional.of((byte) 1), Optional.of((byte) -1), Optional.empty())
+        .verifyComplete();
     connection
-        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Byte and column type SMALLINT(unsigned)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
         .verify();
   }
 
@@ -210,30 +202,28 @@ public class ShortParseTest extends BaseTest {
 
   private void byteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM ShortTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM ShortTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1), Optional.of((byte) -1))
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type byte and column type SMALLINT(signed)"))
+                    && throwable.getMessage().equals("Cannot return null for primitive byte"))
         .verify();
     connection
-        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((byte) 0), Optional.of((byte) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type byte and column type SMALLINT(unsigned)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("byte overflow"))
         .verify();
   }
 
@@ -252,6 +242,44 @@ public class ShortParseTest extends BaseTest {
         .createStatement("SELECT t1 FROM ShortTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, short.class))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of((short) 0), Optional.of((short) 1), Optional.of((short) -1))
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable.getMessage().equals("Cannot return null for primitive short"))
+        .verify();
+
+    connection
+        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of((short) 0), Optional.of((short) 1))
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("Short overflow"))
+        .verify();
+  }
+
+  @Test
+  void shortObjectValue() {
+    shortObjectValue(sharedConn);
+  }
+
+  @Test
+  void shortObjectValuePrepare() {
+    shortObjectValue(sharedConnPrepare);
+  }
+
+  private void shortObjectValue(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM ShortTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
         .as(StepVerifier::create)
         .expectNext(
@@ -261,18 +289,16 @@ public class ShortParseTest extends BaseTest {
             Optional.empty())
         .verifyComplete();
     connection
-        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ? LIMIT 1")
+        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
         .as(StepVerifier::create)
+        .expectNext(Optional.of((short) 0), Optional.of((short) 1))
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.lang.Short and column type SMALLINT(unsigned)"))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("Short overflow"))
         .verify();
   }
 
@@ -411,6 +437,17 @@ public class ShortParseTest extends BaseTest {
         .as(StepVerifier::create)
         .expectNext(Optional.of("0"), Optional.of("1"), Optional.of("-1"), Optional.empty())
         .verifyComplete();
+
+    connection
+        .createStatement("SELECT t2 FROM ShortTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
+        .as(StepVerifier::create)
+        .expectNext(
+            Optional.of("00000"), Optional.of("00010"), Optional.of("00100"), Optional.empty())
+        .verifyComplete();
+
     connection
         .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
@@ -492,6 +529,35 @@ public class ShortParseTest extends BaseTest {
             Optional.of(BigInteger.ONE),
             Optional.of(BigInteger.valueOf(65535)),
             Optional.empty())
+        .verifyComplete();
+  }
+
+  @Test
+  void meta() {
+    meta(sharedConn);
+  }
+
+  @Test
+  void metaPrepare() {
+    meta(sharedConnPrepare);
+  }
+
+  private void meta(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM ShortTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Short.class))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(Integer.class))
         .verifyComplete();
   }
 }

@@ -20,19 +20,13 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 import org.mariadb.r2dbc.message.client.ClientMessage;
-import reactor.util.Logger;
-import reactor.util.Loggers;
 
 public class MariadbPacketEncoder extends MessageToByteEncoder<ClientMessage> {
-  private static final Logger logger = Loggers.getLogger(MessageToByteEncoder.class);
-  private ConnectionContext context = null;
+  private Context context = null;
 
   @Override
   protected void encode(ChannelHandlerContext ctx, ClientMessage msg, ByteBuf out)
       throws Exception {
-    if (logger.isDebugEnabled()) {
-      logger.debug("Request:  {}", msg);
-    }
 
     ByteBuf buf = null;
     try {
@@ -69,7 +63,7 @@ public class MariadbPacketEncoder extends MessageToByteEncoder<ClientMessage> {
     }
   }
 
-  public void setContext(ConnectionContext context) {
+  public void setContext(Context context) {
     this.context = context;
   }
 }

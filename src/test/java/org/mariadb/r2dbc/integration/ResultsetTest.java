@@ -20,12 +20,13 @@ import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-public class ResultsetTest extends BaseTest {
+public class ResultsetTest extends BaseConnectionTest {
   private static String vals = "azertyuiopqsdfghjklmwxcvbn";
 
   @Test
@@ -47,6 +48,12 @@ public class ResultsetTest extends BaseTest {
                         (row, metadata) -> {
                           Assertions.assertEquals(row.get(0), "a");
                           Assertions.assertEquals(row.get(1), "b");
+                          Assertions.assertEquals(row.get("a"), "a");
+                          Assertions.assertEquals(row.get("b"), "b");
+                          assertThrows(
+                              IllegalArgumentException.class,
+                              () -> row.get("unknown"),
+                              "Column name 'unknown' does not exist in column names [a, b]");
                           return "true";
                         })
                     .subscribe();
@@ -70,6 +77,50 @@ public class ResultsetTest extends BaseTest {
       sb.append(vals.charAt(rand.nextInt(26)));
     }
     return sb.toString();
+  }
+
+  @Test
+  public void returning() {
+    Assumptions.assumeTrue(isMariaDBServer() && minVersion(10, 5, 1));
+
+    sharedConn
+        .createStatement(
+            "CREATE TEMPORARY TABLE INSERT_RETURNING (id int not null primary key auto_increment, test varchar(10))")
+        .execute()
+        .blockLast();
+
+    sharedConn
+        .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
+        .bind(0, "test1")
+        .bind(1, "test2")
+        .returnGeneratedValues("id", "test")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
+        .as(StepVerifier::create)
+        .expectNext("1test1", "2test2")
+        .verifyComplete();
+
+    sharedConn
+        .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
+        .returnGeneratedValues("id")
+        .bind(0, "test3")
+        .bind(1, "test4")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+        .as(StepVerifier::create)
+        .expectNext("3", "4")
+        .verifyComplete();
+
+    sharedConn
+        .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
+        .returnGeneratedValues()
+        .bind(0, "a")
+        .bind(1, "b")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
+        .as(StepVerifier::create)
+        .expectNext("5a", "6b")
+        .verifyComplete();
   }
 
   @Test
@@ -141,9 +192,7 @@ public class ResultsetTest extends BaseTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("Column index 5 is larger than the number of columns 3"))
+                    && throwable.getMessage().equals("Column index 5 not in range [0-2]"))
         .verify();
   }
 

@@ -19,9 +19,7 @@ package org.mariadb.r2dbc.message.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Objects;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Parameter;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.Assert;
@@ -42,7 +40,7 @@ public final class QueryWithParametersPacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(ConnectionContext context, ByteBufAllocator byteBufAllocator) {
+  public ByteBuf encode(Context context, ByteBufAllocator byteBufAllocator) {
     Assert.requireNonNull(byteBufAllocator, "byteBufAllocator must not be null");
     String additionalReturningPart = null;
     if (generatedColumns != null) {
@@ -73,31 +71,5 @@ public final class QueryWithParametersPacket implements ClientMessage {
 
   public Sequencer getSequencer() {
     return sequencer;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    QueryWithParametersPacket that = (QueryWithParametersPacket) o;
-    return Objects.equals(prepareResult, that.prepareResult)
-        && Arrays.equals(parameters, that.parameters);
-  }
-
-  @Override
-  public int hashCode() {
-    int result = Objects.hash(prepareResult);
-    result = 31 * result + Arrays.hashCode(parameters);
-    return result;
-  }
-
-  @Override
-  public String toString() {
-    return "QueryWithParametersPacket{"
-        + "prepareResult="
-        + prepareResult
-        + ", parameters="
-        + Arrays.toString(parameters)
-        + '}';
   }
 }

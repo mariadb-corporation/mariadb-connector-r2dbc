@@ -17,29 +17,54 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import java.nio.charset.StandardCharsets;
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BufferUtils;
 
 public class LocalDateTimeCodec implements Codec<LocalDateTime> {
 
   public static final LocalDateTimeCodec INSTANCE = new LocalDateTimeCodec();
+  public static final DateTimeFormatter TIMESTAMP_FORMAT =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+  public static final DateTimeFormatter TIMESTAMP_FORMAT_NO_FRACTIONAL =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-  private static EnumSet<DataType> COMPATIBLE_TYPES =
-      EnumSet.of(DataType.DATETIME, DataType.TIMESTAMP);
+  public static final DateTimeFormatter MARIADB_LOCAL_DATE_TIME;
+  private static final EnumSet<DataType> COMPATIBLE_TYPES =
+      EnumSet.of(
+          DataType.DATETIME,
+          DataType.TIMESTAMP,
+          DataType.VARSTRING,
+          DataType.VARCHAR,
+          DataType.STRING,
+          DataType.TIME,
+          DataType.DATE);
 
-  public static int[] parseTimestamp(ByteBuf buf, int length) {
+  static {
+    MARIADB_LOCAL_DATE_TIME =
+        new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .append(DateTimeFormatter.ISO_LOCAL_DATE)
+            .appendLiteral(' ')
+            .append(DateTimeFormatter.ISO_LOCAL_TIME)
+            .toFormatter();
+  }
+
+  public static int[] parseTimestamp(String raw) {
     int nanoLen = -1;
     int[] timestampsPart = new int[] {0, 0, 0, 0, 0, 0, 0};
     int partIdx = 0;
-    int idx = 0;
-    while (idx++ < length) {
-      byte b = buf.readByte();
+    for (int idx = 0; idx < raw.length(); idx++) {
+      char b = raw.charAt(idx);
       if (b == '-' || b == ' ' || b == ':') {
         partIdx++;
         continue;
@@ -72,65 +97,130 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getDataType())
+    return COMPATIBLE_TYPES.contains(column.getType())
         && type.isAssignableFrom(LocalDateTime.class);
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof LocalDateTime;
+  public boolean canEncode(Class<?> value) {
+    return LocalDateTime.class.isAssignableFrom(value);
   }
 
   @Override
   public LocalDateTime decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalDateTime> type) {
 
-    if (column.getDataType() == DataType.TIMESTAMP || column.getDataType() == DataType.DATETIME) {
-      int[] parts = parseTimestamp(buf, length);
-      if (parts == null) return null;
-      return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
-          .plusNanos(parts[6]);
+    int[] parts;
+    switch (column.getType()) {
+      case DATE:
+        parts = LocalDateCodec.parseDate(buf, length);
+        if (parts == null) return null;
+        return LocalDateTime.of(parts[0], parts[1], parts[2], 0, 0, 0);
+
+      case DATETIME:
+      case TIMESTAMP:
+        parts = parseTimestamp(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
+        if (parts == null) return null;
+        return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
+            .plusNanos(parts[6]);
+
+      case TIME:
+        parts = LocalTimeCodec.parseTime(buf, length, column);
+        return LocalDateTime.of(1970, 1, 1, parts[1] % 24, parts[2], parts[3]).plusNanos(parts[4]);
+
+      default:
+        // STRING, VARCHAR, VARSTRING:
+        String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          parts = parseTimestamp(val);
+          if (parts == null) return null;
+          return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
+              .plusNanos(parts[6]);
+        } catch (DateTimeException dte) {
+          throw new R2dbcNonTransientResourceException(
+              String.format(
+                  "value '%s' (%s) cannot be decoded as LocalDateTime", val, column.getType()));
+        }
     }
-    buf.skipBytes(length);
-    throw new IllegalArgumentException("date type not supported");
   }
 
   @Override
   public LocalDateTime decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalDateTime> type) {
 
-    int year = buf.readUnsignedShortLE();
-    int month = buf.readByte();
-    int day = buf.readByte();
+    int year = 1970;
+    int month = 1;
+    long dayOfMonth = 1;
     int hour = 0;
     int minutes = 0;
     int seconds = 0;
     long microseconds = 0;
 
-    if (length > 4) {
-      hour = buf.readByte();
-      minutes = buf.readByte();
-      seconds = buf.readByte();
+    switch (column.getType()) {
+      case TIME:
+        // specific case for TIME, to handle value not in 00:00:00-23:59:59
+        buf.skipBytes(5); // skip negative and days
+        hour = buf.readByte();
+        minutes = buf.readByte();
+        seconds = buf.readByte();
+        if (length > 8) {
+          microseconds = buf.readUnsignedIntLE();
+        }
+        break;
 
-      if (length > 7) {
-        microseconds = buf.readUnsignedIntLE();
-      }
+      case DATE:
+      case TIMESTAMP:
+      case DATETIME:
+        year = buf.readUnsignedShortLE();
+        month = buf.readByte();
+        dayOfMonth = buf.readByte();
+
+        if (length > 4) {
+          hour = buf.readByte();
+          minutes = buf.readByte();
+          seconds = buf.readByte();
+
+          if (length > 7) {
+            microseconds = buf.readUnsignedIntLE();
+          }
+        }
+        break;
+
+      default:
+        // STRING, VARCHAR, VARSTRING:
+        String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          int[] parts = parseTimestamp(val);
+          if (parts == null) return null;
+          return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
+              .plusNanos(parts[6]);
+        } catch (DateTimeException dte) {
+          throw new R2dbcNonTransientResourceException(
+              String.format(
+                  "value '%s' (%s) cannot be decoded as LocalDateTime", val, column.getType()));
+        }
     }
-    return LocalDateTime.of(year, month, day, hour, minutes, seconds)
+
+    return LocalDateTime.of(year, month, (int) dayOfMonth, hour, minutes, seconds)
         .plusNanos(microseconds * 1000);
   }
 
   @Override
-  public void encodeText(ByteBuf buf, ConnectionContext context, LocalDateTime value) {
-    BufferUtils.write(buf, value);
+  public void encodeText(ByteBuf buf, Context context, LocalDateTime val) {
+
+    buf.writeByte('\'');
+    buf.writeCharSequence(
+        val.format(val.getNano() != 0 ? TIMESTAMP_FORMAT : TIMESTAMP_FORMAT_NO_FRACTIONAL),
+        StandardCharsets.US_ASCII);
+    buf.writeByte('\'');
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, ConnectionContext context, LocalDateTime value) {
+  public void encodeBinary(ByteBuf buf, Context context, LocalDateTime value) {
 
     int nano = value.getNano();
     if (nano > 0) {
       buf.writeByte((byte) 11);
-      buf.writeShortLE(value.get(ChronoField.YEAR));
+      buf.writeShortLE((short) value.get(ChronoField.YEAR));
       buf.writeByte(value.get(ChronoField.MONTH_OF_YEAR));
       buf.writeByte(value.get(ChronoField.DAY_OF_MONTH));
       buf.writeByte(value.get(ChronoField.HOUR_OF_DAY));
@@ -139,7 +229,7 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
       buf.writeIntLE(nano / 1000);
     } else {
       buf.writeByte((byte) 7);
-      buf.writeShortLE(value.get(ChronoField.YEAR));
+      buf.writeShortLE((short) value.get(ChronoField.YEAR));
       buf.writeByte(value.get(ChronoField.MONTH_OF_YEAR));
       buf.writeByte(value.get(ChronoField.DAY_OF_MONTH));
       buf.writeByte(value.get(ChronoField.HOUR_OF_DAY));
@@ -150,10 +240,5 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
 
   public DataType getBinaryEncodeType() {
     return DataType.DATETIME;
-  }
-
-  @Override
-  public String toString() {
-    return "LocalDateTimeCodec{}";
   }
 }

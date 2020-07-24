@@ -23,8 +23,6 @@ import org.mariadb.r2dbc.util.Assert;
 
 final class MariadbRowMetadata implements RowMetadata {
 
-  private static final Comparator<String> IGNORE_CASE_COMPARATOR =
-      (o1, o2) -> o2.compareToIgnoreCase(o1);
   private final List<MariadbColumnMetadata> metadataList;
   private volatile Collection<String> columnNames;
 
@@ -42,29 +40,20 @@ final class MariadbRowMetadata implements RowMetadata {
 
   @Override
   public MariadbColumnMetadata getColumnMetadata(int index) {
-    if (index >= this.metadataList.size()) {
+    if (index < 0 || index >= this.metadataList.size()) {
       throw new IllegalArgumentException(
           String.format(
-              "Column index %d is larger than the number of columns %d",
-              index, this.metadataList.size()));
+              "Column index %d is not in permit range[0,%s]", index, this.metadataList.size() - 1));
     }
     return this.metadataList.get(index);
   }
 
   @Override
   public MariadbColumnMetadata getColumnMetadata(String name) {
-    Assert.requireNonNull(name, "name must not be null");
-    for (MariadbColumnMetadata metadata : this.metadataList) {
-      if (metadata.getName().equalsIgnoreCase(name)) {
-        return metadata;
-      }
-    }
-    throw new IllegalArgumentException(
-        String.format(
-            "Column name '%s' does not exist in column names %s", name, getColumnNames()));
+    return metadataList.get(getColumn(name));
   }
 
-  public int getColumn(String name) {
+  private int getColumn(String name) {
     Assert.requireNonNull(name, "name must not be null");
     for (int i = 0; i < this.metadataList.size(); i++) {
       if (this.metadataList.get(i).getName().equalsIgnoreCase(name)) {
@@ -90,35 +79,20 @@ final class MariadbRowMetadata implements RowMetadata {
   }
 
   private Collection<String> getColumnNames(List<MariadbColumnMetadata> columnMetadatas) {
-    Set<String> columnNames = new TreeSet<>(IGNORE_CASE_COMPARATOR);
+    List<String> columnNames = new ArrayList<>();
     for (MariadbColumnMetadata columnMetadata : columnMetadatas) {
       columnNames.add(columnMetadata.getName());
     }
-    return columnNames;
+    return Collections.unmodifiableCollection(columnNames);
   }
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder("MariadbRowMetadata{");
-    sb.append("metadataList=[");
-    for (MariadbColumnMetadata columnMetadata : metadataList) {
-      sb.append(columnMetadata).append(",");
+    if (this.columnNames == null) {
+      this.columnNames = getColumnNames(this.metadataList);
     }
-    sb.append("], columnNames=").append(columnNames).append("}");
+    StringBuilder sb = new StringBuilder("MariadbRowMetadata{");
+    sb.append("columnNames=").append(columnNames).append("}");
     return sb.toString();
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    MariadbRowMetadata that = (MariadbRowMetadata) o;
-    return Objects.equals(metadataList, that.metadataList)
-        && Objects.equals(columnNames, that.columnNames);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(metadataList, columnNames);
   }
 }

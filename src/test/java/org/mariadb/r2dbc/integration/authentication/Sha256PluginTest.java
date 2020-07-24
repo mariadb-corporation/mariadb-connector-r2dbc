@@ -23,19 +23,18 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
-import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class Sha256PluginTest extends BaseTest {
+public class Sha256PluginTest extends BaseConnectionTest {
 
   private static String rsaPublicKey;
   private static String cachingRsaPublicKey;
+  private static boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
 
   @BeforeAll
   public static void init() throws Exception {
-    boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
-    Assumptions.assumeTrue(!isWindows && !isMariaDBServer() && minVersion(5, 7, 0));
+    Assumptions.assumeTrue(!isMariaDBServer() && minVersion(5, 7, 0));
 
     rsaPublicKey = System.getProperty("rsaPublicKey");
     if (rsaPublicKey == null && minVersion(8, 0, 0)) {
@@ -151,10 +150,8 @@ public class Sha256PluginTest extends BaseTest {
 
   @Test
   public void sha256PluginTestWithServerRsaKey() throws Exception {
-    Assumptions.assumeTrue(!isMariaDBServer());
-    Assumptions.assumeTrue(rsaPublicKey != null);
-    MariadbConnectionMetadata meta = sharedConn.getMetadata();
-    Assumptions.assumeTrue(meta.minVersion(8, 0, 0));
+    Assumptions.assumeTrue(
+        !isWindows && !isMariaDBServer() && rsaPublicKey != null && minVersion(8, 0, 0));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
@@ -164,13 +161,12 @@ public class Sha256PluginTest extends BaseTest {
             .rsaPublicKey(rsaPublicKey)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
-    connection.close();
+    connection.close().block();
   }
 
   @Test
   public void sha256PluginTestWithoutServerRsaKey() throws Exception {
-    MariadbConnectionMetadata meta = sharedConn.getMetadata();
-    Assumptions.assumeTrue(meta.minVersion(8, 0, 0));
+    Assumptions.assumeTrue(!isWindows && !isMariaDBServer() && minVersion(8, 0, 0));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
@@ -180,14 +176,12 @@ public class Sha256PluginTest extends BaseTest {
             .allowPublicKeyRetrieval(true)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
-    connection.close();
+    connection.close().block();
   }
 
   @Test
   public void sha256PluginTestException() throws Exception {
-    Assumptions.assumeTrue(!isMariaDBServer());
-    MariadbConnectionMetadata meta = sharedConn.getMetadata();
-    Assumptions.assumeTrue(meta.minVersion(8, 0, 0));
+    Assumptions.assumeTrue(!isMariaDBServer() && minVersion(8, 0, 0));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
@@ -219,14 +213,13 @@ public class Sha256PluginTest extends BaseTest {
             .sslMode(SslMode.ENABLE_TRUST)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
-    connection.close();
+    connection.close().block();
   }
 
   @Test
   public void cachingSha256PluginTestWithServerRsaKey() throws Exception {
-    Assumptions.assumeTrue(!isMariaDBServer());
-    Assumptions.assumeTrue(cachingRsaPublicKey != null);
-    Assumptions.assumeTrue(minVersion(8, 0, 0));
+    Assumptions.assumeTrue(
+        !isWindows && !isMariaDBServer() && cachingRsaPublicKey != null && minVersion(8, 0, 0));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
@@ -236,14 +229,12 @@ public class Sha256PluginTest extends BaseTest {
             .cachingRsaPublicKey(cachingRsaPublicKey)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
-    connection.close();
+    connection.close().block();
   }
 
   @Test
   public void cachingSha256PluginTestWithoutServerRsaKey() throws Exception {
-    Assumptions.assumeTrue(rsaPublicKey != null);
-    MariadbConnectionMetadata meta = sharedConn.getMetadata();
-    Assumptions.assumeTrue(meta.minVersion(8, 0, 0));
+    Assumptions.assumeTrue(!isWindows && rsaPublicKey != null && minVersion(8, 0, 0));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
@@ -253,7 +244,7 @@ public class Sha256PluginTest extends BaseTest {
             .allowPublicKeyRetrieval(true)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
-    connection.close();
+    connection.close().block();
 
     MariadbConnectionConfiguration conf2 =
         TestConfiguration.defaultBuilder
@@ -262,7 +253,7 @@ public class Sha256PluginTest extends BaseTest {
             .password("password")
             .build();
     MariadbConnection connection2 = new MariadbConnectionFactory(conf2).create().block();
-    connection2.close();
+    connection2.close().block();
   }
 
   @Test
@@ -300,8 +291,8 @@ public class Sha256PluginTest extends BaseTest {
             .sslMode(SslMode.ENABLE_TRUST)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
-    connection.close();
+    connection.close().block();
     MariadbConnection connection3 = new MariadbConnectionFactory(conf).create().block();
-    connection3.close();
+    connection3.close().block();
   }
 }

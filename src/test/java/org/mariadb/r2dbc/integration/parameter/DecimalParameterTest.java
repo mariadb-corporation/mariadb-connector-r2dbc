@@ -30,22 +30,17 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
-public class DecimalParameterTest extends BaseTest {
+public class DecimalParameterTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     sharedConn
         .createStatement(
             "CREATE TABLE DecimalParam (t1 DECIMAL(40,20), t2 DECIMAL(40,20), t3 DECIMAL(40,20))")
-        .execute()
-        .blockLast();
-    // ensure having same kind of result for truncation
-    sharedConn
-        .createStatement("SET @@sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
         .execute()
         .blockLast();
   }

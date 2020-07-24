@@ -6,12 +6,15 @@ set -e
 ###################################################################################################################
 # test different type of configuration
 ###################################################################################################################
+if [ -z "NO_BACKSLASH_ESCAPES" ]; then
+  export NO_BACKSLASH_ESCAPES=false
+fi
 
 if [ -n "$BENCHMARK" ]; then
   cmd=(mvn clean package -P bench -Dmaven.test.skip)
 else
   mvn clean
-  cmd=(mvn clean test $ADDITIONNAL_VARIABLES -DjobId=${TRAVIS_JOB_ID} \
+  cmd=(mvn clean verify $ADDITIONNAL_VARIABLES -DjobId=${TRAVIS_JOB_ID} \
     -DkeystorePath="$SSLCERT/client-keystore.jks" \
     -DTEST_HOST=mariadb.example.com \
     -DTEST_PORT=3305 \
@@ -20,6 +23,7 @@ else
     -DRUN_LONG_TEST=false \
     -DkeystorePassword="kspass" \
     -DserverCertificatePath="$SSLCERT/server.crt" \
+    -DNO_BACKSLASH_ESCAPES="$NO_BACKSLASH_ESCAPES"
     -Dkeystore2Path="$SSLCERT/fullclient-keystore.jks" \
     -Dkeystore2Password="kspass" -DkeyPassword="kspasskey" \
     -Dkeystore2PathP12="$SSLCERT/fullclient-keystore.p12" \
@@ -66,7 +70,36 @@ if [ "$i" = 0 ]; then
   echo >&2 'data server init process failed.'
   exit 1
 fi
+###################################################################################################################
+# run test suite
+###################################################################################################################
 
+  if [ -z "$MAXSCALE_VERSION" ] ; then
+    docker-compose -f .travis/docker-compose.yml exec -u root db bash /docker-entrypoint-initdb.d/pam/pam.sh
+    sleep 2
+    docker-compose -f .travis/docker-compose.yml stop db
+    sleep 2
+    docker-compose -f .travis/docker-compose.yml up -d
+    docker-compose -f .travis/docker-compose.yml logs db
+
+    for i in {60..0}; do
+      if echo 'SELECT 1' | "${mysql[@]}" &>/dev/null; then
+        break
+      fi
+      echo 'data server still not active'
+      sleep 1
+    done
+
+    if [ "$i" = 0 ]; then
+      if [ -n "COMPOSE_FILE" ]; then
+        docker-compose -f ${COMPOSE_FILE} logs
+      fi
+
+      echo 'SELECT 1' | "${mysql[@]}"
+      echo >&2 'data server init process failed.'
+      exit 1
+    fi
+  fi
 ###################################################################################################################
 # run test suite
 ###################################################################################################################

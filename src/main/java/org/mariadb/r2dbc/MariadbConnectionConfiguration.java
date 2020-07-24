@@ -20,11 +20,11 @@ import static io.r2dbc.spi.ConnectionFactoryOptions.*;
 
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.IsolationLevel;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.SslConfig;
 import reactor.util.annotation.Nullable;
@@ -36,6 +36,7 @@ public final class MariadbConnectionConfiguration {
   private final String host;
   private final Duration connectTimeout;
   private final CharSequence password;
+  private final CharSequence[] pamOtherPwd;
   private final int port;
   private final int prepareCacheSize;
   private final String socket;
@@ -73,7 +74,8 @@ public final class MariadbConnectionConfiguration {
       @Nullable String cachingRsaPublicKey,
       boolean allowPublicKeyRetrieval,
       boolean useServerPrepStmts,
-      @Nullable Integer prepareCacheSize) {
+      @Nullable Integer prepareCacheSize,
+      @Nullable CharSequence[] pamOtherPwd) {
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
     this.database = database;
     this.host = host;
@@ -97,6 +99,27 @@ public final class MariadbConnectionConfiguration {
     this.allowPublicKeyRetrieval = allowPublicKeyRetrieval;
     this.useServerPrepStmts = useServerPrepStmts;
     this.prepareCacheSize = (prepareCacheSize == null) ? 250 : prepareCacheSize.intValue();
+    this.pamOtherPwd = pamOtherPwd;
+  }
+
+  static boolean boolValue(Object value) {
+    if (value instanceof Boolean) {
+      return ((Boolean) value).booleanValue();
+    }
+    if (value instanceof String) {
+      return Boolean.parseBoolean(value.toString());
+    }
+    throw new IllegalArgumentException(String.format("Option %s wrong boolean format", value));
+  }
+
+  static int intValue(Object value) {
+    if (value instanceof Number) {
+      return ((Number) value).intValue();
+    }
+    if (value instanceof String) {
+      return Integer.parseInt(value.toString());
+    }
+    throw new IllegalArgumentException(String.format("Option %s wrong integer format", value));
   }
 
   public static Builder fromOptions(ConnectionFactoryOptions connectionFactoryOptions) {
@@ -113,21 +136,44 @@ public final class MariadbConnectionConfiguration {
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES)) {
       builder.allowMultiQueries(
-          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES));
+          boolValue(
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES)));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.ALLOW_PIPELINING)) {
       builder.allowPipelining(
-          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.ALLOW_PIPELINING));
+          boolValue(
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.ALLOW_PIPELINING)));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.USE_SERVER_PREPARE)) {
       builder.useServerPrepStmts(
-          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.USE_SERVER_PREPARE));
+          boolValue(
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.USE_SERVER_PREPARE)));
+    }
+    if (connectionFactoryOptions.hasOption(
+        MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES)) {
+      Map<String, String> myMap = new HashMap<>();
+      String s =
+          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES);
+      String[] pairs = s.split(",");
+      for (int i = 0; i < pairs.length; i++) {
+        String pair = pairs[i];
+        String[] keyValue = pair.split("=");
+        myMap.put(keyValue[0], (keyValue.length > 1) ? keyValue[1] : "");
+      }
+      builder.connectionAttributes(myMap);
     }
 
-    builder.prepareCacheSize(
-        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.PREPARE_CACHE_SIZE));
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.PREPARE_CACHE_SIZE)) {
+      builder.prepareCacheSize(
+          intValue(
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.PREPARE_CACHE_SIZE)));
+    }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SSL_MODE)) {
       builder.sslMode(
@@ -149,17 +195,24 @@ public final class MariadbConnectionConfiguration {
     }
     builder.password(connectionFactoryOptions.getValue(PASSWORD));
     builder.username(connectionFactoryOptions.getRequiredValue(USER));
-
-    Integer port = connectionFactoryOptions.getValue(PORT);
-    if (port != null) {
-      builder.port(port);
+    if (connectionFactoryOptions.hasOption(PORT)) {
+      builder.port(intValue(connectionFactoryOptions.getValue(PORT)));
+    }
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.PAM_OTHER_PASSWORD)) {
+      String s =
+          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES);
+      String[] pairs = s.split(",");
+      try {
+        for (int i = 0; i < pairs.length; i++) {
+          pairs[i] = URLDecoder.decode(pairs[i], StandardCharsets.UTF_8.toString());
+          ;
+        }
+      } catch (UnsupportedEncodingException e) {
+        // eat
+      }
+      builder.pamOtherPwd(pairs);
     }
 
-    Map<String, String> options =
-        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.OPTIONS);
-    if (options != null) {
-      builder.options(options);
-    }
     return builder;
   }
 
@@ -178,6 +231,10 @@ public final class MariadbConnectionConfiguration {
   @Nullable
   public Duration getConnectTimeout() {
     return this.connectTimeout;
+  }
+
+  public CharSequence[] getPamOtherPwd() {
+    return pamOtherPwd;
   }
 
   @Nullable
@@ -258,6 +315,17 @@ public final class MariadbConnectionConfiguration {
         hiddenPwd.append("*");
       }
     }
+    StringBuilder hiddenPamPwd = new StringBuilder();
+    if (pamOtherPwd != null) {
+      for (CharSequence s : pamOtherPwd) {
+        for (int i = 0; i < s.length(); i++) {
+          hiddenPamPwd.append("*");
+        }
+        hiddenPamPwd.append(",");
+      }
+      hiddenPamPwd.deleteCharAt(hiddenPamPwd.length() - 1);
+    }
+
     return "MariadbConnectionConfiguration{"
         + "database='"
         + database
@@ -268,9 +336,11 @@ public final class MariadbConnectionConfiguration {
         + ", connectTimeout="
         + connectTimeout
         + ", password="
-        + hiddenPwd.toString()
+        + hiddenPwd
         + ", port="
         + port
+        + ", prepareCacheSize="
+        + prepareCacheSize
         + ", socket='"
         + socket
         + '\''
@@ -279,54 +349,29 @@ public final class MariadbConnectionConfiguration {
         + '\''
         + ", allowMultiQueries="
         + allowMultiQueries
+        + ", allowPipelining="
+        + allowPipelining
         + ", connectionAttributes="
         + connectionAttributes
+        + ", sessionVariables="
+        + sessionVariables
         + ", sslConfig="
         + sslConfig
-        + ", serverRsaPublicKeyFile='"
+        + ", rsaPublicKey='"
         + rsaPublicKey
+        + '\''
+        + ", cachingRsaPublicKey='"
+        + cachingRsaPublicKey
         + '\''
         + ", allowPublicKeyRetrieval="
         + allowPublicKeyRetrieval
+        + ", isolationLevel="
+        + isolationLevel
         + ", useServerPrepStmts="
         + useServerPrepStmts
+        + ", pamOtherPwd="
+        + hiddenPamPwd
         + '}';
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    MariadbConnectionConfiguration that = (MariadbConnectionConfiguration) o;
-    return port == that.port
-        && allowMultiQueries == that.allowMultiQueries
-        && allowPublicKeyRetrieval == that.allowPublicKeyRetrieval
-        && Objects.equals(database, that.database)
-        && Objects.equals(host, that.host)
-        && Objects.equals(connectTimeout, that.connectTimeout)
-        && Objects.equals(password, that.password)
-        && Objects.equals(socket, that.socket)
-        && Objects.equals(username, that.username)
-        && Objects.equals(connectionAttributes, that.connectionAttributes)
-        && Objects.equals(sslConfig, that.sslConfig)
-        && Objects.equals(rsaPublicKey, that.rsaPublicKey);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(
-        database,
-        host,
-        connectTimeout,
-        password,
-        port,
-        socket,
-        username,
-        allowMultiQueries,
-        connectionAttributes,
-        sslConfig,
-        rsaPublicKey,
-        allowPublicKeyRetrieval);
   }
 
   /**
@@ -358,6 +403,7 @@ public final class MariadbConnectionConfiguration {
     @Nullable private String clientSslKey;
     @Nullable private CharSequence clientSslPassword;
     private SslMode sslMode = SslMode.DISABLED;
+    private CharSequence[] pamOtherPwd;
 
     private Builder() {}
 
@@ -403,7 +449,8 @@ public final class MariadbConnectionConfiguration {
           this.cachingRsaPublicKey,
           this.allowPublicKeyRetrieval,
           this.useServerPrepStmts,
-          this.prepareCacheSize);
+          this.prepareCacheSize,
+          this.pamOtherPwd);
     }
 
     /**
@@ -427,6 +474,11 @@ public final class MariadbConnectionConfiguration {
       return this;
     }
 
+    public Builder pamOtherPwd(@Nullable CharSequence[] pamOtherPwd) {
+      this.pamOtherPwd = pamOtherPwd;
+      return this;
+    }
+
     /**
      * Configure the database.
      *
@@ -447,19 +499,6 @@ public final class MariadbConnectionConfiguration {
      */
     public Builder host(String host) {
       this.host = Assert.requireNonNull(host, "host must not be null");
-      return this;
-    }
-
-    public Builder options(Map<String, String> options) {
-      Assert.requireNonNull(options, "options map must not be null");
-
-      options.forEach(
-          (k, v) -> {
-            Assert.requireNonNull(k, "option keys must not be null");
-            Assert.requireNonNull(v, "option values must not be null");
-          });
-
-      this.connectionAttributes = options;
       return this;
     }
 
@@ -612,7 +651,7 @@ public final class MariadbConnectionConfiguration {
     /**
      * Permit to indicate to use text or binary protocol.
      *
-     * @param useServerPrepStmts
+     * @param useServerPrepStmts use server param
      * @return this {@link Builder}
      */
     public Builder useServerPrepStmts(boolean useServerPrepStmts) {
@@ -683,8 +722,27 @@ public final class MariadbConnectionConfiguration {
           hiddenPwd.append("*");
         }
       }
+      StringBuilder hiddenPamPwd = new StringBuilder();
+      if (pamOtherPwd != null) {
+        for (CharSequence s : pamOtherPwd) {
+          for (int i = 0; i < s.length(); i++) {
+            hiddenPamPwd.append("*");
+          }
+          hiddenPamPwd.append(",");
+        }
+        hiddenPamPwd.deleteCharAt(hiddenPamPwd.length() - 1);
+      }
+
       return "Builder{"
-          + "username='"
+          + "rsaPublicKey='"
+          + rsaPublicKey
+          + '\''
+          + ", cachingRsaPublicKey='"
+          + cachingRsaPublicKey
+          + '\''
+          + ", allowPublicKeyRetrieval="
+          + allowPublicKeyRetrieval
+          + ", username='"
           + username
           + '\''
           + ", connectTimeout="
@@ -695,15 +753,42 @@ public final class MariadbConnectionConfiguration {
           + ", host='"
           + host
           + '\''
-          + ", options="
+          + ", sessionVariables="
+          + sessionVariables
+          + ", connectionAttributes="
           + connectionAttributes
           + ", password="
-          + hiddenPwd.toString()
+          + hiddenPwd
           + ", port="
           + port
           + ", socket='"
           + socket
           + '\''
+          + ", allowMultiQueries="
+          + allowMultiQueries
+          + ", allowPipelining="
+          + allowPipelining
+          + ", useServerPrepStmts="
+          + useServerPrepStmts
+          + ", prepareCacheSize="
+          + prepareCacheSize
+          + ", tlsProtocol="
+          + tlsProtocol
+          + ", serverSslCert='"
+          + serverSslCert
+          + '\''
+          + ", clientSslCert='"
+          + clientSslCert
+          + '\''
+          + ", clientSslKey='"
+          + clientSslKey
+          + '\''
+          + ", clientSslPassword="
+          + clientSslPassword
+          + ", sslMode="
+          + sslMode
+          + ", pamOtherPwd="
+          + hiddenPamPwd
           + '}';
     }
   }

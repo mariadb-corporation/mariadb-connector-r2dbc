@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
@@ -31,7 +31,7 @@ import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
-public class NoPipelineTest extends BaseTest {
+public class NoPipelineTest extends BaseConnectionTest {
 
   @Test
   void noPipelineConnect() throws Exception {

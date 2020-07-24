@@ -17,70 +17,83 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BufferUtils;
 
 public class LocalTimeCodec implements Codec<LocalTime> {
 
   public static final LocalTimeCodec INSTANCE = new LocalTimeCodec();
 
-  private static EnumSet<DataType> COMPATIBLE_TYPES =
-      EnumSet.of(DataType.TIME, DataType.DATETIME, DataType.TIMESTAMP);
+  private static final EnumSet<DataType> COMPATIBLE_TYPES =
+      EnumSet.of(
+          DataType.TIME,
+          DataType.DATETIME,
+          DataType.TIMESTAMP,
+          DataType.VARSTRING,
+          DataType.VARCHAR,
+          DataType.STRING);
 
-  public static int[] parseTime(ByteBuf buf, int length) {
-    String raw = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-    boolean negate = raw.startsWith("-");
-    if (negate) {
-      raw = raw.substring(1);
+  public static int[] parseTime(ByteBuf buf, int length, ColumnDefinitionPacket column) {
+    int initialPos = buf.readerIndex();
+    int[] parts = new int[5];
+    int idx = 1;
+    int partLength = 0;
+    byte b;
+    int i = 0;
+    if (length > 0 && buf.getByte(buf.readerIndex()) == '-') {
+      buf.skipBytes(1);
+      i++;
+      parts[0] = 1;
     }
-    String[] rawPart = raw.split(":");
-    if (rawPart.length == 3) {
-      int hour = Integer.parseInt(rawPart[0]);
-      int minutes = Integer.parseInt(rawPart[1]);
-      int seconds = Integer.parseInt(rawPart[2].substring(0, 2));
-      int nanoseconds = extractNanos(raw);
 
-      return new int[] {hour, minutes, seconds, nanoseconds};
-
-    } else {
-      throw new IllegalArgumentException(
-          String.format(
-              "%s cannot be parse as time. time must have" + " \"99:99:99\" format", raw));
-    }
-  }
-
-  protected static int extractNanos(String timestring) {
-    int index = timestring.indexOf('.');
-    if (index == -1) {
-      return 0;
-    }
-    int nanos = 0;
-    for (int i = index + 1; i < index + 10; i++) {
-      int digit;
-      if (i >= timestring.length()) {
-        digit = 0;
-      } else {
-        digit = timestring.charAt(i) - '0';
+    for (; i < length; i++) {
+      b = buf.readByte();
+      if (b == ':' || b == '.') {
+        idx++;
+        partLength = 0;
+        continue;
       }
-      nanos = nanos * 10 + digit;
+      if (b < '0' || b > '9') {
+        buf.readerIndex(initialPos);
+        String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        throw new R2dbcNonTransientResourceException(
+            String.format("%s value '%s' cannot be decoded as Time", column.getType(), val));
+      }
+      partLength++;
+      parts[idx] = parts[idx] * 10 + (b - '0');
     }
-    return nanos;
+
+    if (idx < 2) {
+      buf.readerIndex(initialPos);
+      String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+      throw new R2dbcNonTransientResourceException(
+          String.format("%s value '%s' cannot be decoded as Time", column.getType(), val));
+    }
+
+    // set nano real value
+    if (idx == 4) {
+      for (i = 0; i < 9 - partLength; i++) {
+        parts[4] = parts[4] * 10;
+      }
+    }
+    return parts;
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getDataType())
-        && type.isAssignableFrom(LocalTime.class);
+    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(LocalTime.class);
   }
 
-  public boolean canEncode(Object value) {
-    return value instanceof LocalTime;
+  public boolean canEncode(Class<?> value) {
+    return LocalTime.class.isAssignableFrom(value);
   }
 
   @Override
@@ -88,16 +101,41 @@ public class LocalTimeCodec implements Codec<LocalTime> {
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalTime> type) {
 
     int[] parts;
-    switch (column.getDataType()) {
+    switch (column.getType()) {
       case TIMESTAMP:
       case DATETIME:
-        parts = LocalDateTimeCodec.parseTimestamp(buf, length);
+        parts =
+            LocalDateTimeCodec.parseTimestamp(
+                buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
         if (parts == null) return null;
         return LocalTime.of(parts[3], parts[4], parts[5], parts[6]);
 
+      case TIME:
+        parts = parseTime(buf, length, column);
+        parts[1] = parts[1] % 24;
+        if (parts[0] == 1) {
+          // negative
+
+          long seconds = (24 * 60 * 60 - (parts[1] * 3600 + parts[2] * 60 + parts[3]));
+          return LocalTime.ofNanoOfDay(seconds * 1_000_000_000 - parts[4]);
+        }
+        return LocalTime.of(parts[1] % 24, parts[2], parts[3], parts[4]);
+
       default:
-        parts = parseTime(buf, length);
-        return LocalTime.of(parts[0] % 24, parts[1], parts[2], parts[3]);
+        // STRING, VARCHAR, VARSTRING:
+        String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          if (val.contains(" ")) {
+            return LocalDateTime.parse(val, LocalDateTimeCodec.MARIADB_LOCAL_DATE_TIME)
+                .toLocalTime();
+          } else {
+            return LocalTime.parse(val);
+          }
+        } catch (DateTimeParseException e) {
+          throw new R2dbcNonTransientResourceException(
+              String.format(
+                  "value '%s' (%s) cannot be decoded as LocalTime", val, column.getType()));
+        }
     }
   }
 
@@ -109,7 +147,7 @@ public class LocalTimeCodec implements Codec<LocalTime> {
     int minutes = 0;
     int seconds = 0;
     long microseconds = 0;
-    switch (column.getDataType()) {
+    switch (column.getType()) {
       case TIMESTAMP:
       case DATETIME:
         buf.skipBytes(4); // skip year, month and day
@@ -124,8 +162,8 @@ public class LocalTimeCodec implements Codec<LocalTime> {
         }
         return LocalTime.of(hour, minutes, seconds).plusNanos(microseconds * 1000);
 
-      default: // TIME
-        buf.skipBytes(1); // skip negate
+      case TIME:
+        boolean negate = buf.readByte() == 1;
         if (length > 4) {
           buf.skipBytes(4); // skip days
           if (length > 7) {
@@ -137,17 +175,60 @@ public class LocalTimeCodec implements Codec<LocalTime> {
             }
           }
         }
-        return LocalTime.of(hour, minutes, seconds).plusNanos(microseconds * 1000);
+        if (negate) {
+          // negative
+          long nanos = (24 * 60 * 60 - (hour * 3600 + minutes * 60 + seconds));
+          return LocalTime.ofNanoOfDay(nanos * 1_000_000_000 - microseconds * 1000);
+        }
+        return LocalTime.of(hour % 24, minutes, seconds, (int) microseconds * 1000);
+
+      default:
+        // STRING, VARCHAR, VARSTRING:
+        String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        try {
+          if (val.contains(" ")) {
+            return LocalDateTime.parse(val, LocalDateTimeCodec.MARIADB_LOCAL_DATE_TIME)
+                .toLocalTime();
+          } else {
+            return LocalTime.parse(val);
+          }
+        } catch (DateTimeParseException e) {
+          throw new R2dbcNonTransientResourceException(
+              String.format(
+                  "value '%s' (%s) cannot be decoded as LocalTime", val, column.getType()));
+        }
     }
   }
 
   @Override
-  public void encodeText(ByteBuf buf, ConnectionContext context, LocalTime value) {
-    BufferUtils.write(buf, value);
+  public void encodeText(ByteBuf buf, Context context, LocalTime val) {
+
+    StringBuilder dateString = new StringBuilder(15);
+    dateString
+        .append(val.getHour() < 10 ? "0" : "")
+        .append(val.getHour())
+        .append(val.getMinute() < 10 ? ":0" : ":")
+        .append(val.getMinute())
+        .append(val.getSecond() < 10 ? ":0" : ":")
+        .append(val.getSecond());
+
+    int microseconds = val.getNano() / 1000;
+    if (microseconds > 0) {
+      dateString.append(".");
+      if (microseconds % 1000 == 0) {
+        dateString.append(Integer.toString(microseconds / 1000 + 1000).substring(1));
+      } else {
+        dateString.append(Integer.toString(microseconds + 1000000).substring(1));
+      }
+    }
+
+    buf.writeByte('\'');
+    buf.writeCharSequence(dateString.toString(), StandardCharsets.US_ASCII);
+    buf.writeByte('\'');
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, ConnectionContext context, LocalTime value) {
+  public void encodeBinary(ByteBuf buf, Context context, LocalTime value) {
     int nano = value.getNano();
     if (nano > 0) {
       buf.writeByte((byte) 12);
@@ -169,10 +250,5 @@ public class LocalTimeCodec implements Codec<LocalTime> {
 
   public DataType getBinaryEncodeType() {
     return DataType.TIME;
-  }
-
-  @Override
-  public String toString() {
-    return "LocalTimeCodec{}";
   }
 }

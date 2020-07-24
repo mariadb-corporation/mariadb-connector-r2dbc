@@ -18,7 +18,7 @@ package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import org.mariadb.r2dbc.client.ConnectionContext;
+import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.message.server.Sequencer;
 
 public interface ClientMessage {
@@ -26,5 +26,5 @@ public interface ClientMessage {
     return new Sequencer((byte) 0xff);
   }
 
-  ByteBuf encode(ConnectionContext context, ByteBufAllocator byteBufAllocator);
+  ByteBuf encode(Context context, ByteBufAllocator byteBufAllocator);
 }

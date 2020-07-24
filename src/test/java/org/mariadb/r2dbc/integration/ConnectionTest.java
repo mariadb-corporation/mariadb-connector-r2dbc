@@ -19,25 +19,24 @@ package org.mariadb.r2dbc.integration;
 import io.r2dbc.spi.*;
 import java.math.BigInteger;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseTest;
+import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class ConnectionTest extends BaseTest {
+public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void localValidation() {
@@ -57,6 +56,94 @@ public class ConnectionTest extends BaseTest {
         .as(StepVerifier::create)
         .expectNext(Boolean.FALSE)
         .verifyComplete();
+  }
+
+  @Test
+  void connectionError() throws Exception {
+    MariadbConnection connection = createProxyCon();
+    try {
+      proxy.stop();
+      connection.setAutoCommit(false).block();
+      Assertions.fail("must have throw exception");
+    } catch (Throwable t) {
+      Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
+      Assertions.assertTrue(
+          t.getMessage().contains("Connection is close. Cannot send anything")
+              || t.getMessage().contains("Connection unexpectedly closed")
+              || t.getMessage().contains("Connection unexpected error"),
+          "real msg:" + t.getMessage());
+    }
+  }
+
+  @Test
+  void multipleCommandStack() throws Exception {
+    MariadbConnection connection = createProxyCon();
+    Runnable runnable = () -> proxy.stop();
+    Thread th = new Thread(runnable);
+
+    try {
+      List<Flux<MariadbResult>> results = new ArrayList<>();
+      for (int i = 0; i < 100; i++) {
+        results.add(connection.createStatement("SELECT * from mysql.user").execute());
+      }
+      for (int i = 0; i < 50; i++) {
+        results.get(i).subscribe();
+      }
+      th.start();
+
+    } catch (Throwable t) {
+      Assertions.assertNotNull(t.getCause());
+      Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getCause().getClass());
+      Assertions.assertTrue(
+          t.getCause().getMessage().contains("Connection is close. Cannot send anything")
+              || t.getCause().getMessage().contains("Connection unexpectedly closed")
+              || t.getCause().getMessage().contains("Connection unexpected error"),
+          "real msg:" + t.getCause().getMessage());
+    }
+  }
+
+  @Test
+  void connectionWithoutErrorOnClose() throws Exception {
+    MariadbConnection connection = createProxyCon();
+    proxy.stop();
+    connection.close().block();
+  }
+
+  @Test
+  void connectionDuringError() throws Exception {
+    MariadbConnection connection = createProxyCon();
+    new java.util.Timer()
+        .schedule(
+            new java.util.TimerTask() {
+              @Override
+              public void run() {
+                proxy.stop();
+              }
+            },
+            1000);
+
+    try {
+      connection
+          .createStatement(
+              "select * from information_schema.columns as c1, "
+                  + "information_schema.tables, information_schema.tables as t2")
+          .execute()
+          .flatMap(
+              r ->
+                  r.map(
+                      (rows, meta) -> {
+                        return "";
+                      }))
+          .blockLast();
+      Assertions.fail("must have throw exception");
+    } catch (Throwable t) {
+      Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
+      Assertions.assertTrue(
+          t.getMessage().contains("Connection is close. Cannot send anything")
+              || t.getMessage().contains("Connection unexpectedly closed")
+              || t.getMessage().contains("Connection unexpected error"),
+          "real msg:" + t.getMessage());
+    }
   }
 
   @Test
@@ -99,6 +186,90 @@ public class ConnectionTest extends BaseTest {
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     consume(connection);
     connection.close().block();
+  }
+
+  @Test
+  void basicConnectionWithoutPipeline() throws Exception {
+    MariadbConnectionConfiguration noPipeline =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .allowPipelining(false)
+            .useServerPrepStmts(true)
+            .prepareCacheSize(1)
+            .build();
+    MariadbConnection connection = new MariadbConnectionFactory(noPipeline).create().block();
+    connection
+        .createStatement("SELECT 5")
+        .execute()
+        .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(5)
+        .verifyComplete();
+    connection
+        .createStatement("SELECT 6")
+        .execute()
+        .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(6)
+        .verifyComplete();
+    connection
+        .createStatement("SELECT ?")
+        .bind(0, 7)
+        .execute()
+        .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(7)
+        .verifyComplete();
+    connection
+        .createStatement("SELECT 1, ?")
+        .bind(0, 8)
+        .execute()
+        .flatMap(r -> r.map((row, meta) -> row.get(1, Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(8)
+        .verifyComplete();
+    connection.close().block();
+    connection
+        .createStatement("SELECT 7")
+        .execute()
+        .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().equals("Connection is close. Cannot send anything"))
+        .verify();
+  }
+
+  @Test
+  void basicConnectionWithSessionVariable() throws Exception {
+    Map<String, String> sessionVariable = new HashMap<>();
+    sessionVariable.put("collation_connection", "utf8_slovenian_ci");
+    sessionVariable.put("wait_timeout", "3600");
+    MariadbConnectionConfiguration cnf =
+        TestConfiguration.defaultBuilder.clone().sessionVariables(sessionVariable).build();
+    MariadbConnection connection = new MariadbConnectionFactory(cnf).create().block();
+    connection
+        .createStatement("SELECT 5")
+        .execute()
+        .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(5)
+        .verifyComplete();
+
+    sessionVariable.put("test", null);
+    MariadbConnectionConfiguration cnf2 =
+        TestConfiguration.defaultBuilder.clone().sessionVariables(sessionVariable).build();
+    try {
+      new MariadbConnectionFactory(cnf2).create().block();
+      Assertions.fail("must have throw exception");
+    } catch (Throwable t) {
+      Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
+      Assertions.assertNotNull(t.getCause());
+      Assertions.assertEquals(IllegalArgumentException.class, t.getCause().getClass());
+      Assertions.assertTrue(
+          t.getCause().getMessage().contains("Session variable 'test' has no value"));
+    }
   }
 
   @Test
@@ -252,28 +423,6 @@ public class ConnectionTest extends BaseTest {
     connection.close().block();
   }
 
-  @Test
-  void usingOption() {
-    ConnectionFactory factory =
-        ConnectionFactories.get(
-            String.format(
-                "r2dbc:mariadb://%s:%s@%s:%s/%s",
-                TestConfiguration.username,
-                TestConfiguration.password,
-                TestConfiguration.host,
-                TestConfiguration.port,
-                TestConfiguration.database));
-    Connection connection = Mono.from(factory.create()).block();
-    Flux.from(connection.createStatement("SELECT * FROM myTable").execute())
-        .flatMap(
-            r ->
-                r.map(
-                    (row, metadata) -> {
-                      return row.get(0, String.class);
-                    }));
-    Mono.from(connection.close()).block();
-  }
-
   protected class ExecuteQueries implements Runnable {
     private AtomicInteger i;
 
@@ -326,5 +475,114 @@ public class ConnectionTest extends BaseTest {
         e.printStackTrace();
       }
     }
+  }
+
+  @Test
+  void getTransactionIsolationLevel() {
+    Assertions.assertEquals(
+        IsolationLevel.REPEATABLE_READ, sharedConn.getTransactionIsolationLevel());
+    sharedConn.setTransactionIsolationLevel(IsolationLevel.READ_UNCOMMITTED).block();
+    Assertions.assertEquals(
+        IsolationLevel.READ_UNCOMMITTED, sharedConn.getTransactionIsolationLevel());
+    sharedConn.setTransactionIsolationLevel(IsolationLevel.REPEATABLE_READ).block();
+  }
+
+  @Test
+  void rollbackTransaction() {
+    sharedConn.createStatement("DROP TABLE IF EXISTS rollbackTable").execute().blockLast();
+    sharedConn
+        .createStatement("CREATE TABLE rollbackTable (t1 VARCHAR(256))")
+        .execute()
+        .blockLast();
+    sharedConn.setAutoCommit(false).block();
+    sharedConn.rollbackTransaction().block(); // must not do anything
+    sharedConn.createStatement("INSERT INTO rollbackTable VALUES ('a')").execute().blockLast();
+    sharedConn.rollbackTransaction().block();
+    sharedConn
+        .createStatement("SELECT * FROM rollbackTable")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .verifyComplete();
+    sharedConn.createStatement("DROP TABLE IF EXISTS rollbackTable").execute().blockLast();
+  }
+
+  @Test
+  void commitTransaction() {
+    sharedConn.createStatement("DROP TABLE IF EXISTS commitTransaction").execute().blockLast();
+    sharedConn
+        .createStatement("CREATE TABLE commitTransaction (t1 VARCHAR(256))")
+        .execute()
+        .blockLast();
+    sharedConn.setAutoCommit(false).block();
+    sharedConn.commitTransaction().block(); // must not do anything
+    sharedConn.createStatement("INSERT INTO commitTransaction VALUES ('a')").execute().blockLast();
+    sharedConn.commitTransaction().block();
+    sharedConn
+        .createStatement("SELECT * FROM commitTransaction")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("a"))
+        .verifyComplete();
+    sharedConn.createStatement("DROP TABLE IF EXISTS commitTransaction").execute().blockLast();
+    sharedConn.setAutoCommit(true).block();
+  }
+
+  @Test
+  void useTransaction() {
+    sharedConn.createStatement("DROP TABLE IF EXISTS useTransaction").execute().blockLast();
+    sharedConn
+        .createStatement("CREATE TABLE useTransaction (t1 VARCHAR(256))")
+        .execute()
+        .blockLast();
+    sharedConn.beginTransaction().block();
+    sharedConn.createStatement("INSERT INTO useTransaction VALUES ('a')").execute().blockLast();
+    sharedConn.commitTransaction().block();
+    sharedConn
+        .createStatement("SELECT * FROM useTransaction")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("a"))
+        .verifyComplete();
+    sharedConn.createStatement("DROP TABLE IF EXISTS useTransaction").execute().blockLast();
+  }
+
+  @Test
+  void useSavePoint() {
+    sharedConn.createStatement("DROP TABLE IF EXISTS useSavePoint").execute().blockLast();
+    sharedConn.createStatement("CREATE TABLE useSavePoint (t1 VARCHAR(256))").execute().blockLast();
+    Assertions.assertTrue(sharedConn.isAutoCommit());
+    sharedConn.setAutoCommit(false).block();
+    Assertions.assertFalse(sharedConn.isAutoCommit());
+    sharedConn.createSavepoint("point1").block();
+    sharedConn.releaseSavepoint("point1").block();
+    sharedConn.createSavepoint("point2").block();
+    sharedConn.createStatement("INSERT INTO useSavePoint VALUES ('a')").execute().blockLast();
+    sharedConn.rollbackTransactionToSavepoint("point2").block();
+    sharedConn.commitTransaction().block();
+    sharedConn
+        .createStatement("SELECT * FROM useSavePoint")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        //        .expectNext(Optional.of("a"))
+        .verifyComplete();
+    sharedConn.createStatement("DROP TABLE IF EXISTS useSavePoint").execute().blockLast();
+    sharedConn.setAutoCommit(true).block();
+  }
+
+  @Test
+  void toStringTest() {
+    Assertions.assertTrue(
+        sharedConn
+                .toString()
+                .contains(
+                    "MariadbConnection{client=Client{isClosed=false, "
+                        + "context=ConnectionContext{")
+            && sharedConn
+                .toString()
+                .contains(", isolationLevel=IsolationLevel{sql='REPEATABLE READ'}}"));
   }
 }

@@ -153,11 +153,6 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
     }
   }
 
-  @Override
-  public String toString() {
-    return "CachingSha2PasswordFlow{}";
-  }
-
   public enum State {
     INIT,
     FAST_AUTH_RESULT,
