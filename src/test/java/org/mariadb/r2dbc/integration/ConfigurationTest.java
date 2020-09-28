@@ -17,6 +17,7 @@
 package org.mariadb.r2dbc.integration;
 
 import io.r2dbc.spi.*;
+import java.time.Duration;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.*;
@@ -59,7 +60,10 @@ public class ConfigurationTest extends BaseTest {
             ConnectionFactories.get(
                 "r2dbc:mariadb://root:pwd@localhost:3306/db?socket=ff&allowMultiQueries=true&tlsProtocol=TLSv1"
                     + ".2&serverSslCert=myCert&clientSslCert=myClientCert&allowPipelining=true&useServerPrepStmts"
-                    + "=true&prepareCacheSize=2560&sslMode=ENABLE_TRUST&connectionAttributes=test=2,"
+                    + "=true&prepareCacheSize=2560&connectTimeout=PT10S&socketTimeout=PT1H&tcpKeepAlive=true"
+                    + "&tcpAbortiveClose=true&sslMode=ENABLE_TRUST"
+                    + "&connectionAttributes"
+                    + "=test=2,"
                     + "h=4&pamOtherPwd=p%40ssword,pwd");
     Assertions.assertTrue(factory.toString().contains("socket='ff'"));
     Assertions.assertTrue(factory.toString().contains("allowMultiQueries=true"));
@@ -72,6 +76,10 @@ public class ConfigurationTest extends BaseTest {
     Assertions.assertTrue(factory.toString().contains("sslMode=ENABLE_TRUST"));
     Assertions.assertTrue(factory.toString().contains("connectionAttributes={test=2, h=4}"));
     Assertions.assertTrue(factory.toString().contains("pamOtherPwd=******,***"));
+    Assertions.assertTrue(factory.toString().contains("connectTimeout=PT10S"));
+    Assertions.assertTrue(factory.toString().contains("socketTimeout=PT1H"));
+    Assertions.assertTrue(factory.toString().contains("tcpKeepAlive=true"));
+    Assertions.assertTrue(factory.toString().contains("tcpAbortiveClose=true"));
   }
 
   @Test
@@ -84,6 +92,9 @@ public class ConfigurationTest extends BaseTest {
             .option(ConnectionFactoryOptions.USER, "myUser")
             .option(ConnectionFactoryOptions.DATABASE, "myDb")
             .option(MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES, true)
+            .option(MariadbConnectionFactoryProvider.SOCKET_TIMEOUT, Duration.ofSeconds(3600))
+            .option(MariadbConnectionFactoryProvider.TCP_KEEP_ALIVE, true)
+            .option(MariadbConnectionFactoryProvider.TCP_ABORTIVE_CLOSE, true)
             .option(Option.valueOf("locale"), "en_US")
             .build();
     MariadbConnectionConfiguration conf =
@@ -96,6 +107,10 @@ public class ConfigurationTest extends BaseTest {
     Assertions.assertTrue(factory.toString().contains("allowPipelining=true"));
     Assertions.assertTrue(factory.toString().contains("username='myUser'"));
     Assertions.assertTrue(factory.toString().contains("port=43306"));
+    Assertions.assertTrue(factory.toString().contains("connectTimeout=PT10S"));
+    Assertions.assertTrue(factory.toString().contains("socketTimeout=PT1H"));
+    Assertions.assertTrue(factory.toString().contains("tcpKeepAlive=true"));
+    Assertions.assertTrue(factory.toString().contains("tcpAbortiveClose=true"));
   }
 
   @Test

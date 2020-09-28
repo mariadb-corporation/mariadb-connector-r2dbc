@@ -82,6 +82,9 @@ Basic example:
 | **`port`** | Database server port number. *Not used when using option `socketPath`*|*integer*| 3306|
 | **`database`** | Default database to use when establishing the connection. | *string* | 
 | **`connectTimeout`** | Sets the connection timeout |  *Duration* | 10s|
+| **`socketTimeout`** | Sets the socket timeout |  *Duration* | |
+| **`tcpKeepAlive`** | Sets socket keep alive  |  *Boolean* | false|
+| **`tcpAbortiveClose`** | 	This option can be used in environments where connections are created and closed in rapid succession. Often, it is not possible to create a socket in such an environment after a while, since all local “ephemeral” ports are used up by TCP connections in TCP_WAIT state. Using tcpAbortiveClose works around this problem by resetting TCP connections (abortive or hard close) rather than doing an orderly close. |  *boolean* | false|
 | **`socket`** | Permits connections to the database through the Unix domain socket for faster connection whe server is local. |  *string* | 
 | **`allowMultiQueries`** | Allows you to issue several SQL statements in a single call. (That is, `INSERT INTO a VALUES('b'); INSERT INTO c VALUES('d');`).  <br/><br/>This may be a **security risk** as it allows for SQL Injection attacks.|  *boolean* | false| 
 | **`connectionAttributes`** | When performance_schema is active, permit to send server some client information. <br>Those information can be retrieved on server within tables performance_schema.session_connect_attrs and performance_schema.session_account_connect_attrs. This can permit from server an identification of client/application per connection|*Map<String,String>* | 
@@ -99,7 +102,7 @@ Basic example:
 | **`useServerPrepStmts`** | Permit to indicate to use text or binary protocol for query with parameter |*boolean* | false | 
 | **`prepareCacheSize`** | if useServerPrepStmts = true, cache the prepared informations in a LRU cache to avoid re-preparation of command. Next use of that command, only prepared identifier and parameters (if any) will be sent to server. This mainly permit for server to avoid reparsing query. |*int* |256 |
 | **`pamOtherPwd`** | Permit to provide additional password for PAM authentication with multiple authentication step. If multiple passwords, value must be URL encoded.|*string* | |  
-      
+
 ## Roadmap
 
 * Performance !

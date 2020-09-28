@@ -16,7 +16,6 @@
 
 package org.mariadb.r2dbc.client;
 
-import io.netty.channel.ChannelOption;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -43,12 +42,7 @@ public final class ClientPipelineImpl extends ClientBase {
       MariadbConnectionConfiguration configuration) {
 
     TcpClient tcpClient = TcpClient.create(connectionProvider).remoteAddress(() -> socketAddress);
-    if (configuration.getConnectTimeout() != null) {
-      tcpClient =
-          tcpClient.option(
-              ChannelOption.CONNECT_TIMEOUT_MILLIS,
-              Math.toIntExact(configuration.getConnectTimeout().toMillis()));
-    }
+    tcpClient = setSocketOption(configuration, tcpClient);
     return tcpClient.connect().flatMap(it -> Mono.just(new ClientPipelineImpl(it, configuration)));
   }
 
