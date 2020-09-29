@@ -118,7 +118,7 @@ To file an issue or follow the development, see [JIRA](https://jira.mariadb.org/
 
 [travis-image]:https://travis-ci.com/mariadb-corporation/mariadb-connector-r2dbc.svg?branch=master
 [travis-url]:https://travis-ci.com/mariadb-corporation/mariadb-connector-r2dbc
-[maven-image]:https://maven-badges.herokuapp.com/maven-central/org.mariadb/r2dbc-maria
+[maven-image]:https://maven-badges.herokuapp.com/maven-central/org.mariadb/r2dbc-mariadb/badge.svg
 [maven-url]:https://maven-badges.herokuapp.com/maven-central/org.mariadb/r2dbc-mariadb
 [appveyor-image]:https://ci.appveyor.com/api/projects/status/hbfar9vg8w0rw15f/branch/master?svg=true
 [appveyor-url]:https://ci.appveyor.com/project/rusher/mariadb-connector-r2dbc-57na3/branch/master
