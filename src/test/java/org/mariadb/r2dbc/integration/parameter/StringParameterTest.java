@@ -185,11 +185,11 @@ public class StringParameterTest extends BaseConnectionTest {
     connection
         .createStatement("INSERT INTO StringParam VALUES (?,?,?)")
         .bind(0, "1")
-        .bind(1, "32767")
+        .bind(1, "32'767")
         .bind(2, "-9")
         .execute()
         .blockLast();
-    validate(Optional.of("1"), Optional.of("32767"), Optional.of("-9"));
+    validate(Optional.of("1"), Optional.of("32'767"), Optional.of("-9"));
   }
 
   @Test

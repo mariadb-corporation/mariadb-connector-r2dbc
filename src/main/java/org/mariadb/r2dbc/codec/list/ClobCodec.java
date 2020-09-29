@@ -63,7 +63,7 @@ public class ClobCodec implements Codec<Clob> {
     Flux.from(value.stream())
         .handle(
             (tempVal, sync) -> {
-              BufferUtils.write(buf, tempVal.toString(), false, true, context);
+              BufferUtils.write(buf, tempVal.toString(), false, context);
               sync.next(buf);
             })
         .subscribe();

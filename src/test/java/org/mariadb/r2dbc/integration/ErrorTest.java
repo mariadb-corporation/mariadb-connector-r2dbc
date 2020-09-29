@@ -25,6 +25,7 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -146,5 +147,22 @@ public class ErrorTest extends BaseConnectionTest {
       connection.close().block();
       connection2.close().block();
     }
+  }
+
+  @Test
+  void closeDuringSelect() {
+    // sequence table requirement
+    MariadbConnectionMetadata meta = sharedConn.getMetadata();
+    Assumptions.assumeTrue(meta.isMariaDBServer() && minVersion(10, 1, 0));
+
+    MariadbConnection connection2 = factory.create().block();
+    connection2
+        .createStatement("SELECT * FROM seq_1_to_100000")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0)))
+        .as(StepVerifier::create)
+        .expectNextCount(100000)
+        .verifyComplete();
+    connection2.close().block();
   }
 }

@@ -298,7 +298,11 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     } else {
       flux =
           sendPrepare(sql)
-              .flatMapMany(prepareResult1 -> sendExecuteCmd(factory, parameters, generatedColumns));
+              .flatMapMany(
+                  prepareResult1 -> {
+                    prepareResult = prepareResult1;
+                    return sendExecuteCmd(factory, parameters, generatedColumns);
+                  });
     }
     return flux.concatWith(
         Flux.create(
@@ -341,13 +345,6 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                     prepareResult =
                         new ServerPrepareResult(
                             packet.getStatementId(), packet.getNumColumns(), packet.getNumParams());
-                    if (client.getPrepareCache() != null) {
-                      ServerPrepareResult res = client.getPrepareCache().get(sql);
-                      if (res != null && !res.equals(prepareResult)) {
-                        prepareResult.close(client);
-                        prepareResult = res;
-                      }
-                    }
                     sink.next(prepareResult);
                   }
                   if (it.ending()) sink.complete();

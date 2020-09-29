@@ -22,6 +22,7 @@ import io.r2dbc.spi.ConnectionFactoryMetadata;
 import io.r2dbc.spi.ConnectionMetadata;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
+import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 
 public class ConnectionMetadataTest extends BaseConnectionTest {
 
@@ -59,5 +60,13 @@ public class ConnectionMetadataTest extends BaseConnectionTest {
   void factoryMeta() {
     ConnectionFactoryMetadata meta = factory.getMetadata();
     assertEquals("MariaDB", meta.getName());
+  }
+
+  @Test
+  void metadataInfo() {
+    MariadbConnectionMetadata meta = sharedConn.getMetadata();
+    assertTrue(meta.getMajorVersion() >= 5);
+    assertTrue(meta.getMinorVersion() > -1);
+    assertTrue(meta.getPatchVersion() > -1);
   }
 }

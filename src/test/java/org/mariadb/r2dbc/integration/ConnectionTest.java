@@ -189,6 +189,33 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
+  void socketTimeoutTimeout() throws Exception {
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder.clone().socketTimeout(Duration.ofSeconds(1)).build();
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    consume(connection);
+    connection.close().block();
+  }
+
+  @Test
+  void socketTcpKeepAlive() throws Exception {
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder.clone().tcpKeepAlive(Boolean.TRUE).build();
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    consume(connection);
+    connection.close().block();
+  }
+
+  @Test
+  void socketTcpAbortiveClose() throws Exception {
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder.clone().tcpAbortiveClose(Boolean.TRUE).build();
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    consume(connection);
+    connection.close().block();
+  }
+
+  @Test
   void basicConnectionWithoutPipeline() throws Exception {
     MariadbConnectionConfiguration noPipeline =
         TestConfiguration.defaultBuilder

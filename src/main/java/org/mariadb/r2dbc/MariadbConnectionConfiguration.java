@@ -34,7 +34,11 @@ public final class MariadbConnectionConfiguration {
   public static final int DEFAULT_PORT = 3306;
   private final String database;
   private final String host;
+
   private final Duration connectTimeout;
+  private final Duration socketTimeout;
+  private final boolean tcpKeepAlive;
+  private final boolean tcpAbortiveClose;
   private final CharSequence password;
   private final CharSequence[] pamOtherPwd;
   private final int port;
@@ -54,6 +58,9 @@ public final class MariadbConnectionConfiguration {
 
   private MariadbConnectionConfiguration(
       @Nullable Duration connectTimeout,
+      @Nullable Duration socketTimeout,
+      @Nullable Boolean tcpKeepAlive,
+      @Nullable Boolean tcpAbortiveClose,
       @Nullable String database,
       @Nullable String host,
       @Nullable Map<String, String> connectionAttributes,
@@ -77,6 +84,9 @@ public final class MariadbConnectionConfiguration {
       @Nullable Integer prepareCacheSize,
       @Nullable CharSequence[] pamOtherPwd) {
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
+    this.socketTimeout = socketTimeout;
+    this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
+    this.tcpAbortiveClose = tcpAbortiveClose == null ? Boolean.FALSE : tcpAbortiveClose;
     this.database = database;
     this.host = host;
     this.connectionAttributes = connectionAttributes;
@@ -112,6 +122,16 @@ public final class MariadbConnectionConfiguration {
     throw new IllegalArgumentException(String.format("Option %s wrong boolean format", value));
   }
 
+  static Duration durationValue(Object value) {
+    if (value instanceof Duration) {
+      return ((Duration) value);
+    }
+    if (value instanceof String) {
+      return Duration.parse(value.toString());
+    }
+    throw new IllegalArgumentException(String.format("Option %s wrong duration format", value));
+  }
+
   static int intValue(Object value) {
     if (value instanceof Number) {
       return ((Number) value).intValue();
@@ -124,7 +144,6 @@ public final class MariadbConnectionConfiguration {
 
   public static Builder fromOptions(ConnectionFactoryOptions connectionFactoryOptions) {
     Builder builder = new Builder();
-    builder.connectTimeout(connectionFactoryOptions.getValue(CONNECT_TIMEOUT));
     builder.database(connectionFactoryOptions.getValue(DATABASE));
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SOCKET)) {
@@ -139,6 +158,31 @@ public final class MariadbConnectionConfiguration {
           boolValue(
               connectionFactoryOptions.getValue(
                   MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES)));
+    }
+
+    if (connectionFactoryOptions.hasOption(ConnectionFactoryOptions.CONNECT_TIMEOUT)) {
+      builder.connectTimeout(
+          durationValue(
+              connectionFactoryOptions.getValue(ConnectionFactoryOptions.CONNECT_TIMEOUT)));
+    }
+
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SOCKET_TIMEOUT)) {
+      builder.socketTimeout(
+          durationValue(
+              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SOCKET_TIMEOUT)));
+    }
+
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TCP_KEEP_ALIVE)) {
+      builder.tcpKeepAlive(
+          boolValue(
+              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.TCP_KEEP_ALIVE)));
+    }
+
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TCP_ABORTIVE_CLOSE)) {
+      builder.tcpAbortiveClose(
+          boolValue(
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.TCP_ABORTIVE_CLOSE)));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.ALLOW_PIPELINING)) {
@@ -307,6 +351,18 @@ public final class MariadbConnectionConfiguration {
     return prepareCacheSize;
   }
 
+  public Duration getSocketTimeout() {
+    return socketTimeout;
+  }
+
+  public boolean isTcpKeepAlive() {
+    return tcpKeepAlive;
+  }
+
+  public boolean isTcpAbortiveClose() {
+    return tcpAbortiveClose;
+  }
+
   @Override
   public String toString() {
     StringBuilder hiddenPwd = new StringBuilder();
@@ -335,6 +391,12 @@ public final class MariadbConnectionConfiguration {
         + '\''
         + ", connectTimeout="
         + connectTimeout
+        + ", socketTimeout="
+        + socketTimeout
+        + ", tcpKeepAlive="
+        + tcpKeepAlive
+        + ", tcpAbortiveClose="
+        + tcpAbortiveClose
         + ", password="
         + hiddenPwd
         + ", port="
@@ -386,6 +448,9 @@ public final class MariadbConnectionConfiguration {
     private boolean allowPublicKeyRetrieval;
     @Nullable private String username;
     @Nullable private Duration connectTimeout;
+    @Nullable private Duration socketTimeout;
+    @Nullable private Boolean tcpKeepAlive;
+    @Nullable private Boolean tcpAbortiveClose;
     @Nullable private String database;
     @Nullable private String host;
     @Nullable private Map<String, String> sessionVariables;
@@ -429,6 +494,9 @@ public final class MariadbConnectionConfiguration {
 
       return new MariadbConnectionConfiguration(
           this.connectTimeout,
+          this.socketTimeout,
+          this.tcpKeepAlive,
+          this.tcpAbortiveClose,
           this.database,
           this.host,
           this.connectionAttributes,
@@ -461,6 +529,21 @@ public final class MariadbConnectionConfiguration {
      */
     public Builder connectTimeout(@Nullable Duration connectTimeout) {
       this.connectTimeout = connectTimeout;
+      return this;
+    }
+
+    public Builder socketTimeout(@Nullable Duration socketTimeout) {
+      this.socketTimeout = socketTimeout;
+      return this;
+    }
+
+    public Builder tcpKeepAlive(@Nullable Boolean tcpKeepAlive) {
+      this.tcpKeepAlive = tcpKeepAlive;
+      return this;
+    }
+
+    public Builder tcpAbortiveClose(@Nullable Boolean tcpAbortiveClose) {
+      this.tcpAbortiveClose = tcpAbortiveClose;
       return this;
     }
 
@@ -747,6 +830,12 @@ public final class MariadbConnectionConfiguration {
           + '\''
           + ", connectTimeout="
           + connectTimeout
+          + ", socketTimeout="
+          + socketTimeout
+          + ", tcpKeepAlive="
+          + tcpKeepAlive
+          + ", tcpAbortiveClose="
+          + tcpAbortiveClose
           + ", database='"
           + database
           + '\''

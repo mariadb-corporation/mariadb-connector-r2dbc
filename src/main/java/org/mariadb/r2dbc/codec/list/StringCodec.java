@@ -259,7 +259,7 @@ public class StringCodec implements Codec<String> {
 
   @Override
   public void encodeText(ByteBuf buf, Context context, String value) {
-    BufferUtils.write(buf, value, true, true, context);
+    BufferUtils.write(buf, value, true, context);
   }
 
   @Override

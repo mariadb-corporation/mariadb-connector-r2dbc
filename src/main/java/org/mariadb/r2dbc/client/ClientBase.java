@@ -17,6 +17,7 @@
 package org.mariadb.r2dbc.client;
 
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelOption;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslHandler;
@@ -43,6 +44,7 @@ import org.mariadb.r2dbc.util.constants.ServerStatus;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.Connection;
+import reactor.netty.tcp.TcpClient;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 import reactor.util.concurrent.Queues;
@@ -87,6 +89,32 @@ public abstract class ClientBase implements Client {
         .subscribe();
   }
 
+  public static TcpClient setSocketOption(
+      MariadbConnectionConfiguration configuration, TcpClient tcpClient) {
+    if (configuration.getConnectTimeout() != null) {
+      tcpClient =
+          tcpClient.option(
+              ChannelOption.CONNECT_TIMEOUT_MILLIS,
+              Math.toIntExact(configuration.getConnectTimeout().toMillis()));
+    }
+
+    if (configuration.getSocketTimeout() != null) {
+      tcpClient =
+          tcpClient.option(
+              ChannelOption.SO_TIMEOUT,
+              Math.toIntExact(configuration.getSocketTimeout().toMillis()));
+    }
+
+    if (configuration.isTcpKeepAlive()) {
+      tcpClient = tcpClient.option(ChannelOption.SO_KEEPALIVE, configuration.isTcpKeepAlive());
+    }
+
+    if (configuration.isTcpAbortiveClose()) {
+      tcpClient = tcpClient.option(ChannelOption.SO_LINGER, 0);
+    }
+    return tcpClient;
+  }
+
   private void handleConnectionError(Throwable throwable) {
     R2dbcNonTransientResourceException err;
     if (this.isClosed.compareAndSet(false, true)) {
@@ -104,8 +132,6 @@ public abstract class ClientBase implements Client {
   public Mono<Void> close() {
     return Mono.defer(
         () -> {
-          clearWaitingListWithError(
-              new R2dbcNonTransientResourceException("Connection is closing"));
           if (this.isClosed.compareAndSet(false, true)) {
 
             Channel channel = this.connection.channel();
