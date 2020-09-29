@@ -16,13 +16,46 @@
 
 package org.mariadb.r2dbc;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+
 public class TestConfiguration {
 
-  public static final String host = System.getProperty("TEST_HOST", "localhost");
-  public static final int port = Integer.parseInt(System.getProperty("TEST_PORT", "3306"));
-  public static final String username = System.getProperty("TEST_USERNAME", "root");
-  public static final String password = System.getProperty("TEST_PASSWORD", "");
-  public static final String database = System.getProperty("TEST_DATABASE", "testj");
+  public static final String host;
+  public static final int port;
+  public static final String username;
+  public static final String password;
+  public static final String database;
+
+  static {
+    String defaultHost = "localhost";
+    String defaultPort = "3306";
+    String defaultDatabase = "testj";
+    String defaultPassword = "";
+    String defaultUser = "root";
+
+    try (InputStream inputStream =
+        BaseTest.class.getClassLoader().getResourceAsStream("conf.properties")) {
+      Properties prop = new Properties();
+      prop.load(inputStream);
+
+      defaultHost = prop.getProperty("DB_HOST");
+      defaultPort = prop.getProperty("DB_PORT");
+      defaultDatabase = prop.getProperty("DB_DATABASE");
+      defaultPassword = prop.getProperty("DB_PASSWORD");
+      defaultUser = prop.getProperty("DB_USER");
+
+    } catch (IOException io) {
+      io.printStackTrace();
+    }
+
+    host = System.getProperty("TEST_HOST", defaultHost);
+    port = Integer.parseInt(System.getProperty("TEST_PORT", defaultPort));
+    database = System.getProperty("TEST_DATABASE", defaultDatabase);
+    password = System.getProperty("TEST_PASSWORD", defaultPassword);
+    username = System.getProperty("TEST_USERNAME", defaultUser);
+  }
 
   public static final MariadbConnectionConfiguration.Builder defaultBuilder =
       MariadbConnectionConfiguration.builder()
