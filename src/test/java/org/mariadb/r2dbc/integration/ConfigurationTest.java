@@ -83,6 +83,16 @@ public class ConfigurationTest extends BaseTest {
   }
 
   @Test
+  void checkNotConcerned() {
+    try {
+      ConnectionFactories.get("r2dbc:other://root:pwd@localhost:3306/db");
+      Assertions.fail();
+    } catch (IllegalStateException e) {
+      Assertions.assertTrue(e.getMessage().contains("Available drivers:"));
+    }
+  }
+
+  @Test
   void factory() {
     ConnectionFactoryOptions options =
         ConnectionFactoryOptions.builder()
