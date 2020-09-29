@@ -147,8 +147,7 @@ public class BufferUtils {
     }
   }
 
-  public static ByteBuf write(
-      ByteBuf buf, String str, boolean quote, boolean escape, Context context) {
+  public static ByteBuf write(ByteBuf buf, String str, boolean quote, Context context) {
 
     int charsLength = str.length();
     buf.ensureWritable(charsLength * 3 + 2);
@@ -165,34 +164,23 @@ public class BufferUtils {
     boolean noBackslashEscapes =
         (context.getServerStatus() & ServerStatus.NO_BACKSLASH_ESCAPES) > 0;
     // quick loop if only ASCII chars for faster escape
-    if (escape) {
-      if (quote) buf.writeByte(QUOTE);
-      if (noBackslashEscapes) {
-        for (;
-            charsOffset < charsLength && (currChar = str.charAt(charsOffset)) < 0x80;
-            charsOffset++) {
-          if (currChar == QUOTE) {
-            buf.writeByte(QUOTE);
-          }
-          buf.writeByte((byte) currChar);
+    if (quote) buf.writeByte(QUOTE);
+    if (noBackslashEscapes) {
+      for (;
+          charsOffset < charsLength && (currChar = str.charAt(charsOffset)) < 0x80;
+          charsOffset++) {
+        if (currChar == QUOTE) {
+          buf.writeByte(QUOTE);
         }
-      } else {
-        for (;
-            charsOffset < charsLength && (currChar = str.charAt(charsOffset)) < 0x80;
-            charsOffset++) {
-          if (currChar == BACKSLASH
-              || currChar == QUOTE
-              || currChar == 0
-              || currChar == DBL_QUOTE) {
-            buf.writeByte(BACKSLASH);
-          }
-          buf.writeByte((byte) currChar);
-        }
+        buf.writeByte((byte) currChar);
       }
     } else {
       for (;
           charsOffset < charsLength && (currChar = str.charAt(charsOffset)) < 0x80;
           charsOffset++) {
+        if (currChar == BACKSLASH || currChar == QUOTE || currChar == 0 || currChar == DBL_QUOTE) {
+          buf.writeByte(BACKSLASH);
+        }
         buf.writeByte((byte) currChar);
       }
     }
@@ -201,17 +189,15 @@ public class BufferUtils {
     while (charsOffset < charsLength) {
       currChar = str.charAt(charsOffset++);
       if (currChar < 0x80) {
-        if (escape) {
-          if (noBackslashEscapes) {
-            if (currChar == QUOTE) {
-              buf.writeByte(QUOTE);
-            }
-          } else if (currChar == BACKSLASH
-              || currChar == QUOTE
-              || currChar == ZERO_BYTE
-              || currChar == DBL_QUOTE) {
-            buf.writeByte(BACKSLASH);
+        if (noBackslashEscapes) {
+          if (currChar == QUOTE) {
+            buf.writeByte(QUOTE);
           }
+        } else if (currChar == BACKSLASH
+            || currChar == QUOTE
+            || currChar == ZERO_BYTE
+            || currChar == DBL_QUOTE) {
+          buf.writeByte(BACKSLASH);
         }
         buf.writeByte((byte) currChar);
       } else if (currChar < 0x800) {

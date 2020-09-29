@@ -160,10 +160,10 @@ public final class MariadbConnectionConfiguration {
                   MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES)));
     }
 
-    if (connectionFactoryOptions.hasOption(connectionFactoryOptions.CONNECT_TIMEOUT)) {
+    if (connectionFactoryOptions.hasOption(ConnectionFactoryOptions.CONNECT_TIMEOUT)) {
       builder.connectTimeout(
           durationValue(
-              connectionFactoryOptions.getValue(connectionFactoryOptions.CONNECT_TIMEOUT)));
+              connectionFactoryOptions.getValue(ConnectionFactoryOptions.CONNECT_TIMEOUT)));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SOCKET_TIMEOUT)) {

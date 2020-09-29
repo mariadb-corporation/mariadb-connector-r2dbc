@@ -30,8 +30,8 @@ public class AuthenticationFlowPluginLoader {
    * @return Authentication plugin corresponding to type
    */
   public static AuthenticationPlugin get(String type) {
-    ServiceLoader<AuthenticationPlugin> loader = ServiceLoader.load(AuthenticationPlugin.class,
-        MariadbConnection.class.getClassLoader());
+    ServiceLoader<AuthenticationPlugin> loader =
+        ServiceLoader.load(AuthenticationPlugin.class, MariadbConnection.class.getClassLoader());
 
     if (type == null || type.isEmpty()) {
       return null;

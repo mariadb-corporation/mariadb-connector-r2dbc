@@ -149,7 +149,6 @@ public class ErrorTest extends BaseConnectionTest {
     }
   }
 
-
   @Test
   void closeDuringSelect() {
     // sequence table requirement
