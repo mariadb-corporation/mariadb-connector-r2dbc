@@ -29,7 +29,7 @@ The MariaDB Connector is available through maven using :
     <dependency>
         <groupId>org.mariadb</groupId>
         <artifactId>r2dbc-mariadb</artifactId>
-        <version>0.8.3-beta1</version>
+        <version>0.8.4-rc</version>
     </dependency>
 ```
 
