@@ -132,8 +132,6 @@ public abstract class ClientBase implements Client {
   public Mono<Void> close() {
     return Mono.defer(
         () -> {
-          clearWaitingListWithError(
-              new R2dbcNonTransientResourceException("Connection is closing"));
           if (this.isClosed.compareAndSet(false, true)) {
 
             Channel channel = this.connection.channel();
