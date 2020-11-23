@@ -39,13 +39,17 @@ public class TlsTest extends BaseConnectionTest {
   public static String serverSslCert;
   public static String clientSslCert;
   public static String clientSslKey;
+  public static int sslPort;
 
   @BeforeAll
   public static void before2() {
     serverSslCert = System.getenv("TEST_SERVER_SSL_CERT");
     clientSslCert = System.getenv("TEST_CLIENT_SSL_CERT");
     clientSslKey = System.getenv("TEST_CLIENT_KEY");
-
+    sslPort =
+        System.getProperty("sslPort") == null || System.getProperty("sslPort").isEmpty()
+            ? TestConfiguration.port
+            : Integer.valueOf(System.getProperty("sslPort"));
     // try default if not present
     if (serverSslCert == null) {
       File sslDir = new File(System.getProperty("user.dir") + "/../ssl");
@@ -105,7 +109,11 @@ public class TlsTest extends BaseConnectionTest {
   void trustValidation() throws Exception {
     Assumptions.assumeTrue(haveSsl(sharedConn));
     MariadbConnectionConfiguration conf =
-        TestConfiguration.defaultBuilder.clone().sslMode(SslMode.ENABLE_TRUST).build();
+        TestConfiguration.defaultBuilder
+            .clone()
+            .port(sslPort)
+            .sslMode(SslMode.ENABLE_TRUST)
+            .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection
         .createStatement("SHOW STATUS like 'Ssl_version'")
@@ -129,6 +137,7 @@ public class TlsTest extends BaseConnectionTest {
         () ->
             TestConfiguration.defaultBuilder
                 .clone()
+                .port(sslPort)
                 .sslMode(SslMode.ENABLE_WITHOUT_HOSTNAME_VERIFICATION)
                 .serverSslCert("wrongFile")
                 .build(),
@@ -139,6 +148,7 @@ public class TlsTest extends BaseConnectionTest {
           () ->
               TestConfiguration.defaultBuilder
                   .clone()
+                  .port(sslPort)
                   .sslMode(SslMode.ENABLE_WITHOUT_HOSTNAME_VERIFICATION)
                   .serverSslCert(serverSslCert)
                   .clientSslCert("wrongFile")
@@ -151,6 +161,7 @@ public class TlsTest extends BaseConnectionTest {
             () ->
                 TestConfiguration.defaultBuilder
                     .clone()
+                    .port(sslPort)
                     .sslMode(SslMode.ENABLE_WITHOUT_HOSTNAME_VERIFICATION)
                     .serverSslCert(serverSslCert)
                     .clientSslCert(clientSslCert)
@@ -168,6 +179,7 @@ public class TlsTest extends BaseConnectionTest {
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
+            .port(sslPort)
             .sslMode(SslMode.ENABLE_TRUST)
             .tlsProtocol(trustProtocol)
             .build();
@@ -189,6 +201,7 @@ public class TlsTest extends BaseConnectionTest {
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
+            .port(sslPort)
             .sslMode(SslMode.ENABLE_WITHOUT_HOSTNAME_VERIFICATION)
             .serverSslCert(serverSslCert)
             .build();
@@ -240,6 +253,7 @@ public class TlsTest extends BaseConnectionTest {
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
+            .port(sslPort)
             .sslMode(SslMode.ENABLE)
             .serverSslCert(serverSslCert)
             .build();
@@ -276,6 +290,7 @@ public class TlsTest extends BaseConnectionTest {
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
+            .port(sslPort)
             .sslMode(SslMode.ENABLE)
             .host("mariadb.example.com")
             .serverSslCert(serverSslCert)
@@ -303,6 +318,7 @@ public class TlsTest extends BaseConnectionTest {
         TestConfiguration.defaultBuilder
             .clone()
             .sslMode(SslMode.ENABLE)
+            .port(sslPort)
             .username("MUTUAL_AUTH")
             .password("ssltestpassword")
             .host("mariadb.example.com")
@@ -327,6 +343,7 @@ public class TlsTest extends BaseConnectionTest {
         TestConfiguration.defaultBuilder
             .clone()
             .sslMode(SslMode.ENABLE)
+            .port(sslPort)
             .username("MUTUAL_AUTH")
             .password("ssltestpassword")
             .host("mariadb.example.com")

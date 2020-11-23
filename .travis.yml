@@ -41,7 +41,7 @@ matrix:
     - env: DB=mariadb:10.4 NO_BACKSLASH_ESCAPES=true
     - env: DB=mariadb:10.4 BENCHMARK=1
     - env: DB=mariadb:10.5
-    - env: DB=mariadb:10.4 MAXSCALE_VERSION=2.2.9
+    - env: DB=mariadb:10.4 MAXSCALE_VERSION=2.5.3 SSLPORT=4009
     - env: DB=build
     - env: DB=mysql:5.6
     - env: DB=mysql:5.7
