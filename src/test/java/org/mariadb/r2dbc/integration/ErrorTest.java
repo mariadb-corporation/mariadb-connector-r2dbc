@@ -33,7 +33,7 @@ public class ErrorTest extends BaseConnectionTest {
 
   @AfterAll
   public static void after2() {
-    sharedConn.createStatement("DROP TABLE deadlock").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS deadlock").execute().blockLast();
   }
 
   @Test
