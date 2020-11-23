@@ -67,10 +67,10 @@ public class Select_1000_params extends Common {
     consume(state.r2dbcPrepare, blackhole);
   }
 
-  @Benchmark
-  public void testR2dbcMysql(MyState state, Blackhole blackhole) throws Throwable {
-    consume(state.r2dbcMysql, blackhole);
-  }
+//  @Benchmark
+//  public void testR2dbcMysql(MyState state, Blackhole blackhole) throws Throwable {
+//    consume(state.r2dbcMysql, blackhole);
+//  }
 
   private void consume(io.r2dbc.spi.Connection connection, Blackhole blackhole) {
     int[] rnds = randParams();

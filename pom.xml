@@ -338,6 +338,12 @@
 
   <profiles>
     <profile>
+      <id>default</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+    </profile>
+    <profile>
       <id>bench</id>
       <dependencies>
         <dependency>
@@ -355,11 +361,11 @@
           <artifactId>mariadb-java-client</artifactId>
           <version>${mariadb-jdbc.version}</version>
         </dependency>
-        <dependency>
-          <groupId>dev.miku</groupId>
-          <artifactId>r2dbc-mysql</artifactId>
-          <version>${r2dbc-mysql.version}</version>
-        </dependency>
+<!--        <dependency>-->
+<!--          <groupId>dev.miku</groupId>-->
+<!--          <artifactId>r2dbc-mysql</artifactId>-->
+<!--          <version>${r2dbc-mysql.version}</version>-->
+<!--        </dependency>-->
         <dependency>
           <groupId>ch.qos.logback</groupId>
           <artifactId>logback-classic</artifactId>

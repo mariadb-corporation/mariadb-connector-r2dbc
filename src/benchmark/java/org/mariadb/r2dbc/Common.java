@@ -16,9 +16,6 @@
 
 package org.mariadb.r2dbc;
 
-import dev.miku.r2dbc.mysql.MySqlConnectionConfiguration;
-import dev.miku.r2dbc.mysql.MySqlConnectionFactory;
-import dev.miku.r2dbc.mysql.constant.SslMode;
 import org.openjdk.jmh.annotations.*;
 import reactor.core.publisher.Mono;
 
@@ -51,7 +48,7 @@ public class Common {
     protected Connection jdbc;
     protected io.r2dbc.spi.Connection r2dbc;
     protected io.r2dbc.spi.Connection r2dbcPrepare;
-    protected io.r2dbc.spi.Connection r2dbcMysql;
+//    protected io.r2dbc.spi.Connection r2dbcMysql;
 
     @Setup(Level.Trial)
     public void doSetup() throws Exception {
@@ -74,15 +71,15 @@ public class Common {
               .useServerPrepStmts(true)
               .build();
 
-      MySqlConnectionConfiguration confMysql =
-          MySqlConnectionConfiguration.builder()
-              .host(host)
-              .username(username)
-              .database(database)
-              .password(password)
-              .sslMode(SslMode.DISABLED)
-              .port(port)
-              .build();
+//      MySqlConnectionConfiguration confMysql =
+//          MySqlConnectionConfiguration.builder()
+//              .host(host)
+//              .username(username)
+//              .database(database)
+//              .password(password)
+//              .sslMode(SslMode.DISABLED)
+//              .port(port)
+//              .build();
       String jdbcUrl =
           String.format(
               "mariadb://%s:%s/%s?user=%s&password=%s", host, port, database, username, password);
@@ -91,7 +88,7 @@ public class Common {
         jdbc = DriverManager.getConnection("jdbc:" + jdbcUrl);
         r2dbc = MariadbConnectionFactory.from(conf).create().block();
         r2dbcPrepare = MariadbConnectionFactory.from(confPrepare).create().block();
-        r2dbcMysql = MySqlConnectionFactory.from(confMysql).create().block();
+//        r2dbcMysql = MySqlConnectionFactory.from(confMysql).create().block();
 
       } catch (SQLException e) {
         e.printStackTrace();
@@ -104,7 +101,7 @@ public class Common {
       jdbc.close();
       Mono.from(r2dbc.close()).block();
       Mono.from(r2dbcPrepare.close()).block();
-      Mono.from(r2dbcMysql.close()).block();
+//      Mono.from(r2dbcMysql.close()).block();
     }
   }
 }

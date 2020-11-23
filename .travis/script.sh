@@ -28,15 +28,16 @@ else
     -Dkeystore2Password="kspass" -DkeyPassword="kspasskey" \
     -Dkeystore2PathP12="$SSLCERT/fullclient-keystore.p12" \
     -DrunLongTest=true \
-    -DserverPublicKey="$SSLCERT/public.key" )
+    -DserverPublicKey="$SSLCERT/public.key" \
+    -DsslPort="$SSLPORT")
 fi
 
 if [ -n "$MAXSCALE_VERSION" ]; then
   ###################################################################################################################
   # launch Maxscale with one server
   ###################################################################################################################
-  export TEST_PORT=4007
-  mysql=(mysql --protocol=tcp -ubob -h127.0.0.1 --port=4007)
+  export TEST_PORT=4006
+  mysql=(mysql --protocol=tcp -ubob -h127.0.0.1 --port=4006)
   export COMPOSE_FILE=.travis/maxscale-compose.yml
   docker-compose -f ${COMPOSE_FILE} build
 else
@@ -53,63 +54,36 @@ docker-compose -f ${COMPOSE_FILE} up -d
 # wait for docker initialisation
 ###################################################################################################################
 
-for i in {60..0}; do
-  if echo 'SELECT 1' | "${mysql[@]}" &>/dev/null; then
-    break
-  fi
-  echo 'data server still not active'
-  sleep 1
+for i in {15..0}; do
+    if echo 'SELECT 1' | "${mysql[@]}" ; then
+        break
+    fi
+    echo 'data server still not active'
+    sleep 2
 done
 
+
 if [ "$i" = 0 ]; then
-  if [ -n "COMPOSE_FILE" ]; then
-    docker-compose -f ${COMPOSE_FILE} logs
-  fi
 
-  echo 'SELECT 1' | "${mysql[@]}"
-  echo >&2 'data server init process failed.'
-  exit 1
-fi
-###################################################################################################################
-# run test suite
-###################################################################################################################
-
-  if [ -z "$MAXSCALE_VERSION" ] ; then
-    docker-compose -f .travis/docker-compose.yml exec -u root db bash /docker-entrypoint-initdb.d/pam/pam.sh
-    sleep 2
-    docker-compose -f .travis/docker-compose.yml stop db
-    sleep 2
-    docker-compose -f .travis/docker-compose.yml up -d
-    docker-compose -f .travis/docker-compose.yml logs db
-
-    for i in {60..0}; do
-      if echo 'SELECT 1' | "${mysql[@]}" &>/dev/null; then
+    if echo 'SELECT 1' | "${mysql[@]}" ; then
         break
-      fi
-      echo 'data server still not active'
-      sleep 1
-    done
-
-    if [ "$i" = 0 ]; then
-      if [ -n "COMPOSE_FILE" ]; then
-        docker-compose -f ${COMPOSE_FILE} logs
-      fi
-
-      echo 'SELECT 1' | "${mysql[@]}"
-      echo >&2 'data server init process failed.'
-      exit 1
     fi
-  fi
+
+    docker-compose -f ${COMPOSE_FILE} logs
+    if [ -n "$MAXSCALE_VERSION" ] ; then
+        docker-compose -f $COMPOSE_FILE exec maxscale tail -n 500 /var/log/maxscale/maxscale.log
+    fi
+    echo >&2 'data server init process failed.'
+    exit 1
+fi
+
+
 ###################################################################################################################
 # run test suite
 ###################################################################################################################
 echo "Running coveralls for JDK version: $TRAVIS_JDK_VERSION"
+
 echo ${cmd}
-
-if [ -n "$MAXSCALE_VERSION" ]; then
-  docker-compose -f $COMPOSE_FILE exec maxscale tail -n 500 /var/log/maxscale/maxscale.log
-fi
-
 "${cmd[@]}"
 
 if [ -n "$BENCHMARK" ]; then
