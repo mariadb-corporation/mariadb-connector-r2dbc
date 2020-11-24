@@ -81,12 +81,12 @@ fi
 ###################################################################################################################
 
 if [ -z "$MAXSCALE_VERSION" ] ; then
-  docker-compose -f .travis/docker-compose.yml exec -u root db bash /docker-entrypoint-initdb.d/pam/pam.sh
+  docker-compose -f ${COMPOSE_FILE} exec -u root db bash /docker-entrypoint-initdb.d/pam/pam.sh
   sleep 2
-  docker-compose -f .travis/docker-compose.yml stop db
+  docker-compose -f ${COMPOSE_FILE} stop db
   sleep 2
-  docker-compose -f .travis/docker-compose.yml up -d
-  docker-compose -f .travis/docker-compose.yml logs db
+  docker-compose -f ${COMPOSE_FILE} up -d
+  docker-compose -f ${COMPOSE_FILE} logs db
 
 
   ###################################################################################################################
