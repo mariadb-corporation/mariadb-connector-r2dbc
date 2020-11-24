@@ -8,7 +8,7 @@ addons:
 jdk: openjdk11
 
 before_install:
-  - chmod +x .travis/script.sh .travis/build/build.sh .travis/gen-ssl.sh .travis/build/docker-entrypoint.sh
+  - chmod +x .travis/script.sh .travis/build/build.sh .travis/gen-ssl.sh .travis/build/docker-entrypoint.sh .travis/sql/*
   - chmod 777 .travis/build/
   - echo "MAVEN_OPTS='-Xmx384m'" > ~/.mavenrc
 

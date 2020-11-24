@@ -9,7 +9,7 @@ services:
       - $SSLCERT:/etc/sslcert
       - $ENTRYPOINT:/docker-entrypoint-initdb.d
     environment:
-      MYSQL_DATABASE: testj
+      MYSQL_DATABASE: testr2
       MYSQL_ALLOW_EMPTY_PASSWORD: 1
     healthcheck:
       test: ["CMD", "mysql", "--protocol=tcp", "-ubob", "-h127.0.0.1", "-ubob"]
