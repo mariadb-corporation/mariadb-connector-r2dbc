@@ -19,6 +19,7 @@ package org.mariadb.r2dbc.codec.list;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Blob;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.client.Context;
@@ -26,6 +27,7 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.util.BufferUtils;
+import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -64,11 +66,11 @@ public class BlobCodec implements Codec<Blob> {
               String.format(
                   "Data type %s (not binary) cannot be decoded as Blob", column.getType()));
         }
-        return io.r2dbc.spi.Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
+        return new MariaDbBlob(buf.readSlice(length));
 
       default:
         // BIT, TINYBLOB, MEDIUMBLOB, LONGBLOB, BLOB, GEOMETRY
-        return io.r2dbc.spi.Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
+        return new MariaDbBlob(buf.readSlice(length));
     }
   }
 
@@ -82,7 +84,7 @@ public class BlobCodec implements Codec<Blob> {
       case LONGBLOB:
       case BLOB:
       case GEOMETRY:
-        return Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
+        return new MariaDbBlob(buf.readSlice(length));
 
       default:
         // STRING, VARCHAR, VARSTRING:
@@ -92,7 +94,7 @@ public class BlobCodec implements Codec<Blob> {
               String.format(
                   "Data type %s (not binary) cannot be decoded as Blob", column.getType()));
         }
-        return Blob.from(Mono.just(buf.readSlice(length).nioBuffer()));
+        return new MariaDbBlob(buf.readSlice(length));
     }
   }
 
@@ -144,6 +146,28 @@ public class BlobCodec implements Codec<Blob> {
               buf.writerIndex(endPos);
             })
         .subscribe();
+  }
+
+  private class MariaDbBlob implements Blob {
+    private ByteBuf data;
+
+    public MariaDbBlob(ByteBuf data) {
+      this.data = data.retain();
+    }
+
+    @Override
+    public Publisher<ByteBuffer> stream() {
+      return Mono.just(this.data.nioBuffer()).doAfterTerminate(this::discard);
+    }
+
+    @Override
+    public Publisher<Void> discard() {
+      if (data != null) {
+        this.data.release();
+        this.data = null;
+      }
+      return Mono.empty();
+    }
   }
 
   public DataType getBinaryEncodeType() {
