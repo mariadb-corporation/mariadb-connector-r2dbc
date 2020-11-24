@@ -126,18 +126,16 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
   @Override
   public Flux<org.mariadb.r2dbc.api.MariadbResult> execute() {
 
-    // valid parameters
-    for (int i = 0; i < prepareResult.getParamCount(); i++) {
-      if (parameters[i] == null) {
-        throw new IllegalArgumentException(String.format("Parameter at position %s is not set", i));
-      }
-    }
-
     if (batchingParameters == null) {
+      // valid parameters
+      for (int i = 0; i < prepareResult.getParamCount(); i++) {
+        if (parameters[i] == null) {
+          throw new IllegalArgumentException(
+              String.format("Parameter at position %s is not set", i));
+        }
+      }
       return execute(this.sql, this.prepareResult, this.generatedColumns);
     } else {
-      add();
-
       Flux<ServerMessage> fluxMsg =
           this.client.sendCommand(
               new QueryWithParametersPacket(
