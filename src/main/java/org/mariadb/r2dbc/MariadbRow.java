@@ -44,7 +44,7 @@ public class MariadbRow implements Row {
   @Override
   public <T> T get(int index, Class<T> type) {
     Assert.requireNonNull(type, "type must not be null");
-    return decode(index, getMeta(index), type);
+    return decoder.get(index, getMeta(index), type);
   }
 
   @Nullable
@@ -84,10 +84,5 @@ public class MariadbRow implements Row {
               index, this.columnDefinitionPackets.length - 1));
     }
     return this.columnDefinitionPackets[index];
-  }
-
-  @Nullable
-  private <T> T decode(int index, ColumnDefinitionPacket column, Class<T> type) {
-    return decoder.get(index, column, type);
   }
 }

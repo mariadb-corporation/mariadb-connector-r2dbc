@@ -66,7 +66,7 @@ public class BigIntegerCodec implements Codec<BigInteger> {
       case DOUBLE:
       case DECIMAL:
       case OLDDECIMAL:
-        String value = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
+        String value = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
         return new BigDecimal(value).toBigInteger();
 
       case BIT:
@@ -83,7 +83,7 @@ public class BigIntegerCodec implements Codec<BigInteger> {
       case INTEGER:
       case BIGINT:
       case YEAR:
-        return new BigInteger(buf.readCharSequence(length, StandardCharsets.UTF_8).toString());
+        return new BigInteger(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
 
       default:
         // VARCHAR, VARSTRING, STRING
