@@ -51,7 +51,7 @@ public class StreamCodec implements Codec<InputStream> {
   public InputStream decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends InputStream> type) {
     // STRING, VARCHAR, VARSTRING, BLOB, TINYBLOB, MEDIUMBLOB, LONGBLOB:
-    return new ByteBufInputStream(buf.readSlice(length));
+    return new ByteBufInputStream(buf.readRetainedSlice(length), true);
   }
 
   @Override
