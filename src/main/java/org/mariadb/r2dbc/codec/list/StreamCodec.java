@@ -57,7 +57,7 @@ public class StreamCodec implements Codec<InputStream> {
   @Override
   public InputStream decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends InputStream> type) {
-    return decodeText(buf, length, column, type);
+    return new ByteBufInputStream(buf.readRetainedSlice(length), true);
   }
 
   public boolean canEncode(Class<?> value) {

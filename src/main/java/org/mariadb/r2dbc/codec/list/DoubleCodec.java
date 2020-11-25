@@ -89,6 +89,9 @@ public class DoubleCodec implements Codec<Double> {
   public Double decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Double> type) {
     switch (column.getType()) {
+      case DOUBLE:
+        return buf.readDoubleLE();
+
       case TINYINT:
         if (!column.isSigned()) {
           return (double) buf.readUnsignedByte();
@@ -134,9 +137,8 @@ public class DoubleCodec implements Codec<Double> {
         return new BigDecimal(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString())
             .doubleValue();
 
-      case VARCHAR:
-      case VARSTRING:
-      case STRING:
+      default:
+        // VARCHAR, VARSTRING, STRING:
         String str2 = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           return Double.valueOf(str2);
@@ -144,10 +146,6 @@ public class DoubleCodec implements Codec<Double> {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Double", str2));
         }
-
-      default:
-        // DOUBLE
-        return buf.readDoubleLE();
     }
   }
 

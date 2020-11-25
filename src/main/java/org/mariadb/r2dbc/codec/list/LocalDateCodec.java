@@ -129,7 +129,7 @@ public class LocalDateCodec implements Codec<LocalDate> {
   public LocalDate decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalDate> type) {
 
-    int year;
+    int year = 0;
     int month = 1;
     int dayOfMonth = 1;
 
@@ -145,9 +145,30 @@ public class LocalDateCodec implements Codec<LocalDate> {
         }
         return LocalDate.of(year, month, dayOfMonth);
 
-      case STRING:
-      case VARCHAR:
-      case VARSTRING:
+      case YEAR:
+        if (length > 0) {
+          year = buf.readUnsignedShortLE();
+          if (column.getLength() == 2) {
+            // YEAR(2) - deprecated
+            if (year <= 69) {
+              year += 2000;
+            } else {
+              year += 1900;
+            }
+          }
+        }
+        return LocalDate.of(year, month, dayOfMonth);
+
+      case DATE:
+        if (length > 0) {
+          year = buf.readUnsignedShortLE();
+          month = buf.readByte();
+          dayOfMonth = buf.readByte();
+        }
+        return LocalDate.of(year, month, dayOfMonth);
+
+      default:
+        // VARCHAR,VARSTRING,STRING:
         String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         String[] stDatePart = val.split("-| ");
         if (stDatePart.length < 3) {
@@ -164,25 +185,6 @@ public class LocalDateCodec implements Codec<LocalDate> {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' (%s) cannot be decoded as Date", val, column.getType()));
         }
-
-      default:
-        // DATE, YEAR:
-        year = buf.readUnsignedShortLE();
-
-        if (column.getLength() == 2) {
-          // YEAR(2) - deprecated
-          if (year <= 69) {
-            year += 2000;
-          } else {
-            year += 1900;
-          }
-        }
-
-        if (length >= 4) {
-          month = buf.readByte();
-          dayOfMonth = buf.readByte();
-        }
-        return LocalDate.of(year, month, dayOfMonth);
     }
   }
 

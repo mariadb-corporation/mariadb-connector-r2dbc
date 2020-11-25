@@ -158,29 +158,33 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
     switch (column.getType()) {
       case TIME:
         // specific case for TIME, to handle value not in 00:00:00-23:59:59
-        buf.skipBytes(5); // skip negative and days
-        hour = buf.readByte();
-        minutes = buf.readByte();
-        seconds = buf.readByte();
-        if (length > 8) {
-          microseconds = buf.readUnsignedIntLE();
+        if (length > 0) {
+          buf.skipBytes(5); // skip negative and days
+          hour = buf.readByte();
+          minutes = buf.readByte();
+          seconds = buf.readByte();
+          if (length > 8) {
+            microseconds = buf.readUnsignedIntLE();
+          }
         }
         break;
 
       case DATE:
       case TIMESTAMP:
       case DATETIME:
-        year = buf.readUnsignedShortLE();
-        month = buf.readByte();
-        dayOfMonth = buf.readByte();
+        if (length > 0) {
+          year = buf.readUnsignedShortLE();
+          month = buf.readByte();
+          dayOfMonth = buf.readByte();
 
-        if (length > 4) {
-          hour = buf.readByte();
-          minutes = buf.readByte();
-          seconds = buf.readByte();
+          if (length > 4) {
+            hour = buf.readByte();
+            minutes = buf.readByte();
+            seconds = buf.readByte();
 
-          if (length > 7) {
-            microseconds = buf.readUnsignedIntLE();
+            if (length > 7) {
+              microseconds = buf.readUnsignedIntLE();
+            }
           }
         }
         break;

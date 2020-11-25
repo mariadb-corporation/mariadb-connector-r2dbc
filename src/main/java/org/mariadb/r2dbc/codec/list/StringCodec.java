@@ -192,16 +192,12 @@ public class StringCodec implements Codec<String> {
 
         if (length > 0) {
           negate = buf.readByte() == 0x01;
-          if (length > 4) {
-            tDays = buf.readUnsignedIntLE();
-            if (length > 7) {
-              tHours = buf.readByte();
-              tMinutes = buf.readByte();
-              tSeconds = buf.readByte();
-              if (length > 8) {
-                tMicroseconds = buf.readIntLE();
-              }
-            }
+          tDays = buf.readUnsignedIntLE();
+          tHours = buf.readByte();
+          tMinutes = buf.readByte();
+          tSeconds = buf.readByte();
+          if (length > 8) {
+            tMicroseconds = buf.readIntLE();
           }
         }
         int totalHour = (int) (tDays * 24 + tHours);
@@ -223,6 +219,7 @@ public class StringCodec implements Codec<String> {
         return stTime + "." + stMicro;
 
       case DATE:
+        if (length == 0) return LocalDate.of(1970, 1, 1).toString();
         int dateYear = buf.readUnsignedShortLE();
         int dateMonth = buf.readByte();
         int dateDay = buf.readByte();
@@ -230,21 +227,25 @@ public class StringCodec implements Codec<String> {
 
       case DATETIME:
       case TIMESTAMP:
-        int year = buf.readUnsignedShortLE();
-        int month = buf.readByte();
-        int day = buf.readByte();
+        int year = 1970;
+        int month = 1;
+        int day = 1;
         int hour = 0;
         int minutes = 0;
         int seconds = 0;
         long microseconds = 0;
+        if (length > 0) {
+          year = buf.readUnsignedShortLE();
+          month = buf.readByte();
+          day = buf.readByte();
+          if (length > 4) {
+            hour = buf.readByte();
+            minutes = buf.readByte();
+            seconds = buf.readByte();
 
-        if (length > 4) {
-          hour = buf.readByte();
-          minutes = buf.readByte();
-          seconds = buf.readByte();
-
-          if (length > 7) {
-            microseconds = buf.readUnsignedIntLE();
+            if (length > 7) {
+              microseconds = buf.readUnsignedIntLE();
+            }
           }
         }
         LocalDateTime dateTime =

@@ -87,8 +87,8 @@ public class BlobParseTest extends BaseConnectionTest {
             r ->
                 r.map(
                     (row, metadata) -> {
-                      row.get(0);
-                      row.get(0);
+                      row.get(0, Blob.class).discard();
+                      row.get(0, Blob.class).discard();
                       row.get(1);
                       row.get(1);
                       return row.get(0);
@@ -431,6 +431,11 @@ public class BlobParseTest extends BaseConnectionTest {
     }
     if (pos != expected.length) return false;
     Assertions.assertArrayEquals(val, expected);
+    try {
+      actual.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     return true;
   }
 

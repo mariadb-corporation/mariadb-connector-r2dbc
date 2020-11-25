@@ -150,29 +150,30 @@ public class LocalTimeCodec implements Codec<LocalTime> {
     switch (column.getType()) {
       case TIMESTAMP:
       case DATETIME:
-        buf.skipBytes(4); // skip year, month and day
-        if (length > 4) {
-          hour = buf.readByte();
-          minutes = buf.readByte();
-          seconds = buf.readByte();
+        if (length > 0) {
+          buf.skipBytes(4); // skip year, month and day
+          if (length > 4) {
+            hour = buf.readByte();
+            minutes = buf.readByte();
+            seconds = buf.readByte();
 
-          if (length > 7) {
-            microseconds = buf.readIntLE();
+            if (length > 7) {
+              microseconds = buf.readIntLE();
+            }
           }
         }
         return LocalTime.of(hour, minutes, seconds).plusNanos(microseconds * 1000);
 
       case TIME:
-        boolean negate = buf.readByte() == 1;
-        if (length > 4) {
+        boolean negate = false;
+        if (length > 0) {
+          negate = buf.readByte() == 1;
           buf.skipBytes(4); // skip days
-          if (length > 7) {
-            hour = buf.readByte();
-            minutes = buf.readByte();
-            seconds = buf.readByte();
-            if (length > 8) {
-              microseconds = buf.readIntLE();
-            }
+          hour = buf.readByte();
+          minutes = buf.readByte();
+          seconds = buf.readByte();
+          if (length > 8) {
+            microseconds = buf.readIntLE();
           }
         }
         if (negate) {
