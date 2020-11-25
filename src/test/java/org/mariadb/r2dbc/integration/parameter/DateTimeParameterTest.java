@@ -102,7 +102,10 @@ public class DateTimeParameterTest extends BaseConnectionTest {
           .expectErrorMatches(
               throwable ->
                   throwable instanceof R2dbcBadGrammarException
-                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
+                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007")
+                      && ((R2dbcBadGrammarException) throwable)
+                          .getOffendingSql()
+                          .contains("INSERT INTO DateTimeParam VALUES ("))
           .verify();
     }
   }
