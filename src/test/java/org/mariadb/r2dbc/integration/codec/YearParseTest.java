@@ -102,7 +102,7 @@ public class YearParseTest extends BaseConnectionTest {
 
   private void booleanValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t2 FROM YearTable WHERE 1 = ?")
+        .createStatement("SELECT t2 FROM YearTable WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Boolean.class))))

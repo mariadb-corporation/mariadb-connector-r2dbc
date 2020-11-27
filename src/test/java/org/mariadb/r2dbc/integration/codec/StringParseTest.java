@@ -157,7 +157,7 @@ public class StringParseTest extends BaseConnectionTest {
 
   private void unknownValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?  LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, this.getClass()))))
@@ -184,7 +184,7 @@ public class StringParseTest extends BaseConnectionTest {
 
   private void durationValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?  LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Duration.class))))
@@ -209,7 +209,7 @@ public class StringParseTest extends BaseConnectionTest {
         .blockLast();
 
     connection
-        .createStatement("SELECT t1 FROM durationValue WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM durationValue WHERE 1 = ?  LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Duration.class))))
@@ -238,7 +238,7 @@ public class StringParseTest extends BaseConnectionTest {
 
   private void localTimeValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?  LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalTime.class))))
@@ -265,7 +265,7 @@ public class StringParseTest extends BaseConnectionTest {
         .blockLast();
 
     connection
-        .createStatement("SELECT t1 FROM localTimeValue WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM localTimeValue WHERE 1 = ?  LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalTime.class))))
@@ -294,7 +294,7 @@ public class StringParseTest extends BaseConnectionTest {
 
   private void localDateValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?  LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalDate.class))))
@@ -319,7 +319,7 @@ public class StringParseTest extends BaseConnectionTest {
         .blockLast();
 
     connection
-        .createStatement("SELECT t1 FROM localDateValue WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM localDateValue WHERE 1 = ? LIMIT 4")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalDate.class))))
@@ -349,7 +349,7 @@ public class StringParseTest extends BaseConnectionTest {
 
   private void localDateTimeValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(
@@ -377,7 +377,7 @@ public class StringParseTest extends BaseConnectionTest {
         .blockLast();
 
     connection
-        .createStatement("SELECT t1 FROM localDateTimeValue WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM localDateTimeValue WHERE 1 = ? LIMIT 4")
         .bind(0, 1)
         .execute()
         .flatMap(
@@ -690,7 +690,7 @@ public class StringParseTest extends BaseConnectionTest {
   private void blobValue(MariadbConnection connection) {
 
     connection
-        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ? limit 3")
+        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ? limit 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, Blob.class)))

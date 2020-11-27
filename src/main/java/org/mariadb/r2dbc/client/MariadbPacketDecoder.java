@@ -20,7 +20,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
-import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.util.List;
 import java.util.Queue;
@@ -99,25 +98,18 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
             packet.getUnsignedByte(packet.readerIndex()),
             packet.readableBytes(),
             serverCapabilities);
-    ServerMessage msg = null;
-    try {
-      msg = state.decode(packet, sequencer, this, cmdElement);
-      cmdElement.getSink().next(msg);
-      if (msg.ending()) {
-        if (cmdElement != null) {
-          // complete executed only after setting next element.
-          CmdElement element = cmdElement;
-          loadNextResponse();
-          element.getSink().complete();
-        }
-        client.sendNext();
-      } else {
-        state = state.next(this);
+    ServerMessage msg = state.decode(packet, sequencer, this, cmdElement);
+    cmdElement.getSink().next(msg);
+    if (msg.ending()) {
+      if (cmdElement != null) {
+        // complete executed only after setting next element.
+        CmdElement element = cmdElement;
+        loadNextResponse();
+        element.getSink().complete();
       }
-    } finally {
-      if (msg instanceof ReferenceCounted) {
-        ((ReferenceCounted) msg).release();
-      }
+      client.sendNext();
+    } else {
+      state = state.next(this);
     }
   }
 

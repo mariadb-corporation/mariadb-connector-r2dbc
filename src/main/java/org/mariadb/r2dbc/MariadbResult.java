@@ -79,73 +79,75 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
   @Override
   public <T> Flux<T> map(BiFunction<Row, RowMetadata, ? extends T> f) {
     metadataIndex = 0;
-    return this.dataRows.handle(
-        (serverMessage, sink) -> {
-          if (serverMessage instanceof ErrorPacket) {
-            sink.error(this.factory.from((ErrorPacket) serverMessage));
-            return;
-          }
 
-          if (serverMessage instanceof ColumnCountPacket) {
-            this.columnNumber = ((ColumnCountPacket) serverMessage).getColumnCount();
-            metadataList = new ColumnDefinitionPacket[this.columnNumber];
-            return;
-          }
+    return this.dataRows
+        .takeUntil(msg -> msg.resultSetEnd())
+        .handle(
+            (serverMessage, sink) -> {
+              if (serverMessage instanceof ErrorPacket) {
+                sink.error(this.factory.from((ErrorPacket) serverMessage));
+                return;
+              }
 
-          if (serverMessage instanceof ColumnDefinitionPacket) {
-            this.metadataList[metadataIndex++] = (ColumnDefinitionPacket) serverMessage;
-            if (metadataIndex == columnNumber) {
-              rowMetadata = MariadbRowMetadata.toRowMetadata(this.metadataList);
-              this.decoder =
-                  text
-                      ? new TextRowDecoder(columnNumber, this.metadataList)
-                      : new BinaryRowDecoder(columnNumber, this.metadataList);
-            }
-            return;
-          }
+              if (serverMessage instanceof ColumnCountPacket) {
+                this.columnNumber = ((ColumnCountPacket) serverMessage).getColumnCount();
+                metadataList = new ColumnDefinitionPacket[this.columnNumber];
+                return;
+              }
 
-          if (serverMessage instanceof RowPacket) {
-            ByteBuf buf = ((RowPacket) serverMessage).getRaw();
-            try {
-              sink.next(f.apply(new MariadbRow(metadataList, decoder, buf), rowMetadata));
-              return;
-            } catch (IllegalArgumentException i) {
-              sink.error(this.factory.createException(i.getMessage(), "HY000", -1));
-              return;
-            }
-          }
+              if (serverMessage instanceof ColumnDefinitionPacket) {
+                this.metadataList[metadataIndex++] = (ColumnDefinitionPacket) serverMessage;
+                if (metadataIndex == columnNumber) {
+                  rowMetadata = MariadbRowMetadata.toRowMetadata(this.metadataList);
+                  this.decoder =
+                      text
+                          ? new TextRowDecoder(columnNumber, this.metadataList)
+                          : new BinaryRowDecoder(columnNumber, this.metadataList);
+                }
+                return;
+              }
 
-          // This is for server that doesn't permit RETURNING: rely on OK_packet LastInsertId
-          // to retrieve the last generated ID.
-          if (serverMessage instanceof OkPacket && generatedColumns != null && !supportReturning) {
-            if (metadataList == null) {
-              String colName = generatedColumns.length > 0 ? generatedColumns[0] : "ID";
-              metadataList = new ColumnDefinitionPacket[1];
-              metadataList[0] = ColumnDefinitionPacket.fromGeneratedId(colName);
-              rowMetadata = MariadbRowMetadata.toRowMetadata(this.metadataList);
-            }
-            OkPacket okPacket = ((OkPacket) serverMessage);
-            if (okPacket.getAffectedRows() > 1) {
-              sink.error(
-                  this.factory.createException(
-                      "Connector cannot get generated ID (using returnGeneratedValues) multiple rows before MariaDB 10.5.1",
-                      "HY000",
-                      -1));
-              return;
-            }
-            ByteBuf buf = getLongTextEncoded(okPacket.getLastInsertId());
-            decoder = new TextRowDecoder(1, this.metadataList);
-            try {
-              sink.next(f.apply(new MariadbRow(metadataList, decoder, buf), rowMetadata));
-            } finally {
-              buf.release();
-            }
-          }
+              if (serverMessage instanceof RowPacket) {
+                ByteBuf buf = ((RowPacket) serverMessage).getRaw();
+                try {
+                  sink.next(f.apply(new MariadbRow(metadataList, decoder, buf), rowMetadata));
+                } catch (IllegalArgumentException i) {
+                  sink.error(this.factory.createException(i.getMessage(), "HY000", -1));
+                } finally {
+                  buf.release();
+                }
+                return;
+              }
 
-          if (serverMessage.resultSetEnd()) {
-            sink.complete();
-          }
-        });
+              // This is for server that doesn't permit RETURNING: rely on OK_packet LastInsertId
+              // to retrieve the last generated ID.
+              if (serverMessage instanceof OkPacket
+                  && generatedColumns != null
+                  && !supportReturning) {
+                if (metadataList == null) {
+                  String colName = generatedColumns.length > 0 ? generatedColumns[0] : "ID";
+                  metadataList = new ColumnDefinitionPacket[1];
+                  metadataList[0] = ColumnDefinitionPacket.fromGeneratedId(colName);
+                  rowMetadata = MariadbRowMetadata.toRowMetadata(this.metadataList);
+                }
+                OkPacket okPacket = ((OkPacket) serverMessage);
+                if (okPacket.getAffectedRows() > 1) {
+                  sink.error(
+                      this.factory.createException(
+                          "Connector cannot get generated ID (using returnGeneratedValues) multiple rows before MariaDB 10.5.1",
+                          "HY000",
+                          -1));
+                  return;
+                }
+                ByteBuf buf = getLongTextEncoded(okPacket.getLastInsertId());
+                decoder = new TextRowDecoder(1, this.metadataList);
+                try {
+                  sink.next(f.apply(new MariadbRow(metadataList, decoder, buf), rowMetadata));
+                } finally {
+                  buf.release();
+                }
+              }
+            });
   }
 
   private ByteBuf getLongTextEncoded(long value) {
