@@ -17,11 +17,9 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.util.AbstractReferenceCounted;
-import io.netty.util.ReferenceCounted;
 import org.mariadb.r2dbc.client.Context;
 
-public class AuthMoreDataPacket extends AbstractReferenceCounted implements ServerMessage {
+public class AuthMoreDataPacket implements ServerMessage {
 
   private Sequencer sequencer;
   private ByteBuf buf;
@@ -37,7 +35,6 @@ public class AuthMoreDataPacket extends AbstractReferenceCounted implements Serv
     return new AuthMoreDataPacket(sequencer, data);
   }
 
-  @Override
   public void deallocate() {
     if (buf != null) {
       buf.release();
@@ -47,11 +44,6 @@ public class AuthMoreDataPacket extends AbstractReferenceCounted implements Serv
 
   public Sequencer getSequencer() {
     return sequencer;
-  }
-
-  @Override
-  public ReferenceCounted touch(Object hint) {
-    return this;
   }
 
   public ByteBuf getBuf() {
