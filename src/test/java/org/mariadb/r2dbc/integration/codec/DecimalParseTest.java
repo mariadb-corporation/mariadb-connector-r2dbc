@@ -139,7 +139,7 @@ public class DecimalParseTest extends BaseConnectionTest {
 
   private void ByteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?  LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
@@ -167,7 +167,7 @@ public class DecimalParseTest extends BaseConnectionTest {
 
   private void byteValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?  LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
@@ -195,7 +195,7 @@ public class DecimalParseTest extends BaseConnectionTest {
 
   private void shortValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ? LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
@@ -220,7 +220,7 @@ public class DecimalParseTest extends BaseConnectionTest {
 
   private void intValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ? LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Integer.class))))
@@ -245,7 +245,7 @@ public class DecimalParseTest extends BaseConnectionTest {
 
   private void longValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?  LIMIT 5")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Long.class))))
@@ -378,7 +378,7 @@ public class DecimalParseTest extends BaseConnectionTest {
 
   private void blobValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM DecimalTable WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(

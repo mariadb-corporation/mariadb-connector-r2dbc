@@ -83,6 +83,18 @@ public class LongCodec implements Codec<Long> {
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Long> type) {
     long result;
     switch (column.getType()) {
+      case DECIMAL:
+      case OLDDECIMAL:
+      case DOUBLE:
+      case FLOAT:
+        String str1 = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
+        try {
+          return new BigDecimal(str1).setScale(0, RoundingMode.DOWN).longValueExact();
+        } catch (NumberFormatException | ArithmeticException nfe) {
+          throw new R2dbcNonTransientResourceException(
+              String.format("value '%s' cannot be decoded as Long", str1));
+        }
+
       case TINYINT:
       case SMALLINT:
       case MEDIUMINT:
@@ -113,17 +125,6 @@ public class LongCodec implements Codec<Long> {
         }
         return result;
 
-      case DECIMAL:
-      case DOUBLE:
-      case FLOAT:
-        String str1 = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
-        try {
-          return new BigDecimal(str1).setScale(0, RoundingMode.DOWN).longValueExact();
-        } catch (NumberFormatException | ArithmeticException nfe) {
-          throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' cannot be decoded as Long", str1));
-        }
-
       default:
         // STRING, VARCHAR, VARSTRING:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
@@ -143,6 +144,24 @@ public class LongCodec implements Codec<Long> {
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Long> type) {
 
     switch (column.getType()) {
+      case BIGINT:
+        if (column.isSigned()) {
+          return buf.readLongLE();
+        } else {
+          // need BIG ENDIAN, so reverse order
+          byte[] bb = new byte[8];
+          for (int i = 7; i >= 0; i--) {
+            bb[i] = buf.readByte();
+          }
+          BigInteger val = new BigInteger(1, bb);
+          try {
+            return val.longValueExact();
+          } catch (ArithmeticException ae) {
+            throw new R2dbcNonTransientResourceException(
+                String.format("value '%s' cannot be decoded as Long", val.toString()));
+          }
+        }
+
       case BIT:
         long result = 0;
         for (int i = 0; i < length; i++) {
@@ -175,24 +194,6 @@ public class LongCodec implements Codec<Long> {
           return buf.readUnsignedIntLE();
         }
         return (long) buf.readIntLE();
-
-      case BIGINT:
-        if (column.isSigned()) {
-          return buf.readLongLE();
-        } else {
-          // need BIG ENDIAN, so reverse order
-          byte[] bb = new byte[8];
-          for (int i = 7; i >= 0; i--) {
-            bb[i] = buf.readByte();
-          }
-          BigInteger val = new BigInteger(1, bb);
-          try {
-            return val.longValueExact();
-          } catch (ArithmeticException ae) {
-            throw new R2dbcNonTransientResourceException(
-                String.format("value '%s' cannot be decoded as Long", val.toString()));
-          }
-        }
 
       case FLOAT:
         return (long) buf.readFloatLE();

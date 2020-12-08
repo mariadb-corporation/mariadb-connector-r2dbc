@@ -18,7 +18,11 @@ MariaDB and MySQL client, 100% Java, compatible with Java8+, apache 2.0 licensed
 - Driver permits ed25519, PAM authentication that comes with MariaDB.
 - use MariaDB 10.5 returning fonction to permit Statement.returnGeneratedValues 
 
-Driver follow [R2DBC 0.8.2 specifications](https://r2dbc.io/spec/0.8.2.RELEASE/spec/html/)
+Driver follow [R2DBC 0.8.3 specifications](https://r2dbc.io/spec/0.8.3.RELEASE/spec/html/)
+
+## Documentation
+
+See [documentation](https://mariadb.com/docs/appdev/connector-r2dbc/) for native or with Spring Data R2DBC use. 
 
 
 ## Quick Start
@@ -29,7 +33,7 @@ The MariaDB Connector is available through maven using :
     <dependency>
         <groupId>org.mariadb</groupId>
         <artifactId>r2dbc-mariadb</artifactId>
-        <version>0.8.4-rc</version>
+        <version>1.0.0</version>
     </dependency>
 ```
 

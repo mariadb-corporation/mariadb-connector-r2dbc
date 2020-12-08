@@ -1,4 +1,17 @@
 # Change Log
+## [1.0.0](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.0.0) (08 Dec 2020)
+[Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/0.8.4...1.0.0)
+
+First GA release.
+
+Corrections:
+* [R2DBC-14] correcting backpressure handling #7
+* [R2DBC-12] Ensure retaining blob buffer #6
+* [R2DBC-11] Batching on statement use parameters not added #8
+* Rely on 0.8.3 specification (was 0.8.2)
+* bump dependencies
+* Ensuring row buffer reading position
+
 ## [0.8.4](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/0.8.4) (29 Sep 2020)
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/0.8.3...0.8.4)
 

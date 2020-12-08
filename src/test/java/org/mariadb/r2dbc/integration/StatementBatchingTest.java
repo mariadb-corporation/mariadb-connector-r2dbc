@@ -47,6 +47,7 @@ public class StatementBatchingTest extends BaseConnectionTest {
         .add()
         .bind(1, "test2")
         .bind(0, 2)
+        .add()
         .execute()
         .blockLast();
 
@@ -86,6 +87,7 @@ public class StatementBatchingTest extends BaseConnectionTest {
         .bind(0, 2)
         .add()
         .bind(0, 1)
+        .add()
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
         .as(StepVerifier::create)

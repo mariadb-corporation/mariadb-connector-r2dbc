@@ -181,7 +181,7 @@ public class TinyIntParseTest extends BaseConnectionTest {
             Optional.empty())
         .verifyComplete();
     connection
-        .createStatement("SELECT t1 FROM tinyIntUnsignedTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM tinyIntUnsignedTable WHERE 1 = ? LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
@@ -218,7 +218,7 @@ public class TinyIntParseTest extends BaseConnectionTest {
                     && throwable.getMessage().equals("Cannot return null for primitive byte"))
         .verify();
     connection
-        .createStatement("SELECT t1 FROM tinyIntUnsignedTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM tinyIntUnsignedTable WHERE 1 = ? LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))

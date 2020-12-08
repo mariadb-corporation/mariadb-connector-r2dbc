@@ -421,8 +421,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
 
   @Test
   void prepareReuse() {
-    MariadbStatement stmt =
-        sharedConnPrepare.createStatement("SELECT * FROM PrepareResultSetTest WHERE 1 = ?");
+    MariadbStatement stmt = sharedConnPrepare.createStatement("DO 1 = ?");
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bind(-1, 1),
@@ -439,7 +438,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bindNull(-1, Integer.class),
-        "wrong index value -1, index " + "must be " + "positive");
+        "wrong index value -1, index must be positive");
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bindNull(2, Integer.class),
@@ -450,7 +449,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> stmt.execute().blockLast(),
-        "Parameter at position 0 is not " + "set");
+        "Parameter at position 0 is not set");
   }
 
   private List<String> prepareInfo(MariadbConnection connection) {

@@ -16,6 +16,7 @@
 
 package org.mariadb.r2dbc.integration;
 
+import ch.qos.logback.classic.Level;
 import io.r2dbc.spi.*;
 import java.math.BigInteger;
 import java.time.Duration;
@@ -37,6 +38,8 @@ import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 public class ConnectionTest extends BaseConnectionTest {
+  private Level initialReactorLvl;
+  private Level initialLvl;
 
   @Test
   void localValidation() {
@@ -58,8 +61,30 @@ public class ConnectionTest extends BaseConnectionTest {
         .verifyComplete();
   }
 
+  private void disableLog() {
+    ch.qos.logback.classic.Logger driver =
+        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger("org.mariadb.r2dbc");
+    ch.qos.logback.classic.Logger reactor =
+        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger("reactor.core");
+
+    initialReactorLvl = reactor.getLevel();
+    initialLvl = driver.getLevel();
+    driver.setLevel(Level.OFF);
+    reactor.setLevel(Level.OFF);
+  }
+
+  private void reInitLog() {
+    ch.qos.logback.classic.Logger root =
+        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger("org.mariadb.r2dbc");
+    ch.qos.logback.classic.Logger r2dbc =
+        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger("io.r2dbc.spi");
+    root.setLevel(initialReactorLvl);
+    r2dbc.setLevel(initialReactorLvl);
+  }
+
   @Test
   void connectionError() throws Exception {
+    disableLog();
     MariadbConnection connection = createProxyCon();
     try {
       proxy.stop();
@@ -72,11 +97,15 @@ public class ConnectionTest extends BaseConnectionTest {
               || t.getMessage().contains("Connection unexpectedly closed")
               || t.getMessage().contains("Connection unexpected error"),
           "real msg:" + t.getMessage());
+    } finally {
+      Thread.sleep(100);
+      reInitLog();
     }
   }
 
   @Test
   void multipleCommandStack() throws Exception {
+    disableLog();
     MariadbConnection connection = createProxyCon();
     Runnable runnable = () -> proxy.stop();
     Thread th = new Thread(runnable);
@@ -99,18 +128,24 @@ public class ConnectionTest extends BaseConnectionTest {
               || t.getCause().getMessage().contains("Connection unexpectedly closed")
               || t.getCause().getMessage().contains("Connection unexpected error"),
           "real msg:" + t.getCause().getMessage());
+    } finally {
+      Thread.sleep(100);
+      reInitLog();
     }
   }
 
   @Test
   void connectionWithoutErrorOnClose() throws Exception {
+    disableLog();
     MariadbConnection connection = createProxyCon();
     proxy.stop();
     connection.close().block();
+    reInitLog();
   }
 
   @Test
   void connectionDuringError() throws Exception {
+    disableLog();
     MariadbConnection connection = createProxyCon();
     new java.util.Timer()
         .schedule(
@@ -143,6 +178,7 @@ public class ConnectionTest extends BaseConnectionTest {
               || t.getMessage().contains("Connection unexpectedly closed")
               || t.getMessage().contains("Connection unexpected error"),
           "real msg:" + t.getMessage());
+      reInitLog();
     }
   }
 
@@ -382,19 +418,25 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void multiThreadingSameConnection() throws Throwable {
-    AtomicInteger completed = new AtomicInteger(0);
-    ThreadPoolExecutor scheduler =
-        new ThreadPoolExecutor(10, 20, 50, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+    disableLog();
+    try {
+      AtomicInteger completed = new AtomicInteger(0);
+      ThreadPoolExecutor scheduler =
+          new ThreadPoolExecutor(10, 20, 50, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
 
-    MariadbConnection connection = factory.create().block();
+      MariadbConnection connection = factory.create().block();
 
-    for (int i = 0; i < 100; i++) {
-      scheduler.execute(new ExecuteQueriesOnSameConnection(completed, connection));
+      for (int i = 0; i < 100; i++) {
+        scheduler.execute(new ExecuteQueriesOnSameConnection(completed, connection));
+      }
+      scheduler.shutdown();
+      scheduler.awaitTermination(120, TimeUnit.SECONDS);
+      connection.close().block();
+      Assertions.assertEquals(100, completed.get());
+    } finally {
+      Thread.sleep(100);
+      reInitLog();
     }
-    scheduler.shutdown();
-    scheduler.awaitTermination(120, TimeUnit.SECONDS);
-    connection.close().block();
-    Assertions.assertEquals(100, completed.get());
   }
 
   @Test

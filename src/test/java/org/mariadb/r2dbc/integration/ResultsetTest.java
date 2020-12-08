@@ -125,9 +125,9 @@ public class ResultsetTest extends BaseConnectionTest {
 
   @Test
   void readResultSet() {
-    String[] first = new String[] {stLen(10), stLen(300), stLen(70000), stLen(1000)};
-    String[] second = new String[] {stLen(10), stLen(300), stLen(70000), stLen(1000)};
-    String[] third = new String[] {stLen(10), stLen(300), stLen(70000), stLen(1000)};
+    String[] first = new String[] {stLen(10), stLen(300), stLen(60000), stLen(1000)};
+    String[] second = new String[] {stLen(10), stLen(300), stLen(60000), stLen(1000)};
+    String[] third = new String[] {stLen(10), stLen(300), stLen(60000), stLen(1000)};
 
     sharedConn
         .createStatement(

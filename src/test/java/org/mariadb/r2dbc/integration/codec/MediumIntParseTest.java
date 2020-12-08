@@ -173,7 +173,7 @@ public class MediumIntParseTest extends BaseConnectionTest {
             Optional.of((byte) 0), Optional.of((byte) 1), Optional.of((byte) -1), Optional.empty())
         .verifyComplete();
     connection
-        .createStatement("SELECT t1 FROM MediumIntUnsignedTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM MediumIntUnsignedTable WHERE 1 = ? LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
@@ -243,7 +243,7 @@ public class MediumIntParseTest extends BaseConnectionTest {
             Optional.empty())
         .verifyComplete();
     connection
-        .createStatement("SELECT t1 FROM MediumIntUnsignedTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM MediumIntUnsignedTable WHERE 1 = ? LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))

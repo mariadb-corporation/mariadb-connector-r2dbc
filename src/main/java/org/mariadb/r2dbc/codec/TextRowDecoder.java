@@ -61,11 +61,11 @@ public class TextRowDecoder extends RowDecoder {
    */
   public void setPosition(int newIndex) {
     if (index >= newIndex) {
-      index = 0;
+      index = -1;
       buf.resetReaderIndex();
-    } else {
-      index++;
     }
+
+    index++;
 
     for (; index < newIndex; index++) {
       int type = this.buf.readUnsignedByte();
@@ -77,7 +77,7 @@ public class TextRowDecoder extends RowDecoder {
           buf.skipBytes(buf.readUnsignedMediumLE());
           break;
         case 254:
-          buf.skipBytes((int) (4 + buf.readUnsignedIntLE()));
+          buf.skipBytes((int) (buf.readLongLE()));
           break;
         case 251:
           break;
@@ -98,8 +98,7 @@ public class TextRowDecoder extends RowDecoder {
         length = buf.readUnsignedMediumLE();
         break;
       case 254:
-        length = (int) buf.readUnsignedIntLE();
-        buf.skipBytes(4);
+        length = (int) buf.readLongLE();
         break;
       default:
         length = type;

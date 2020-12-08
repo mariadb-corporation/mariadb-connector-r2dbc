@@ -94,16 +94,12 @@ public class DurationCodec implements Codec<Duration> {
         boolean negate = false;
         if (length > 0) {
           negate = buf.readUnsignedByte() == 0x01;
-          if (length > 4) {
-            days = buf.readUnsignedIntLE();
-            if (length > 7) {
-              hours = buf.readByte();
-              minutes = buf.readByte();
-              seconds = buf.readByte();
-              if (length > 8) {
-                microseconds = buf.readIntLE();
-              }
-            }
+          days = buf.readUnsignedIntLE();
+          hours = buf.readByte();
+          minutes = buf.readByte();
+          seconds = buf.readByte();
+          if (length > 8) {
+            microseconds = buf.readIntLE();
           }
         }
 
@@ -119,16 +115,17 @@ public class DurationCodec implements Codec<Duration> {
 
       case TIMESTAMP:
       case DATETIME:
-        buf.readUnsignedShortLE(); // skip year
-        buf.readByte(); // skip month
-        days = buf.readByte();
-        if (length > 4) {
-          hours = buf.readByte();
-          minutes = buf.readByte();
-          seconds = buf.readByte();
-
-          if (length > 7) {
-            microseconds = buf.readUnsignedIntLE();
+        if (length > 0) {
+          buf.readUnsignedShortLE(); // skip year
+          buf.readByte(); // skip month
+          days = buf.readByte();
+          if (length > 4) {
+            hours = buf.readByte();
+            minutes = buf.readByte();
+            seconds = buf.readByte();
+            if (length > 7) {
+              microseconds = buf.readUnsignedIntLE();
+            }
           }
         }
         return Duration.ZERO
@@ -137,6 +134,7 @@ public class DurationCodec implements Codec<Duration> {
             .plusMinutes(minutes)
             .plusSeconds(seconds)
             .plusNanos(microseconds * 1000);
+
       default:
         // VARCHAR, VARSTRING, STRING:
         int[] parts = LocalTimeCodec.parseTime(buf, length, column);

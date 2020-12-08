@@ -182,7 +182,6 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
 
   @Override
   public Flux<org.mariadb.r2dbc.api.MariadbResult> execute() {
-    validateParameters();
     String sql = this.initialSql;
     if (client.getVersion().supportReturning() && generatedColumns != null) {
       sql +=
@@ -194,9 +193,9 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     }
 
     if (batchingParameters == null) {
+      validateParameters();
       return execute(sql, parameters, this.generatedColumns);
     } else {
-      add();
       if (prepareResult == null) {
         prepareResult = client.getPrepareCache().get(sql);
         if (prepareResult == null) {

@@ -177,7 +177,7 @@ public class ShortParseTest extends BaseConnectionTest {
             Optional.of((byte) 0), Optional.of((byte) 1), Optional.of((byte) -1), Optional.empty())
         .verifyComplete();
     connection
-        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ? LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Byte.class))))
@@ -214,7 +214,7 @@ public class ShortParseTest extends BaseConnectionTest {
                     && throwable.getMessage().equals("Cannot return null for primitive byte"))
         .verify();
     connection
-        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ? LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte.class))))
@@ -252,7 +252,7 @@ public class ShortParseTest extends BaseConnectionTest {
         .verify();
 
     connection
-        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ? LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))
@@ -289,7 +289,7 @@ public class ShortParseTest extends BaseConnectionTest {
             Optional.empty())
         .verifyComplete();
     connection
-        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM ShortUnsignedTable WHERE 1 = ? LIMIT 3")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Short.class))))

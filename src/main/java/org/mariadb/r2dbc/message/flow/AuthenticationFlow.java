@@ -30,9 +30,7 @@ import org.mariadb.r2dbc.message.client.SslRequestPacket;
 import org.mariadb.r2dbc.message.server.*;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.constants.Capabilities;
-import reactor.core.publisher.EmitterProcessor;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.*;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
@@ -45,6 +43,7 @@ public final class AuthenticationFlow {
   private AuthSwitchPacket authSwitchPacket;
   private AuthMoreDataPacket authMoreDataPacket;
   private Client client;
+  private FluxSink<State> sink;
   private long clientCapabilities;
 
   private AuthenticationFlow(Client client, MariadbConnectionConfiguration configuration) {
@@ -56,22 +55,23 @@ public final class AuthenticationFlow {
     AuthenticationFlow flow = new AuthenticationFlow(client, configuration);
     Assert.requireNonNull(client, "client must not be null");
 
-    EmitterProcessor<State> stateMachine = EmitterProcessor.create(true);
-
-    return stateMachine
-        .startWith(State.INIT)
-        .<Void>handle(
-            (state, sink) -> {
+    return Flux.<State>create(
+            sink -> {
+              flow.sink = sink;
+              State.INIT.handle(flow).subscribe(sink::next, sink::error);
+            })
+        .doOnNext(
+            state -> {
               if (State.COMPLETED == state) {
-                sink.complete();
+                if (flow.authMoreDataPacket != null) flow.authMoreDataPacket.deallocate();
+                flow.sink.complete();
               } else {
-                if (logger.isDebugEnabled()) {
-                  logger.debug("authentication state {}", state);
+                if (logger.isTraceEnabled()) {
+                  logger.trace("authentication state {}", state);
                 }
-                state.handle(flow).subscribe(stateMachine::onNext, stateMachine::onError);
+                state.handle(flow).subscribe(flow.sink::next, flow.sink::error);
               }
             })
-        .doOnNext(tt -> {})
         .doOnComplete(
             () -> {
               if (logger.isDebugEnabled()) {
@@ -80,7 +80,7 @@ public final class AuthenticationFlow {
             })
         .doOnError(
             e -> {
-              logger.debug("error", e);
+              logger.error("Authentication failed", e);
               flow.client.close().subscribe();
             })
         .then(Mono.just(client));

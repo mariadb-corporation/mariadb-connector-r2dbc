@@ -113,6 +113,10 @@ public class IntCodec implements Codec<Integer> {
 
     long result;
     switch (column.getType()) {
+      case INTEGER:
+        result = column.isSigned() ? buf.readIntLE() : buf.readUnsignedIntLE();
+        break;
+
       case TINYINT:
         result = column.isSigned() ? buf.readByte() : buf.readUnsignedByte();
         break;
@@ -160,12 +164,7 @@ public class IntCodec implements Codec<Integer> {
         result = (long) buf.readDoubleLE();
         break;
 
-      case OLDDECIMAL:
-      case VARCHAR:
-      case DECIMAL:
-      case ENUM:
-      case VARSTRING:
-      case STRING:
+      default:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValueExact();
@@ -174,11 +173,6 @@ public class IntCodec implements Codec<Integer> {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Integer", str));
         }
-
-      default:
-        // INTEGER
-        result = column.isSigned() ? buf.readIntLE() : buf.readUnsignedIntLE();
-        break;
     }
 
     if ((int) result != result || (result < 0 && !column.isSigned())) {

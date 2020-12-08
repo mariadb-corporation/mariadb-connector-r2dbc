@@ -17,10 +17,8 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.util.AbstractReferenceCounted;
-import io.netty.util.ReferenceCounted;
 
-public final class RowPacket extends AbstractReferenceCounted implements ServerMessage {
+public final class RowPacket implements ServerMessage {
 
   private ByteBuf raw;
 
@@ -30,15 +28,5 @@ public final class RowPacket extends AbstractReferenceCounted implements ServerM
 
   public ByteBuf getRaw() {
     return raw;
-  }
-
-  @Override
-  public void deallocate() {
-    raw.release();
-  }
-
-  @Override
-  public ReferenceCounted touch(Object hint) {
-    return this;
   }
 }

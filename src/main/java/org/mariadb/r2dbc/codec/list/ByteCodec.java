@@ -93,6 +93,7 @@ public class ByteCodec implements Codec<Byte> {
         break;
 
       case BIT:
+        if (length == 0) return 0;
         Byte val = buf.readByte();
         if (length > 1) buf.skipBytes(length - 1);
         return val;
@@ -163,6 +164,7 @@ public class ByteCodec implements Codec<Byte> {
         break;
 
       case BIT:
+        if (length == 0) return 0;
         Byte val = buf.readByte();
         if (length > 1) buf.skipBytes(length - 1);
         return val;

@@ -153,7 +153,7 @@ public class BitParseTest extends BaseConnectionTest {
 
   private void byteArrayValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM BitTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM BitTable WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, byte[].class))))
@@ -318,7 +318,7 @@ public class BitParseTest extends BaseConnectionTest {
 
   private void floatValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM BitTable WHERE 1 = ?")
+        .createStatement("SELECT t1 FROM BitTable WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Float.class))))

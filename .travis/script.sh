@@ -62,19 +62,55 @@ for i in {15..0}; do
     sleep 2
 done
 
+docker-compose -f ${COMPOSE_FILE} logs
 
 if [ "$i" = 0 ]; then
 
     if echo 'SELECT 1' | "${mysql[@]}" ; then
         break
     fi
-
-    docker-compose -f ${COMPOSE_FILE} logs
     if [ -n "$MAXSCALE_VERSION" ] ; then
         docker-compose -f $COMPOSE_FILE exec maxscale tail -n 500 /var/log/maxscale/maxscale.log
     fi
     echo >&2 'data server init process failed.'
     exit 1
+fi
+
+###################################################################################################################
+# create PAM user
+###################################################################################################################
+
+if [ -z "$MAXSCALE_VERSION" ] ; then
+  docker-compose -f ${COMPOSE_FILE} exec -u root db bash /docker-entrypoint-initdb.d/pam/pam.sh
+  sleep 2
+  docker-compose -f ${COMPOSE_FILE} stop db
+  sleep 2
+  docker-compose -f ${COMPOSE_FILE} up -d
+  docker-compose -f ${COMPOSE_FILE} logs db
+
+
+  ###################################################################################################################
+  # wait for docker initialisation
+  ###################################################################################################################
+
+  for i in {15..0}; do
+      if echo 'SELECT 1' | "${mysql[@]}" ; then
+          break
+      fi
+      echo 'data server still not active'
+      sleep 2
+  done
+
+  docker-compose -f ${COMPOSE_FILE} logs
+
+  if [ "$i" = 0 ]; then
+
+      if echo 'SELECT 1' | "${mysql[@]}" ; then
+          break
+      fi
+      echo >&2 'data server init process failed.'
+      exit 1
+  fi
 fi
 
 

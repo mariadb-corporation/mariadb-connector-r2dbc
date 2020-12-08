@@ -90,6 +90,9 @@ public class FloatCodec implements Codec<Float> {
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Float> type) {
 
     switch (column.getType()) {
+      case FLOAT:
+        return buf.readFloatLE();
+
       case TINYINT:
         if (!column.isSigned()) {
           return (float) buf.readUnsignedByte();
@@ -135,9 +138,7 @@ public class FloatCodec implements Codec<Float> {
         return new BigDecimal(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString())
             .floatValue();
 
-      case VARCHAR:
-      case VARSTRING:
-      case STRING:
+      default:
         String str2 = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           return Float.valueOf(str2);
@@ -145,10 +146,6 @@ public class FloatCodec implements Codec<Float> {
           throw new R2dbcNonTransientResourceException(
               String.format("value '%s' cannot be decoded as Float", str2));
         }
-
-      default:
-        // FLOAT
-        return buf.readFloatLE();
     }
   }
 
