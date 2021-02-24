@@ -1,4 +1,10 @@
 # Change Log
+## [1.1.0](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.1.0) (?)
+[Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.0.0...1.1.0)
+
+Changes:
+* [R2DBC-16] Ensure connection autocommit initialisation and new option autocommit
+
 ## [1.0.0](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.0.0) (08 Dec 2020)
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/0.8.4...1.0.0)
 

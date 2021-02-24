@@ -18,7 +18,7 @@ MariaDB and MySQL client, 100% Java, compatible with Java8+, apache 2.0 licensed
 - Driver permits ed25519, PAM authentication that comes with MariaDB.
 - use MariaDB 10.5 returning fonction to permit Statement.returnGeneratedValues 
 
-Driver follow [R2DBC 0.8.3 specifications](https://r2dbc.io/spec/0.8.3.RELEASE/spec/html/)
+Driver follow [R2DBC 0.8.4 specifications](https://r2dbc.io/spec/0.8.4.RELEASE/spec/html/)
 
 ## Documentation
 
@@ -106,6 +106,7 @@ Basic example:
 | **`useServerPrepStmts`** | Permit to indicate to use text or binary protocol for query with parameter |*boolean* | false | 
 | **`prepareCacheSize`** | if useServerPrepStmts = true, cache the prepared informations in a LRU cache to avoid re-preparation of command. Next use of that command, only prepared identifier and parameters (if any) will be sent to server. This mainly permit for server to avoid reparsing query. |*int* |256 |
 | **`pamOtherPwd`** | Permit to provide additional password for PAM authentication with multiple authentication step. If multiple passwords, value must be URL encoded.|*string* | |  
+| **`autocommit`** | Set default autocommit value on connection initialization" |*boolean* | true |
 
 ## Roadmap
 
