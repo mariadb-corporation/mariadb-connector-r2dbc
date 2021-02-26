@@ -21,5 +21,17 @@ public enum SslMode {
   ENABLE_TRUST, // Encryption, but no certificate and hostname validation  (DEVELOPMENT ONLY)
   ENABLE_WITHOUT_HOSTNAME_VERIFICATION, // Encryption, certificates validation, BUT no hostname
   // validation
-  ENABLE, // Standard SSL use: Encryption, certificate validation and hostname validation
+  ENABLE; // Standard SSL use: Encryption, certificate validation and hostname validation
+
+  public static SslMode from(String value) {
+    for (SslMode sslMode : values()) {
+      if (sslMode.name().equalsIgnoreCase(value)) {
+        return sslMode;
+      }
+    }
+    throw new IllegalArgumentException(
+            String.format("Wrong argument value '%s' for SslMode", value));
+  }
+
 }
+

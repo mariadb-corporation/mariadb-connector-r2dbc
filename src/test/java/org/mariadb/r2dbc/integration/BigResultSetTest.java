@@ -52,7 +52,9 @@ public class BigResultSetTest extends BaseConnectionTest {
 
   @Test
   void BigResultSet() {
-    Assumptions.assumeTrue(Boolean.parseBoolean(System.getProperty("RUN_LONG_TEST", "true")));
+    Assumptions.assumeTrue(
+        System.getenv("RUN_LONG_TEST") == null
+            || !Boolean.parseBoolean(System.getenv("RUN_LONG_TEST")));
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     // sequence table requirement
     Assumptions.assumeTrue(meta.isMariaDBServer() && minVersion(10, 1, 0));

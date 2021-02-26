@@ -17,7 +17,6 @@ install:
   - .travis/gen-ssl.sh mariadb.example.com tmp
   - export PROJ_PATH=`pwd`
   - export SSLCERT=$PROJ_PATH/tmp
-  - export ENTRYPOINT=$PROJ_PATH/.travis/sql
   - export TEST_SERVER_SSL_CERT=$SSLCERT/server.crt
   - export TEST_CLIENT_SSL_CERT=$SSLCERT/client.crt
   - export TEST_CLIENT_KEY=$SSLCERT/client.key
@@ -28,26 +27,27 @@ cache:
 
 matrix:
   allow_failures:
-    - env: DB=build
+    - env: DB=build:10.6
     - env: DB=mysql:5.6
     - env: DB=mysql:5.7
     - env: DB=mysql:8.0 ADDITIONAL_CONF=--default-authentication-plugin=mysql_native_password --caching_sha2_password_private_key_path=/etc/sslcert/server.key --caching_sha2_password_public_key_path=/etc/sslcert/public.key --sha256_password_public_key_path=/etc/sslcert/public.key --sha256_password_private_key_path=/etc/sslcert/server.key
   include:
+    - env: SKYSQL=true
+    - env: SKYSQL_HA=true MAXSCALE_TEST_DISABLE=true
     - env: DB=mariadb:10.2
     - env: DB=mariadb:10.3
     - env: DB=mariadb:10.4
     - env: DB=mariadb:10.5
     - env: DB=mariadb:10.5 NO_BACKSLASH_ESCAPES=true
-    - env: DB=mariadb:10.5 BENCHMARK=1
-    - env: DB=mariadb:10.5 MAXSCALE_VERSION=2.5.3 SSLPORT=4009
-    - env: DB=build
-    - env: DB=mysql:5.6
+    - env: DB=mariadb:10.5 BENCH=1
+    - env: DB=mariadb:10.5 MAXSCALE_VERSION=2.5.3 SSLPORT=4009 MAXSCALE_TEST_DISABLE=true
+    - env: DB=build:10.6
     - env: DB=mysql:5.7
     - env: DB=mysql:8.0 ADDITIONAL_CONF=--default-authentication-plugin=mysql_native_password --caching_sha2_password_private_key_path=/etc/sslcert/server.key --caching_sha2_password_public_key_path=/etc/sslcert/public.key --sha256_password_public_key_path=/etc/sslcert/public.key --sha256_password_private_key_path=/etc/sslcert/server.key
 
 script:
-  - if [ "$DB" = "build" ] ; then .travis/build/build.sh; fi
-  - if [ "$DB" = "build" ] ; then docker build -t build:latest --label build .travis/build/; fi
+  - if [[ "$DB" == build* ]] ; then .travis/build/build.sh; fi
+  - if [[ "$DB" == build* ]] ; then docker build -t build:10.6 --label build .travis/build/; fi
   - .travis/script.sh
 
 after_success:

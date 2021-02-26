@@ -32,7 +32,9 @@ public class PamPluginTest extends BaseConnectionTest {
     // only test on travis, because only work on Unix-like operating systems.
     // /etc/pam.d/mariadb pam configuration is created beforehand
     Assumptions.assumeTrue(
-        System.getenv("TRAVIS") != null && System.getenv("MAXSCALE_VERSION") == null);
+        System.getenv("TRAVIS") != null
+                && System.getenv("MAXSCALE_TEST_DISABLE") == null
+                && System.getenv("SKYSQL") == null);
     Assumptions.assumeTrue(isMariaDBServer());
 
     sharedConn.createStatement("INSTALL PLUGIN pam SONAME 'auth_pam'").execute().blockLast();

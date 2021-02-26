@@ -89,8 +89,15 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
 
   private void handleBuffer(ByteBuf packet, Sequencer sequencer) {
     if (cmdElement == null && !loadNextResponse()) {
+      char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+      char[] hexChars = new char[packet.readerIndex() * 2];
+      for (int j = 0; j < packet.readerIndex(); j++) {
+        int v = packet.getByte(j) & 0xFF;
+        hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+        hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+      }
       throw new R2dbcNonTransientResourceException(
-          "unexpected message received when no command was send");
+          String.format("unexpected message received when no command was send: %s", new String(hexChars)));
     }
 
     state =

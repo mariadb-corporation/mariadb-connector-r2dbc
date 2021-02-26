@@ -44,16 +44,18 @@ type=monitor
 module=mariadbmon
 servers=server1
 user=boby
-password=hey
+password=heyPassw0@rd
 monitor_interval=2000
+failcount=50
 
 [MariaDB-Monitor2]
 type=monitor
 module=mariadbmon
 servers=server2
 user=boby
-password=hey
+password=heyPassw0@rd
 monitor_interval=2000
+failcount=50
 
 # Service definitions
 #
@@ -69,7 +71,7 @@ type=service
 router=readconnroute
 servers=server1
 user=boby
-password=hey
+password=heyPassw0@rd
 router_options=slave
 
 # ReadWriteSplit documentation:
@@ -81,7 +83,7 @@ router=readwritesplit
 servers=server1
 version_string=10.5.99-MariaDB-maxScale
 user=boby
-password=hey
+password=heyPassw0@rd
 
 [Read-Write-Service2]
 type=service
@@ -89,7 +91,7 @@ router=readwritesplit
 version_string=10.5.99-MariaDB-maxScale
 servers=server2
 user=boby
-password=hey
+password=heyPassw0@rd
 
 # Listener definitions for the services
 #

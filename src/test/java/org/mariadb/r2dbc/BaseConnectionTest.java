@@ -36,7 +36,9 @@ public class BaseConnectionTest extends BaseTest {
   public static TcpProxy proxy;
   private static Random rand = new Random();
   public static final Boolean backslashEscape =
-      Boolean.valueOf(System.getProperty("NO_BACKSLASH_ESCAPES", "false"));
+      System.getenv("NO_BACKSLASH_ESCAPES") != null
+          ? Boolean.valueOf(System.getenv("NO_BACKSLASH_ESCAPES"))
+          : false;
 
   @BeforeAll
   public static void beforeAll() throws Exception {

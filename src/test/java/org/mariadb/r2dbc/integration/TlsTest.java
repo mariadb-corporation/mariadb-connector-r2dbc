@@ -47,9 +47,9 @@ public class TlsTest extends BaseConnectionTest {
     clientSslCert = System.getenv("TEST_CLIENT_SSL_CERT");
     clientSslKey = System.getenv("TEST_CLIENT_KEY");
     sslPort =
-        System.getProperty("sslPort") == null || System.getProperty("sslPort").isEmpty()
+        System.getenv("SSLPORT") == null || System.getenv("SSLPORT").isEmpty()
             ? TestConfiguration.port
-            : Integer.valueOf(System.getProperty("sslPort"));
+            : Integer.valueOf(System.getenv("SSLPORT"));
     // try default if not present
     if (serverSslCert == null) {
       File sslDir = new File(System.getProperty("user.dir") + "/../ssl");
@@ -313,7 +313,7 @@ public class TlsTest extends BaseConnectionTest {
   @Test
   void fullMutualWithoutClientCerts() throws Exception {
     Assumptions.assumeTrue(
-        System.getenv("TRAVIS") != null && System.getenv("MAXSCALE_VERSION") == null);
+        System.getenv("TRAVIS") != null && System.getenv("MAXSCALE_TEST_DISABLE") == null);
     Assumptions.assumeTrue(haveSsl(sharedConn));
     Assumptions.assumeTrue(serverSslCert != null && clientSslCert != null & clientSslKey != null);
     MariadbConnectionConfiguration conf =

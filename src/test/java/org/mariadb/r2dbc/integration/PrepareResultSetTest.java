@@ -552,7 +552,9 @@ public class PrepareResultSetTest extends BaseConnectionTest {
 
       List<String> endingStatus = prepareInfo(connection);
       // Com_stmt_prepare
-      Assertions.assertEquals("5", endingStatus.get(1), endingStatus.get(1));
+      if (System.getenv("MAXSCALE_TEST_DISABLE") == null){
+        Assertions.assertEquals("5", endingStatus.get(1), endingStatus.get(1));
+      }
 
     } finally {
       connection.close().block();

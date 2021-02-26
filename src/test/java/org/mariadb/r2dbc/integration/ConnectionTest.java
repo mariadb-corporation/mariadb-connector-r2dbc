@@ -131,6 +131,7 @@ public class ConnectionTest extends BaseConnectionTest {
     } finally {
       Thread.sleep(100);
       reInitLog();
+      proxy.forceClose();
     }
   }
 
@@ -377,19 +378,8 @@ public class ConnectionTest extends BaseConnectionTest {
   private void consume(io.r2dbc.spi.Connection connection) {
     int loop = 100;
     int numberOfUserCol = 41;
-    io.r2dbc.spi.Statement statement =
-        connection.createStatement("select * FROM mysql.user LIMIT 1");
-
-    Flux<Object[]> lastOne;
-    lastOne = stat(statement, numberOfUserCol);
-    while (loop-- > 0) {
-      lastOne = lastOne.thenMany(stat(statement, numberOfUserCol));
-    }
-    Object[] obj = lastOne.blockLast();
-  }
-
-  private Flux<Object[]> stat(io.r2dbc.spi.Statement statement, int numberOfUserCol) {
-    return Flux.from(statement.execute())
+    Statement statement = connection.createStatement("select * FROM mysql.user LIMIT 1");
+    Flux.from(statement.execute())
         .flatMap(
             it ->
                 it.map(
@@ -399,7 +389,8 @@ public class ConnectionTest extends BaseConnectionTest {
                         objs[i] = row.get(i);
                       }
                       return objs;
-                    }));
+                    }))
+        .blockLast();
   }
 
   @Test

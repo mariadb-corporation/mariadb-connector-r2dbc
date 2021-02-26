@@ -229,9 +229,7 @@ public final class MariadbConnectionConfiguration {
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SSL_MODE)) {
       builder.sslMode(
-          Enum.valueOf(
-              SslMode.class,
-              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SSL_MODE)));
+          SslMode.from(connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SSL_MODE)));
     }
     builder.serverSslCert(
         connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SERVER_SSL_CERT));

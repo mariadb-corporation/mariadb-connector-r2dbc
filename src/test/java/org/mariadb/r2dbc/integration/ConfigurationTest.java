@@ -35,12 +35,13 @@ public class ConfigurationTest extends BaseTest {
     ConnectionFactory factory =
         ConnectionFactories.get(
             String.format(
-                "r2dbc:mariadb://%s:%s@%s:%s/%s",
+                "r2dbc:mariadb://%s:%s@%s:%s/%s%s",
                 TestConfiguration.username,
                 TestConfiguration.password,
                 TestConfiguration.host,
                 TestConfiguration.port,
-                TestConfiguration.database));
+                TestConfiguration.database,
+                TestConfiguration.other == null ? "" : TestConfiguration.other));
     Connection connection = Mono.from(factory.create()).block();
     Flux.from(connection.createStatement("SELECT * FROM myTable").execute())
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)));

@@ -4,128 +4,147 @@ set -x
 set -e
 
 ###################################################################################################################
-# test different type of configuration
+# launch docker server
 ###################################################################################################################
-if [ -z "NO_BACKSLASH_ESCAPES" ]; then
-  export NO_BACKSLASH_ESCAPES=false
-fi
+export RUN_LONG_TEST=false
 
-if [ -n "$BENCHMARK" ]; then
-  cmd=(mvn clean package -P bench -Dmaven.test.skip)
+if [ -n "$SKYSQL" ] || [ -n "$SKYSQL_HA" ]; then
+  if [ -n "$SKYSQL" ]; then
+    if [ -z "$SKYSQL_HOST" ] ; then
+      echo "No SkySQL configuration found !"
+      exit 0
+    else
+      tee /tmp/cert.pem <<<$SKYSQL_SSL_CA
+      export TEST_DB_USER=$SKYSQL_USER
+      export TEST_DB_HOST=$SKYSQL_HOST
+      export TEST_DB_PASSWORD=$SKYSQL_PASSWORD
+      export TEST_DB_DATABASE=testr2
+      export TEST_DB_PORT=$SKYSQL_PORT
+      export TEST_DB_OTHER=sslMode=ENABLE&serverSslCert=/tmp/cert.pem
+    fi
+  else
+    if [ -z "$SKYSQL_HA_HOST" ] ; then
+      echo "No SkySQL HA configuration found !"
+      exit 0
+    else
+      tee /tmp/cert.pem <<<$SKYSQL_HA_SSL_CA
+      export TEST_DB_USER=$SKYSQL_HA_USER
+      export TEST_DB_HOST=$SKYSQL_HA_HOST
+      export TEST_DB_PASSWORD=$SKYSQL_HA_PASSWORD
+      export TEST_DB_DATABASE=testr2
+      export TEST_DB_PORT=$SKYSQL_HA_PORT
+      export TEST_DB_OTHER=sslMode=ENABLE&serverSslCert=/tmp/cert.pem
+    fi
+  fi
 else
-  mvn clean
-  cmd=(mvn clean verify $ADDITIONNAL_VARIABLES -DjobId=${TRAVIS_JOB_ID} \
-    -DkeystorePath="$SSLCERT/client-keystore.jks" \
-    -DTEST_HOST=mariadb.example.com \
-    -DTEST_PORT=3305 \
-    -DTEST_USERNAME=bob \
-    -DTEST_DATABASE=test2 \
-    -DRUN_LONG_TEST=false \
-    -DkeystorePassword="kspass" \
-    -DserverCertificatePath="$SSLCERT/server.crt" \
-    -DNO_BACKSLASH_ESCAPES="$NO_BACKSLASH_ESCAPES"
-    -Dkeystore2Path="$SSLCERT/fullclient-keystore.jks" \
-    -Dkeystore2Password="kspass" -DkeyPassword="kspasskey" \
-    -Dkeystore2PathP12="$SSLCERT/fullclient-keystore.p12" \
-    -DrunLongTest=true \
-    -DserverPublicKey="$SSLCERT/public.key" \
-    -DsslPort="$SSLPORT")
-fi
 
-if [ -n "$MAXSCALE_VERSION" ]; then
-  ###################################################################################################################
-  # launch Maxscale with one server
-  ###################################################################################################################
-  export TEST_PORT=4006
-  mysql=(mysql --protocol=tcp -ubob -h127.0.0.1 --port=4006)
-  export COMPOSE_FILE=.travis/maxscale-compose.yml
-  docker-compose -f ${COMPOSE_FILE} build
-else
-  ###################################################################################################################
-  # launch docker server
-  ###################################################################################################################
-  mysql=(mysql --protocol=tcp -ubob -h127.0.0.1 --port=3305)
+  export PROJ_PATH=`pwd`
+  export SSLCERT=$PROJ_PATH/tmp
+  export ENTRYPOINT=$PROJ_PATH/.travis/sql
+  export ENTRYPOINT_PAM=$PROJ_PATH/.travis/pam
+
   export COMPOSE_FILE=.travis/docker-compose.yml
-fi
 
-docker-compose -f ${COMPOSE_FILE} up -d
+  export TEST_DB_HOST=mariadb.example.com
+  export TEST_DB_PORT=3305
+  export TEST_DB_DATABASE=testr2
+  export TEST_DB_USER=bob
+  export TEST_DB_OTHER=
 
-###################################################################################################################
-# wait for docker initialisation
-###################################################################################################################
+  if [ -n "$MAXSCALE_VERSION" ] ; then
+      # maxscale ports:
+      # - non ssl: 4006
+      # - ssl: 4009
+      export TEST_DB_PORT=4006
+      export TEST_DB_SSL_PORT=4009
+      export COMPOSE_FILE=.travis/maxscale-compose.yml
+      docker-compose -f ${COMPOSE_FILE} build
+  fi
 
-for i in {15..0}; do
-    if echo 'SELECT 1' | "${mysql[@]}" ; then
-        break
-    fi
-    echo 'data server still not active'
-    sleep 2
-done
+  mysql=( mysql --protocol=TCP -u${TEST_DB_USER} -h${TEST_DB_HOST} --port=${TEST_DB_PORT} ${TEST_DB_DATABASE})
 
-docker-compose -f ${COMPOSE_FILE} logs
 
-if [ "$i" = 0 ]; then
-
-    if echo 'SELECT 1' | "${mysql[@]}" ; then
-        break
-    fi
-    if [ -n "$MAXSCALE_VERSION" ] ; then
-        docker-compose -f $COMPOSE_FILE exec maxscale tail -n 500 /var/log/maxscale/maxscale.log
-    fi
-    echo >&2 'data server init process failed.'
-    exit 1
-fi
-
-###################################################################################################################
-# create PAM user
-###################################################################################################################
-
-if [ -z "$MAXSCALE_VERSION" ] ; then
-  docker-compose -f ${COMPOSE_FILE} exec -u root db bash /docker-entrypoint-initdb.d/pam/pam.sh
-  sleep 2
-  docker-compose -f ${COMPOSE_FILE} stop db
-  sleep 2
+  ###################################################################################################################
+  # launch docker server and maxscale
+  ###################################################################################################################
   docker-compose -f ${COMPOSE_FILE} up -d
-  docker-compose -f ${COMPOSE_FILE} logs db
-
 
   ###################################################################################################################
   # wait for docker initialisation
   ###################################################################################################################
 
   for i in {15..0}; do
-      if echo 'SELECT 1' | "${mysql[@]}" ; then
-          break
-      fi
-      echo 'data server still not active'
-      sleep 2
+    if echo 'SELECT 1' | "${mysql[@]}" &> /dev/null; then
+        break
+    fi
+    echo 'data server still not active'
+    sleep 5
   done
 
-  docker-compose -f ${COMPOSE_FILE} logs
-
   if [ "$i" = 0 ]; then
+    if echo 'SELECT 1' | "${mysql[@]}" ; then
+        break
+    fi
 
+    docker-compose -f ${COMPOSE_FILE} logs
+    if [ -n "$MAXSCALE_VERSION" ] ; then
+        docker-compose -f ${COMPOSE_FILE} exec maxscale tail -n 500 /var/log/maxscale/maxscale.log
+    fi
+    echo >&2 'data server init process failed.'
+    exit 1
+  fi
+
+  if [[ "$DB" != mysql* ]] ; then
+    ###################################################################################################################
+    # execute pam
+    ###################################################################################################################
+    docker-compose -f ${COMPOSE_FILE} exec -u root db bash /pam/pam.sh
+    sleep 1
+    docker-compose -f ${COMPOSE_FILE} restart db
+    sleep 5
+
+    ###################################################################################################################
+    # wait for restart
+    ###################################################################################################################
+
+    for i in {30..0}; do
+      if echo 'SELECT 1' | "${mysql[@]}" &> /dev/null; then
+          break
+      fi
+      echo 'data server restart still not active'
+      sleep 2
+    done
+
+    if [ "$i" = 0 ]; then
       if echo 'SELECT 1' | "${mysql[@]}" ; then
           break
       fi
-      echo >&2 'data server init process failed.'
+
+      docker-compose -f ${COMPOSE_FILE} logs
+      if [ -n "$MAXSCALE_VERSION" ] ; then
+          docker-compose -f ${COMPOSE_FILE} exec maxscale tail -n 500 /var/log/maxscale/maxscale.log
+      fi
+      echo >&2 'data server restart process failed.'
       exit 1
+    fi
   fi
 fi
 
 
-###################################################################################################################
-# run test suite
-###################################################################################################################
-echo "Running coveralls for JDK version: $TRAVIS_JDK_VERSION"
+if [ -n "$BENCH" ]; then
+  ###################################################################################################################
+  # run bench
+  ###################################################################################################################
+  mvn clean package -P bench -Dmaven.test.skip
+  java -Duser.country=US -Duser.language=en -DTEST_PORT=$TEST_DB_PORT -DTEST_HOST=$TEST_DB_HOST -DTEST_USERNAME=$TEST_DB_USER -jar target/benchmarks.jar
 
-echo ${cmd}
-"${cmd[@]}"
+else
+  ###################################################################################################################
+  # run test suite
+  ###################################################################################################################
 
-if [ -n "$BENCHMARK" ]; then
-  java -DTEST_HOST=mariadb.example.com \
-  -DTEST_PORT=3305 \
-  -DTEST_USERNAME=bob \
-  -DTEST_DATABASE=test2 \
-  -jar target/benchmarks.jar
+  echo "Running tests for JDK version: $TRAVIS_JDK_VERSION"
+  mvn clean test $ADDITIONNAL_VARIABLES -DjobId=${TRAVIS_JOB_ID}
+
 fi
+
