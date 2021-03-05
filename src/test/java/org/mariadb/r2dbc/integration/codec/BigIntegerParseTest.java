@@ -49,6 +49,7 @@ public class BigIntegerParseTest extends BaseConnectionTest {
             "INSERT INTO BigIntUnsignedTable VALUES (0), (1), (18446744073709551615), (null)")
         .execute()
         .blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll

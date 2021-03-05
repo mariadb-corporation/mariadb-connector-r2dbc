@@ -47,6 +47,7 @@ public class MediumIntParseTest extends BaseConnectionTest {
         .createStatement("INSERT INTO MediumIntUnsignedTable VALUES (0), (1), (16777215), (null)")
         .execute()
         .blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll

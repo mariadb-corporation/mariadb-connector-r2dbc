@@ -113,7 +113,7 @@ public class BigResultSetTest extends BaseConnectionTest {
     for (int i = 0; i < array19m.length; i++) {
       array19m[i] = (char) (0x30 + (i % 10));
     }
-
+    connection.beginTransaction().block();
     connection
         .createStatement("INSERT INTO multiPacketRow VALUES (?, ?)")
         .bind(0, new String(array19m))
@@ -136,6 +136,7 @@ public class BigResultSetTest extends BaseConnectionTest {
                         }))
             .blockLast()
             .toCharArray());
+    connection.rollbackTransaction().block();
   }
 
   public boolean checkMaxAllowedPacketMore20m(MariadbConnection connection) {

@@ -42,6 +42,7 @@ public class DecimalParseTest extends BaseConnectionTest {
                 + " (null), (19223372036854775807.9223372036854775807)")
         .execute()
         .blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll

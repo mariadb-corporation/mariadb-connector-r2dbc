@@ -37,6 +37,7 @@ public class FloatParseTest extends BaseConnectionTest {
         .createStatement("INSERT INTO FloatTable VALUES (0.1),(1),(922.92233), (null)")
         .execute()
         .blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll

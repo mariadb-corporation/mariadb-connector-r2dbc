@@ -46,6 +46,7 @@ public class YearParseTest extends BaseConnectionTest {
 
     sharedConn.createStatement(sqlCreate).execute().blockLast();
     sharedConn.createStatement(sqlInsert).execute().blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll
