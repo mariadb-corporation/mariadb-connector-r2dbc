@@ -1,54 +1,56 @@
-#dist: trusty
-sudo: false
+os: linux
 language: java
 services: docker
+jdk: openjdk11
 addons:
   hosts:
     - mariadb.example.com
-jdk: openjdk11
 
 before_install:
-  - chmod +x .travis/script.sh .travis/build/build.sh .travis/gen-ssl.sh .travis/build/docker-entrypoint.sh .travis/sql/*
-  - chmod 777 .travis/build/
-  - echo "MAVEN_OPTS='-Xmx384m'" > ~/.mavenrc
+  - git clone https://github.com/mariadb-corporation/connector-test-machine.git
 
 install:
-  - mkdir tmp
-  - .travis/gen-ssl.sh mariadb.example.com tmp
-  - export PROJ_PATH=`pwd`
-  - export SSLCERT=$PROJ_PATH/tmp
-  - export TEST_SERVER_SSL_CERT=$SSLCERT/server.crt
-  - export TEST_CLIENT_SSL_CERT=$SSLCERT/client.crt
-  - export TEST_CLIENT_KEY=$SSLCERT/client.key
+  - |-
+    case $TRAVIS_OS_NAME in
+      windows)
+        choco install openjdk11 maven
+        export PATH=$(cmd.exe //c "refreshenv > nul & C:\Progra~1\Git\bin\bash -c 'echo \$PATH' ")
+        connector-test-machine/launch.bat -t "$srv" -v "$v" -d testr2
+        ;;
+      linux)
+        source connector-test-machine/launch.sh -t "$srv" -v "$v" -d testr2
+        ;;
+    esac
 
-cache:
-  directories:
-    - $HOME/.m2
-
-matrix:
+jobs:
+  fast_finish: true
   allow_failures:
-    - env: DB=build:10.6
-    - env: DB=mysql:5.6
-    - env: DB=mysql:5.7
-    - env: DB=mysql:8.0 ADDITIONAL_CONF=--default-authentication-plugin=mysql_native_password --caching_sha2_password_private_key_path=/etc/sslcert/server.key --caching_sha2_password_public_key_path=/etc/sslcert/public.key --sha256_password_public_key_path=/etc/sslcert/public.key --sha256_password_private_key_path=/etc/sslcert/server.key
+    - env: srv=skysql
+    - env: srv=skysql-ha
+    - env: srv=mariadb-es v=10.5
   include:
-    - env: SKYSQL=true
-    - env: SKYSQL_HA=true MAXSCALE_TEST_DISABLE=true
-    - env: DB=mariadb:10.2
-    - env: DB=mariadb:10.3
-    - env: DB=mariadb:10.4
-    - env: DB=mariadb:10.5
-    - env: DB=mariadb:10.5 NO_BACKSLASH_ESCAPES=true
-    - env: DB=mariadb:10.5 BENCH=1
-    - env: DB=mariadb:10.5 MAXSCALE_VERSION=2.5.3 SSLPORT=4009 MAXSCALE_TEST_DISABLE=true
-    - env: DB=build:10.6
-    - env: DB=mysql:5.7
-    - env: DB=mysql:8.0 ADDITIONAL_CONF=--default-authentication-plugin=mysql_native_password --caching_sha2_password_private_key_path=/etc/sslcert/server.key --caching_sha2_password_public_key_path=/etc/sslcert/public.key --sha256_password_public_key_path=/etc/sslcert/public.key --sha256_password_private_key_path=/etc/sslcert/server.key
+    - env: srv=mariadb v=10.5
+      os: windows
+      language: shell
+    - env: srv=mariadb v=10.2
+    - env: srv=mariadb v=10.3
+    - env: srv=mariadb v=10.4
+    - env: srv=mariadb v=10.5
+    - env: srv=mariadb v=10.5 NO_BACKSLASH_ESCAPES=true
+    - env: srv=mariadb v=10.5 BENCH=1
+    - env: srv=maxscale
+    - env: srv=skysql
+    - env: srv=skysql-ha
+    - env: srv=build v=10.6
+    - env: srv=mysql v=5.7
+    - env: srv=mysql v=8.0
 
 script:
-  - if [[ "$DB" == build* ]] ; then .travis/build/build.sh; fi
-  - if [[ "$DB" == build* ]] ; then docker build -t build:10.6 --label build .travis/build/; fi
-  - .travis/script.sh
+  - mvn clean -Dmaven.test.skip > /dev/null
+  - if [ -n "$BENCH" ] ; then mvn package -P bench -Dmaven.test.skip; fi
+  - if [ -n "$BENCH" ] ; then java -Duser.country=US -Duser.language=en -DTEST_PORT=$TEST_DB_PORT -DTEST_HOST=$TEST_DB_HOST -DTEST_USERNAME=$TEST_DB_USER -DTEST_PASSWORD=$TEST_DB_PASSWORD -jar target/benchmarks.jar; fi
+  - if [ -z "$BENCH" ] ; then MAVEN_SKIP_RC=true MAVEN_OPTS="-Xmx2g -XX:MaxPermSize=512m" mvn test -DjobId=${TRAVIS_JOB_ID}; fi
+
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

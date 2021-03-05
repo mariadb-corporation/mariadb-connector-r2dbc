@@ -7,8 +7,7 @@
 # MariaDB R2DBC connector
 
 [![Maven Central][maven-image]][maven-url]
-[![Linux Build][travis-image]][travis-url]
-[![Build status][appveyor-image]][appveyor-url]
+[![Test Build][travis-image]][travis-url]
 [![License][license-image]][license-url]
 
 
@@ -125,7 +124,5 @@ To file an issue or follow the development, see [JIRA](https://jira.mariadb.org/
 [travis-url]:https://travis-ci.com/mariadb-corporation/mariadb-connector-r2dbc
 [maven-image]:https://maven-badges.herokuapp.com/maven-central/org.mariadb/r2dbc-mariadb/badge.svg
 [maven-url]:https://maven-badges.herokuapp.com/maven-central/org.mariadb/r2dbc-mariadb
-[appveyor-image]:https://ci.appveyor.com/api/projects/status/ikt87wc77r2v4032/branch/master?svg=true
-[appveyor-url]:https://ci.appveyor.com/project/mariadb/mariadb-connector-r2dbc/branch/master
 [license-image]:https://img.shields.io/badge/License-Apache%202.0-blue.svg
 [license-url]:https://opensource.org/licenses/Apache-2.0

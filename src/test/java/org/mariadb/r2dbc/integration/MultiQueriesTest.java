@@ -18,6 +18,7 @@ package org.mariadb.r2dbc.integration;
 
 import io.r2dbc.spi.R2dbcBadGrammarException;
 import java.util.Optional;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
@@ -30,6 +31,8 @@ public class MultiQueriesTest extends BaseConnectionTest {
 
   @Test
   void multiQueryDefault() {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     sharedConn
         .createStatement("SELECT 1; SELECT 'a'")
         .execute()
@@ -59,6 +62,9 @@ public class MultiQueriesTest extends BaseConnectionTest {
 
   @Test
   void multiQueryDisable() throws Exception {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder.clone().allowMultiQueries(false).build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
@@ -77,6 +83,9 @@ public class MultiQueriesTest extends BaseConnectionTest {
 
   @Test
   void multiQueryWithParameterDefault() {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+
     sharedConn
         .createStatement("SELECT CAST(? as CHAR); SELECT ?")
         .bind(0, 1)
@@ -110,6 +119,9 @@ public class MultiQueriesTest extends BaseConnectionTest {
 
   @Test
   void multiQueryWithParameterDisable() throws Exception {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder.clone().allowMultiQueries(false).build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();

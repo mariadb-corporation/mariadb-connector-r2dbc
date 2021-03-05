@@ -30,8 +30,6 @@ public enum SslMode {
       }
     }
     throw new IllegalArgumentException(
-            String.format("Wrong argument value '%s' for SslMode", value));
+        String.format("Wrong argument value '%s' for SslMode", value));
   }
-
 }
-

@@ -102,7 +102,7 @@ public class RowMetadataTest extends BaseConnectionTest {
                       assertEquals("t1", t1Meta.getColumn());
                       assertEquals("rowmeta", t1Meta.getTable());
                       assertEquals("rowMetaAlias", t1Meta.getTableAlias());
-                      assertEquals(224, t1Meta.getCharset());
+                      assertTrue(t1Meta.getCharset() == 224 || t1Meta.getCharset() == 45);
                       assertEquals(256, t1Meta.getDisplaySize());
                       assertFalse(t1Meta.isBinary());
                       assertFalse(t1Meta.isBlob());

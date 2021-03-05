@@ -100,7 +100,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
       arr1024[i] = (char) ('a' + (i % 10));
     }
 
-    char[] arr = new char[16000000];
+    char[] arr = new char[16_000_000];
     for (int i = 0; i < arr.length; i++) {
       arr[i] = (char) ('a' + (i % 10));
     }
@@ -142,7 +142,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     Assumptions.assumeFalse(
         "mariadb:10.1".equals(System.getenv("DB")) || "mysql:5.6".equals(System.getenv("DB")));
 
-    char[] arr = new char[20000000];
+    char[] arr = new char[20_000_000];
     for (int i = 0; i < arr.length; i++) {
       arr[i] = (char) ('a' + (i % 10));
     }
@@ -154,6 +154,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
                 + "(t0 LONGTEXT) DEFAULT CHARSET=utf8mb4")
         .execute()
         .blockLast();
+    sharedConnPrepare.beginTransaction().block();
     sharedConnPrepare
         .createStatement("INSERT INTO parameterLengthEncodedLong VALUES (?)")
         .bind(0, val)
@@ -162,10 +163,11 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     sharedConnPrepare
         .createStatement("SELECT * FROM parameterLengthEncodedLong")
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class).length()))
         .as(StepVerifier::create)
-        .expectNext(val)
+        .expectNext(val.length())
         .verifyComplete();
+    sharedConnPrepare.commitTransaction().block();
   }
 
   @Test
@@ -552,7 +554,9 @@ public class PrepareResultSetTest extends BaseConnectionTest {
 
       List<String> endingStatus = prepareInfo(connection);
       // Com_stmt_prepare
-      if (System.getenv("MAXSCALE_TEST_DISABLE") == null){
+      if (!"maxscale".equals(System.getenv("srv"))
+          && !"skysql-ha".equals(System.getenv("srv"))
+          && (isMariaDBServer() || !minVersion(8, 0, 0))) {
         Assertions.assertEquals("5", endingStatus.get(1), endingStatus.get(1));
       }
 

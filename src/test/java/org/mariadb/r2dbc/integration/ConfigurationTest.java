@@ -17,6 +17,9 @@
 package org.mariadb.r2dbc.integration;
 
 import io.r2dbc.spi.*;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,16 +35,29 @@ public class ConfigurationTest extends BaseTest {
 
   @Test
   void usingOption() {
+    String encodedUser;
+    String encodedPwd;
+    try {
+      encodedUser =
+          URLEncoder.encode(TestConfiguration.username, StandardCharsets.UTF_8.toString());
+      encodedPwd = URLEncoder.encode(TestConfiguration.password, StandardCharsets.UTF_8.toString());
+    } catch (UnsupportedEncodingException e) {
+      encodedUser = TestConfiguration.username;
+      encodedPwd = TestConfiguration.password;
+    }
+
     ConnectionFactory factory =
         ConnectionFactories.get(
             String.format(
                 "r2dbc:mariadb://%s:%s@%s:%s/%s%s",
-                TestConfiguration.username,
-                TestConfiguration.password,
+                encodedUser,
+                encodedPwd,
                 TestConfiguration.host,
                 TestConfiguration.port,
                 TestConfiguration.database,
-                TestConfiguration.other == null ? "" : TestConfiguration.other));
+                TestConfiguration.other == null
+                    ? ""
+                    : "?" + TestConfiguration.other.replace("\n", "\\n")));
     Connection connection = Mono.from(factory.create()).block();
     Flux.from(connection.createStatement("SELECT * FROM myTable").execute())
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)));

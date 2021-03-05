@@ -97,7 +97,8 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
         hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
       }
       throw new R2dbcNonTransientResourceException(
-          String.format("unexpected message received when no command was send: %s", new String(hexChars)));
+          String.format(
+              "unexpected message received when no command was send: 0x%s", new String(hexChars)));
     }
 
     state =

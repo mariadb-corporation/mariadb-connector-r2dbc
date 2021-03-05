@@ -19,6 +19,9 @@ package org.mariadb.r2dbc;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 public class TestConfiguration {
@@ -38,6 +41,7 @@ public class TestConfiguration {
     String defaultPassword = "";
     String defaultUser = "root";
     String defaultOther = null;
+
     try (InputStream inputStream =
         BaseTest.class.getClassLoader().getResourceAsStream("conf.properties")) {
       Properties prop = new Properties();
@@ -48,7 +52,14 @@ public class TestConfiguration {
       defaultDatabase = get("DB_DATABASE", prop);
       defaultPassword = get("DB_PASSWORD", prop);
       defaultUser = get("DB_USER", prop);
-      defaultOther = get("DB_OTHER", prop);
+
+      String val = System.getenv("TEST_REQUIRE_TLS");
+      if ("1".equals(val)) {
+        String cert = System.getenv("TEST_DB_SERVER_CERT");
+        defaultOther = "sslMode=enable&serverSslCert=" + cert;
+      } else {
+        defaultOther = get("DB_OTHER", prop);
+      }
     } catch (IOException io) {
       io.printStackTrace();
     }
@@ -58,14 +69,27 @@ public class TestConfiguration {
     password = defaultPassword;
     username = defaultUser;
     other = defaultOther;
-    String connString = String.format(
-        "r2dbc:mariadb://%s:%s@%s:%s/%s%s",
-        username, password, host, port, database, other == null ? "" : "?" + other.replace("\n", "\\n"));
-    System.out.println(connString);
+    String encodedUser;
+    String encodedPwd;
+    try {
+      encodedUser = URLEncoder.encode(username, StandardCharsets.UTF_8.toString());
+      encodedPwd = URLEncoder.encode(password, StandardCharsets.UTF_8.toString());
+    } catch (UnsupportedEncodingException e) {
+      encodedUser = username;
+      encodedPwd = password;
+    }
+    String connString =
+        String.format(
+            "r2dbc:mariadb://%s:%s@%s:%s/%s%s",
+            encodedUser,
+            encodedPwd,
+            host,
+            port,
+            database,
+            other == null ? "" : "?" + other.replace("\n", "\\n"));
+
     ConnectionFactoryOptions options = ConnectionFactoryOptions.parse(connString);
-    System.out.println(options);
     defaultBuilder = MariadbConnectionConfiguration.fromOptions(options);
-    System.out.println(defaultBuilder.build());
   }
 
   private static String get(String name, Properties prop) {

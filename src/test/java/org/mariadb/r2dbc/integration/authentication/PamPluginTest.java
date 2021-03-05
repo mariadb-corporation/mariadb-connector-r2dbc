@@ -33,24 +33,31 @@ public class PamPluginTest extends BaseConnectionTest {
     // /etc/pam.d/mariadb pam configuration is created beforehand
     Assumptions.assumeTrue(
         System.getenv("TRAVIS") != null
-                && System.getenv("MAXSCALE_TEST_DISABLE") == null
-                && System.getenv("SKYSQL") == null);
+            && System.getenv("TEST_PAM_USER") != null
+            && !"maxscale".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv"))
+            && !"mariadb-es".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeTrue(isMariaDBServer());
-
+    String pamUser = System.getenv("TEST_PAM_USER");
     sharedConn.createStatement("INSTALL PLUGIN pam SONAME 'auth_pam'").execute().blockLast();
-    sharedConn.createStatement("DROP USER IF EXISTS 'testPam'@'%'").execute().blockLast();
+    sharedConn.createStatement("DROP USER IF EXISTS '" + pamUser + "'@'%'").execute().blockLast();
     sharedConn
-        .createStatement("CREATE USER 'testPam'@'%' IDENTIFIED VIA pam USING 'mariadb'")
+        .createStatement("CREATE USER '" + pamUser + "'@'%' IDENTIFIED VIA pam USING 'mariadb'")
         .execute()
         .blockLast();
     sharedConn
-        .createStatement("GRANT SELECT ON *.* TO 'testPam'@'%' IDENTIFIED VIA pam")
+        .createStatement("GRANT SELECT ON *.* TO '" + pamUser + "'@'%' IDENTIFIED VIA pam")
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH PRIVILEGES").execute().blockLast();
 
     MariadbConnectionConfiguration conf =
-        TestConfiguration.defaultBuilder.clone().username("testPam").password("myPwd").build();
+        TestConfiguration.defaultBuilder
+            .clone()
+            .username(System.getenv("TEST_PAM_USER"))
+            .password(System.getenv("TEST_PAM_PWD"))
+            .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();
   }

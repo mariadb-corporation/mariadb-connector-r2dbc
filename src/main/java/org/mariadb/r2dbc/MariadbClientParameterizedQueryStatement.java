@@ -164,7 +164,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
           .windowUntil(it -> it.resultSetEnd())
           .map(
               dataRow ->
-                  new org.mariadb.r2dbc.MariadbResult(
+                  new MariadbResult(
                       true,
                       dataRow,
                       ExceptionFactory.INSTANCE,

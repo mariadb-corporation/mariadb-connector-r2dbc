@@ -153,11 +153,11 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
     return msg.toString();
   }
 
-  private DefaultHostnameVerifier.SubjectAltNames getSubjectAltNames(X509Certificate cert)
+  private SubjectAltNames getSubjectAltNames(X509Certificate cert)
       throws CertificateParsingException {
     Collection<List<?>> entries = cert.getSubjectAlternativeNames();
-    DefaultHostnameVerifier.SubjectAltNames subjectAltNames =
-        new DefaultHostnameVerifier.SubjectAltNames();
+    SubjectAltNames subjectAltNames =
+        new SubjectAltNames();
     if (entries != null) {
       for (List<?> entry : entries) {
         if (entry.size() >= 2) {
@@ -168,8 +168,8 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
             if (altNameDns != null) {
               String normalizedSubjectAlt = altNameDns.toLowerCase(Locale.ROOT);
               subjectAltNames.add(
-                  new DefaultHostnameVerifier.GeneralName(
-                      normalizedSubjectAlt, DefaultHostnameVerifier.Extension.DNS));
+                  new GeneralName(
+                      normalizedSubjectAlt, Extension.DNS));
             }
           }
 
@@ -177,8 +177,8 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
             String altNameIp = (String) entry.get(1);
             if (altNameIp != null) {
               subjectAltNames.add(
-                  new DefaultHostnameVerifier.GeneralName(
-                      altNameIp, DefaultHostnameVerifier.Extension.IP));
+                  new GeneralName(
+                      altNameIp, Extension.IP));
             }
           }
         }
@@ -232,14 +232,14 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
       // ***********************************************************
       // RFC 6125 : check Subject Alternative Name (SAN)
       // ***********************************************************
-      DefaultHostnameVerifier.SubjectAltNames subjectAltNames = getSubjectAltNames(cert);
+      SubjectAltNames subjectAltNames = getSubjectAltNames(cert);
       if (!subjectAltNames.isEmpty()) {
 
         // ***********************************************************
         // Host is IPv4 : Check corresponding entries in subject alternative names
         // ***********************************************************
         if (Utility.isIPv4(lowerCaseHost)) {
-          for (DefaultHostnameVerifier.GeneralName entry : subjectAltNames.getGeneralNames()) {
+          for (GeneralName entry : subjectAltNames.getGeneralNames()) {
             if (logger.isTraceEnabled()) {
               logger.trace(
                   "Conn={}. IPv4 verification of hostname : type={} value={} to {}",
@@ -249,7 +249,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
                   lowerCaseHost);
             }
 
-            if (entry.extension == DefaultHostnameVerifier.Extension.IP
+            if (entry.extension == Extension.IP
                 && lowerCaseHost.equals(entry.value)) {
               return;
             }
@@ -259,7 +259,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
           // Host is IPv6 : Check corresponding entries in subject alternative names
           // ***********************************************************
           String normalisedHost = normaliseAddress(lowerCaseHost);
-          for (DefaultHostnameVerifier.GeneralName entry : subjectAltNames.getGeneralNames()) {
+          for (GeneralName entry : subjectAltNames.getGeneralNames()) {
             if (logger.isTraceEnabled()) {
               logger.trace(
                   "Conn={}. IPv6 verification of hostname : type={} value={} to {}",
@@ -269,7 +269,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
                   lowerCaseHost);
             }
 
-            if (entry.extension == DefaultHostnameVerifier.Extension.IP
+            if (entry.extension == Extension.IP
                 && !Utility.isIPv4(entry.value)
                 && normalisedHost.equals(normaliseAddress(entry.value))) {
               return;
@@ -279,7 +279,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
           // ***********************************************************
           // Host is not IP = DNS : Check corresponding entries in alternative subject names
           // ***********************************************************
-          for (DefaultHostnameVerifier.GeneralName entry : subjectAltNames.getGeneralNames()) {
+          for (GeneralName entry : subjectAltNames.getGeneralNames()) {
             if (logger.isTraceEnabled()) {
               logger.trace(
                   "Conn={}. DNS verification of hostname : type={} value={} to {}",
@@ -289,7 +289,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
                   lowerCaseHost);
             }
 
-            if (entry.extension == DefaultHostnameVerifier.Extension.DNS
+            if (entry.extension == Extension.DNS
                 && matchDns(lowerCaseHost, entry.value.toLowerCase(Locale.ROOT))) {
               return;
             }
@@ -353,9 +353,9 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
   private class GeneralName {
 
     private final String value;
-    private final DefaultHostnameVerifier.Extension extension;
+    private final Extension extension;
 
-    public GeneralName(String value, DefaultHostnameVerifier.Extension extension) {
+    public GeneralName(String value, Extension extension) {
       this.value = value;
       this.extension = extension;
     }
@@ -368,7 +368,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
 
   private class SubjectAltNames {
 
-    private final List<DefaultHostnameVerifier.GeneralName> generalNames = new ArrayList<>();
+    private final List<GeneralName> generalNames = new ArrayList<>();
 
     @Override
     public String toString() {
@@ -379,7 +379,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
       StringBuilder sb = new StringBuilder("SAN[");
       boolean first = true;
 
-      for (DefaultHostnameVerifier.GeneralName generalName : generalNames) {
+      for (GeneralName generalName : generalNames) {
         if (!first) {
           sb.append(",");
         }
@@ -390,11 +390,11 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
       return sb.toString();
     }
 
-    public List<DefaultHostnameVerifier.GeneralName> getGeneralNames() {
+    public List<GeneralName> getGeneralNames() {
       return generalNames;
     }
 
-    public void add(DefaultHostnameVerifier.GeneralName generalName) {
+    public void add(GeneralName generalName) {
       generalNames.add(generalName);
     }
 
