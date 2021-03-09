@@ -42,7 +42,7 @@ public class Common {
     public final int port = Integer.parseInt(System.getProperty("TEST_PORT", "3306"));
     public final String username = System.getProperty("TEST_USERNAME", "root");
     public final String password = System.getProperty("TEST_PASSWORD", "");
-    public final String database = System.getProperty("TEST_DATABASE", "testj");
+    public final String database = System.getProperty("TEST_DATABASE", "testr2");
 
     // connections
     protected Connection jdbc;

@@ -76,13 +76,16 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
         .flatMap(
             client -> {
               Mono<Void> waiting = Mono.empty();
-              if (configuration.getSessionVariables() != null
-                  && configuration.getSessionVariables().size() > 0) {
+              // only execute SET command if needed :
+              // - autocommit default value differ than option
+              // - session variable set
+              if ((configuration.getSessionVariables() != null
+                      && configuration.getSessionVariables().size() > 0)
+                  || client.isAutoCommit() != configuration.autocommit()) {
                 waiting = setSessionVariables(client);
               }
 
               if (configuration.getIsolationLevel() == null) {
-
                 Mono<IsolationLevel> isolationLevelMono = waiting.then(getIsolationLevel(client));
                 return isolationLevelMono
                     .map(it -> new MariadbConnection(client, it, configuration))
@@ -124,18 +127,20 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
   }
 
   private Mono<Void> setSessionVariables(Client client) {
-    StringBuilder sql = new StringBuilder("SET ");
-
-    Map<String, String> sessionVariable = configuration.getSessionVariables();
-    Iterator<String> keys = sessionVariable.keySet().iterator();
-    for (int i = 0; i < sessionVariable.size(); i++) {
-      if (i > 0) sql.append(",");
-      String key = keys.next();
-      String value = sessionVariable.get(key);
-      if (value == null)
-        throw new IllegalArgumentException(
-            String.format("Session variable '%s' has no value", key));
-      sql.append(key).append("=").append(value);
+    StringBuilder sql =
+        new StringBuilder("SET autocommit=" + (configuration.autocommit() ? "1" : "0"));
+    if (configuration.getSessionVariables() != null
+        && configuration.getSessionVariables().size() > 0) {
+      Map<String, String> sessionVariable = configuration.getSessionVariables();
+      Iterator<String> keys = sessionVariable.keySet().iterator();
+      for (int i = 0; i < sessionVariable.size(); i++) {
+        String key = keys.next();
+        String value = sessionVariable.get(key);
+        if (value == null)
+          throw new IllegalArgumentException(
+              String.format("Session variable '%s' has no value", key));
+        sql.append(",").append(key).append("=").append(value);
+      }
     }
 
     return new MariadbSimpleQueryStatement(client, sql.toString()).execute().last().then();

@@ -222,7 +222,7 @@ public enum DecoderState implements DecoderStateInterface {
     public DecoderState decoder(short val, int len, long serverCapabilities) {
       switch (val) {
         case 254:
-          if ((serverCapabilities & Capabilities.CLIENT_DEPRECATE_EOF) == 0) {
+          if ((serverCapabilities & Capabilities.CLIENT_DEPRECATE_EOF) == 0 && len < 0xffffff) {
             return EOF_END;
           } else if (len < 0xffffff) {
             return OK_PACKET;
@@ -255,7 +255,12 @@ public enum DecoderState implements DecoderStateInterface {
     PrepareResultPacket packet;
 
     public DecoderState decoder(short val, int len, long serverCapabilities) {
-      return this;
+      switch (val) {
+        case 255: // 0xFF
+          return ERROR;
+        default:
+          return this;
+      }
     }
 
     @Override

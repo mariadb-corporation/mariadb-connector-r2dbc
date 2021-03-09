@@ -51,11 +51,11 @@ public class BlobCodec implements Codec<Blob> {
   }
 
   @Override
-  public io.r2dbc.spi.Blob decodeText(
+  public Blob decodeText(
       ByteBuf buf,
       int length,
       ColumnDefinitionPacket column,
-      Class<? extends io.r2dbc.spi.Blob> type) {
+      Class<? extends Blob> type) {
     switch (column.getType()) {
       case STRING:
       case VARCHAR:

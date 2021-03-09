@@ -56,9 +56,13 @@ public class ErrorTest extends BaseConnectionTest {
   @Test
   void permissionDenied() throws Exception {
     sharedConn.createStatement("CREATE USER userWithoutRight").execute().blockLast();
-
     MariadbConnectionConfiguration conf =
-        TestConfiguration.defaultBuilder.clone().username("userWithoutRight").password("").build();
+        TestConfiguration.defaultBuilder
+            .clone()
+            .allowPublicKeyRetrieval(true)
+            .username("userWithoutRight")
+            .password("")
+            .build();
     new MariadbConnectionFactory(conf)
         .create()
         .as(StepVerifier::create)
@@ -67,12 +71,13 @@ public class ErrorTest extends BaseConnectionTest {
                 throwable instanceof R2dbcNonTransientResourceException
                     && (throwable
                         .getMessage()
-                        .contains("Access denied for user 'userWithoutRight'@'%' to database")))
+                        .contains("Access denied for user 'userWithoutRight'")))
         .verify();
 
     conf =
         TestConfiguration.defaultBuilder
             .clone()
+            .allowPublicKeyRetrieval(true)
             .username("userWithoutRight")
             .password("wrongpassword")
             .build();
@@ -108,6 +113,9 @@ public class ErrorTest extends BaseConnectionTest {
 
   @Test
   void rollbackException() {
+    Assumptions.assumeTrue(
+        !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+
     MariadbConnection connection = null;
     MariadbConnection connection2 = null;
     try {

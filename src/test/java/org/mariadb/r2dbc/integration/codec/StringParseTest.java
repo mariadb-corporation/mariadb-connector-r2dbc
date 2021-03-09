@@ -50,6 +50,7 @@ public class StringParseTest extends BaseConnectionTest {
         .createStatement("INSERT INTO StringTable VALUES ('some🌟'),('1'),('0'), (null)")
         .execute()
         .blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll

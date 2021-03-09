@@ -47,6 +47,7 @@ public class TinyIntParseTest extends BaseConnectionTest {
         .createStatement("INSERT INTO tinyIntUnsignedTable VALUES (0), (1), (255), (null)")
         .execute()
         .blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll

@@ -46,6 +46,7 @@ public class TimeParseTest extends BaseConnectionTest {
                 + ", (null, null)")
         .execute()
         .blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll

@@ -46,8 +46,6 @@ public interface Client {
   Mono<Void> sendSslRequest(
       SslRequestPacket sslRequest, MariadbConnectionConfiguration configuration);
 
-  ClientBase.LockAction getLockAction();
-
   boolean isAutoCommit();
 
   boolean noBackslashEscapes();
@@ -61,4 +59,18 @@ public interface Client {
   void sendNext();
 
   PrepareCache getPrepareCache();
+
+  Mono<Void> beginTransaction();
+
+  Mono<Void> commitTransaction();
+
+  Mono<Void> rollbackTransaction();
+
+  Mono<Void> setAutoCommit(boolean autoCommit);
+
+  Mono<Void> rollbackTransactionToSavepoint(String name);
+
+  Mono<Void> releaseSavepoint(String name);
+
+  Mono<Void> createSavepoint(String name);
 }

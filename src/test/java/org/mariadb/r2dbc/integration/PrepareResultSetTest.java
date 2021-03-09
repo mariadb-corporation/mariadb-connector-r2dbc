@@ -100,7 +100,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
       arr1024[i] = (char) ('a' + (i % 10));
     }
 
-    char[] arr = new char[16000000];
+    char[] arr = new char[16_000_000];
     for (int i = 0; i < arr.length; i++) {
       arr[i] = (char) ('a' + (i % 10));
     }
@@ -142,7 +142,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     Assumptions.assumeFalse(
         "mariadb:10.1".equals(System.getenv("DB")) || "mysql:5.6".equals(System.getenv("DB")));
 
-    char[] arr = new char[20000000];
+    char[] arr = new char[20_000_000];
     for (int i = 0; i < arr.length; i++) {
       arr[i] = (char) ('a' + (i % 10));
     }
@@ -154,6 +154,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
                 + "(t0 LONGTEXT) DEFAULT CHARSET=utf8mb4")
         .execute()
         .blockLast();
+    sharedConnPrepare.beginTransaction().block();
     sharedConnPrepare
         .createStatement("INSERT INTO parameterLengthEncodedLong VALUES (?)")
         .bind(0, val)
@@ -162,10 +163,11 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     sharedConnPrepare
         .createStatement("SELECT * FROM parameterLengthEncodedLong")
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class).length()))
         .as(StepVerifier::create)
-        .expectNext(val)
+        .expectNext(val.length())
         .verifyComplete();
+    sharedConnPrepare.commitTransaction().block();
   }
 
   @Test
@@ -506,54 +508,30 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         Object[] entriesArr = cache.entrySet().toArray();
         switch ((int) i) {
           case 0:
-            Assertions.assertEquals(
-                "SELECT 0, ?=ServerPrepareResult{statementId=1, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-                entriesArr[0].toString());
+            Assertions.assertTrue(entriesArr[0].toString().startsWith("SELECT 0"));
             prepareResults[0] = ((Map.Entry<String, ServerPrepareResult>) entriesArr[0]).getValue();
             break;
           case 1:
-            Assertions.assertEquals(
-                "SELECT 0, ?=ServerPrepareResult{statementId=1, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-                entriesArr[0].toString());
-            Assertions.assertEquals(
-                "SELECT 1, ?=ServerPrepareResult{statementId=2, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-                entriesArr[1].toString());
+            Assertions.assertTrue(entriesArr[0].toString().startsWith("SELECT 0"));
+            Assertions.assertTrue(entriesArr[1].toString().startsWith("SELECT 1"));
             prepareResults[1] = ((Map.Entry<String, ServerPrepareResult>) entriesArr[1]).getValue();
             break;
           case 2:
-            Assertions.assertEquals(
-                "SELECT 0, ?=ServerPrepareResult{statementId=1, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-                entriesArr[0].toString());
-            Assertions.assertEquals(
-                "SELECT 1, ?=ServerPrepareResult{statementId=2, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-                entriesArr[1].toString());
-            Assertions.assertEquals(
-                "SELECT 2, ?=ServerPrepareResult{statementId=3, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-                entriesArr[2].toString());
+            Assertions.assertTrue(entriesArr[0].toString().startsWith("SELECT 0"));
+            Assertions.assertTrue(entriesArr[1].toString().startsWith("SELECT 1"));
+            Assertions.assertTrue(entriesArr[2].toString().startsWith("SELECT 2"));
             prepareResults[2] = ((Map.Entry<String, ServerPrepareResult>) entriesArr[2]).getValue();
             break;
           case 3:
-            Assertions.assertEquals(
-                "SELECT 2, ?=ServerPrepareResult{statementId=3, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-                entriesArr[0].toString());
-            Assertions.assertEquals(
-                "SELECT 1, ?=ServerPrepareResult{statementId=2, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-                entriesArr[1].toString());
-            Assertions.assertEquals(
-                "SELECT 3, ?=ServerPrepareResult{statementId=4, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-                entriesArr[2].toString());
+            Assertions.assertTrue(entriesArr[0].toString().startsWith("SELECT 2"));
+            Assertions.assertTrue(entriesArr[1].toString().startsWith("SELECT 1"));
+            Assertions.assertTrue(entriesArr[2].toString().startsWith("SELECT 3"));
             prepareResults[3] = ((Map.Entry<String, ServerPrepareResult>) entriesArr[2]).getValue();
             break;
           case 4:
-            Assertions.assertEquals(
-                "SELECT 1, ?=ServerPrepareResult{statementId=2, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-                entriesArr[0].toString());
-            Assertions.assertEquals(
-                "SELECT 3, ?=ServerPrepareResult{statementId=4, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-                entriesArr[1].toString());
-            Assertions.assertEquals(
-                "SELECT 4, ?=ServerPrepareResult{statementId=5, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-                entriesArr[2].toString());
+            Assertions.assertTrue(entriesArr[0].toString().startsWith("SELECT 1"));
+            Assertions.assertTrue(entriesArr[1].toString().startsWith("SELECT 3"));
+            Assertions.assertTrue(entriesArr[2].toString().startsWith("SELECT 4"));
             prepareResults[4] = ((Map.Entry<String, ServerPrepareResult>) entriesArr[2]).getValue();
             break;
         }
@@ -563,25 +541,24 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         }
       }
 
-      Assertions.assertEquals(
-          "ServerPrepareResult{statementId=1, numColumns=2, numParams=1, closing=true, use=0, cached=false}",
-          prepareResults[0].toString());
-      Assertions.assertEquals(
-          "ServerPrepareResult{statementId=2, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-          prepareResults[1].toString());
-      Assertions.assertEquals(
-          "ServerPrepareResult{statementId=3, numColumns=2, numParams=1, closing=true, use=0, cached=false}",
-          prepareResults[2].toString());
-      Assertions.assertEquals(
-          "ServerPrepareResult{statementId=4, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-          prepareResults[3].toString());
-      Assertions.assertEquals(
-          "ServerPrepareResult{statementId=5, numColumns=2, numParams=1, closing=false, use=0, cached=true}",
-          prepareResults[4].toString());
+      Assertions.assertTrue(
+          prepareResults[0].toString().contains("closing=true, use=0, cached=false}"));
+      Assertions.assertTrue(
+          prepareResults[1].toString().contains("closing=false, use=0, cached=true}"));
+      Assertions.assertTrue(
+          prepareResults[2].toString().contains("closing=true, use=0, cached=false}"));
+      Assertions.assertTrue(
+          prepareResults[3].toString().contains("closing=false, use=0, cached=true}"));
+      Assertions.assertTrue(
+          prepareResults[4].toString().contains("closing=false, use=0, cached=true}"));
 
       List<String> endingStatus = prepareInfo(connection);
       // Com_stmt_prepare
-      Assertions.assertEquals("5", endingStatus.get(1), endingStatus.get(1));
+      if (!"maxscale".equals(System.getenv("srv"))
+          && !"skysql-ha".equals(System.getenv("srv"))
+          && (isMariaDBServer() || !minVersion(8, 0, 0))) {
+        Assertions.assertEquals("5", endingStatus.get(1), endingStatus.get(1));
+      }
 
     } finally {
       connection.close().block();

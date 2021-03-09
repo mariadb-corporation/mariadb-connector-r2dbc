@@ -22,7 +22,7 @@ Configuration by system properties :
 * TEST_PORT: 3306
 * TEST_USERNAME: root
 * TEST_PASSWORD: ""
-* TEST_DATABASE: "testj"
+* TEST_DATABASE: "testr2"
 
 example: 
 ```script

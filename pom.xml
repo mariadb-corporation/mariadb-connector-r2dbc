@@ -22,7 +22,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.mariadb</groupId>
   <artifactId>r2dbc-mariadb</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <packaging>jar</packaging>
   <url>https://github.com/mariadb-corporation/mariadb-connector-r2dbc</url>
 
@@ -32,13 +32,13 @@
   <properties>
     <java.version>1.8</java.version>
     <jsr305.version>3.0.2</jsr305.version>
-    <junit.version>5.7.0</junit.version>
-    <jmh.version>1.26</jmh.version>
+    <junit.version>5.7.1</junit.version>
+    <jmh.version>1.27</jmh.version>
     <logback.version>1.2.3</logback.version>
-    <netty.version>4.1.54.Final</netty.version>
+    <netty.version>4.1.59.Final</netty.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <r2dbc-spi.version>0.8.3.RELEASE</r2dbc-spi.version>
-    <reactor.version>2020.0.1</reactor.version>
+    <r2dbc-spi.version>0.8.4.RELEASE</r2dbc-spi.version>
+    <reactor.version>Dysprosium-SR17</reactor.version>
     <mariadb-jdbc.version>2.6.1</mariadb-jdbc.version>
     <r2dbc-mysql.version>0.8.2.RELEASE</r2dbc-mysql.version>
     <uberjar.name>benchmarks</uberjar.name>
@@ -264,6 +264,7 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.22.2</version>
         <configuration>
+          <argLine>-Xmx1024m</argLine>
           <systemPropertyVariables>
             <io.netty.leakDetectionLevel>paranoid</io.netty.leakDetectionLevel>
 <!--            <io.netty.leakDetection.targetRecords>1</io.netty.leakDetection.targetRecords>-->
@@ -371,7 +372,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
-            <version>3.0.0-M4</version>
+            <version>3.0.0-M5</version>
             <configuration>
               <systemPropertyVariables>
                 <io.netty.leakDetectionLevel>DISABLED</io.netty.leakDetectionLevel>

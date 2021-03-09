@@ -52,7 +52,9 @@ public class BigResultSetTest extends BaseConnectionTest {
 
   @Test
   void BigResultSet() {
-    Assumptions.assumeTrue(Boolean.parseBoolean(System.getProperty("RUN_LONG_TEST", "true")));
+    Assumptions.assumeTrue(
+        System.getenv("RUN_LONG_TEST") == null
+            || !Boolean.parseBoolean(System.getenv("RUN_LONG_TEST")));
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     // sequence table requirement
     Assumptions.assumeTrue(meta.isMariaDBServer() && minVersion(10, 1, 0));
@@ -111,7 +113,7 @@ public class BigResultSetTest extends BaseConnectionTest {
     for (int i = 0; i < array19m.length; i++) {
       array19m[i] = (char) (0x30 + (i % 10));
     }
-
+    connection.beginTransaction().block();
     connection
         .createStatement("INSERT INTO multiPacketRow VALUES (?, ?)")
         .bind(0, new String(array19m))
@@ -134,6 +136,7 @@ public class BigResultSetTest extends BaseConnectionTest {
                         }))
             .blockLast()
             .toCharArray());
+    connection.rollbackTransaction().block();
   }
 
   public boolean checkMaxAllowedPacketMore20m(MariadbConnection connection) {

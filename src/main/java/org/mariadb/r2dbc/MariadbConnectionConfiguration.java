@@ -55,6 +55,7 @@ public final class MariadbConnectionConfiguration {
   private final boolean allowPublicKeyRetrieval;
   private IsolationLevel isolationLevel;
   private final boolean useServerPrepStmts;
+  private final boolean autocommit;
 
   private MariadbConnectionConfiguration(
       @Nullable Duration connectTimeout,
@@ -81,6 +82,7 @@ public final class MariadbConnectionConfiguration {
       @Nullable String cachingRsaPublicKey,
       boolean allowPublicKeyRetrieval,
       boolean useServerPrepStmts,
+      boolean autocommit,
       @Nullable Integer prepareCacheSize,
       @Nullable CharSequence[] pamOtherPwd) {
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
@@ -110,6 +112,7 @@ public final class MariadbConnectionConfiguration {
     this.useServerPrepStmts = useServerPrepStmts;
     this.prepareCacheSize = (prepareCacheSize == null) ? 250 : prepareCacheSize.intValue();
     this.pamOtherPwd = pamOtherPwd;
+    this.autocommit = autocommit;
   }
 
   static boolean boolValue(Object value) {
@@ -198,6 +201,11 @@ public final class MariadbConnectionConfiguration {
               connectionFactoryOptions.getValue(
                   MariadbConnectionFactoryProvider.USE_SERVER_PREPARE)));
     }
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.AUTO_COMMIT)) {
+      builder.autocommit(
+          boolValue(
+              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.AUTO_COMMIT)));
+    }
     if (connectionFactoryOptions.hasOption(
         MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES)) {
       Map<String, String> myMap = new HashMap<>();
@@ -221,8 +229,7 @@ public final class MariadbConnectionConfiguration {
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SSL_MODE)) {
       builder.sslMode(
-          Enum.valueOf(
-              SslMode.class,
+          SslMode.from(
               connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SSL_MODE)));
     }
     builder.serverSslCert(
@@ -347,6 +354,10 @@ public final class MariadbConnectionConfiguration {
     return useServerPrepStmts;
   }
 
+  public boolean autocommit() {
+    return autocommit;
+  }
+
   public int getPrepareCacheSize() {
     return prepareCacheSize;
   }
@@ -431,6 +442,8 @@ public final class MariadbConnectionConfiguration {
         + isolationLevel
         + ", useServerPrepStmts="
         + useServerPrepStmts
+        + ", autocommit="
+        + autocommit
         + ", pamOtherPwd="
         + hiddenPamPwd
         + '}';
@@ -461,6 +474,7 @@ public final class MariadbConnectionConfiguration {
     private boolean allowMultiQueries = false;
     private boolean allowPipelining = true;
     private boolean useServerPrepStmts = false;
+    private boolean autocommit = true;
     @Nullable Integer prepareCacheSize;
     @Nullable private List<String> tlsProtocol;
     @Nullable private String serverSslCert;
@@ -517,6 +531,7 @@ public final class MariadbConnectionConfiguration {
           this.cachingRsaPublicKey,
           this.allowPublicKeyRetrieval,
           this.useServerPrepStmts,
+          this.autocommit,
           this.prepareCacheSize,
           this.pamOtherPwd);
     }
@@ -739,6 +754,17 @@ public final class MariadbConnectionConfiguration {
      */
     public Builder useServerPrepStmts(boolean useServerPrepStmts) {
       this.useServerPrepStmts = useServerPrepStmts;
+      return this;
+    }
+
+    /**
+     * Permit to indicate default autocommit value. Default value True.
+     *
+     * @param autocommit use autocommit
+     * @return this {@link Builder}
+     */
+    public Builder autocommit(boolean autocommit) {
+      this.autocommit = autocommit;
       return this;
     }
 

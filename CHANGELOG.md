@@ -1,4 +1,14 @@
 # Change Log
+## [1.0.1](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.0.1) (09 Mar 2021)
+[Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.0.0...1.0.1)
+
+Changes:
+* [R2DBC-16] Ensure connection autocommit initialisation and new option autocommit 
+
+Corrections:  
+* [R2DBC-17] Transactions in query flux might not be persisted
+* [R2DBC-19] Data bigger than 16Mb correction.
+
 ## [1.0.0](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.0.0) (08 Dec 2020)
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/0.8.4...1.0.0)
 

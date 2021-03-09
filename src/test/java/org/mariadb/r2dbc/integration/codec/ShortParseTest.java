@@ -47,6 +47,7 @@ public class ShortParseTest extends BaseConnectionTest {
         .createStatement("INSERT INTO ShortUnsignedTable VALUES (0), (1), (65535), (null)")
         .execute()
         .blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll

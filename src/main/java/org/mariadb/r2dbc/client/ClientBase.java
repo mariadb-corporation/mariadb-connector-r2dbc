@@ -29,6 +29,7 @@ import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
 import org.mariadb.r2dbc.ExceptionFactory;
@@ -42,6 +43,7 @@ import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 import reactor.netty.Connection;
 import reactor.netty.tcp.TcpClient;
@@ -59,7 +61,7 @@ public abstract class ClientBase implements Client {
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final MariadbPacketDecoder mariadbPacketDecoder;
   private final MariadbPacketEncoder mariadbPacketEncoder = new MariadbPacketEncoder();
-  private volatile Context context;
+  protected volatile Context context;
   private final PrepareCache prepareCache;
 
   protected ClientBase(Connection connection, MariadbConnectionConfiguration configuration) {
@@ -190,6 +192,138 @@ public abstract class ClientBase implements Client {
   public abstract Flux<ServerMessage> sendCommand(
       ClientMessage message, DecoderState initialState, String sql);
 
+  private Flux<ServerMessage> execute(Consumer<FluxSink<ServerMessage>> s) {
+    AtomicBoolean atomicBoolean = new AtomicBoolean();
+    return Flux.create(
+        sink -> {
+          if (!isConnected()) {
+            sink.error(
+                new R2dbcNonTransientResourceException(
+                    "Connection is close. Cannot send anything"));
+            return;
+          }
+          if (atomicBoolean.compareAndSet(false, true)) {
+            try {
+              lock.lock();
+              s.accept(sink);
+            } finally {
+              lock.unlock();
+            }
+          }
+        });
+  }
+
+  abstract void begin(FluxSink<ServerMessage> sink);
+
+  abstract void executeWhenTransaction(FluxSink<ServerMessage> sink, String cmd);
+
+  abstract void executeAutoCommit(FluxSink<ServerMessage> sink, boolean autoCommit);
+
+  /**
+   * Specific implementation, to avoid executing BEGIN if already in transaction
+   *
+   * @return publisher
+   */
+  public Mono<Void> beginTransaction() {
+    try {
+      lock.lock();
+      return execute(sink -> begin(sink))
+          .handle(ExceptionFactory.withSql("BEGIN")::handleErrorResponse)
+          .then();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * Specific implementation, to avoid executing COMMIT if no transaction
+   *
+   * @return publisher
+   */
+  public Mono<Void> commitTransaction() {
+    try {
+      lock.lock();
+      return execute(sink -> executeWhenTransaction(sink, "COMMIT"))
+          .handle(ExceptionFactory.withSql("COMMIT")::handleErrorResponse)
+          .then();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * Specific implementation, to avoid executing ROLLBACK if no transaction
+   *
+   * @return publisher
+   */
+  public Mono<Void> rollbackTransaction() {
+    try {
+      lock.lock();
+      return execute(sink -> executeWhenTransaction(sink, "ROLLBACK"))
+          .handle(ExceptionFactory.withSql("ROLLBACK")::handleErrorResponse)
+          .then();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * Specific implementation, to avoid executing ROLLBACK TO TRANSACTION if no transaction
+   *
+   * @return publisher
+   */
+  public Mono<Void> rollbackTransactionToSavepoint(String name) {
+    try {
+      lock.lock();
+      String cmd = String.format("ROLLBACK TO SAVEPOINT `%s`", name.replace("`", "``"));
+      return execute(sink -> executeWhenTransaction(sink, cmd))
+          .handle(ExceptionFactory.withSql(cmd)::handleErrorResponse)
+          .then();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public Mono<Void> releaseSavepoint(String name) {
+    try {
+      lock.lock();
+      String cmd = String.format("RELEASE SAVEPOINT `%s`", name.replace("`", "``"));
+      return sendCommand(new QueryPacket(cmd))
+          .handle(ExceptionFactory.withSql(cmd)::handleErrorResponse)
+          .then();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public Mono<Void> createSavepoint(String name) {
+    try {
+      lock.lock();
+      String cmd = String.format("SAVEPOINT `%s`", name.replace("`", "``"));
+      return sendCommand(new QueryPacket(cmd))
+          .handle(ExceptionFactory.withSql(cmd)::handleErrorResponse)
+          .then();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * Specific implementation, to avoid changing autocommit mode if already in this autocommit mode
+   *
+   * @return publisher
+   */
+  public Mono<Void> setAutoCommit(boolean autoCommit) {
+    try {
+      lock.lock();
+      return execute(sink -> executeAutoCommit(sink, autoCommit))
+          .handle(ExceptionFactory.withSql(null)::handleErrorResponse)
+          .then();
+    } finally {
+      lock.unlock();
+    }
+  }
+
   @Override
   public Flux<ServerMessage> receive(DecoderState initialState) {
     return Flux.create(
@@ -209,10 +343,6 @@ public abstract class ClientBase implements Client {
             handshake.isMariaDBServer());
     mariadbPacketDecoder.setContext(context);
     mariadbPacketEncoder.setContext(context);
-  }
-
-  public LockAction getLockAction() {
-    return new LockAction();
   }
 
   /**
@@ -270,77 +400,5 @@ public abstract class ClientBase implements Client {
   @Override
   public String toString() {
     return "Client{isClosed=" + isClosed + ", context=" + context + '}';
-  }
-
-  public class LockAction implements AutoCloseable {
-    public LockAction() {
-      lock.lock();
-    }
-
-    public Mono<Void> rollbackTransaction() {
-      if (!responseReceivers.isEmpty()
-          || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) > 0) {
-        return exchange("ROLLBACK").then();
-      } else {
-        logger.debug("Skipping savepoint release because no active transaction");
-        return Mono.empty();
-      }
-    }
-
-    public Mono<Void> releaseSavepoint(String name) {
-      return exchange(String.format("RELEASE SAVEPOINT `%s`", name.replace("`", "``"))).then();
-    }
-
-    public Mono<Void> beginTransaction() {
-      if (!responseReceivers.isEmpty()
-          || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
-        return exchange("BEGIN").then();
-      } else {
-        logger.debug("Skipping begin transaction because already in transaction");
-        return Mono.empty();
-      }
-    }
-
-    public Mono<Void> commitTransaction() {
-      if (!responseReceivers.isEmpty()
-          || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) > 0) {
-        return exchange("COMMIT").then();
-      } else {
-        logger.debug("Skipping commit transaction because no active transaction");
-        return Mono.empty();
-      }
-    }
-
-    private Flux<ServerMessage> exchange(String sql) {
-      ExceptionFactory exceptionFactory = ExceptionFactory.withSql(sql);
-      return sendCommand(new QueryPacket(sql)).handle(exceptionFactory::handleErrorResponse);
-    }
-
-    public Mono<Void> createSavepoint(String name) {
-      return exchange(String.format("SAVEPOINT `%s`", name.replace("`", "``"))).then();
-    }
-
-    public Mono<Void> rollbackTransactionToSavepoint(String name) {
-      if (!responseReceivers.isEmpty()
-          || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) > 0) {
-        return exchange(String.format("ROLLBACK TO SAVEPOINT `%s`", name.replace("`", "``")))
-            .then();
-      } else {
-        logger.debug("Skipping rollback to savepoint: no active transaction");
-        return Mono.empty();
-      }
-    }
-
-    public Mono<Void> setAutoCommit(boolean autoCommit) {
-      if (!responseReceivers.isEmpty() || autoCommit != isAutoCommit()) {
-        return exchange("SET autocommit=" + (autoCommit ? '1' : '0')).then();
-      }
-      return Mono.empty();
-    }
-
-    @Override
-    public void close() {
-      lock.unlock();
-    }
   }
 }

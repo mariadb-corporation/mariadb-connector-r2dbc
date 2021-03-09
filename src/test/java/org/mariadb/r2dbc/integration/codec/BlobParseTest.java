@@ -45,6 +45,7 @@ public class BlobParseTest extends BaseConnectionTest {
             "INSERT INTO BlobTable VALUES ('diego🤘💪',1),('georg',2),('lawrin',3), (null,4)")
         .execute()
         .blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll

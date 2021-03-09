@@ -42,6 +42,7 @@ public class DateTimeParseTest extends BaseConnectionTest {
             "INSERT INTO DateTimeTable VALUES('2013-07-22 12:50:05.01230'), ('2035-01-31 10:45:01'), (null)")
         .execute()
         .blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll

@@ -24,16 +24,23 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.client.ClientMessage;
 import org.mariadb.r2dbc.message.client.ExecutePacket;
 import org.mariadb.r2dbc.message.client.PreparePacket;
+import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
+import org.mariadb.r2dbc.util.constants.ServerStatus;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 import reactor.netty.Connection;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 import reactor.util.concurrent.Queues;
 
 /** Client that only send query one by one. */
 public final class ClientImpl extends ClientBase {
+  private static final Logger logger = Loggers.getLogger(ClientImpl.class);
+
   public ClientImpl(Connection connection, MariadbConnectionConfiguration configuration) {
     super(connection, configuration);
   }
@@ -93,6 +100,52 @@ public final class ClientImpl extends ClientBase {
             }
           }
         });
+  }
+
+  protected void begin(FluxSink<ServerMessage> sink) {
+    if (this.responseReceivers.isEmpty()) {
+      if ((context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
+        this.responseReceivers.add(new CmdElement(sink, DecoderState.QUERY_RESPONSE, "BEGIN"));
+        connection.channel().writeAndFlush(new QueryPacket("BEGIN"));
+      } else {
+        logger.debug("Skipping begin transaction because already in transaction");
+        sink.complete();
+      }
+    } else {
+      this.responseReceivers.add(new CmdElement(sink, DecoderState.QUERY_RESPONSE, "BEGIN"));
+      sendingQueue.add(new QueryPacket("BEGIN"));
+    }
+  }
+
+  protected void executeAutoCommit(FluxSink<ServerMessage> sink, boolean autoCommit) {
+    String cmd = "SET autocommit=" + (autoCommit ? '1' : '0');
+    if (this.responseReceivers.isEmpty()) {
+      if (autoCommit != isAutoCommit()) {
+        this.responseReceivers.add(new CmdElement(sink, DecoderState.QUERY_RESPONSE, cmd));
+        connection.channel().writeAndFlush(new QueryPacket(cmd));
+      } else {
+        logger.debug("Skipping autocommit since already in that state");
+        sink.complete();
+      }
+    } else {
+      this.responseReceivers.add(new CmdElement(sink, DecoderState.QUERY_RESPONSE, cmd));
+      sendingQueue.add(new QueryPacket(cmd));
+    }
+  }
+
+  protected void executeWhenTransaction(FluxSink<ServerMessage> sink, String cmd) {
+    if (this.responseReceivers.isEmpty()) {
+      if ((context.getServerStatus() & ServerStatus.IN_TRANSACTION) > 0) {
+        this.responseReceivers.add(new CmdElement(sink, DecoderState.QUERY_RESPONSE, cmd));
+        connection.channel().writeAndFlush(new QueryPacket(cmd));
+      } else {
+        logger.debug(String.format("Skipping '%s' because no active transaction", cmd));
+        sink.complete();
+      }
+    } else {
+      this.responseReceivers.add(new CmdElement(sink, DecoderState.QUERY_RESPONSE, cmd));
+      sendingQueue.add(new QueryPacket(cmd));
+    }
   }
 
   public void sendNext() {

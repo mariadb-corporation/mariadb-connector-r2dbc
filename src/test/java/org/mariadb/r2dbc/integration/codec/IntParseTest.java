@@ -49,6 +49,7 @@ public class IntParseTest extends BaseConnectionTest {
         .createStatement("INSERT INTO IntUnsignedTable VALUES (0), (1), (4294967295), (null)")
         .execute()
         .blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll

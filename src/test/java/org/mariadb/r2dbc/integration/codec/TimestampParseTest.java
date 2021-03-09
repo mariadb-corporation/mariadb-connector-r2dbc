@@ -52,6 +52,7 @@ public class TimestampParseTest extends BaseConnectionTest {
             "INSERT INTO TimestampTable2 VALUES('1970-01-02 12:50:05.01230'), ('1970-01-01 10:45:01'), (null)")
         .execute()
         .blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll

@@ -47,6 +47,8 @@ public class BaseTest {
     @Override
     public void beforeEach(ExtensionContext extensionContext) throws Exception {
       initialTest = Instant.now();
+      System.out.println(
+          "       test : " + extensionContext.getTestMethod().get().getName() + " begin");
     }
   }
 }

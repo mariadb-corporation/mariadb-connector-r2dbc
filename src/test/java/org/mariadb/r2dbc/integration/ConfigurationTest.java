@@ -17,26 +17,47 @@
 package org.mariadb.r2dbc.integration;
 
 import io.r2dbc.spi.*;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.*;
+import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 public class ConfigurationTest extends BaseTest {
 
   @Test
   void usingOption() {
+    String encodedUser;
+    String encodedPwd;
+    try {
+      encodedUser =
+          URLEncoder.encode(TestConfiguration.username, StandardCharsets.UTF_8.toString());
+      encodedPwd = URLEncoder.encode(TestConfiguration.password, StandardCharsets.UTF_8.toString());
+    } catch (UnsupportedEncodingException e) {
+      encodedUser = TestConfiguration.username;
+      encodedPwd = TestConfiguration.password;
+    }
+
     ConnectionFactory factory =
         ConnectionFactories.get(
             String.format(
-                "r2dbc:mariadb://%s:%s@%s:%s/%s",
-                TestConfiguration.username,
-                TestConfiguration.password,
+                "r2dbc:mariadb://%s:%s@%s:%s/%s%s",
+                encodedUser,
+                encodedPwd,
                 TestConfiguration.host,
                 TestConfiguration.port,
-                TestConfiguration.database));
+                TestConfiguration.database,
+                TestConfiguration.other == null
+                    ? ""
+                    : "?" + TestConfiguration.other.replace("\n", "\\n")));
     Connection connection = Mono.from(factory.create()).block();
     Flux.from(connection.createStatement("SELECT * FROM myTable").execute())
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)));
@@ -174,6 +195,53 @@ public class ConfigurationTest extends BaseTest {
         IllegalStateException.class,
         () -> MariadbConnectionConfiguration.fromOptions(optionsWithoutUser).build(),
         "No value found for user");
+  }
+
+  @Test
+  void autocommitValue() throws Exception {
+    MariadbConnectionConfiguration conf = TestConfiguration.defaultBuilder.clone().build();
+
+    Assertions.assertTrue(conf.autocommit());
+
+    MariadbConnection sharedConn = new MariadbConnectionFactory(conf).create().block();
+    sharedConn
+        .createStatement("SELECT @@autocommit")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(1)
+        .verifyComplete();
+    Assertions.assertTrue(sharedConn.isAutoCommit());
+    sharedConn.close().block();
+
+    conf = TestConfiguration.defaultBuilder.clone().autocommit(false).build();
+    Assertions.assertFalse(conf.autocommit());
+    sharedConn = new MariadbConnectionFactory(conf).create().block();
+    Assertions.assertFalse(sharedConn.isAutoCommit());
+    sharedConn.createStatement("SET @@autocommit=0");
+    sharedConn.close().block();
+
+    conf = TestConfiguration.defaultBuilder.clone().build();
+    Assertions.assertTrue(conf.autocommit());
+    sharedConn = new MariadbConnectionFactory(conf).create().block();
+    Assertions.assertTrue(sharedConn.isAutoCommit());
+    sharedConn.createStatement("SET @@autocommit=1");
+    sharedConn.close().block();
+
+    Map<String, String> sessionVariables = new HashMap<>();
+    sessionVariables.put("net_read_timeout", "60");
+    sessionVariables.put("wait_timeout", "2147483");
+
+    conf =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .autocommit(false)
+            .sessionVariables(sessionVariables)
+            .build();
+    Assertions.assertFalse(conf.autocommit());
+    sharedConn = new MariadbConnectionFactory(conf).create().block();
+    Assertions.assertFalse(sharedConn.isAutoCommit());
+    sharedConn.close().block();
   }
 
   @Test

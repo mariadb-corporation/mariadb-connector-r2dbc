@@ -38,6 +38,7 @@ public class DateParseTest extends BaseConnectionTest {
         .createStatement("INSERT INTO DateTable VALUES('2010-01-12',1), ('2011-2-28',2), (null,3)")
         .execute()
         .blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll

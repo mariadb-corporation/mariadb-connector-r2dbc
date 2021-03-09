@@ -97,12 +97,12 @@ public class RowMetadataTest extends BaseConnectionTest {
                       ColumnDefinitionPacket t1Meta =
                           (ColumnDefinitionPacket) colMeta.getNativeTypeMetadata();
                       assertEquals(
-                          System.getProperty("TEST_DATABASE", "testj"), t1Meta.getSchema());
+                          System.getProperty("TEST_DATABASE", "testr2"), t1Meta.getSchema());
                       assertEquals("t1Alias", t1Meta.getColumnAlias());
                       assertEquals("t1", t1Meta.getColumn());
                       assertEquals("rowmeta", t1Meta.getTable());
                       assertEquals("rowMetaAlias", t1Meta.getTableAlias());
-                      assertEquals(224, t1Meta.getCharset());
+                      assertTrue(t1Meta.getCharset() == 224 || t1Meta.getCharset() == 45);
                       assertEquals(256, t1Meta.getDisplaySize());
                       assertFalse(t1Meta.isBinary());
                       assertFalse(t1Meta.isBlob());
@@ -132,7 +132,7 @@ public class RowMetadataTest extends BaseConnectionTest {
                       ColumnDefinitionPacket t2Meta =
                           (ColumnDefinitionPacket) colMeta.getNativeTypeMetadata();
                       assertEquals(
-                          System.getProperty("TEST_DATABASE", "testj"), t2Meta.getSchema());
+                          System.getProperty("TEST_DATABASE", "testr2"), t2Meta.getSchema());
                       assertEquals("t2", t2Meta.getColumnAlias());
                       assertEquals("t2", t2Meta.getColumn());
                       assertEquals("rowmeta", t2Meta.getTable());

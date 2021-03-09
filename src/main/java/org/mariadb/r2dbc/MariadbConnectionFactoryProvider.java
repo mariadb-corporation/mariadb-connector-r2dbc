@@ -33,6 +33,7 @@ public final class MariadbConnectionFactoryProvider implements ConnectionFactory
   public static final Option<String> CLIENT_SSL_CERT = Option.valueOf("clientSslCert");
   public static final Option<Boolean> ALLOW_PIPELINING = Option.valueOf("allowPipelining");
   public static final Option<Boolean> USE_SERVER_PREPARE = Option.valueOf("useServerPrepStmts");
+  public static final Option<Boolean> AUTO_COMMIT = Option.valueOf("autoCommit");
   public static final Option<Integer> PREPARE_CACHE_SIZE = Option.valueOf("prepareCacheSize");
   public static final Option<String> SSL_MODE = Option.valueOf("sslMode");
   public static final Option<String> CONNECTION_ATTRIBUTES = Option.valueOf("connectionAttributes");
