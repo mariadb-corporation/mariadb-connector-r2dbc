@@ -78,7 +78,8 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
                       dataRow,
                       ExceptionFactory.INSTANCE,
                       null,
-                      client.getVersion().supportReturning()));
+                      client.getVersion().supportReturning(),
+                      client.getConf()));
     }
   }
 }

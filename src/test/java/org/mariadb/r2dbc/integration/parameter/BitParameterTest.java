@@ -43,7 +43,7 @@ public class BitParameterTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     sharedConn
-        .createStatement("CREATE TABLE ByteParam (t1 BIT(4), t2 BIT(20), t3 BIT(1))")
+        .createStatement("CREATE TABLE ByteParam (t1 BIT(4), t2 BIT(20), t3 BIT(2))")
         .execute()
         .blockLast();
   }

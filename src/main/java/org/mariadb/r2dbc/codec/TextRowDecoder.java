@@ -16,12 +16,14 @@
 
 package org.mariadb.r2dbc.codec;
 
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
 public class TextRowDecoder extends RowDecoder {
 
-  public TextRowDecoder(int columnNumber, ColumnDefinitionPacket[] columns) {
-    super();
+  public TextRowDecoder(
+      int columnNumber, ColumnDefinitionPacket[] columns, MariadbConnectionConfiguration conf) {
+    super(conf);
   }
 
   @SuppressWarnings("unchecked")
@@ -39,7 +41,7 @@ public class TextRowDecoder extends RowDecoder {
 
     // type generic, return "natural" java type
     if (Object.class == type || type == null) {
-      Codec<T> defaultCodec = ((Codec<T>) column.getDefaultCodec());
+      Codec<T> defaultCodec = ((Codec<T>) column.getDefaultCodec(conf));
       return defaultCodec.decodeText(buf, length, column, type);
     }
 

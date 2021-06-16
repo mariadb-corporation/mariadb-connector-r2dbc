@@ -18,6 +18,7 @@ package org.mariadb.r2dbc.codec;
 
 import io.netty.buffer.ByteBuf;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
 public abstract class RowDecoder {
@@ -26,8 +27,11 @@ public abstract class RowDecoder {
   public ByteBuf buf;
   protected int length;
   protected int index;
+  protected MariadbConnectionConfiguration conf;
 
-  public RowDecoder() {}
+  public RowDecoder(MariadbConnectionConfiguration conf) {
+    this.conf = conf;
+  }
 
   public void resetRow(ByteBuf buf) {
     this.buf = buf;

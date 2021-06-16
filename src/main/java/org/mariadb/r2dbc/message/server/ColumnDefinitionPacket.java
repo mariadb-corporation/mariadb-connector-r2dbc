@@ -27,6 +27,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.BitSet;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
@@ -291,7 +292,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
     }
   }
 
-  public Codec<?> getDefaultCodec() {
+  public Codec<?> getDefaultCodec(MariadbConnectionConfiguration conf) {
     switch (dataType) {
       case VARCHAR:
       case JSON:
@@ -301,6 +302,8 @@ public final class ColumnDefinitionPacket implements ServerMessage {
       case STRING:
         return isBinary() ? ByteArrayCodec.INSTANCE : StringCodec.INSTANCE;
       case TINYINT:
+        // TINYINT(1) are considered as boolean
+        if (length == 1 && conf.tinyInt1isBit()) return BooleanCodec.INSTANCE;
         return isSigned() ? ByteCodec.INSTANCE : ShortCodec.INSTANCE;
       case SMALLINT:
         return isSigned() ? ShortCodec.INSTANCE : IntCodec.INSTANCE;
@@ -328,6 +331,8 @@ public final class ColumnDefinitionPacket implements ServerMessage {
       case DECIMAL:
         return BigDecimalCodec.INSTANCE;
       case BIT:
+        // BIT(1) are considered as boolean
+        if (length == 1 && conf.tinyInt1isBit()) return BooleanCodec.INSTANCE;
         return BitSetCodec.INSTANCE;
       case GEOMETRY:
         return ByteArrayCodec.INSTANCE;

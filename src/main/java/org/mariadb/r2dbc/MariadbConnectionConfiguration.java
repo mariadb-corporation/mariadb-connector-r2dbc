@@ -56,6 +56,7 @@ public final class MariadbConnectionConfiguration {
   private IsolationLevel isolationLevel;
   private final boolean useServerPrepStmts;
   private final boolean autocommit;
+  private final boolean tinyInt1isBit;
 
   private MariadbConnectionConfiguration(
       @Nullable Duration connectTimeout,
@@ -84,7 +85,8 @@ public final class MariadbConnectionConfiguration {
       boolean useServerPrepStmts,
       boolean autocommit,
       @Nullable Integer prepareCacheSize,
-      @Nullable CharSequence[] pamOtherPwd) {
+      @Nullable CharSequence[] pamOtherPwd,
+      boolean tinyInt1isBit) {
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
     this.socketTimeout = socketTimeout;
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
@@ -113,6 +115,7 @@ public final class MariadbConnectionConfiguration {
     this.prepareCacheSize = (prepareCacheSize == null) ? 250 : prepareCacheSize.intValue();
     this.pamOtherPwd = pamOtherPwd;
     this.autocommit = autocommit;
+    this.tinyInt1isBit = tinyInt1isBit;
   }
 
   static boolean boolValue(Object value) {
@@ -206,6 +209,12 @@ public final class MariadbConnectionConfiguration {
           boolValue(
               connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.AUTO_COMMIT)));
     }
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TINY_IS_BIT)) {
+      builder.tinyInt1isBit(
+          boolValue(
+              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.TINY_IS_BIT)));
+    }
+
     if (connectionFactoryOptions.hasOption(
         MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES)) {
       Map<String, String> myMap = new HashMap<>();
@@ -358,6 +367,10 @@ public final class MariadbConnectionConfiguration {
     return autocommit;
   }
 
+  public boolean tinyInt1isBit() {
+    return tinyInt1isBit;
+  }
+
   public int getPrepareCacheSize() {
     return prepareCacheSize;
   }
@@ -444,6 +457,8 @@ public final class MariadbConnectionConfiguration {
         + useServerPrepStmts
         + ", autocommit="
         + autocommit
+        + ", tinyInt1isBit="
+        + tinyInt1isBit
         + ", pamOtherPwd="
         + hiddenPamPwd
         + '}';
@@ -475,6 +490,7 @@ public final class MariadbConnectionConfiguration {
     private boolean allowPipelining = true;
     private boolean useServerPrepStmts = false;
     private boolean autocommit = true;
+    private boolean tinyInt1isBit = true;
     @Nullable Integer prepareCacheSize;
     @Nullable private List<String> tlsProtocol;
     @Nullable private String serverSslCert;
@@ -533,7 +549,8 @@ public final class MariadbConnectionConfiguration {
           this.useServerPrepStmts,
           this.autocommit,
           this.prepareCacheSize,
-          this.pamOtherPwd);
+          this.pamOtherPwd,
+          this.tinyInt1isBit);
     }
 
     /**
@@ -765,6 +782,18 @@ public final class MariadbConnectionConfiguration {
      */
     public Builder autocommit(boolean autocommit) {
       this.autocommit = autocommit;
+      return this;
+    }
+
+    /**
+     * Permit to indicate how BIT(1) must return as boolean or byte . Default value True (returns
+     * boolean).
+     *
+     * @param tinyInt1isBit return boolean for BIT(1)
+     * @return this {@link Builder}
+     */
+    public Builder tinyInt1isBit(boolean tinyInt1isBit) {
+      this.tinyInt1isBit = tinyInt1isBit;
       return this;
     }
 

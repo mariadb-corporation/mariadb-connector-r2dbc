@@ -132,6 +132,7 @@ final class MariadbSimpleQueryStatement implements MariadbStatement {
                     dataRow,
                     factory,
                     generatedColumns,
-                    client.getVersion().supportReturning()));
+                    client.getVersion().supportReturning(),
+                    client.getConf()));
   }
 }

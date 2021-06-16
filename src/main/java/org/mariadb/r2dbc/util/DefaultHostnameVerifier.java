@@ -156,8 +156,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
   private SubjectAltNames getSubjectAltNames(X509Certificate cert)
       throws CertificateParsingException {
     Collection<List<?>> entries = cert.getSubjectAlternativeNames();
-    SubjectAltNames subjectAltNames =
-        new SubjectAltNames();
+    SubjectAltNames subjectAltNames = new SubjectAltNames();
     if (entries != null) {
       for (List<?> entry : entries) {
         if (entry.size() >= 2) {
@@ -167,18 +166,14 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
             String altNameDns = (String) entry.get(1);
             if (altNameDns != null) {
               String normalizedSubjectAlt = altNameDns.toLowerCase(Locale.ROOT);
-              subjectAltNames.add(
-                  new GeneralName(
-                      normalizedSubjectAlt, Extension.DNS));
+              subjectAltNames.add(new GeneralName(normalizedSubjectAlt, Extension.DNS));
             }
           }
 
           if (type == 7) { // IP
             String altNameIp = (String) entry.get(1);
             if (altNameIp != null) {
-              subjectAltNames.add(
-                  new GeneralName(
-                      altNameIp, Extension.IP));
+              subjectAltNames.add(new GeneralName(altNameIp, Extension.IP));
             }
           }
         }
@@ -249,8 +244,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
                   lowerCaseHost);
             }
 
-            if (entry.extension == Extension.IP
-                && lowerCaseHost.equals(entry.value)) {
+            if (entry.extension == Extension.IP && lowerCaseHost.equals(entry.value)) {
               return;
             }
           }

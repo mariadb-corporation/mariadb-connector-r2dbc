@@ -58,6 +58,8 @@ public interface Client {
 
   void sendNext();
 
+  MariadbConnectionConfiguration getConf();
+
   PrepareCache getPrepareCache();
 
   Mono<Void> beginTransaction();

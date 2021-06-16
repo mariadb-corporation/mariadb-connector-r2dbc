@@ -52,10 +52,7 @@ public class BlobCodec implements Codec<Blob> {
 
   @Override
   public Blob decodeText(
-      ByteBuf buf,
-      int length,
-      ColumnDefinitionPacket column,
-      Class<? extends Blob> type) {
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Blob> type) {
     switch (column.getType()) {
       case STRING:
       case VARCHAR:

@@ -169,7 +169,8 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
                       dataRow,
                       ExceptionFactory.INSTANCE,
                       generatedColumns,
-                      client.getVersion().supportReturning()));
+                      client.getVersion().supportReturning(),
+                      client.getConf()));
     }
   }
 
@@ -212,7 +213,8 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
                         dataRow,
                         factory,
                         generatedColumns,
-                        client.getVersion().supportReturning()));
+                        client.getVersion().supportReturning(),
+                        client.getConf()));
     return response.concatWith(
         Flux.create(
             sink -> {

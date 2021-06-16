@@ -25,6 +25,9 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.MariadbConnectionFactory;
+import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
@@ -35,9 +38,14 @@ public class BitParseTest extends BaseConnectionTest {
         .createStatement("CREATE TABLE BitTable (t1 BIT(16), t2 int, t3 BIT(3))")
         .execute()
         .blockLast();
+    sharedConn.createStatement("CREATE TABLE BitTable2 (t1 BIT(1))").execute().blockLast();
     sharedConn
         .createStatement(
             "INSERT INTO BitTable VALUES (b'0000', 1, b'0'), (b'0000000100000000', 2, b'1'),(b'0000111100000000', 3, b'10'),(b'1010', 4, b'11'), (null, 5, b'100')")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement("INSERT INTO BitTable2 VALUES (b'0'), (true), (null)")
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
@@ -46,6 +54,7 @@ public class BitParseTest extends BaseConnectionTest {
   @AfterAll
   public static void afterAll2() {
     sharedConn.createStatement("DROP TABLE BitTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE BitTable2").execute().blockLast();
   }
 
   @Test
@@ -56,6 +65,28 @@ public class BitParseTest extends BaseConnectionTest {
   @Test
   void defaultValuePrepare() {
     defaultValue(sharedConnPrepare);
+  }
+
+  @Test
+  void defaultValueNoTiny() throws Throwable {
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder.clone().tinyInt1isBit(false).build();
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    try {
+      connection
+          .createStatement("SELECT t1 FROM BitTable2 WHERE 1 = ?")
+          .bind(0, 1)
+          .execute()
+          .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+          .as(StepVerifier::create)
+          .expectNext(
+              Optional.of(BitSet.valueOf(new byte[] {(byte) 0})),
+              Optional.of(BitSet.valueOf(new byte[] {(byte) 1})),
+              Optional.empty())
+          .verifyComplete();
+    } finally {
+      connection.close().block();
+    }
   }
 
   private void defaultValue(MariadbConnection connection) {
@@ -79,6 +110,14 @@ public class BitParseTest extends BaseConnectionTest {
             Optional.of(BitSet.valueOf(new byte[] {(byte) 0, (byte) 15})),
             Optional.of(BitSet.valueOf(new byte[] {(byte) 10})),
             Optional.empty())
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM BitTable2 WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of(Boolean.FALSE), Optional.of(Boolean.TRUE), Optional.empty())
         .verifyComplete();
   }
 

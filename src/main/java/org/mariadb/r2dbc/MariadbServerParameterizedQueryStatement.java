@@ -233,7 +233,8 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                       dataRow,
                       ExceptionFactory.INSTANCE,
                       null,
-                      client.getVersion().supportReturning()));
+                      client.getVersion().supportReturning(),
+                      client.getConf()));
     }
   }
 
@@ -330,7 +331,8 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                     dataRow,
                     factory,
                     generatedColumns,
-                    client.getVersion().supportReturning()));
+                    client.getVersion().supportReturning(),
+                    client.getConf()));
   }
 
   private Mono<ServerPrepareResult> sendPrepare(String sql) {
@@ -365,7 +367,8 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                     dataRow,
                     factory,
                     generatedColumns,
-                    client.getVersion().supportReturning()));
+                    client.getVersion().supportReturning(),
+                    client.getConf()));
   }
 
   @Override

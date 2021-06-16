@@ -37,6 +37,7 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
   private final String[] generatedColumns;
   private final boolean supportReturning;
   private final boolean text;
+  private final MariadbConnectionConfiguration conf;
 
   private volatile ColumnDefinitionPacket[] metadataList;
   private volatile int metadataIndex;
@@ -48,12 +49,14 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
       Flux<ServerMessage> dataRows,
       ExceptionFactory factory,
       String[] generatedColumns,
-      boolean supportReturning) {
+      boolean supportReturning,
+      MariadbConnectionConfiguration conf) {
     this.text = text;
     this.dataRows = dataRows;
     this.factory = factory;
     this.generatedColumns = generatedColumns;
     this.supportReturning = supportReturning;
+    this.conf = conf;
   }
 
   @Override
@@ -101,8 +104,8 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
                   rowMetadata = MariadbRowMetadata.toRowMetadata(this.metadataList);
                   this.decoder =
                       text
-                          ? new TextRowDecoder(columnNumber, this.metadataList)
-                          : new BinaryRowDecoder(columnNumber, this.metadataList);
+                          ? new TextRowDecoder(columnNumber, this.metadataList, this.conf)
+                          : new BinaryRowDecoder(columnNumber, this.metadataList, this.conf);
                 }
                 return;
               }
@@ -140,7 +143,7 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
                   return;
                 }
                 ByteBuf buf = getLongTextEncoded(okPacket.getLastInsertId());
-                decoder = new TextRowDecoder(1, this.metadataList);
+                decoder = new TextRowDecoder(1, this.metadataList, this.conf);
                 try {
                   sink.next(f.apply(new MariadbRow(metadataList, decoder, buf), rowMetadata));
                 } finally {

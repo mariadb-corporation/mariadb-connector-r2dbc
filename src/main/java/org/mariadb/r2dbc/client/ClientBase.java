@@ -391,6 +391,10 @@ public abstract class ClientBase implements Client {
     }
   }
 
+  public MariadbConnectionConfiguration getConf() {
+    return configuration;
+  }
+
   public abstract void sendNext();
 
   public PrepareCache getPrepareCache() {
