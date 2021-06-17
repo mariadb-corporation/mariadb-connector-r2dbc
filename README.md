@@ -67,7 +67,8 @@ Basic example:
     MariadbConnectionFactory factory = new MariadbConnectionFactory(conf);
 
     MariadbConnection connection = factory.create().block();
-    connection.createStatement("SELECT * FROM myTable")
+    connection.createStatement("SELECT * FROM myTable WHERE val = ?")
+            .bind(0, "myVal") // setting parameter
             .execute()
             .flatMap(r -> r.map((row, metadata) -> {
               return "value=" + row.get(0, String.class);
