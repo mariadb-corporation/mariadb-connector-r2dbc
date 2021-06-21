@@ -21,33 +21,34 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.message.client.ClosePreparePacket;
+import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
 public class ServerPrepareResult {
 
   private final int statementId;
-  private final int numColumns;
   private final int numParams;
+  private final ColumnDefinitionPacket[] columns;
 
   private final AtomicBoolean closing = new AtomicBoolean();
   private final AtomicInteger use = new AtomicInteger(1);
   private final AtomicBoolean cached = new AtomicBoolean(false);
 
-  public ServerPrepareResult(int statementId, int numColumns, int numParams) {
+  public ServerPrepareResult(int statementId, int numParams, ColumnDefinitionPacket[] columns) {
     this.statementId = statementId;
-    this.numColumns = numColumns;
     this.numParams = numParams;
+    this.columns = columns;
   }
 
   public int getStatementId() {
     return statementId;
   }
 
-  public int getNumColumns() {
-    return numColumns;
-  }
-
   public int getNumParams() {
     return numParams;
+  }
+
+  public ColumnDefinitionPacket[] getColumns() {
+    return columns;
   }
 
   public void close(Client client) {
@@ -89,10 +90,10 @@ public class ServerPrepareResult {
     return "ServerPrepareResult{"
         + "statementId="
         + statementId
-        + ", numColumns="
-        + numColumns
         + ", numParams="
         + numParams
+        + ", numColumns="
+        + columns.length
         + ", closing="
         + closing
         + ", use="

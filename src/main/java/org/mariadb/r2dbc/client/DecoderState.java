@@ -17,20 +17,7 @@
 package org.mariadb.r2dbc.client;
 
 import io.netty.buffer.ByteBuf;
-import org.mariadb.r2dbc.message.server.AuthMoreDataPacket;
-import org.mariadb.r2dbc.message.server.AuthSwitchPacket;
-import org.mariadb.r2dbc.message.server.ColumnCountPacket;
-import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.message.server.EofPacket;
-import org.mariadb.r2dbc.message.server.ErrorPacket;
-import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
-import org.mariadb.r2dbc.message.server.OkPacket;
-import org.mariadb.r2dbc.message.server.PrepareResultPacket;
-import org.mariadb.r2dbc.message.server.RowPacket;
-import org.mariadb.r2dbc.message.server.Sequencer;
-import org.mariadb.r2dbc.message.server.ServerMessage;
-import org.mariadb.r2dbc.message.server.SkipPacket;
-import org.mariadb.r2dbc.util.PrepareCache;
+import org.mariadb.r2dbc.message.server.*;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 
@@ -142,19 +129,24 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   COLUMN_COUNT {
+    ColumnCountPacket columnCountPacket;
 
     @Override
     public ServerMessage decode(
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
-      ColumnCountPacket columnCountPacket =
-          ColumnCountPacket.decode(sequencer, body, decoder.getContext());
+      columnCountPacket = ColumnCountPacket.decode(sequencer, body, decoder.getContext());
       decoder.setStateCounter(columnCountPacket.getColumnCount());
       return columnCountPacket;
     }
 
     @Override
     public DecoderState next(MariadbPacketDecoder decoder) {
-      return COLUMN_DEFINITION;
+      if (columnCountPacket.isMetaFollows()) return COLUMN_DEFINITION;
+      if ((decoder.getServerCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0) {
+        return ROW_RESPONSE;
+      } else {
+        return EOF_INTERMEDIATE_RESPONSE;
+      }
     }
   },
 
@@ -252,7 +244,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   PREPARE_RESPONSE {
-    PrepareResultPacket packet;
 
     public DecoderState decoder(short val, int len, long serverCapabilities) {
       switch (val) {
@@ -266,37 +257,34 @@ public enum DecoderState implements DecoderStateInterface {
     @Override
     public ServerMessage decode(
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
-      packet = PrepareResultPacket.decode(sequencer, body, decoder.getContext());
-      ServerPrepareResult prepareResult =
-          new ServerPrepareResult(
-              packet.getStatementId(), packet.getNumColumns(), packet.getNumParams());
-
-      PrepareCache prepareCache = decoder.getClient().getPrepareCache();
-      if (prepareCache != null && prepareCache.put(element.getSql(), prepareResult) != null) {
-        // race condition, remove new one to get the one in cache
-        prepareResult.decrementUse(decoder.getClient());
+      PrepareResultPacket packet =
+          PrepareResultPacket.decode(sequencer, body, decoder.getContext(), false);
+      decoder.setPrepare(packet);
+      if (packet.getNumParams() == 0 && packet.getNumColumns() == 0) {
+        ServerPrepareResult serverPrepareResult = decoder.endPrepare();
+        return new CompletePrepareResult(serverPrepareResult, false);
       }
-      return packet;
+      return new SkipPacket(false);
     }
 
     @Override
     public DecoderState next(MariadbPacketDecoder decoder) {
-      if ((decoder.getServerCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0) {
-        decoder.setStateCounter(packet.getNumParams() + packet.getNumColumns());
-      } else {
-        decoder.setStateCounter(
-            (packet.getNumParams() > 0 ? packet.getNumParams() + 1 : 0)
-                + (packet.getNumColumns() > 0 ? packet.getNumColumns() + 1 : 0));
+      if (decoder.getPrepare().getNumParams() == 0) {
+        // if next, then columns > 0
+        decoder.setStateCounter(decoder.getPrepare().getNumColumns());
+        return PREPARE_COLUMN;
       }
-      if (decoder.getStateCounter() > 0) {
-        return SKIP;
-      }
-      throw new IllegalArgumentException("unexpected state");
+      // skip param and EOF if needed
+      decoder.setStateCounter(
+          decoder.getPrepare().getNumParams()
+              + (((decoder.getServerCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0)
+                  ? 0
+                  : 1));
+      return PREPARE_PARAMETER;
     }
   },
 
   PREPARE_AND_EXECUTE_RESPONSE {
-    PrepareResultPacket packet;
 
     public DecoderState decoder(short val, int len, long serverCapabilities) {
       switch (val) {
@@ -310,39 +298,35 @@ public enum DecoderState implements DecoderStateInterface {
     @Override
     public ServerMessage decode(
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
-
-      packet = PrepareResultPacket.decode(sequencer, body, decoder.getContext());
-
-      ServerPrepareResult prepareResult =
-          new ServerPrepareResult(
-              packet.getStatementId(), packet.getNumColumns(), packet.getNumParams());
-
-      PrepareCache prepareCache = decoder.getClient().getPrepareCache();
-      if (prepareCache != null && prepareCache.put(element.getSql(), prepareResult) != null) {
-        // race condition, remove new one to get the one in cache
-        prepareResult.decrementUse(decoder.getClient());
+      decoder.setPrepare(PrepareResultPacket.decode(sequencer, body, decoder.getContext(), true));
+      if (decoder.getPrepare().getNumParams() == 0 && decoder.getPrepare().getNumColumns() == 0) {
+        ServerPrepareResult serverPrepareResult = decoder.endPrepare();
+        return new CompletePrepareResult(serverPrepareResult, true);
       }
-
-      return packet;
+      return new SkipPacket(false);
     }
 
     @Override
     public DecoderState next(MariadbPacketDecoder decoder) {
-      if ((decoder.getServerCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0) {
-        decoder.setStateCounter(packet.getNumParams() + packet.getNumColumns());
-      } else {
-        decoder.setStateCounter(
-            (packet.getNumParams() > 0 ? packet.getNumParams() + 1 : 0)
-                + (packet.getNumColumns() > 0 ? packet.getNumColumns() + 1 : 0));
+      if (decoder.getPrepare().getNumParams() == 0) {
+        if (decoder.getPrepare().getNumColumns() == 0) {
+          decoder.setPrepare(null);
+          return QUERY_RESPONSE;
+        }
+        decoder.setStateCounter(decoder.getPrepare().getNumColumns());
+        return PREPARE_COLUMN;
       }
-      if (decoder.getStateCounter() > 0) {
-        return SKIP_EXECUTE;
-      }
-      return QUERY_RESPONSE;
+      // skip param and EOF if needed
+      decoder.setStateCounter(
+          decoder.getPrepare().getNumParams()
+              + (((decoder.getServerCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0)
+                  ? 0
+                  : 1));
+      return PREPARE_PARAMETER;
     }
   },
 
-  SKIP {
+  PREPARE_PARAMETER {
     public DecoderState decoder(short val, int len, long serverCapabilities) {
       return this;
     }
@@ -351,33 +335,85 @@ public enum DecoderState implements DecoderStateInterface {
     public ServerMessage decode(
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
       decoder.decrementStateCounter();
-      return SkipPacket.decode(decoder.getStateCounter() == 0);
-    }
-
-    @Override
-    public DecoderState next(MariadbPacketDecoder decoder) {
-      return SKIP;
-    }
-  },
-
-  SKIP_EXECUTE {
-    public DecoderState decoder(short val, int len, long serverCapabilities) {
-      return this;
-    }
-
-    @Override
-    public ServerMessage decode(
-        ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
-      decoder.decrementStateCounter();
+      if (decoder.getStateCounter() == 0 && decoder.getPrepare().getNumColumns() == 0) {
+        // end parameter without columns
+        boolean ending = !decoder.getPrepare().isContinueOnEnd();
+        ServerPrepareResult serverPrepareResult = decoder.endPrepare();
+        return new CompletePrepareResult(serverPrepareResult, ending);
+      }
       return SkipPacket.decode(false);
     }
 
     @Override
     public DecoderState next(MariadbPacketDecoder decoder) {
       if (decoder.getStateCounter() <= 0) {
-        return QUERY_RESPONSE;
+        if (decoder.getPrepare() == null) {
+          return QUERY_RESPONSE;
+        }
+        decoder.setStateCounter(decoder.getPrepare().getNumColumns());
+        return PREPARE_COLUMN;
       }
-      return SKIP_EXECUTE;
+      return PREPARE_PARAMETER;
+    }
+  },
+
+  PREPARE_COLUMN {
+
+    public DecoderState decoder(short val, int len, long serverCapabilities) {
+      return this;
+    }
+
+    @Override
+    public ServerMessage decode(
+        ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
+      ColumnDefinitionPacket columnDefinitionPacket =
+          ColumnDefinitionPacket.decode(sequencer, body, decoder.getContext(), false);
+      decoder
+              .getPrepareColumns()[
+              decoder.getPrepare().getNumColumns() - decoder.getStateCounter()] =
+          columnDefinitionPacket;
+      decoder.decrementStateCounter();
+
+      if (decoder.getStateCounter() <= 0) {
+        if ((decoder.getServerCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0) {
+          boolean ending = !decoder.getPrepare().isContinueOnEnd();
+          ServerPrepareResult prepareResult = decoder.endPrepare();
+          return new CompletePrepareResult(prepareResult, ending);
+        }
+      }
+
+      return SkipPacket.decode(false);
+    }
+
+    @Override
+    public DecoderState next(MariadbPacketDecoder decoder) {
+      if (decoder.getStateCounter() <= 0) {
+        if ((decoder.getServerCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0) {
+          return QUERY_RESPONSE;
+        }
+        return PREPARE_COLUMN_EOF;
+      }
+      return this;
+    }
+  },
+
+  PREPARE_COLUMN_EOF {
+
+    public DecoderState decoder(short val, int len, long serverCapabilities) {
+      return this;
+    }
+
+    @Override
+    public ServerMessage decode(
+        ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
+      boolean ending = !decoder.getPrepare().isContinueOnEnd();
+      ServerPrepareResult prepareResult = decoder.endPrepare();
+      return new CompletePrepareResult(prepareResult, ending);
+    }
+
+    @Override
+    public DecoderState next(MariadbPacketDecoder decoder) {
+      return QUERY_RESPONSE;
     }
   },
 
@@ -389,7 +425,7 @@ public enum DecoderState implements DecoderStateInterface {
     @Override
     public ServerMessage decode(
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
-      return ErrorPacket.decode(sequencer, body);
+      return ErrorPacket.decode(sequencer, body, true);
     }
 
     @Override
@@ -406,12 +442,25 @@ public enum DecoderState implements DecoderStateInterface {
     @Override
     public ServerMessage decode(
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
-      return ErrorPacket.decode(sequencer, body);
+      return ErrorPacket.decode(sequencer, body, false);
     }
 
     @Override
     public DecoderState next(MariadbPacketDecoder decoder) {
       return SKIP_EXECUTE;
+    }
+  },
+
+  SKIP_EXECUTE {
+    public DecoderState decoder(short val, int len, long serverCapabilities) {
+      return this;
+    }
+
+    @Override
+    public ServerMessage decode(
+        ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
+      decoder.decrementStateCounter();
+      return SkipPacket.decode(true);
     }
   }
 }

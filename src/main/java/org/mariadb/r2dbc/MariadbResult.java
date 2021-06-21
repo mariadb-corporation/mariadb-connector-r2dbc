@@ -21,11 +21,13 @@ import io.netty.buffer.Unpooled;
 import io.r2dbc.spi.Row;
 import io.r2dbc.spi.RowMetadata;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import org.mariadb.r2dbc.codec.BinaryRowDecoder;
 import org.mariadb.r2dbc.codec.RowDecoder;
 import org.mariadb.r2dbc.codec.TextRowDecoder;
 import org.mariadb.r2dbc.message.server.*;
+import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -38,6 +40,7 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
   private final boolean supportReturning;
   private final boolean text;
   private final MariadbConnectionConfiguration conf;
+  private AtomicReference<ServerPrepareResult> prepareResult;
 
   private volatile ColumnDefinitionPacket[] metadataList;
   private volatile int metadataIndex;
@@ -46,6 +49,7 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
 
   MariadbResult(
       boolean text,
+      AtomicReference<ServerPrepareResult> prepareResult,
       Flux<ServerMessage> dataRows,
       ExceptionFactory factory,
       String[] generatedColumns,
@@ -57,6 +61,7 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
     this.generatedColumns = generatedColumns;
     this.supportReturning = supportReturning;
     this.conf = conf;
+    this.prepareResult = prepareResult;
   }
 
   @Override
@@ -92,9 +97,21 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
                 return;
               }
 
+              if (serverMessage instanceof CompletePrepareResult) {
+                this.prepareResult.set(((CompletePrepareResult) serverMessage).getPrepare());
+                metadataList = this.prepareResult.get().getColumns();
+                return;
+              }
+
               if (serverMessage instanceof ColumnCountPacket) {
                 this.columnNumber = ((ColumnCountPacket) serverMessage).getColumnCount();
-                metadataList = new ColumnDefinitionPacket[this.columnNumber];
+                if (!((ColumnCountPacket) serverMessage).isMetaFollows()) {
+                  metadataList = this.prepareResult.get().getColumns();
+                  rowMetadata = MariadbRowMetadata.toRowMetadata(this.metadataList);
+                  this.decoder = new BinaryRowDecoder(columnNumber, this.metadataList, this.conf);
+                } else {
+                  metadataList = new ColumnDefinitionPacket[this.columnNumber];
+                }
                 return;
               }
 
@@ -127,7 +144,7 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
               if (serverMessage instanceof OkPacket
                   && generatedColumns != null
                   && !supportReturning) {
-                if (metadataList == null) {
+                if (metadataList == null || metadataList.length == 0) {
                   String colName = generatedColumns.length > 0 ? generatedColumns[0] : "ID";
                   metadataList = new ColumnDefinitionPacket[1];
                   metadataList[0] = ColumnDefinitionPacket.fromGeneratedId(colName);

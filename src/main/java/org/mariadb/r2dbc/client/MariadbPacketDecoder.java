@@ -23,8 +23,12 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.util.List;
 import java.util.Queue;
+import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.message.server.PrepareResultPacket;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.message.server.ServerMessage;
+import org.mariadb.r2dbc.util.PrepareCache;
+import org.mariadb.r2dbc.util.ServerPrepareResult;
 
 public class MariadbPacketDecoder extends ByteToMessageDecoder {
 
@@ -38,6 +42,8 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
   private CompositeByteBuf multipart;
   private long serverCapabilities;
   private int stateCounter = 0;
+  private PrepareResultPacket prepare;
+  private ColumnDefinitionPacket[] prepareColumns;
 
   public MariadbPacketDecoder(Queue<CmdElement> responseReceivers, Client client) {
     this.responseReceivers = responseReceivers;
@@ -143,6 +149,37 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
 
   public void setStateCounter(int counter) {
     stateCounter = counter;
+  }
+
+  public PrepareResultPacket getPrepare() {
+    return prepare;
+  }
+
+  public void setPrepare(PrepareResultPacket prepare) {
+    this.prepare = prepare;
+    this.prepareColumns = new ColumnDefinitionPacket[prepare.getNumColumns()];
+  }
+
+  public ColumnDefinitionPacket[] getPrepareColumns() {
+    return prepareColumns;
+  }
+
+  public ServerPrepareResult endPrepare() {
+    // this.prepareColumns = new ColumnDefinitionPacket[prepare.getNumColumns()];
+    ServerPrepareResult prepareResult =
+        new ServerPrepareResult(
+            this.prepare.getStatementId(), this.prepare.getNumParams(), prepareColumns);
+    PrepareCache prepareCache = client.getPrepareCache();
+    if (prepareCache != null) {
+      ServerPrepareResult cached = prepareCache.put(cmdElement.getSql(), prepareResult);
+      if (cached != null) {
+        // race condition, remove new one to get the one in cache
+        prepareResult.decrementUse(client);
+        prepareResult = cached;
+      }
+    }
+    this.prepare = null;
+    return prepareResult;
   }
 
   public void decrementStateCounter() {

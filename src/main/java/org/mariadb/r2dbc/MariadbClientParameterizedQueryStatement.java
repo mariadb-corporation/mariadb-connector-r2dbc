@@ -166,6 +166,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
               dataRow ->
                   new MariadbResult(
                       true,
+                      null,
                       dataRow,
                       ExceptionFactory.INSTANCE,
                       generatedColumns,
@@ -210,6 +211,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
                 dataRow ->
                     new MariadbResult(
                         true,
+                        null,
                         dataRow,
                         factory,
                         generatedColumns,

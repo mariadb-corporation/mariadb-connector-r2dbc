@@ -28,15 +28,18 @@ public final class ErrorPacket implements ServerMessage {
   private final String message;
   private final String sqlState;
   private Sequencer sequencer;
+  private final boolean ending;
 
-  private ErrorPacket(Sequencer sequencer, short errorCode, String sqlState, String message) {
+  private ErrorPacket(
+      Sequencer sequencer, short errorCode, String sqlState, String message, boolean ending) {
     this.sequencer = sequencer;
     this.errorCode = errorCode;
     this.message = message;
     this.sqlState = sqlState;
+    this.ending = ending;
   }
 
-  public static ErrorPacket decode(Sequencer sequencer, ByteBuf buf) {
+  public static ErrorPacket decode(Sequencer sequencer, ByteBuf buf, boolean ending) {
     Assert.requireNonNull(buf, "buffer must not be null");
     buf.skipBytes(1);
     short errorCode = buf.readShortLE();
@@ -52,7 +55,7 @@ public final class ErrorPacket implements ServerMessage {
       msg = buf.readCharSequence(buf.readableBytes(), StandardCharsets.UTF_8).toString();
       sqlState = "HY000";
     }
-    ErrorPacket err = new ErrorPacket(sequencer, errorCode, sqlState, msg);
+    ErrorPacket err = new ErrorPacket(sequencer, errorCode, sqlState, msg, ending);
     logger.warn("Error: '{}' sqlState='{}' code={} ", msg, sqlState, errorCode);
     return err;
   }
@@ -71,6 +74,6 @@ public final class ErrorPacket implements ServerMessage {
 
   @Override
   public boolean ending() {
-    return true;
+    return ending;
   }
 }

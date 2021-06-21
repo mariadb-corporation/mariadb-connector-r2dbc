@@ -129,6 +129,7 @@ final class MariadbSimpleQueryStatement implements MariadbStatement {
             dataRow ->
                 new MariadbResult(
                     true,
+                    null,
                     dataRow,
                     factory,
                     generatedColumns,

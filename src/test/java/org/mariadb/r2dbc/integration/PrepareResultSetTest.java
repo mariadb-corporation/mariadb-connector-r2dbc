@@ -147,7 +147,6 @@ public class PrepareResultSetTest extends BaseConnectionTest {
       arr[i] = (char) ('a' + (i % 10));
     }
     String val = String.valueOf(arr);
-    arr = null;
     sharedConnPrepare
         .createStatement(
             "CREATE TEMPORARY TABLE parameterLengthEncodedLong"

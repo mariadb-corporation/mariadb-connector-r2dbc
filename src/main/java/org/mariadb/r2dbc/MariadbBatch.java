@@ -75,6 +75,7 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
               dataRow ->
                   new org.mariadb.r2dbc.MariadbResult(
                       true,
+                      null,
                       dataRow,
                       ExceptionFactory.INSTANCE,
                       null,

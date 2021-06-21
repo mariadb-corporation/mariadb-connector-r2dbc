@@ -52,4 +52,7 @@ public class Capabilities {
       1L << 32; /* Client support progress indicator (since 10.2) */
   public static final long MARIADB_CLIENT_COM_MULTI =
       1L << 33; /* bundle command during connection */
+
+  // permit skipping metadata
+  public static final long MARIADB_CLIENT_CACHE_METADATA = 1L << 36;
 }
