@@ -54,7 +54,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     this.client = client;
     this.configuration = configuration;
     this.initialSql = Assert.requireNonNull(sql, "sql must not be null");
-    this.parameters = new HashMap<>();
+    this.parameters = null;
     this.prepareResult = new AtomicReference<>(client.getPrepareCache().get(sql));
   }
 
@@ -66,17 +66,19 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   @Override
   public MariadbServerParameterizedQueryStatement add() {
     // check valid parameters
-    if (prepareResult.get() != null) {
-      for (int i = 0; i < prepareResult.get().getNumParams(); i++) {
-        if (parameters.get(i) == null) {
-          throw new IllegalArgumentException(
-              String.format("Parameter at position %s is not set", i));
+    if (this.parameters != null) {
+      if (prepareResult.get() != null) {
+        for (int i = 0; i < prepareResult.get().getNumParams(); i++) {
+          if (parameters.get(i) == null) {
+            throw new IllegalArgumentException(
+                String.format("Parameter at position %s is not set", i));
+          }
         }
       }
+      if (batchingParameters == null) batchingParameters = new ArrayList<>();
+      batchingParameters.add(parameters);
+      parameters = null;
     }
-    if (batchingParameters == null) batchingParameters = new ArrayList<>();
-    batchingParameters.add(parameters);
-    parameters = new HashMap<>();
     return this;
   }
 
@@ -102,10 +104,9 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
               prepareResult.get().getNumParams() - 1, index));
     }
     if (value == null) return bindNull(index, null);
-
+    if (parameters == null) parameters = new HashMap<>();
     for (Codec<?> codec : Codecs.LIST) {
       if (codec.canEncode(value.getClass())) {
-
         parameters.put(index, (Parameter<?>) new Parameter(codec, value));
         return this;
       }
@@ -160,6 +161,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     if (parameter == null) {
       parameter = Parameter.NULL_PARAMETER;
     }
+    if (parameters == null) parameters = new HashMap<>();
     parameters.put(index, parameter);
     return this;
   }
@@ -169,7 +171,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   }
 
   private void validateParameters() {
-    if (prepareResult.get() != null) {
+    if (prepareResult.get() != null && this.parameters != null) {
       // valid parameters
       for (int i = 0; i < prepareResult.get().getNumParams(); i++) {
         if (parameters.get(i) == null) {
@@ -193,14 +195,19 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
 
     if (batchingParameters == null) {
       validateParameters();
-      return execute(sql, parameters, this.generatedColumns);
+      return executeSingleQuery(sql, parameters, this.generatedColumns);
     } else {
+      // add current set of parameters. see https://github.com/r2dbc/r2dbc-spi/issues/229
+      this.add();
+
+      // prepare command, if not already done
       if (prepareResult.get() == null) {
         prepareResult.set(client.getPrepareCache().get(sql));
         if (prepareResult.get() == null) {
           sendPrepare(sql).block();
         }
       }
+
       Flux<ServerMessage> fluxMsg =
           this.client.sendCommand(
               new ExecutePacket(
@@ -222,8 +229,8 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                     sink.complete();
                   }));
 
-      this.batchingParameters.clear();
-      this.parameters = new HashMap<>();
+      this.batchingParameters = null;
+      this.parameters = null;
 
       return fluxMsg
           .windowUntil(it -> it.resultSetEnd())
@@ -258,7 +265,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     return this;
   }
 
-  private Flux<org.mariadb.r2dbc.api.MariadbResult> execute(
+  private Flux<org.mariadb.r2dbc.api.MariadbResult> executeSingleQuery(
       String sql, Map<Integer, Parameter<?>> parameters, String[] generatedColumns) {
     ExceptionFactory factory = ExceptionFactory.withSql(sql);
 
