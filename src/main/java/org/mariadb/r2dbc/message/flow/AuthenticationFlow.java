@@ -140,7 +140,9 @@ public final class AuthenticationFlow {
             .receive(DecoderState.INIT_HANDSHAKE)
             .<State>handle(
                 (message, sink) -> {
-                  if (message instanceof InitialHandshakePacket) {
+                  if (message instanceof ErrorPacket) {
+                    sink.error(ExceptionFactory.INSTANCE.from((ErrorPacket) message));
+                  } else if (message instanceof InitialHandshakePacket) {
                     flow.client.setContext((InitialHandshakePacket) message);
                     // TODO SET connection context with server data.
                     InitialHandshakePacket packet = (InitialHandshakePacket) message;

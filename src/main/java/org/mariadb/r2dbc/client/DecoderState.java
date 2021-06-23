@@ -24,7 +24,12 @@ import org.mariadb.r2dbc.util.constants.Capabilities;
 public enum DecoderState implements DecoderStateInterface {
   INIT_HANDSHAKE {
     public DecoderState decoder(short val, int len, long serverCapabilities) {
-      return this;
+      switch (val) {
+        case 255: // 0xFF
+          return ERROR;
+        default:
+          return this;
+      }
     }
 
     @Override
