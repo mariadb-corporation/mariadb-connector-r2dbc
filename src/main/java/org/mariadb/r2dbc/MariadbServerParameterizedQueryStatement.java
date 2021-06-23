@@ -358,7 +358,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                   if (it.ending()) sink.complete();
                 });
     return f.singleOrEmpty();
-  };
+  }
 
   private Flux<org.mariadb.r2dbc.api.MariadbResult> sendExecuteCmd(
       ExceptionFactory factory, Map<Integer, Parameter<?>> parameters, String[] generatedColumns) {
