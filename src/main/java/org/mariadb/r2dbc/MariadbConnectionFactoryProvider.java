@@ -42,6 +42,7 @@ public final class MariadbConnectionFactoryProvider implements ConnectionFactory
   public static final Option<Duration> SOCKET_TIMEOUT = Option.valueOf("socketTimeout");
   public static final Option<Boolean> TCP_KEEP_ALIVE = Option.valueOf("tcpKeepAlive");
   public static final Option<Boolean> TCP_ABORTIVE_CLOSE = Option.valueOf("tcpAbortiveClose");
+  public static final Option<String> SESSION_VARIABLES = Option.valueOf("sessionVariables");
 
   static MariadbConnectionConfiguration createConfiguration(
       ConnectionFactoryOptions connectionFactoryOptions) {

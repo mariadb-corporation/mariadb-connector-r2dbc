@@ -191,6 +191,12 @@ public final class MariadbConnectionConfiguration {
                   MariadbConnectionFactoryProvider.TCP_ABORTIVE_CLOSE)));
     }
 
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SESSION_VARIABLES)) {
+      String sessionVarString =
+          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SESSION_VARIABLES);
+      builder.sessionVariables(getMapFromString(sessionVarString));
+    }
+
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.ALLOW_PIPELINING)) {
       builder.allowPipelining(
           boolValue(
@@ -217,16 +223,9 @@ public final class MariadbConnectionConfiguration {
 
     if (connectionFactoryOptions.hasOption(
         MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES)) {
-      Map<String, String> myMap = new HashMap<>();
-      String s =
+      String connAttributes =
           connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES);
-      String[] pairs = s.split(",");
-      for (int i = 0; i < pairs.length; i++) {
-        String pair = pairs[i];
-        String[] keyValue = pair.split("=");
-        myMap.put(keyValue[0], (keyValue.length > 1) ? keyValue[1] : "");
-      }
-      builder.connectionAttributes(myMap);
+      builder.connectionAttributes(getMapFromString(connAttributes));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.PREPARE_CACHE_SIZE)) {
@@ -260,7 +259,7 @@ public final class MariadbConnectionConfiguration {
     }
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.PAM_OTHER_PASSWORD)) {
       String s =
-          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES);
+          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.PAM_OTHER_PASSWORD);
       String[] pairs = s.split(",");
       try {
         for (int i = 0; i < pairs.length; i++) {
@@ -274,6 +273,19 @@ public final class MariadbConnectionConfiguration {
     }
 
     return builder;
+  }
+
+  private static Map<String, String> getMapFromString(String s) {
+    Map<String, String> map = new HashMap<>();
+    if (s != null && !s.isEmpty()) {
+      String[] pairs = s.split(",");
+      for (int i = 0; i < pairs.length; i++) {
+        String pair = pairs[i];
+        String[] keyValue = pair.split("=");
+        map.put(keyValue[0], (keyValue.length > 1) ? keyValue[1] : "");
+      }
+    }
+    return map;
   }
 
   public static Builder builder() {
@@ -391,16 +403,12 @@ public final class MariadbConnectionConfiguration {
   public String toString() {
     StringBuilder hiddenPwd = new StringBuilder();
     if (password != null) {
-      for (int i = 0; i < password.length(); i++) {
-        hiddenPwd.append("*");
-      }
+      hiddenPwd.append("*");
     }
     StringBuilder hiddenPamPwd = new StringBuilder();
     if (pamOtherPwd != null) {
       for (CharSequence s : pamOtherPwd) {
-        for (int i = 0; i < s.length(); i++) {
-          hiddenPamPwd.append("*");
-        }
+        hiddenPamPwd.append("*");
         hiddenPamPwd.append(",");
       }
       hiddenPamPwd.deleteCharAt(hiddenPamPwd.length() - 1);
@@ -856,16 +864,12 @@ public final class MariadbConnectionConfiguration {
     public String toString() {
       StringBuilder hiddenPwd = new StringBuilder();
       if (password != null) {
-        for (int i = 0; i < password.length(); i++) {
-          hiddenPwd.append("*");
-        }
+        hiddenPwd.append("*");
       }
       StringBuilder hiddenPamPwd = new StringBuilder();
       if (pamOtherPwd != null) {
         for (CharSequence s : pamOtherPwd) {
-          for (int i = 0; i < s.length(); i++) {
-            hiddenPamPwd.append("*");
-          }
+          hiddenPamPwd.append("*");
           hiddenPamPwd.append(",");
         }
         hiddenPamPwd.deleteCharAt(hiddenPamPwd.length() - 1);

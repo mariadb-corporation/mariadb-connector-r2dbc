@@ -96,7 +96,7 @@ public class ConfigurationTest extends BaseTest {
     Assertions.assertTrue(factory.toString().contains("prepareCacheSize=2560"));
     Assertions.assertTrue(factory.toString().contains("sslMode=ENABLE_TRUST"));
     Assertions.assertTrue(factory.toString().contains("connectionAttributes={test=2, h=4}"));
-    Assertions.assertTrue(factory.toString().contains("pamOtherPwd=******,***"));
+    Assertions.assertTrue(factory.toString().contains("pamOtherPwd=*,*"));
     Assertions.assertTrue(factory.toString().contains("connectTimeout=PT10S"));
     Assertions.assertTrue(factory.toString().contains("socketTimeout=PT1H"));
     Assertions.assertTrue(factory.toString().contains("tcpKeepAlive=true"));
@@ -258,5 +258,16 @@ public class ConfigurationTest extends BaseTest {
         IllegalArgumentException.class,
         () -> MariadbConnectionConfiguration.builder().host("jj").build(),
         "username must not be null");
+  }
+
+  @Test
+  void sessionVariablesParsing() {
+    String connectionUrl =
+        "r2dbc:mariadb://admin:pass@localhost:3306/dbname?sessionVariables=sql_mode='ANSI'";
+    ConnectionFactoryOptions factoryOptions = ConnectionFactoryOptions.parse(connectionUrl);
+    Assertions.assertTrue(factoryOptions.toString().contains("sessionVariables=sql_mode='ANSI'"));
+    ConnectionFactory connectionFactory = ConnectionFactories.get(factoryOptions);
+    Assertions.assertTrue(
+        connectionFactory.toString().contains("sessionVariables={sql_mode='ANSI'}"));
   }
 }
