@@ -81,7 +81,7 @@ public class StringParameterTest extends BaseConnectionTest {
         .createStatement("INSERT INTO StringParam VALUES (?,?,?)")
         .bindNull(0, BigInteger.class)
         .bindNull(1, BigInteger.class)
-        .bindNull(2, BigInteger.class)
+        .bindNull(2, null)
         .execute()
         .blockLast();
     validate(Optional.empty(), Optional.empty(), Optional.empty());

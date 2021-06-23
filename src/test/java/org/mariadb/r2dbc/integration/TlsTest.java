@@ -159,6 +159,9 @@ public class TlsTest extends BaseConnectionTest {
                   .serverSslCert(serverSslCert)
                   .clientSslCert("wrongFile")
                   .clientSslKey("dd")
+                  .clientSslPassword(null)
+                  .rsaPublicKey(null)
+                  .cachingRsaPublicKey(null)
                   .build(),
           "Failed to find clientSslCert file. clientSslCert=wrongFile");
       if (clientSslCert != null) {

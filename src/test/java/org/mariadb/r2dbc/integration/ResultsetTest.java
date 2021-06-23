@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.test.StepVerifier;
 
 public class ResultsetTest extends BaseConnectionTest {
@@ -89,12 +90,14 @@ public class ResultsetTest extends BaseConnectionTest {
         .execute()
         .blockLast();
 
-    sharedConn
-        .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
-        .bind(0, "test1")
-        .bind(1, "test2")
-        .returnGeneratedValues("id", "test")
-        .execute()
+    MariadbStatement st =
+        sharedConn
+            .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
+            .bind(0, "test1")
+            .bind(1, "test2")
+            .returnGeneratedValues("id", "test");
+    Assertions.assertTrue(st.toString().contains("generatedColumns=[id, test]"));
+    st.execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
         .as(StepVerifier::create)
         .expectNext("1test1", "2test2")

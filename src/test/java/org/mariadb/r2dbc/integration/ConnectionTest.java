@@ -16,6 +16,8 @@
 
 package org.mariadb.r2dbc.integration;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import ch.qos.logback.classic.Level;
 import io.r2dbc.spi.*;
 import java.math.BigInteger;
@@ -36,6 +38,7 @@ import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class ConnectionTest extends BaseConnectionTest {
@@ -684,5 +687,63 @@ public class ConnectionTest extends BaseConnectionTest {
     } finally {
       connection.close().block();
     }
+  }
+
+  @Test
+  public void isolationLevel() {
+    MariadbConnection connection =
+        new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create().block();
+
+    Assertions.assertThrows(
+        Exception.class,
+        () -> connection.setTransactionIsolationLevel((IsolationLevel) null).block());
+    IsolationLevel[] levels =
+        new IsolationLevel[] {
+          IsolationLevel.READ_UNCOMMITTED,
+          IsolationLevel.READ_COMMITTED,
+          IsolationLevel.SERIALIZABLE,
+          IsolationLevel.REPEATABLE_READ
+        };
+    for (IsolationLevel level : levels) {
+      connection.setTransactionIsolationLevel(level).block();
+      assertEquals(level, connection.getTransactionIsolationLevel());
+    }
+    connection.close().block();
+    Assertions.assertThrows(
+        R2dbcNonTransientResourceException.class,
+        () -> connection.setTransactionIsolationLevel(IsolationLevel.READ_UNCOMMITTED).block());
+  }
+
+  @Test
+  public void errorOnConnection() {
+    BigInteger maxConn =
+        sharedConn
+            .createStatement("select @@max_connections")
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> row.get(0, BigInteger.class)))
+            .blockLast();
+    Assumptions.assumeTrue(maxConn.intValue() < 200);
+
+    R2dbcTransientResourceException expected = null;
+    Mono<MariadbConnection>[] cons = new Mono[maxConn.intValue()];
+    for (int i = 0; i < maxConn.intValue(); i++) {
+      cons[i] = new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create();
+    }
+    MariadbConnection[] connections = new MariadbConnection[maxConn.intValue()];
+    for (int i = 0; i < maxConn.intValue(); i++) {
+      try {
+        connections[i] = cons[i].block();
+      } catch (R2dbcTransientResourceException e) {
+        expected = e;
+      }
+    }
+
+    for (int i = 0; i < maxConn.intValue(); i++) {
+      if (connections[i] != null) {
+        connections[i].close().block();
+      }
+    }
+    Assertions.assertNotNull(expected);
+    Assertions.assertTrue(expected.getMessage().contains("Too many connections"));
   }
 }

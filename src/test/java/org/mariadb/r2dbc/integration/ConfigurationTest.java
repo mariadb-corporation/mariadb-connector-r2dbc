@@ -89,8 +89,8 @@ public class ConfigurationTest extends BaseTest {
     Assertions.assertTrue(factory.toString().contains("socket='ff'"));
     Assertions.assertTrue(factory.toString().contains("allowMultiQueries=true"));
     Assertions.assertTrue(factory.toString().contains("tlsProtocol=[TLSv1.2]"));
-    Assertions.assertTrue(factory.toString().contains("serverSslCert='myCert'"));
-    Assertions.assertTrue(factory.toString().contains("clientSslCert='myClientCert'"));
+    Assertions.assertTrue(factory.toString().contains("serverSslCert=myCert"));
+    Assertions.assertTrue(factory.toString().contains("clientSslCert=myClientCert"));
     Assertions.assertTrue(factory.toString().contains("allowPipelining=true"));
     Assertions.assertTrue(factory.toString().contains("useServerPrepStmts=true"));
     Assertions.assertTrue(factory.toString().contains("prepareCacheSize=2560"));
@@ -269,5 +269,22 @@ public class ConfigurationTest extends BaseTest {
     ConnectionFactory connectionFactory = ConnectionFactories.get(factoryOptions);
     Assertions.assertTrue(
         connectionFactory.toString().contains("sessionVariables={sql_mode='ANSI'}"));
+  }
+
+  @Test
+  void confStringValue() {
+    String connectionUrl =
+        "r2dbc:mariadb://admin:pass@localhost:3306/dbname?allowMultiQueries=blabla";
+    ConnectionFactoryOptions options = ConnectionFactoryOptions.parse(connectionUrl);
+    MariadbConnectionConfiguration.Builder builder =
+        MariadbConnectionConfiguration.fromOptions(options);
+    builder.tlsProtocol(null);
+    Assertions.assertEquals(
+        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, socketTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, port=3306, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=DISABLED, pamOtherPwd=}",
+        builder.toString());
+    MariadbConnectionConfiguration conf = builder.build();
+    Assertions.assertEquals(
+        "SslConfig{sslMode=DISABLED, serverSslCert=null, clientSslCert=null, tlsProtocol=null}",
+        conf.getSslConfig().toString());
   }
 }

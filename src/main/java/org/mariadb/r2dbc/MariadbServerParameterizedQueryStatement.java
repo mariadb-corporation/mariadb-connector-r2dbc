@@ -58,11 +58,6 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     this.prepareResult = new AtomicReference<>(client.getPrepareCache().get(sql));
   }
 
-  static boolean supports(String sql) {
-    Assert.requireNonNull(sql, "sql must not be null");
-    return !sql.trim().isEmpty();
-  }
-
   @Override
   public MariadbServerParameterizedQueryStatement add() {
     // check valid parameters
@@ -273,22 +268,18 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
       prepareResult.set(client.getPrepareCache().get(sql));
     }
 
-    Flux<org.mariadb.r2dbc.api.MariadbResult> flux;
     if (prepareResult.get() != null) {
       validateParameters();
+
       ServerPrepareResult res;
       if (this.client.getPrepareCache() != null
           && (res = this.client.getPrepareCache().get(sql)) != null
           && !res.equals(prepareResult.get())) {
         prepareResult.get().decrementUse(client);
         prepareResult.set(res);
-      } else {
-        if (!prepareResult.get().incrementUse()) {
-          prepareResult.set(null);
-        }
       }
 
-      if (prepareResult.get() != null) {
+      if (prepareResult.get().incrementUse()) {
         return sendExecuteCmd(factory, parameters, generatedColumns)
             .concatWith(
                 Flux.create(
@@ -297,9 +288,13 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                       sink.complete();
                       parameters.clear();
                     }));
+      } else {
+        // prepare is closing
+        prepareResult.set(null);
       }
     }
 
+    Flux<org.mariadb.r2dbc.api.MariadbResult> flux;
     if (configuration.allowPipelining()
         && client.getVersion().isMariaDBServer()
         && client.getVersion().versionGreaterOrEqual(10, 2, 0)) {

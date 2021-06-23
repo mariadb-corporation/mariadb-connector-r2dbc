@@ -184,12 +184,10 @@ public class SslConfig {
     return "SslConfig{"
         + "sslMode="
         + sslMode
-        + ", serverSslCert='"
+        + ", serverSslCert="
         + serverSslCert
-        + '\''
-        + ", clientSslCert='"
+        + ", clientSslCert="
         + clientSslCert
-        + '\''
         + ", tlsProtocol="
         + tlsProtocol
         + '}';

@@ -237,13 +237,15 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .execute()
         .blockLast();
 
-    sharedConnPrepare
-        .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
-        .bind(0, "test1")
-        .bind(1, "test2")
-        .fetchSize(44)
-        .returnGeneratedValues("id", "test")
-        .execute()
+    MariadbStatement st =
+        sharedConnPrepare
+            .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
+            .bind(0, "test1")
+            .bind(1, "test2")
+            .fetchSize(44)
+            .returnGeneratedValues("id", "test");
+    Assertions.assertTrue(st.toString().contains("generatedColumns=[id, test]"));
+    st.execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
         .as(StepVerifier::create)
         .expectNext("1test1", "2test2")

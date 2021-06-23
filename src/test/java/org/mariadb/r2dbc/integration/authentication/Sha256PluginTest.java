@@ -85,35 +85,23 @@ public class Sha256PluginTest extends BaseConnectionTest {
         }
       }
     }
-
-    sharedConn
-        .createStatement("DROP USER IF EXISTS 'sha256User'@'%'")
-        .execute()
-        .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
-        .blockLast();
-    sharedConn
-        .createStatement("DROP USER IF EXISTS 'cachingSha256User'@'%'")
-        .execute()
-        .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
-        .blockLast();
-    sharedConn
-        .createStatement("DROP USER IF EXISTS 'cachingSha256User2'@'%'")
-        .execute()
-        .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
-        .blockLast();
+    dropAll();
 
     String sqlCreateUser;
     String sqlGrant;
     if (minVersion(8, 0, 0)) {
       sqlCreateUser = "CREATE USER 'sha256User'@'%' IDENTIFIED WITH sha256_password BY 'password'";
       sqlGrant = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User'@'%'";
+      sqlCreateUser = "CREATE USER 'sha256User2'@'%' IDENTIFIED WITH sha256_password BY 'password'";
+      sqlGrant = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User2'@'%'";
     } else {
       sqlCreateUser = "CREATE USER 'sha256User'@'%'";
       sqlGrant =
           "GRANT ALL PRIVILEGES ON *.* TO 'sha256User'@'%' IDENTIFIED WITH "
+              + "sha256_password BY 'password'";
+      sqlCreateUser = "CREATE USER 'sha256User2'@'%'";
+      sqlGrant =
+          "GRANT ALL PRIVILEGES ON *.* TO 'sha256User2'@'%' IDENTIFIED WITH "
               + "sha256_password BY 'password'";
     }
     sharedConn.createStatement(sqlCreateUser).execute().blockLast();
@@ -150,10 +138,16 @@ public class Sha256PluginTest extends BaseConnectionTest {
   }
 
   @AfterAll
-  public static void after2() {
+  public static void dropAll() {
     Assumptions.assumeTrue(!isMariaDBServer() && minVersion(5, 7, 0));
     sharedConn
         .createStatement("DROP USER sha256User")
+        .execute()
+        .map(res -> res.getRowsUpdated())
+        .onErrorReturn(Mono.empty())
+        .blockLast();
+    sharedConn
+        .createStatement("DROP USER sha256User2")
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
@@ -201,7 +195,7 @@ public class Sha256PluginTest extends BaseConnectionTest {
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
-            .username("sha256User")
+            .username("sha256User2")
             .password("password")
             .allowPublicKeyRetrieval(true)
             .build();

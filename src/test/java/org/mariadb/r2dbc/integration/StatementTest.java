@@ -282,7 +282,15 @@ public class StatementTest extends BaseConnectionTest {
 
   @Test
   public void returning() {
-    Assumptions.assumeTrue(isMariaDBServer() && minVersion(10, 5, 1));
+    Assumptions.assumeTrue(isMariaDBServer());
+    if (!minVersion(10, 5, 1)) {
+      Assertions.assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              sharedConn
+                  .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES ('test1'), ('test2')")
+                  .returnGeneratedValues("id", "test"));
+    }
 
     sharedConn
         .createStatement(
@@ -291,31 +299,44 @@ public class StatementTest extends BaseConnectionTest {
         .blockLast();
 
     sharedConn
-        .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES ('test1'), ('test2')")
-        .returnGeneratedValues("id", "test")
-        .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
-        .as(StepVerifier::create)
-        .expectNext("1test1", "2test2")
-        .verifyComplete();
-
-    sharedConn
-        .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES ('test3'), ('test4')")
+        .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES ('test3')")
         .returnGeneratedValues("id")
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
         .as(StepVerifier::create)
-        .expectNext("3", "4")
+        .expectNext("1")
         .verifyComplete();
 
-    sharedConn
-        .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES ('a'), ('b')")
-        .returnGeneratedValues()
-        .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
-        .as(StepVerifier::create)
-        .expectNext("5a", "6b")
-        .verifyComplete();
+    if (minVersion(10, 5, 1)) {
+
+      sharedConn
+          .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES ('test3'), ('test4')")
+          .returnGeneratedValues("id")
+          .execute()
+          .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+          .as(StepVerifier::create)
+          .expectNext("2", "3")
+          .verifyComplete();
+      sharedConn
+          .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES ('test1'), ('test2')")
+          .returnGeneratedValues("id", "test")
+          .execute()
+          .flatMap(
+              r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
+          .as(StepVerifier::create)
+          .expectNext("4test1", "5test2")
+          .verifyComplete();
+
+      sharedConn
+          .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES ('a'), ('b')")
+          .returnGeneratedValues()
+          .execute()
+          .flatMap(
+              r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
+          .as(StepVerifier::create)
+          .expectNext("6a", "7b")
+          .verifyComplete();
+    }
   }
 
   @Test

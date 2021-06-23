@@ -122,30 +122,21 @@ public final class MariadbConnectionConfiguration {
     if (value instanceof Boolean) {
       return ((Boolean) value).booleanValue();
     }
-    if (value instanceof String) {
-      return Boolean.parseBoolean(value.toString());
-    }
-    throw new IllegalArgumentException(String.format("Option %s wrong boolean format", value));
+    return Boolean.parseBoolean(value.toString());
   }
 
   static Duration durationValue(Object value) {
     if (value instanceof Duration) {
       return ((Duration) value);
     }
-    if (value instanceof String) {
-      return Duration.parse(value.toString());
-    }
-    throw new IllegalArgumentException(String.format("Option %s wrong duration format", value));
+    return Duration.parse(value.toString());
   }
 
   static int intValue(Object value) {
     if (value instanceof Number) {
       return ((Number) value).intValue();
     }
-    if (value instanceof String) {
-      return Integer.parseInt(value.toString());
-    }
-    throw new IllegalArgumentException(String.format("Option %s wrong integer format", value));
+    return Integer.parseInt(value.toString());
   }
 
   public static Builder fromOptions(ConnectionFactoryOptions connectionFactoryOptions) {
@@ -264,10 +255,9 @@ public final class MariadbConnectionConfiguration {
       try {
         for (int i = 0; i < pairs.length; i++) {
           pairs[i] = URLDecoder.decode(pairs[i], StandardCharsets.UTF_8.toString());
-          ;
         }
       } catch (UnsupportedEncodingException e) {
-        // eat
+        // eat, StandardCharsets.UTF_8 is always supported
       }
       builder.pamOtherPwd(pairs);
     }
@@ -876,17 +866,14 @@ public final class MariadbConnectionConfiguration {
       }
 
       return "Builder{"
-          + "rsaPublicKey='"
+          + "rsaPublicKey="
           + rsaPublicKey
-          + '\''
-          + ", cachingRsaPublicKey='"
+          + ", cachingRsaPublicKey="
           + cachingRsaPublicKey
-          + '\''
           + ", allowPublicKeyRetrieval="
           + allowPublicKeyRetrieval
-          + ", username='"
+          + ", username="
           + username
-          + '\''
           + ", connectTimeout="
           + connectTimeout
           + ", socketTimeout="
@@ -895,12 +882,10 @@ public final class MariadbConnectionConfiguration {
           + tcpKeepAlive
           + ", tcpAbortiveClose="
           + tcpAbortiveClose
-          + ", database='"
+          + ", database="
           + database
-          + '\''
-          + ", host='"
+          + ", host="
           + host
-          + '\''
           + ", sessionVariables="
           + sessionVariables
           + ", connectionAttributes="
@@ -909,9 +894,8 @@ public final class MariadbConnectionConfiguration {
           + hiddenPwd
           + ", port="
           + port
-          + ", socket='"
+          + ", socket="
           + socket
-          + '\''
           + ", allowMultiQueries="
           + allowMultiQueries
           + ", allowPipelining="
@@ -922,15 +906,12 @@ public final class MariadbConnectionConfiguration {
           + prepareCacheSize
           + ", tlsProtocol="
           + tlsProtocol
-          + ", serverSslCert='"
+          + ", serverSslCert="
           + serverSslCert
-          + '\''
-          + ", clientSslCert='"
+          + ", clientSslCert="
           + clientSslCert
-          + '\''
-          + ", clientSslKey='"
+          + ", clientSslKey="
           + clientSslKey
-          + '\''
           + ", clientSslPassword="
           + clientSslPassword
           + ", sslMode="
