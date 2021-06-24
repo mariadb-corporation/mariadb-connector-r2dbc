@@ -249,7 +249,7 @@ public class Sha256PluginTest extends BaseConnectionTest {
             .username("sha256User")
             .password("password")
             .allowPublicKeyRetrieval(true)
-            .sslMode(SslMode.ENABLE_TRUST)
+            .sslMode(SslMode.TRUST)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();
@@ -327,7 +327,7 @@ public class Sha256PluginTest extends BaseConnectionTest {
             .clone()
             .username("cachingSha256User")
             .password("password")
-            .sslMode(SslMode.ENABLE_TRUST)
+            .sslMode(SslMode.TRUST)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();

@@ -101,7 +101,7 @@ public final class MariadbConnectionConfiguration {
     this.username = username;
     this.allowMultiQueries = allowMultiQueries;
     this.allowPipelining = allowPipelining;
-    if (sslMode == SslMode.DISABLED) {
+    if (sslMode == SslMode.DISABLE) {
       this.sslConfig = SslConfig.DISABLE_INSTANCE;
     } else {
       this.sslConfig =
@@ -122,7 +122,7 @@ public final class MariadbConnectionConfiguration {
     if (value instanceof Boolean) {
       return ((Boolean) value).booleanValue();
     }
-    return Boolean.parseBoolean(value.toString());
+    return Boolean.parseBoolean(value.toString()) || "1".equals(value);
   }
 
   static Duration durationValue(Object value) {
@@ -235,6 +235,10 @@ public final class MariadbConnectionConfiguration {
         connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SERVER_SSL_CERT));
     builder.clientSslCert(
         connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_CERT));
+    builder.clientSslKey(
+        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_KEY));
+    builder.clientSslPassword(
+        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_PWD));
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TLS_PROTOCOL)) {
       String[] protocols =
@@ -495,7 +499,7 @@ public final class MariadbConnectionConfiguration {
     @Nullable private String clientSslCert;
     @Nullable private String clientSslKey;
     @Nullable private CharSequence clientSslPassword;
-    private SslMode sslMode = SslMode.DISABLED;
+    private SslMode sslMode = SslMode.DISABLE;
     private CharSequence[] pamOtherPwd;
 
     private Builder() {}
@@ -725,7 +729,7 @@ public final class MariadbConnectionConfiguration {
 
     public Builder sslMode(SslMode sslMode) {
       this.sslMode = sslMode;
-      if (sslMode == null) this.sslMode = SslMode.DISABLED;
+      if (sslMode == null) this.sslMode = SslMode.DISABLE;
       return this;
     }
 
@@ -919,6 +923,10 @@ public final class MariadbConnectionConfiguration {
           + sslMode
           + ", pamOtherPwd="
           + hiddenPamPwd
+          + ", tinyInt1isBit="
+          + tinyInt1isBit
+          + ", autoCommit="
+          + autocommit
           + '}';
     }
   }

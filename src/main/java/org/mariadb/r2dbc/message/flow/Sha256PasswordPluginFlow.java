@@ -121,7 +121,7 @@ public class Sha256PasswordPluginFlow implements AuthenticationPlugin {
         CharSequence password = configuration.getPassword();
         if (password == null
             || password.toString().isEmpty()
-            || configuration.getSslConfig().getSslMode() != SslMode.DISABLED) {
+            || configuration.getSslConfig().getSslMode() != SslMode.DISABLE) {
           return new ClearPasswordPacket(authSwitchPacket.getSequencer(), password);
         } else {
           // retrieve public key from configuration or from server

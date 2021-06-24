@@ -144,12 +144,12 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
               if (serverMessage instanceof OkPacket
                   && generatedColumns != null
                   && !supportReturning) {
-                if (metadataList == null || metadataList.length == 0) {
-                  String colName = generatedColumns.length > 0 ? generatedColumns[0] : "ID";
-                  metadataList = new ColumnDefinitionPacket[1];
-                  metadataList[0] = ColumnDefinitionPacket.fromGeneratedId(colName);
-                  rowMetadata = MariadbRowMetadata.toRowMetadata(this.metadataList);
-                }
+
+                String colName = generatedColumns.length > 0 ? generatedColumns[0] : "ID";
+                metadataList = new ColumnDefinitionPacket[1];
+                metadataList[0] = ColumnDefinitionPacket.fromGeneratedId(colName);
+                rowMetadata = MariadbRowMetadata.toRowMetadata(this.metadataList);
+
                 OkPacket okPacket = ((OkPacket) serverMessage);
                 if (okPacket.getAffectedRows() > 1) {
                   sink.error(

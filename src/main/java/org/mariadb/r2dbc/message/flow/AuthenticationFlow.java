@@ -151,7 +151,7 @@ public final class AuthenticationFlow {
                         initializeClientCapabilities(
                             flow.initialHandshakePacket.getCapabilities(), flow.configuration);
 
-                    if (flow.configuration.getSslConfig().getSslMode() != SslMode.DISABLED) {
+                    if (flow.configuration.getSslConfig().getSslMode() != SslMode.DISABLE) {
                       if ((packet.getCapabilities() & Capabilities.SSL) == 0) {
                         sink.error(
                             new R2dbcNonTransientResourceException(

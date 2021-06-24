@@ -104,7 +104,7 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
             return null;
 
           case 4:
-            if (configuration.getSslConfig().getSslMode() != SslMode.DISABLED) {
+            if (configuration.getSslConfig().getSslMode() != SslMode.DISABLE) {
               // send clear password
               state = State.SEND_AUTH;
               return new ClearPasswordPacket(authMoreDataPacket.getSequencer(), password);

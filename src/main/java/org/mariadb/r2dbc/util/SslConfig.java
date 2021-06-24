@@ -38,7 +38,7 @@ import org.mariadb.r2dbc.SslMode;
 
 public class SslConfig {
 
-  public static final SslConfig DISABLE_INSTANCE = new SslConfig(SslMode.DISABLED);
+  public static final SslConfig DISABLE_INSTANCE = new SslConfig(SslMode.DISABLE);
 
   private SslMode sslMode;
   private String serverSslCert;
@@ -63,7 +63,7 @@ public class SslConfig {
     this.clientSslCert = clientSslCert;
     this.clientSslKey = clientSslKey;
     this.clientSslPassword = clientSslPassword;
-    if (sslMode != SslMode.DISABLED) {
+    if (sslMode != SslMode.DISABLE) {
       sslContextBuilder = getSslContextBuilder();
     }
   }
@@ -79,7 +79,7 @@ public class SslConfig {
   private SslContextBuilder getSslContextBuilder() throws R2dbcTransientResourceException {
     final SslContextBuilder sslCtxBuilder = SslContextBuilder.forClient();
 
-    if (sslMode == SslMode.ENABLE_TRUST) {
+    if (sslMode == SslMode.TRUST) {
       sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE);
     } else {
 
@@ -156,7 +156,7 @@ public class SslConfig {
         result.completeExceptionally(future.cause());
         return;
       }
-      if (sslMode == SslMode.ENABLE) {
+      if (sslMode == SslMode.VERIFY_FULL) {
         try {
           DefaultHostnameVerifier hostnameVerifier = new DefaultHostnameVerifier();
           SSLSession session = engine.getSession();
@@ -190,6 +190,8 @@ public class SslConfig {
         + clientSslCert
         + ", tlsProtocol="
         + tlsProtocol
+        + ", clientSslKey="
+        + clientSslKey
         + '}';
   }
 }

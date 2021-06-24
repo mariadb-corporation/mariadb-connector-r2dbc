@@ -689,21 +689,21 @@ public class ConnectionTest extends BaseConnectionTest {
     }
   }
 
+  IsolationLevel[] levels =
+      new IsolationLevel[] {
+        IsolationLevel.READ_UNCOMMITTED,
+        IsolationLevel.READ_COMMITTED,
+        IsolationLevel.SERIALIZABLE,
+        IsolationLevel.REPEATABLE_READ
+      };
+
   @Test
   public void isolationLevel() {
     MariadbConnection connection =
         new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create().block();
 
     Assertions.assertThrows(
-        Exception.class,
-        () -> connection.setTransactionIsolationLevel((IsolationLevel) null).block());
-    IsolationLevel[] levels =
-        new IsolationLevel[] {
-          IsolationLevel.READ_UNCOMMITTED,
-          IsolationLevel.READ_COMMITTED,
-          IsolationLevel.SERIALIZABLE,
-          IsolationLevel.REPEATABLE_READ
-        };
+        Exception.class, () -> connection.setTransactionIsolationLevel(null).block());
     for (IsolationLevel level : levels) {
       connection.setTransactionIsolationLevel(level).block();
       assertEquals(level, connection.getTransactionIsolationLevel());
@@ -712,6 +712,30 @@ public class ConnectionTest extends BaseConnectionTest {
     Assertions.assertThrows(
         R2dbcNonTransientResourceException.class,
         () -> connection.setTransactionIsolationLevel(IsolationLevel.READ_UNCOMMITTED).block());
+  }
+
+  @Test
+  public void initialIsolationLevel() {
+    for (IsolationLevel level : levels) {
+      sharedConn
+          .createStatement("SET GLOBAL TRANSACTION ISOLATION LEVEL " + level.asSql())
+          .execute()
+          .blockLast();
+      MariadbConnection connection =
+          new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create().block();
+      assertEquals(level, connection.getTransactionIsolationLevel());
+      connection.close().block();
+    }
+
+    IsolationLevel defaultValue = IsolationLevel.REPEATABLE_READ;
+    if ("skysql".equals(System.getenv("srv")) || "skysql-ha".equals(System.getenv("srv"))) {
+      defaultValue = IsolationLevel.READ_COMMITTED;
+    }
+
+    sharedConn
+        .createStatement("SET GLOBAL TRANSACTION ISOLATION LEVEL " + defaultValue.asSql())
+        .execute()
+        .blockLast();
   }
 
   @Test
