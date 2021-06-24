@@ -725,14 +725,14 @@ public class ConnectionTest extends BaseConnectionTest {
     Assumptions.assumeTrue(maxConn.intValue() < 200);
 
     R2dbcTransientResourceException expected = null;
-    Mono<MariadbConnection>[] cons = new Mono[maxConn.intValue()];
+    Mono<?>[] cons = new Mono<?>[maxConn.intValue()];
     for (int i = 0; i < maxConn.intValue(); i++) {
       cons[i] = new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create();
     }
     MariadbConnection[] connections = new MariadbConnection[maxConn.intValue()];
     for (int i = 0; i < maxConn.intValue(); i++) {
       try {
-        connections[i] = cons[i].block();
+        connections[i] = (MariadbConnection) cons[i].block();
       } catch (R2dbcTransientResourceException e) {
         expected = e;
       }

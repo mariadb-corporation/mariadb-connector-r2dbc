@@ -637,10 +637,11 @@ public final class MariadbConnectionConfiguration {
         this.tlsProtocol = null;
         return this;
       }
-      this.tlsProtocol = new ArrayList<>();
+      List<String> tmp = new ArrayList<>();
       for (String protocol : tlsProtocol) {
-        this.tlsProtocol.add(protocol);
+        if (protocol != null) tmp.add(protocol);
       }
+      if (!tmp.isEmpty()) this.tlsProtocol = tmp;
       return this;
     }
 
