@@ -16,7 +16,11 @@
 
 package org.mariadb.r2dbc.integration;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import io.r2dbc.spi.R2dbcTransientResourceException;
+import java.math.BigInteger;
+import java.sql.SQLException;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Assertions;
@@ -222,5 +226,66 @@ public class ResultsetTest extends BaseConnectionTest {
                 throwable instanceof R2dbcTransientResourceException
                     && throwable.getMessage().equals("Column index -5 must be positive"))
         .verify();
+  }
+
+  private String generateLongText(int len) {
+    int leftLimit = 97; // letter 'a'
+    int rightLimit = 122; // letter 'z'
+    Random random = new Random();
+    return random
+        .ints(leftLimit, leftLimit + 1) // rightLimit + 1)
+        .limit(len)
+        .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+        .toString();
+  }
+
+  @Test
+  public void skippingRes() throws SQLException {
+    BigInteger maxAllowedPacket =
+        sharedConn
+            .createStatement("select @@max_allowed_packet")
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> row.get(0, BigInteger.class)))
+            .blockLast();
+    Assumptions.assumeTrue(maxAllowedPacket.intValue() > 35_000_000);
+    sharedConn.createStatement("DROP TABLE IF EXISTS prepare3").execute().blockLast();
+    sharedConn
+        .createStatement(
+            "CREATE TABLE prepare3 (t1 LONGTEXT, t2 LONGTEXT, t3 LONGTEXT, t4 LONGTEXT)")
+        .execute()
+        .blockLast();
+    // skippingRes(sharedConn);
+    skippingRes(sharedConnPrepare);
+  }
+
+  private void skippingRes(MariadbConnection con) {
+    con.createStatement("TRUNCATE prepare3").execute().blockLast();
+    String longText = generateLongText(20_000_000);
+    String mediumText = generateLongText(10_000_000);
+    String smallIntText = generateLongText(60_000);
+
+    con.createStatement("INSERT INTO prepare3 values (?,?,?,?)")
+        .bind(0, longText)
+        .bind(1, mediumText)
+        .bind(2, smallIntText)
+        .bind(3, "expected")
+        .execute()
+        .blockLast();
+    con.createStatement("SELECT * FROM prepare3 WHERE 1=?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      assertEquals("expected", row.get(3));
+                      assertEquals(smallIntText, row.get(2));
+                      assertEquals(mediumText, row.get(1));
+                      assertEquals(longText, row.get(0));
+                      return row.get(3);
+                    }))
+        .as(StepVerifier::create)
+        .expectNext("expected")
+        .verifyComplete();
   }
 }
