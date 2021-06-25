@@ -53,12 +53,12 @@ public class TlsTest extends BaseConnectionTest {
             : Integer.valueOf(System.getenv("TEST_MAXSCALE_TLS_PORT"));
     // try default if not present
     if (serverSslCert == null) {
-      File sslDir = new File(System.getProperty("user.dir") + "/../ssl");
+      File sslDir = new File(System.getProperty("user.dir") + "/../../ssl");
       if (sslDir.exists() && sslDir.isDirectory()) {
 
-        serverSslCert = System.getProperty("user.dir") + "/../ssl/server.crt";
-        clientSslCert = System.getProperty("user.dir") + "/../ssl/client.crt";
-        clientSslKey = System.getProperty("user.dir") + "/../ssl/client.key";
+        serverSslCert = System.getProperty("user.dir") + "/../../ssl/server.crt";
+        clientSslCert = System.getProperty("user.dir") + "/../../ssl/client.crt";
+        clientSslKey = System.getProperty("user.dir") + "/../../ssl/client.key";
       }
     }
 
@@ -318,9 +318,7 @@ public class TlsTest extends BaseConnectionTest {
   @Test
   void fullMutualWithoutClientCerts() throws Exception {
     Assumptions.assumeTrue(
-        System.getenv("TRAVIS") != null
-            && !"maxscale".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv")));
+        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeTrue(haveSsl(sharedConn));
     Assumptions.assumeTrue(serverSslCert != null && clientSslCert != null & clientSslKey != null);
     MariadbConnectionConfiguration conf =

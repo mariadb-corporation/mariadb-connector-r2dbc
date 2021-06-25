@@ -97,30 +97,29 @@ public class SslConfig {
         throw new R2dbcTransientResourceException(
             "Server certificate needed (option `serverSslCert`) for ssl mode " + sslMode, "08000");
       }
+    }
+    if (clientSslCert != null && clientSslKey != null) {
+      InputStream certificatesStream;
+      try {
+        certificatesStream = loadCert(clientSslCert);
+      } catch (FileNotFoundException fileNotFoundEx) {
+        throw new R2dbcTransientResourceException(
+            "Failed to find clientSslCert file. clientSslCert=" + clientSslCert,
+            "08000",
+            fileNotFoundEx);
+      }
 
-      if (clientSslCert != null && clientSslKey != null) {
-        InputStream certificatesStream;
-        try {
-          certificatesStream = loadCert(clientSslCert);
-        } catch (FileNotFoundException fileNotFoundEx) {
-          throw new R2dbcTransientResourceException(
-              "Failed to find clientSslCert file. clientSslCert=" + clientSslCert,
-              "08000",
-              fileNotFoundEx);
-        }
-
-        try {
-          InputStream privateKeyStream = new FileInputStream(clientSslKey);
-          sslCtxBuilder.keyManager(
-              certificatesStream,
-              privateKeyStream,
-              clientSslPassword == null ? null : clientSslPassword.toString());
-        } catch (FileNotFoundException fileNotFoundEx) {
-          throw new R2dbcTransientResourceException(
-              "Failed to find clientSslKey file. clientSslKey=" + clientSslKey,
-              "08000",
-              fileNotFoundEx);
-        }
+      try {
+        InputStream privateKeyStream = new FileInputStream(clientSslKey);
+        sslCtxBuilder.keyManager(
+            certificatesStream,
+            privateKeyStream,
+            clientSslPassword == null ? null : clientSslPassword.toString());
+      } catch (FileNotFoundException fileNotFoundEx) {
+        throw new R2dbcTransientResourceException(
+            "Failed to find clientSslKey file. clientSslKey=" + clientSslKey,
+            "08000",
+            fileNotFoundEx);
       }
     }
 

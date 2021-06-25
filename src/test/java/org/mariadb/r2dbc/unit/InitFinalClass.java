@@ -5,8 +5,8 @@ import org.mariadb.r2dbc.codec.Codecs;
 
 public class InitFinalClass {
 
-    @Test
-    public void init() throws Exception {
-        Codecs codecs = new Codecs();
-    }
+  @Test
+  public void init() throws Exception {
+    Codecs codecs = new Codecs();
+  }
 }

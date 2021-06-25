@@ -17,6 +17,7 @@
 package org.mariadb.r2dbc.integration;
 
 import io.r2dbc.spi.*;
+import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -24,6 +25,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
@@ -75,22 +77,45 @@ public class ConfigurationTest extends BaseTest {
   }
 
   @Test
-  void checkOptions() {
+  void checkOptions() throws Exception {
+
+    String serverSslCert = System.getenv("TEST_DB_SERVER_CERT");
+    String clientSslCert = System.getenv("TEST_DB_CLIENT_CERT");
+    String clientSslKey = System.getenv("TEST_DB_CLIENT_KEY");
+
+    // try default if not present
+    if (serverSslCert == null) {
+      File sslDir = new File(System.getProperty("user.dir") + "/../../ssl");
+      if (sslDir.exists() && sslDir.isDirectory()) {
+
+        serverSslCert = System.getProperty("user.dir") + "/../../ssl/server.crt";
+        clientSslCert = System.getProperty("user.dir") + "/../../ssl/client.crt";
+        clientSslKey = System.getProperty("user.dir") + "/../../ssl/client.key";
+      }
+    }
+    Assumptions.assumeTrue(clientSslCert != null);
     MariadbConnectionFactory factory =
         (MariadbConnectionFactory)
             ConnectionFactories.get(
-                "r2dbc:mariadb://root:pwd@localhost:3306/db?socket=ff&allowMultiQueries=true&tlsProtocol=TLSv1"
-                    + ".2&serverSslCert=myCert&clientSslCert=myClientCert&clientSslKey=bla&clientSslPassword=bla2&allowPipelining=true&useServerPrepStmts"
+                "r2dbc:mariadb://root:pwd@localhost:3306/db?socket=ff&allowMultiQueries=true"
+                    + "&tlsProtocol=TLSv1.2"
+                    + "&serverSslCert="
+                    + serverSslCert
+                    + "&clientSslCert="
+                    + clientSslCert
+                    + "&clientSslKey="
+                    + clientSslKey
+                    + "&allowPipelining=true&useServerPrepStmts"
                     + "=true&prepareCacheSize=2560&connectTimeout=PT10S&socketTimeout=PT1H&tcpKeepAlive=true"
-                    + "&tcpAbortiveClose=true&sslMode=ENABLE_TRUST"
+                    + "&tcpAbortiveClose=true&sslMode=TRUST"
                     + "&connectionAttributes"
                     + "=test=2,"
                     + "h=4&pamOtherPwd=p%40ssword,pwd");
     Assertions.assertTrue(factory.toString().contains("socket='ff'"));
     Assertions.assertTrue(factory.toString().contains("allowMultiQueries=true"));
     Assertions.assertTrue(factory.toString().contains("tlsProtocol=[TLSv1.2]"));
-    Assertions.assertTrue(factory.toString().contains("serverSslCert=myCert"));
-    Assertions.assertTrue(factory.toString().contains("clientSslCert=myClientCert"));
+    Assertions.assertTrue(factory.toString().contains("serverSslCert=" + serverSslCert));
+    Assertions.assertTrue(factory.toString().contains("clientSslCert=" + clientSslCert));
     Assertions.assertTrue(factory.toString().contains("allowPipelining=true"));
     Assertions.assertTrue(factory.toString().contains("useServerPrepStmts=true"));
     Assertions.assertTrue(factory.toString().contains("prepareCacheSize=2560"));
@@ -101,7 +126,6 @@ public class ConfigurationTest extends BaseTest {
     Assertions.assertTrue(factory.toString().contains("socketTimeout=PT1H"));
     Assertions.assertTrue(factory.toString().contains("tcpKeepAlive=true"));
     Assertions.assertTrue(factory.toString().contains("tcpAbortiveClose=true"));
-    Assertions.assertTrue(factory.toString().contains("clientSslKey=bla"));
   }
 
   @Test
