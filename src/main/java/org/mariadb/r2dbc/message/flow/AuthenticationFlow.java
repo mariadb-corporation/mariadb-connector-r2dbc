@@ -110,7 +110,7 @@ public final class AuthenticationFlow {
       capabilities |= Capabilities.CLIENT_DEPRECATE_EOF;
     }
 
-    if (configuration.getDatabase() != null && !configuration.getDatabase().isEmpty()) {
+    if (configuration.getDatabase() != null) {
       capabilities |= Capabilities.CONNECT_WITH_DB;
     }
     return capabilities;

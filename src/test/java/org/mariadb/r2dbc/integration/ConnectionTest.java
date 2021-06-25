@@ -30,10 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseConnectionTest;
-import org.mariadb.r2dbc.MariadbConnectionConfiguration;
-import org.mariadb.r2dbc.MariadbConnectionFactory;
-import org.mariadb.r2dbc.TestConfiguration;
+import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.api.MariadbStatement;
@@ -712,6 +709,19 @@ public class ConnectionTest extends BaseConnectionTest {
     Assertions.assertThrows(
         R2dbcNonTransientResourceException.class,
         () -> connection.setTransactionIsolationLevel(IsolationLevel.READ_UNCOMMITTED).block());
+  }
+
+  @Test
+  public void noDb() {
+    MariadbConnection connection =
+            new MariadbConnectionFactory(TestConfiguration.defaultBuilder.database(null).build()).create().block();
+
+    connection.createStatement("SELECT DATABASE()").execute()
+            .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
+            .as(StepVerifier::create)
+            .expectNext(Optional.empty())
+            .verifyComplete();
+    connection.close().block();
   }
 
   @Test

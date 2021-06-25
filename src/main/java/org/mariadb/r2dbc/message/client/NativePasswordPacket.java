@@ -33,7 +33,10 @@ public final class NativePasswordPacket implements ClientMessage {
   public NativePasswordPacket(Sequencer sequencer, CharSequence password, byte[] seed) {
     this.sequencer = sequencer;
     this.password = password;
-    this.seed = seed;
+    byte[] truncatedSeed = new byte[seed.length - 1];
+    System.arraycopy(seed, 0, truncatedSeed, 0, seed.length - 1);
+
+    this.seed = truncatedSeed;
   }
 
   public static byte[] encrypt(CharSequence authenticationData, byte[] seed) {

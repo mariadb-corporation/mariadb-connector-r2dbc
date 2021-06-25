@@ -91,7 +91,7 @@ public final class MariadbConnectionConfiguration {
     this.socketTimeout = socketTimeout;
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
     this.tcpAbortiveClose = tcpAbortiveClose == null ? Boolean.FALSE : tcpAbortiveClose;
-    this.database = database;
+    this.database = database != null && !database.isEmpty() ? database : null;
     this.host = host;
     this.connectionAttributes = connectionAttributes;
     this.sessionVariables = sessionVariables;
