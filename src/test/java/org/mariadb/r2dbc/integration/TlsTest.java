@@ -43,13 +43,14 @@ public class TlsTest extends BaseConnectionTest {
 
   @BeforeAll
   public static void before2() {
-    serverSslCert = System.getenv("TEST_SERVER_SSL_CERT");
-    clientSslCert = System.getenv("TEST_CLIENT_SSL_CERT");
-    clientSslKey = System.getenv("TEST_CLIENT_KEY");
+    serverSslCert = System.getenv("TEST_DB_SERVER_CERT");
+    clientSslCert = System.getenv("TEST_DB_CLIENT_CERT");
+    clientSslKey = System.getenv("TEST_DB_CLIENT_KEY");
     sslPort =
-        System.getenv("SSLPORT") == null || System.getenv("SSLPORT").isEmpty()
+        System.getenv("TEST_MAXSCALE_TLS_PORT") == null
+                || System.getenv("TEST_MAXSCALE_TLS_PORT").isEmpty()
             ? TestConfiguration.port
-            : Integer.valueOf(System.getenv("SSLPORT"));
+            : Integer.valueOf(System.getenv("TEST_MAXSCALE_TLS_PORT"));
     // try default if not present
     if (serverSslCert == null) {
       File sslDir = new File(System.getProperty("user.dir") + "/../ssl");
@@ -79,9 +80,9 @@ public class TlsTest extends BaseConnectionTest {
     if (useOldNotation) {
       create_sql = "CREATE USER 'MUTUAL_AUTH'";
       grant_sql =
-          "grant all privileges on *.* to 'MUTUAL_AUTH' identified by 'ssltestpassword' REQUIRE X509";
+          "grant all privileges on *.* to 'MUTUAL_AUTH' identified by 'MySup8%rPassw@ord' REQUIRE X509";
     } else {
-      create_sql = "CREATE USER 'MUTUAL_AUTH' identified by 'ssltestpassword' REQUIRE X509";
+      create_sql = "CREATE USER 'MUTUAL_AUTH' identified by 'MySup8%rPassw@ord' REQUIRE X509";
       grant_sql = "grant all privileges on *.* to 'MUTUAL_AUTH'";
     }
     sharedConn.createStatement(create_sql).execute().subscribe();
@@ -231,6 +232,7 @@ public class TlsTest extends BaseConnectionTest {
     MariadbConnectionConfiguration conf2 =
         TestConfiguration.defaultBuilder
             .clone()
+            .port(sslPort)
             .sslMode(SslMode.VERIFY_CA)
             .serverSslCert(serverCertString)
             .build();
@@ -261,8 +263,11 @@ public class TlsTest extends BaseConnectionTest {
 
   @Test
   void fullValidationFailing() throws Exception {
+    Assumptions.assumeTrue(
+        !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeTrue(haveSsl(sharedConn));
     Assumptions.assumeTrue(serverSslCert != null);
+    Assumptions.assumeFalse("mariadb.example.com".equals(TestConfiguration.host));
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
@@ -270,34 +275,20 @@ public class TlsTest extends BaseConnectionTest {
             .sslMode(SslMode.VERIFY_FULL)
             .serverSslCert(serverSslCert)
             .build();
-    if (!conf.getHost().equals("mariadb.example.com")) {
-      new MariadbConnectionFactory(conf)
-          .create()
-          .as(StepVerifier::create)
-          .expectErrorMatches(
-              throwable ->
-                  throwable instanceof R2dbcNonTransientException
-                      && throwable.getMessage().contains("SSL hostname verification failed "))
-          .verify();
-    } else {
-      MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
-      connection
-          .createStatement("SHOW STATUS like 'Ssl_version'")
-          .execute()
-          .flatMap(r -> r.map((row, metadata) -> row.get(1)))
-          .as(StepVerifier::create)
-          .expectNextMatches(
-              val -> {
-                String[] values = {"TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
-                return Arrays.stream(values).anyMatch(val::equals);
-              })
-          .verifyComplete();
-      connection.close().block();
-    }
+    new MariadbConnectionFactory(conf)
+        .create()
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientException
+                    && throwable.getMessage().contains("SSL hostname verification failed "))
+        .verify();
   }
 
   @Test
   void fullValidation() throws Exception {
+    Assumptions.assumeTrue(
+        !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeTrue(haveSsl(sharedConn));
     Assumptions.assumeTrue(serverSslCert != null);
     MariadbConnectionConfiguration conf =
@@ -308,6 +299,7 @@ public class TlsTest extends BaseConnectionTest {
             .host("mariadb.example.com")
             .serverSslCert(serverSslCert)
             .build();
+
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection
         .createStatement("SHOW STATUS like 'Ssl_version'")
@@ -334,10 +326,10 @@ public class TlsTest extends BaseConnectionTest {
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
-            .sslMode(SslMode.VERIFY_FULL)
+            .sslMode(SslMode.TRUST)
             .port(sslPort)
             .username("MUTUAL_AUTH")
-            .password("ssltestpassword")
+            .password("MySup8%rPassw@ord")
             .host("mariadb.example.com")
             .serverSslCert(serverSslCert)
             .clientSslKey(clientSslKey)
@@ -359,10 +351,10 @@ public class TlsTest extends BaseConnectionTest {
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
-            .sslMode(SslMode.VERIFY_FULL)
+            .sslMode(SslMode.TRUST)
             .port(sslPort)
             .username("MUTUAL_AUTH")
-            .password("ssltestpassword")
+            .password("MySup8%rPassw@ord")
             .host("mariadb.example.com")
             .serverSslCert(serverSslCert)
             .clientSslCert(clientSslCert)

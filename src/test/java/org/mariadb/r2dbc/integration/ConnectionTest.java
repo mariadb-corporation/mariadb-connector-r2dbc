@@ -716,6 +716,8 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   public void initialIsolationLevel() {
+    Assumptions.assumeTrue(
+        !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     for (IsolationLevel level : levels) {
       sharedConn
           .createStatement("SET GLOBAL TRANSACTION ISOLATION LEVEL " + level.asSql())
@@ -727,13 +729,9 @@ public class ConnectionTest extends BaseConnectionTest {
       connection.close().block();
     }
 
-    IsolationLevel defaultValue = IsolationLevel.REPEATABLE_READ;
-    if ("skysql".equals(System.getenv("srv")) || "skysql-ha".equals(System.getenv("srv"))) {
-      defaultValue = IsolationLevel.READ_COMMITTED;
-    }
-
     sharedConn
-        .createStatement("SET GLOBAL TRANSACTION ISOLATION LEVEL " + defaultValue.asSql())
+        .createStatement(
+            "SET GLOBAL TRANSACTION ISOLATION LEVEL " + IsolationLevel.REPEATABLE_READ.asSql())
         .execute()
         .blockLast();
   }

@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.mariadb.r2dbc.codec.list.*;
 
-public class Codecs {
+public final class Codecs {
 
   public static final Codec<?>[] LIST =
       new Codec<?>[] {

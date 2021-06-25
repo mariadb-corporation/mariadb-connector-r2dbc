@@ -78,6 +78,19 @@ public class TimeParseTest extends BaseConnectionTest {
             Optional.of(Duration.parse("PT22S")),
             Optional.empty())
         .verifyComplete();
+    connection
+            .createStatement("SELECT t2 FROM TimeParseTest WHERE 1 = ?")
+            .bind(0, 1)
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+            .as(StepVerifier::create)
+            .expectNext(
+                    Optional.of(Duration.parse("PT-10H-1M-2.01234S")),
+                    Optional.of(Duration.parse("PT-10.123S")),
+                    Optional.of(Duration.parse("PT-8M")),
+                    Optional.of(Duration.parse("PT-22S")),
+                    Optional.empty())
+            .verifyComplete();
   }
 
   @Test
