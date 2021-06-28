@@ -40,7 +40,7 @@ public final class NativePasswordPacket implements ClientMessage {
   }
 
   public static byte[] encrypt(CharSequence authenticationData, byte[] seed) {
-    if (authenticationData == null || authenticationData.toString().isEmpty()) {
+    if (authenticationData == null) {
       return new byte[0];
     }
 

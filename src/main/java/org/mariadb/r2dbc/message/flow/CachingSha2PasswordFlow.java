@@ -44,7 +44,7 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
    */
   public static byte[] sha256encryptPassword(final CharSequence password, final byte[] seed) {
 
-    if (password == null || password.length() == 0) {
+    if (password == null) {
       return new byte[0];
     }
     byte[] truncatedSeed = new byte[seed.length - 1];

@@ -204,6 +204,23 @@ public class Sha256PluginTest extends BaseConnectionTest {
   }
 
   @Test
+  public void sha256PluginTestWrongServerRsaKey() throws Exception {
+    Assumptions.assumeTrue(!isWindows && !isMariaDBServer() && minVersion(5, 7, 0));
+
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .username("sha256User")
+            .password("password")
+            .rsaPublicKey("/wrongPath")
+            .build();
+    assertThrows(
+        Exception.class,
+        () -> new MariadbConnectionFactory(conf).create().block(),
+        "Could not read server RSA public key from file");
+  }
+
+  @Test
   public void sha256PluginTestWithoutServerRsaKey() throws Exception {
     Assumptions.assumeTrue(!isWindows && !isMariaDBServer() && minVersion(8, 0, 0));
 

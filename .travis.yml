@@ -61,5 +61,5 @@ script:
   - if [ -z "$BENCH" ] ; then MAVEN_SKIP_RC=true MAVEN_OPTS="-Xmx2g -XX:MaxPermSize=512m" mvn test -P continuous-integration -DjobId=${TRAVIS_JOB_ID}; fi
 
 
-after_success:
+after_script:
   - bash <(curl -s https://codecov.io/bash)

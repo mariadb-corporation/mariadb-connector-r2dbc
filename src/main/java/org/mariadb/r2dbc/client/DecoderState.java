@@ -37,30 +37,6 @@ public enum DecoderState implements DecoderStateInterface {
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
       return InitialHandshakePacket.decode(sequencer, body);
     }
-
-    @Override
-    public DecoderState next(MariadbPacketDecoder decoder) {
-      return FAST_AUTH_RESPONSE;
-    }
-  },
-
-  FAST_AUTH_RESPONSE {
-    public DecoderState decoder(short val, int len, long serverCapabilities) {
-      switch (val) {
-        case 0:
-          return OK_PACKET;
-
-        case 254: // 0xFE
-          return AUTHENTICATION_SWITCH;
-
-        case 255: // 0xFF
-          return ERROR;
-
-        default:
-          throw new IllegalArgumentException(
-              String.format("Error in protocol: %s is not a supported", val));
-      }
-    }
   },
 
   OK_PACKET {
@@ -82,18 +58,11 @@ public enum DecoderState implements DecoderStateInterface {
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
       return AuthSwitchPacket.decode(sequencer, body, decoder.getContext());
     }
-
-    @Override
-    public DecoderState next(MariadbPacketDecoder decoder) {
-      return AUTHENTICATION_SWITCH_RESPONSE;
-    }
   },
 
   AUTHENTICATION_SWITCH_RESPONSE {
     public DecoderState decoder(short val, int len, long serverCapabilities) {
       switch (val) {
-        case 0:
-          return OK_PACKET;
         case 1:
           return AUTHENTICATION_MORE_DATA;
         case 254: // 0xFE
@@ -101,8 +70,7 @@ public enum DecoderState implements DecoderStateInterface {
         case 255: // 0xFF
           return ERROR;
         default:
-          throw new IllegalArgumentException(
-              String.format("Error in protocol: %s is not a supported", val));
+          return OK_PACKET;
       }
     }
   },
@@ -112,11 +80,6 @@ public enum DecoderState implements DecoderStateInterface {
     public ServerMessage decode(
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
       return AuthMoreDataPacket.decode(sequencer, body, decoder.getContext());
-    }
-
-    @Override
-    public DecoderState next(MariadbPacketDecoder decoder) {
-      return AUTHENTICATION_SWITCH_RESPONSE;
     }
   },
 
@@ -157,10 +120,6 @@ public enum DecoderState implements DecoderStateInterface {
 
   COLUMN_DEFINITION {
 
-    public DecoderState decoder(short val, int len, long serverCapabilities) {
-      return this;
-    }
-
     @Override
     public ServerMessage decode(
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
@@ -182,9 +141,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   EOF_INTERMEDIATE_RESPONSE {
-    public DecoderState decoder(short val, int len, long serverCapabilities) {
-      return this;
-    }
 
     @Override
     public ServerMessage decode(
@@ -199,9 +155,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   EOF_END {
-    public DecoderState decoder(short val, int len, long serverCapabilities) {
-      return this;
-    }
 
     @Override
     public ServerMessage decode(
@@ -332,9 +285,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   PREPARE_PARAMETER {
-    public DecoderState decoder(short val, int len, long serverCapabilities) {
-      return this;
-    }
 
     @Override
     public ServerMessage decode(
@@ -363,10 +313,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   PREPARE_COLUMN {
-
-    public DecoderState decoder(short val, int len, long serverCapabilities) {
-      return this;
-    }
 
     @Override
     public ServerMessage decode(
@@ -404,10 +350,6 @@ public enum DecoderState implements DecoderStateInterface {
 
   PREPARE_COLUMN_EOF {
 
-    public DecoderState decoder(short val, int len, long serverCapabilities) {
-      return this;
-    }
-
     @Override
     public ServerMessage decode(
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
@@ -423,9 +365,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   ERROR {
-    public DecoderState decoder(short val, int len, long serverCapabilities) {
-      return this;
-    }
 
     @Override
     public ServerMessage decode(
@@ -440,9 +379,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   ERROR_AND_EXECUTE_RESPONSE {
-    public DecoderState decoder(short val, int len, long serverCapabilities) {
-      return this;
-    }
 
     @Override
     public ServerMessage decode(
@@ -457,9 +393,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   SKIP_EXECUTE {
-    public DecoderState decoder(short val, int len, long serverCapabilities) {
-      return this;
-    }
 
     @Override
     public ServerMessage decode(

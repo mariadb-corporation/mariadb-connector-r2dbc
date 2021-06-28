@@ -712,16 +712,23 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
-  public void noDb() {
+  public void noDb() throws Throwable {
     MariadbConnection connection =
-            new MariadbConnectionFactory(TestConfiguration.defaultBuilder.database(null).build()).create().block();
-
-    connection.createStatement("SELECT DATABASE()").execute()
-            .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
-            .as(StepVerifier::create)
-            .expectNext(Optional.empty())
-            .verifyComplete();
-    connection.close().block();
+        new MariadbConnectionFactory(
+                TestConfiguration.defaultBuilder.clone().database(null).build())
+            .create()
+            .block();
+    try {
+      connection
+          .createStatement("SELECT DATABASE()")
+          .execute()
+          .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
+          .as(StepVerifier::create)
+          .expectNext(Optional.empty())
+          .verifyComplete();
+    } finally {
+      connection.close().block();
+    }
   }
 
   @Test
@@ -754,7 +761,7 @@ public class ConnectionTest extends BaseConnectionTest {
             .execute()
             .flatMap(r -> r.map((row, metadata) -> row.get(0, BigInteger.class)))
             .blockLast();
-    Assumptions.assumeTrue(maxConn.intValue() < 200);
+    Assumptions.assumeTrue(maxConn.intValue() < 600);
 
     R2dbcTransientResourceException expected = null;
     Mono<?>[] cons = new Mono<?>[maxConn.intValue()];

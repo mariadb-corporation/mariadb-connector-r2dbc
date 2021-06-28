@@ -67,6 +67,22 @@ public class ClientPrepareResultTest {
   }
 
   @Test
+  public void stringEscapeParsing2() throws Exception {
+    checkParsing(
+        "SELECT '\\\\test' /*test* #/ ;`*/",
+        0,
+        true,
+        false,
+        false,
+        new String[] {"SELECT '\\\\test' /*test* #/ ;`*/"});
+  }
+
+  @Test
+  public void stringEscapeParsing3() throws Exception {
+    checkParsing("DO '\\\"', \"\\'\"", 0, true, false, false, new String[] {"DO '\\\"', \"\\'\""});
+  }
+
+  @Test
   public void testComment() throws Exception {
     checkParsing(
         "/* insert Select INSERT INTO tt VALUES (?,?,?,?)  */"
@@ -133,6 +149,17 @@ public class ClientPrepareResultTest {
         false,
         true,
         new String[] {"UPDATE MultiTestt4 SET test = ", " WHERE test = ", ""});
+  }
+
+  @Test
+  public void testUpdate2() throws Exception {
+    checkParsing(
+        "UPDATE UpdateMultiTestt4UPDATE() SET test = ? WHERE test = ?",
+        2,
+        true,
+        false,
+        true,
+        new String[] {"UPDATE UpdateMultiTestt4UPDATE() SET test = ", " WHERE test = ", ""});
   }
 
   @Test

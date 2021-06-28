@@ -267,11 +267,13 @@ public class TlsTest extends BaseConnectionTest {
         !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeTrue(haveSsl(sharedConn));
     Assumptions.assumeTrue(serverSslCert != null);
-    Assumptions.assumeFalse("mariadb.example.com".equals(TestConfiguration.host));
+    Assumptions.assumeFalse(
+        "mariadb.example.com".equals(TestConfiguration.host) || "1".equals(System.getenv("local")));
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
             .port(sslPort)
+            .host("1".equals(System.getenv("local")) ? "127.0.0.1" : TestConfiguration.host)
             .sslMode(SslMode.VERIFY_FULL)
             .serverSslCert(serverSslCert)
             .build();

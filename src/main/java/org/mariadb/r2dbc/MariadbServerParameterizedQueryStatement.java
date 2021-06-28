@@ -32,6 +32,7 @@ import org.mariadb.r2dbc.codec.Parameter;
 import org.mariadb.r2dbc.message.client.ExecutePacket;
 import org.mariadb.r2dbc.message.client.PreparePacket;
 import org.mariadb.r2dbc.message.server.CompletePrepareResult;
+import org.mariadb.r2dbc.message.server.ErrorPacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
@@ -194,12 +195,11 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     } else {
       // add current set of parameters. see https://github.com/r2dbc/r2dbc-spi/issues/229
       this.add();
-
       // prepare command, if not already done
       if (prepareResult.get() == null) {
         prepareResult.set(client.getPrepareCache().get(sql));
         if (prepareResult.get() == null) {
-          sendPrepare(sql).block();
+          sendPrepare(sql, ExceptionFactory.withSql(sql)).block();
         }
       }
 
@@ -301,7 +301,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
       flux = sendPrepareAndExecute(sql, factory, parameters, generatedColumns);
     } else {
       flux =
-          sendPrepare(sql)
+          sendPrepare(sql, factory)
               .flatMapMany(
                   prepareResult1 -> {
                     prepareResult.set(prepareResult1);
@@ -340,12 +340,16 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                     client.getConf()));
   }
 
-  private Mono<ServerPrepareResult> sendPrepare(String sql) {
+  private Mono<ServerPrepareResult> sendPrepare(String sql, ExceptionFactory factory) {
     Flux<ServerPrepareResult> f =
         this.client
             .sendCommand(new PreparePacket(sql), DecoderState.PREPARE_RESPONSE, sql)
             .handle(
                 (it, sink) -> {
+                  if (it instanceof ErrorPacket) {
+                    sink.error(factory.from((ErrorPacket) it));
+                    return;
+                  }
                   if (it instanceof CompletePrepareResult) {
                     prepareResult.set(((CompletePrepareResult) it).getPrepare());
                     sink.next(prepareResult.get());
