@@ -247,11 +247,12 @@ public class StringCodec implements Codec<String> {
               microseconds = buf.readUnsignedIntLE();
             }
           }
+          LocalDateTime dateTime =
+                  LocalDateTime.of(year, month, day, hour, minutes, seconds)
+                          .plusNanos(microseconds * 1000);
+          return dateTime.toLocalDate().toString() + ' ' + dateTime.toLocalTime().toString();
         }
-        LocalDateTime dateTime =
-            LocalDateTime.of(year, month, day, hour, minutes, seconds)
-                .plusNanos(microseconds * 1000);
-        return dateTime.toLocalDate().toString() + ' ' + dateTime.toLocalTime().toString();
+        return null;
 
       default:
         return buf.readCharSequence(length, StandardCharsets.UTF_8).toString();

@@ -99,6 +99,9 @@ public class Sha256PluginTest extends BaseConnectionTest {
       String sqlGrant;
       String sqlCreateUser2;
       String sqlGrant2;
+      String sqlCreateUser3;
+      String sqlGrant3;
+
       if (minVersion(8, 0, 0)) {
         sqlCreateUser =
             "CREATE USER 'sha256User'@'%' IDENTIFIED WITH sha256_password BY 'password'";
@@ -106,6 +109,9 @@ public class Sha256PluginTest extends BaseConnectionTest {
         sqlCreateUser2 =
             "CREATE USER 'sha256User2'@'%' IDENTIFIED WITH sha256_password BY 'password'";
         sqlGrant2 = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User2'@'%'";
+        sqlCreateUser3 =
+                "CREATE USER 'sha256User3'@'%' IDENTIFIED WITH sha256_password BY ''";
+        sqlGrant3 = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User3'@'%'";
       } else {
         sqlCreateUser = "CREATE USER 'sha256User'@'%'";
         sqlGrant =
@@ -115,11 +121,17 @@ public class Sha256PluginTest extends BaseConnectionTest {
         sqlGrant2 =
             "GRANT ALL PRIVILEGES ON *.* TO 'sha256User2'@'%' IDENTIFIED WITH "
                 + "sha256_password BY 'password'";
+        sqlCreateUser3 = "CREATE USER 'sha256User3'@'%'";
+        sqlGrant3 =
+                "GRANT ALL PRIVILEGES ON *.* TO 'sha256User3'@'%' IDENTIFIED WITH "
+                        + "sha256_password BY ''";
       }
       sharedConn.createStatement(sqlCreateUser).execute().blockLast();
       sharedConn.createStatement(sqlGrant).execute().blockLast();
       sharedConn.createStatement(sqlCreateUser2).execute().blockLast();
       sharedConn.createStatement(sqlGrant2).execute().blockLast();
+      sharedConn.createStatement(sqlCreateUser3).execute().blockLast();
+      sharedConn.createStatement(sqlGrant3).execute().blockLast();
       if (minVersion(8, 0, 0)) {
         sharedConn
             .createStatement(
@@ -268,6 +280,19 @@ public class Sha256PluginTest extends BaseConnectionTest {
             .allowPublicKeyRetrieval(true)
             .sslMode(SslMode.TRUST)
             .build();
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    connection.close().block();
+  }
+
+  @Test
+  public void sha256PluginTestSslNoPwd() throws Exception {
+    Assumptions.assumeTrue(haveSsl(sharedConn));
+    MariadbConnectionConfiguration conf =
+            TestConfiguration.defaultBuilder
+                    .clone()
+                    .username("sha256User3")
+                    .sslMode(SslMode.TRUST)
+                    .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();
   }

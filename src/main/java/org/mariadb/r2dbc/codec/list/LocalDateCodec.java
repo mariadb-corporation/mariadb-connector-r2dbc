@@ -136,14 +136,17 @@ public class LocalDateCodec implements Codec<LocalDate> {
     switch (column.getType()) {
       case TIMESTAMP:
       case DATETIME:
-        year = buf.readUnsignedShortLE();
-        month = buf.readByte();
-        dayOfMonth = buf.readByte();
+        if (length > 0) {
+          year = buf.readUnsignedShortLE();
+          month = buf.readByte();
+          dayOfMonth = buf.readByte();
 
-        if (length > 4) {
-          buf.skipBytes(length - 4);
+          if (length > 4) {
+            buf.skipBytes(length - 4);
+          }
+          return LocalDate.of(year, month, dayOfMonth);
         }
-        return LocalDate.of(year, month, dayOfMonth);
+        return null;
 
       case YEAR:
         if (length > 0) {

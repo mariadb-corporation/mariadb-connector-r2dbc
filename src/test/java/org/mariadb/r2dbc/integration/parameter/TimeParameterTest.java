@@ -399,13 +399,13 @@ public class TimeParameterTest extends BaseConnectionTest {
     connection
         .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
         .bind(0, Duration.parse("PT5H8M9.0014S"))
-        .bind(1, Duration.parse("PT5H8M10S"))
+        .bind(1, Duration.parse("PT-5H8M10S"))
         .bind(2, Duration.parse("PT5H8M11.123S"))
         .execute()
         .blockLast();
     validate(
         Optional.of(Duration.parse("PT5H8M9.0014S")),
-        Optional.of(Duration.parse("PT5H8M10S")),
+        Optional.of(Duration.parse("PT-5H8M10S")),
         Optional.of(Duration.parse("PT5H8M11.123S")));
   }
 

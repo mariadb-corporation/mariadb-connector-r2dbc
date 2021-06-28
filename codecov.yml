@@ -1,3 +1,6 @@
 comment: off
 ignore:
-  - "src/main/java/org/mariadb/r2dbc/authentication/ed25519/**/*"  # ignore folders and all its contents
+  - "src/main/java/org/mariadb/r2dbc/authentication/ed25519"
+  - "src/main/java/org/mariadb/r2dbc/authentication/ed25519/math"
+  - "src/main/java/org/mariadb/r2dbc/authentication/ed25519/spec"
+  - "src/main/java/org/mariadb/r2dbc/authentication/ed25519/math/ed25519"

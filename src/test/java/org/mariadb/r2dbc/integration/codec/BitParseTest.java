@@ -399,6 +399,17 @@ public class BitParseTest extends BaseConnectionTest {
   }
 
   @Test
+  void wrongType() {
+    sharedConn
+        .createStatement("SELECT t1 FROM BitTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, this.getClass()))))
+        .as(StepVerifier::create)
+        .expectError();
+  }
+
+  @Test
   void stringValue() {
     stringValue(sharedConn);
   }

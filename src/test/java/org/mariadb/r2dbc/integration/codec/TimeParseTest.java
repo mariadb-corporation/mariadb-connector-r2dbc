@@ -41,7 +41,7 @@ public class TimeParseTest extends BaseConnectionTest {
     sharedConn
         .createStatement(
             "INSERT INTO TimeParseTest VALUES ('90:00:00.012340', '-10:01:02.012340'), ('800:00:00.123', '-00:00:10"
-                + ".123'), (800, -800), "
+                + ".123'), (800, 0), "
                 + "(22, -22)"
                 + ", (null, null)")
         .execute()
@@ -52,6 +52,17 @@ public class TimeParseTest extends BaseConnectionTest {
   @AfterAll
   public static void afterAll2() {
     sharedConn.createStatement("DROP TABLE TimeParseTest").execute().blockLast();
+  }
+
+  @Test
+  void wrongType() {
+    sharedConn
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, this.getClass()))))
+        .as(StepVerifier::create)
+        .expectError();
   }
 
   @Test
@@ -87,7 +98,7 @@ public class TimeParseTest extends BaseConnectionTest {
         .expectNext(
             Optional.of(Duration.parse("PT-10H-1M-2.01234S")),
             Optional.of(Duration.parse("PT-10.123S")),
-            Optional.of(Duration.parse("PT-8M")),
+            Optional.of(Duration.parse("PT0M")),
             Optional.of(Duration.parse("PT-22S")),
             Optional.empty())
         .verifyComplete();
@@ -152,7 +163,7 @@ public class TimeParseTest extends BaseConnectionTest {
         .expectNext(
             Optional.of(LocalTime.parse("13:58:57.987660")),
             Optional.of(LocalTime.parse("23:59:49.877")),
-            Optional.of(LocalTime.parse("23:52")),
+            Optional.of(LocalTime.parse("00:00")),
             Optional.of(LocalTime.parse("23:59:38")),
             Optional.empty())
         .verifyComplete();

@@ -401,22 +401,20 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   void cannotPrepare() throws Throwable {
     // unexpected error "unexpected message received when no command was send: 0x48000002"
     Assumptions.assumeTrue(
-            !"maxscale".equals(System.getenv("srv"))
-                    && !"skysql-ha".equals(System.getenv("srv")));
+        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnectionConfiguration confPipeline =
-            TestConfiguration.defaultBuilder.clone().useServerPrepStmts(true).build();
+        TestConfiguration.defaultBuilder.clone().useServerPrepStmts(true).build();
     MariadbConnection conn = new MariadbConnectionFactory(confPipeline).create().block();
     try {
       assertThrows(
-              Exception.class,
-              () ->
-                      conn
-                              .createStatement("xa start ?, 'abcdef', 3")
-                              .bind(0, "12")
-                              .execute()
-                              .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
-                              .blockLast(),
-              "You have an error in your SQL syntax");
+          Exception.class,
+          () ->
+              conn.createStatement("xa start ?, 'abcdef', 3")
+                  .bind(0, "12")
+                  .execute()
+                  .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+                  .blockLast(),
+          "You have an error in your SQL syntax");
     } finally {
       conn.close().block();
     }
