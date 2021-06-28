@@ -24,6 +24,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
@@ -33,6 +34,7 @@ import reactor.test.StepVerifier;
 public class DateTimeParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    Assumptions.assumeTrue(isMariaDBServer());
     sharedConn
         .createStatement("CREATE TABLE DateTimeTable (t1 DATETIME(6) NULL)")
         .execute()
