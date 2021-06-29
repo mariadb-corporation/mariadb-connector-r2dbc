@@ -312,6 +312,7 @@ public class Sha256PluginTest extends BaseConnectionTest {
             TestConfiguration.defaultBuilder
                     .clone()
                     .username("sha256User3")
+                    .password(null)
                     .sslMode(SslMode.TRUST)
                     .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
@@ -398,6 +399,7 @@ public class Sha256PluginTest extends BaseConnectionTest {
             TestConfiguration.defaultBuilder
                     .clone()
                     .username("cachingSha256User4")
+                    .password(null)
                     .sslMode(SslMode.TRUST)
                     .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
