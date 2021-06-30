@@ -219,6 +219,9 @@ public abstract class ClientBase implements Client {
 
   abstract void executeAutoCommit(FluxSink<ServerMessage> sink, boolean autoCommit);
 
+  public long getThreadId() {
+    return context.getThreadId();
+  }
   /**
    * Specific implementation, to avoid executing BEGIN if already in transaction
    *

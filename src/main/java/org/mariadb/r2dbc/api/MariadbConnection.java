@@ -67,4 +67,6 @@ public interface MariadbConnection extends Connection {
 
   @Override
   Mono<Boolean> validate(ValidationDepth depth);
+
+  long getThreadId();
 }

@@ -276,7 +276,7 @@
       <plugin>
         <groupId>com.coveo</groupId>
         <artifactId>fmt-maven-plugin</artifactId>
-        <version>2.10</version>
+        <version>2.9.1</version>
         <executions>
           <execution>
             <goals>
@@ -319,11 +319,9 @@
             <artifactId>jacoco-maven-plugin</artifactId>
             <version>0.8.5</version>
             <configuration>
-              <append>true</append>
-              <includes>
-                <include>org/mariadb/r2dbc</include>
-                <include>org/mariadb/r2dbc/**</include>
-              </includes>
+              <excludes>
+                <exclude>**/ed25519/**/*.class</exclude>
+              </excludes>
             </configuration>
             <executions>
               <execution>

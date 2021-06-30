@@ -640,6 +640,16 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
+  void wrongSavePoint() {
+    sharedConn.createStatement("START TRANSACTION").execute().blockLast();
+    assertThrows(
+        Exception.class,
+        () -> sharedConn.rollbackTransactionToSavepoint("wrong").block(),
+        "SAVEPOINT wrong does not exist");
+    sharedConn.rollbackTransaction().block();
+  }
+
+  @Test
   void useSavePoint() {
     sharedConn.createStatement("DROP TABLE IF EXISTS useSavePoint").execute().blockLast();
     sharedConn.createStatement("CREATE TABLE useSavePoint (t1 VARCHAR(256))").execute().blockLast();
@@ -784,5 +794,39 @@ public class ConnectionTest extends BaseConnectionTest {
     }
     Assertions.assertNotNull(expected);
     Assertions.assertTrue(expected.getMessage().contains("Too many connections"));
+  }
+
+  @Test
+  void killedConnection() {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
+    MariadbConnection connection = factory.create().block();
+    long threadId = connection.getThreadId();
+
+    Runnable runnable =
+        () -> {
+          try {
+            Thread.sleep(10);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+          sharedConn.createStatement("KILL CONNECTION " + threadId).execute().blockLast();
+        };
+    Thread thread = new Thread(runnable);
+    thread.start();
+
+    assertThrows(
+        R2dbcNonTransientResourceException.class,
+        () ->
+            connection
+                .createStatement(
+                    "select * from information_schema.columns as c1, "
+                        + "information_schema.tables, "
+                        + "information_schema.tables as t2")
+                .execute()
+                .blockLast(),
+        "Connection unexpectedly closed");
   }
 }

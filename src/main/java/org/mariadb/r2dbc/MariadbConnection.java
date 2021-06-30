@@ -111,6 +111,11 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
   }
 
   @Override
+  public long getThreadId() {
+    return this.client.getThreadId();
+  }
+
+  @Override
   public Mono<Void> rollbackTransaction() {
     return this.client.rollbackTransaction();
   }
@@ -136,10 +141,7 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
         .sendCommand(new QueryPacket(sql))
         .handle(exceptionFactory::handleErrorResponse)
         .then()
-        .doOnSuccess(
-            ignore -> {
-              this.isolationLevel = newIsolation;
-            });
+        .doOnSuccess(ignore -> this.isolationLevel = newIsolation);
   }
 
   @Override

@@ -83,7 +83,9 @@ public class DateTimeParseTest extends BaseConnectionTest {
         .expectNext(
             Optional.of(LocalDateTime.parse("2013-07-22T12:50:05.01230")),
             Optional.of(LocalDateTime.parse("2035-01-31T10:45:01")),
-            Optional.empty(), Optional.empty(), Optional.of(LocalDateTime.parse("2021-01-01T00:00:00")))
+            Optional.empty(),
+            Optional.empty(),
+            Optional.of(LocalDateTime.parse("2021-01-01T00:00:00")))
         .verifyComplete();
   }
 
@@ -108,8 +110,8 @@ public class DateTimeParseTest extends BaseConnectionTest {
             Optional.of(LocalDate.parse("2013-07-22")),
             Optional.of(LocalDate.parse("2035-01-31")),
             Optional.empty(),
-                Optional.empty(),
-                Optional.of(LocalDate.parse("2021-01-01")))
+            Optional.empty(),
+            Optional.of(LocalDate.parse("2021-01-01")))
         .verifyComplete();
   }
 
@@ -133,7 +135,9 @@ public class DateTimeParseTest extends BaseConnectionTest {
         .expectNext(
             Optional.of(LocalTime.parse("12:50:05.012300")),
             Optional.of(LocalTime.parse("10:45:01")),
-            Optional.empty(), Optional.empty(),Optional.of(LocalTime.parse("00:00")))
+            Optional.empty(),
+            Optional.empty(),
+            Optional.of(LocalTime.parse("00:00")))
         .verifyComplete();
   }
 
@@ -378,8 +382,8 @@ public class DateTimeParseTest extends BaseConnectionTest {
         Optional.of("2013-07-22 12:50:05.012300"),
         Optional.of("2035-01-31 10:45:01.000000"),
         Optional.empty(),
-            Optional.of("0000-00-00 00:00:00.000000"),
-            Optional.of("2021-01-01 00:00:00.000000"));
+        Optional.of("0000-00-00 00:00:00.000000"),
+        Optional.of("2021-01-01 00:00:00.000000"));
   }
 
   @Test
@@ -389,12 +393,17 @@ public class DateTimeParseTest extends BaseConnectionTest {
         Optional.of("2013-07-22 12:50:05.012300"),
         Optional.of("2035-01-31 10:45:01"),
         Optional.empty(),
-            Optional.empty(),
-            Optional.of("2021-01-01 00:00"));
+        Optional.empty(),
+        Optional.of("2021-01-01 00:00"));
   }
 
   private void stringValue(
-      MariadbConnection connection, Optional<String> t1, Optional<String> t2, Optional<String> t3, Optional<String> t4, Optional<String> t5) {
+      MariadbConnection connection,
+      Optional<String> t1,
+      Optional<String> t2,
+      Optional<String> t3,
+      Optional<String> t4,
+      Optional<String> t5) {
     connection
         .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ?")
         .bind(0, 1)
@@ -481,8 +490,8 @@ public class DateTimeParseTest extends BaseConnectionTest {
             Optional.of(LocalDateTime.parse("2013-07-22T12:50:05.01230")),
             Optional.of(LocalDateTime.parse("2035-01-31T10:45:01")),
             Optional.empty(),
-                Optional.empty(),
-                Optional.of(LocalDateTime.parse("2021-01-01T00:00:00")))
+            Optional.empty(),
+            Optional.of(LocalDateTime.parse("2021-01-01T00:00:00")))
         .verifyComplete();
   }
 

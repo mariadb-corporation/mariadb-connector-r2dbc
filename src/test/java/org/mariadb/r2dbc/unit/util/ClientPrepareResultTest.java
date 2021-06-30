@@ -43,27 +43,42 @@ public class ClientPrepareResultTest {
   @Test
   public void stringEscapeParsing() throws Exception {
     checkParsing(
-        "select '\\'' as a, ? as b, \"\\\"\" as c, ? as d",
+        "select '\\'\"`/*#' as a, ? as \\b, \"\\\"'returningInsertDeleteUpdate\" as c, ? as d",
         2,
         true,
         false,
         false,
-        new String[] {"select '\\'' as a, ", " as b, \"\\\"\" as c, ", " as d"});
+        new String[] {
+          "select '\\'\"`/*#' as a, ",
+          " as \\b, \"\\\"'returningInsertDeleteUpdate\" as c, ",
+          " as d"
+        });
   }
 
   @Test
   public void testRewritableWithConstantParameter() throws Exception {
     checkParsing(
-        "INSERT INTO TABLE(col1,col2,col3,col4, col5) VALUES (9, ?, 5, ?, 8) ON DUPLICATE KEY UPDATE col2=col2+10",
+        "INSERT INTO TABLE_INSERT(col1,col2,col3,col4, col5) VALUES (9, ?, 5, ?, 8) ON DUPLICATE KEY UPDATE col2=col2+10",
         2,
         true,
         false,
         true,
         new String[] {
-          "INSERT INTO TABLE(col1,col2,col3,col4, col5) VALUES (9, ",
+          "INSERT INTO TABLE_INSERT(col1,col2,col3,col4, col5) VALUES (9, ",
           ", 5, ",
           ", 8) ON DUPLICATE KEY UPDATE col2=col2+10"
         });
+  }
+
+  @Test
+  public void testNamedParam() throws Exception {
+    checkParsing(
+        "SELECT * FROM TABLE WHERE 1 = :firstParam and 2 = :secondParam",
+        2,
+        true,
+        false,
+        false,
+        new String[] {"SELECT * FROM TABLE WHERE 1 = ", " and 2 = ", ""});
   }
 
   @Test
@@ -160,6 +175,28 @@ public class ClientPrepareResultTest {
         false,
         true,
         new String[] {"UPDATE UpdateMultiTestt4UPDATE() SET test = ", " WHERE test = ", ""});
+  }
+
+  @Test
+  public void testDelete() throws Exception {
+    checkParsing(
+        "DELETE FROM MultiTestt4  WHERE test = ?",
+        1,
+        true,
+        false,
+        true,
+        new String[] {"DELETE FROM MultiTestt4  WHERE test = ", ""});
+  }
+
+  @Test
+  public void testDelete2() throws Exception {
+    checkParsing(
+        "DELETE FROM DELETEMultiTestt4DELETE WHERE test = ?",
+        1,
+        true,
+        false,
+        true,
+        new String[] {"DELETE FROM DELETEMultiTestt4DELETE WHERE test = ", ""});
   }
 
   @Test
@@ -392,11 +429,24 @@ public class ClientPrepareResultTest {
   }
 
   @Test
+  public void testEolskip() throws Exception {
+    checkParsing(
+        "CREATE TABLE tt \n # test \n(ID INT)",
+        0,
+        true,
+        false,
+        false,
+        new String[] {"CREATE TABLE tt \n # test \n(ID INT)"});
+  }
+
+  @Test
   public void hasParameter() {
     Assertions.assertTrue(ClientPrepareResult.hasParameter("SELECT ?", false));
+    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT  \n / /* /* / # ? */", false));
     Assertions.assertTrue(ClientPrepareResult.hasParameter("SELECT :param", false));
     Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT ':param''", false));
-    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT '?'", false));
+    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT '?\\''", false));
+    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT \"\\\"?\"", false));
     Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT \"?\"", false));
     Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT \"\\?\"", false));
     Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT `?`", false));
@@ -404,5 +454,6 @@ public class ClientPrepareResultTest {
     Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT //?\n '?'", false));
     Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT #? \n '?'", false));
     Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT --? \n '?'", false));
+    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT '`\\n' from `gg`", true));
   }
 }

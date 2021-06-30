@@ -248,8 +248,8 @@ public class StringCodec implements Codec<String> {
             }
           }
           LocalDateTime dateTime =
-                  LocalDateTime.of(year, month, day, hour, minutes, seconds)
-                          .plusNanos(microseconds * 1000);
+              LocalDateTime.of(year, month, day, hour, minutes, seconds)
+                  .plusNanos(microseconds * 1000);
           return dateTime.toLocalDate().toString() + ' ' + dateTime.toLocalTime().toString();
         }
         return null;

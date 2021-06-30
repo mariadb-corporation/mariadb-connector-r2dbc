@@ -412,21 +412,21 @@ public class TimeParameterTest extends BaseConnectionTest {
   }
 
   private void durationValue2(MariadbConnection connection) {
-    connection
-            .createStatement("TRUNCATE TABLE TimeParam").execute().blockLast();
+    connection.createStatement("TRUNCATE TABLE TimeParam").execute().blockLast();
 
     connection
-            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-            .bind(0, Duration.parse("PT0S"))
-            .bind(1, Duration.parse("PT-1.123S"))
-            .bind(2, Duration.parse("PT-5H8M11.123S"))
-            .execute()
-            .blockLast();
+        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+        .bind(0, Duration.parse("PT0S"))
+        .bind(1, Duration.parse("PT-1.123S"))
+        .bind(2, Duration.parse("PT-5H8M11.123S"))
+        .execute()
+        .blockLast();
     validate(
-            Optional.of(Duration.parse("PT0S")),
-            Optional.of(Duration.parse("PT-1.123S")),
-            Optional.of(Duration.parse("PT-5H8M11.123S")));
+        Optional.of(Duration.parse("PT0S")),
+        Optional.of(Duration.parse("PT-1.123S")),
+        Optional.of(Duration.parse("PT-5H8M11.123S")));
   }
+
   @Test
   void localTimeValue() {
     localTimeValue(sharedConn);

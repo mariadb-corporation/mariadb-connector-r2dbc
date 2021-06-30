@@ -131,6 +131,30 @@ public class ResultsetTest extends BaseConnectionTest {
   }
 
   @Test
+  public void returningError() {
+    assertThrows(
+        Exception.class,
+        () -> sharedConn.createStatement("CREATE TABLE tt (id int)").returnGeneratedValues("id"),
+        "Cannot add RETURNING clause to query");
+    assertThrows(
+        Exception.class,
+        () -> sharedConn.createStatement("CREATE TABLE tt (? int)").returnGeneratedValues("id"),
+        "Cannot add RETURNING clause to query");
+    assertThrows(
+        Exception.class,
+        () ->
+            sharedConn.createStatement("DELETE * FROM tt RETURNING id").returnGeneratedValues("id"),
+        "Statement already includes RETURNING clause");
+    assertThrows(
+        Exception.class,
+        () ->
+            sharedConn
+                .createStatement("DELETE * FROM tt WHERE id = ? RETURNING id")
+                .returnGeneratedValues("id"),
+        "Statement already includes RETURNING clause");
+  }
+
+  @Test
   void readResultSet() {
     String[] first = new String[] {stLen(10), stLen(300), stLen(60000), stLen(1000)};
     String[] second = new String[] {stLen(10), stLen(300), stLen(60000), stLen(1000)};
@@ -251,10 +275,10 @@ public class ResultsetTest extends BaseConnectionTest {
     sharedConn.createStatement("DROP TABLE IF EXISTS prepare3").execute().blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE prepare3 (t1 LONGTEXT, t2 LONGTEXT, t3 LONGTEXT, t4 LONGTEXT)")
+            "CREATE TABLE prepare3 (t1 LONGTEXT, t2 LONGTEXT, t3 LONGTEXT, t4 LONGTEXT, t5 varchar(10))")
         .execute()
         .blockLast();
-    // skippingRes(sharedConn);
+    skippingRes(sharedConn);
     skippingRes(sharedConnPrepare);
   }
 
@@ -264,11 +288,12 @@ public class ResultsetTest extends BaseConnectionTest {
     String mediumText = generateLongText(10_000_000);
     String smallIntText = generateLongText(60_000);
 
-    con.createStatement("INSERT INTO prepare3 values (?,?,?,?)")
+    con.createStatement("INSERT INTO prepare3 values (?,?,?,?,?)")
         .bind(0, longText)
         .bind(1, mediumText)
         .bind(2, smallIntText)
         .bind(3, "expected")
+        .bind(4, "small")
         .execute()
         .blockLast();
     con.createStatement("SELECT * FROM prepare3 WHERE 1=?")
@@ -278,6 +303,7 @@ public class ResultsetTest extends BaseConnectionTest {
             r ->
                 r.map(
                     (row, metadata) -> {
+                      assertEquals("small", row.get(4));
                       assertEquals("expected", row.get(3));
                       assertEquals(smallIntText, row.get(2));
                       assertEquals(mediumText, row.get(1));

@@ -75,4 +75,6 @@ public interface Client {
   Mono<Void> releaseSavepoint(String name);
 
   Mono<Void> createSavepoint(String name);
+
+  long getThreadId();
 }

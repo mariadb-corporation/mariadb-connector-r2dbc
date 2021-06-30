@@ -103,14 +103,11 @@ public class Sha256PluginTest extends BaseConnectionTest {
       String sqlGrant3;
 
       if (minVersion(8, 0, 0)) {
-        sqlCreateUser =
-            "CREATE USER 'sha256User' IDENTIFIED WITH sha256_password BY 'password'";
+        sqlCreateUser = "CREATE USER 'sha256User' IDENTIFIED WITH sha256_password BY 'password'";
         sqlGrant = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User'";
-        sqlCreateUser2 =
-            "CREATE USER 'sha256User2' IDENTIFIED WITH sha256_password BY 'password'";
+        sqlCreateUser2 = "CREATE USER 'sha256User2' IDENTIFIED WITH sha256_password BY 'password'";
         sqlGrant2 = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User2'";
-        sqlCreateUser3 =
-                "CREATE USER 'sha256User3' IDENTIFIED WITH sha256_password BY ''";
+        sqlCreateUser3 = "CREATE USER 'sha256User3' IDENTIFIED WITH sha256_password BY ''";
         sqlGrant3 = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User3'";
       } else {
         sqlCreateUser = "CREATE USER 'sha256User'";
@@ -123,8 +120,8 @@ public class Sha256PluginTest extends BaseConnectionTest {
                 + "sha256_password BY 'password'";
         sqlCreateUser3 = "CREATE USER 'sha256User3'";
         sqlGrant3 =
-                "GRANT ALL PRIVILEGES ON *.* TO 'sha256User3' IDENTIFIED WITH "
-                        + "sha256_password BY ''";
+            "GRANT ALL PRIVILEGES ON *.* TO 'sha256User3' IDENTIFIED WITH "
+                + "sha256_password BY ''";
       }
       sharedConn.createStatement(sqlCreateUser).execute().blockLast();
       sharedConn.createStatement(sqlGrant).execute().blockLast();
@@ -161,14 +158,14 @@ public class Sha256PluginTest extends BaseConnectionTest {
             .execute()
             .blockLast();
         sharedConn
-                .createStatement(
-                        "CREATE USER 'cachingSha256User4'  IDENTIFIED WITH caching_sha2_password BY ''")
-                .execute()
-                .blockLast();
+            .createStatement(
+                "CREATE USER 'cachingSha256User4'  IDENTIFIED WITH caching_sha2_password BY ''")
+            .execute()
+            .blockLast();
         sharedConn
-                .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User4'")
-                .execute()
-                .blockLast();
+            .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User4'")
+            .execute()
+            .blockLast();
       }
     }
   }
@@ -189,11 +186,11 @@ public class Sha256PluginTest extends BaseConnectionTest {
         .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
-            .createStatement("DROP USER sha256User3")
-            .execute()
-            .map(res -> res.getRowsUpdated())
-            .onErrorReturn(Mono.empty())
-            .blockLast();
+        .createStatement("DROP USER sha256User3")
+        .execute()
+        .map(res -> res.getRowsUpdated())
+        .onErrorReturn(Mono.empty())
+        .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User")
         .execute()
@@ -213,11 +210,11 @@ public class Sha256PluginTest extends BaseConnectionTest {
         .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
-            .createStatement("DROP USER cachingSha256User4")
-            .execute()
-            .map(res -> res.getRowsUpdated())
-            .onErrorReturn(Mono.empty())
-            .blockLast();
+        .createStatement("DROP USER cachingSha256User4")
+        .execute()
+        .map(res -> res.getRowsUpdated())
+        .onErrorReturn(Mono.empty())
+        .blockLast();
   }
 
   @Test
@@ -309,12 +306,12 @@ public class Sha256PluginTest extends BaseConnectionTest {
   public void sha256PluginTestSslNoPwd() throws Exception {
     Assumptions.assumeTrue(haveSsl(sharedConn));
     MariadbConnectionConfiguration conf =
-            TestConfiguration.defaultBuilder
-                    .clone()
-                    .username("sha256User3")
-                    .password(null)
-                    .sslMode(SslMode.TRUST)
-                    .build();
+        TestConfiguration.defaultBuilder
+            .clone()
+            .username("sha256User3")
+            .password(null)
+            .sslMode(SslMode.TRUST)
+            .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();
   }
@@ -396,12 +393,12 @@ public class Sha256PluginTest extends BaseConnectionTest {
     Assumptions.assumeTrue(haveSsl(sharedConn));
 
     MariadbConnectionConfiguration conf =
-            TestConfiguration.defaultBuilder
-                    .clone()
-                    .username("cachingSha256User4")
-                    .password(null)
-                    .sslMode(SslMode.TRUST)
-                    .build();
+        TestConfiguration.defaultBuilder
+            .clone()
+            .username("cachingSha256User4")
+            .password(null)
+            .sslMode(SslMode.TRUST)
+            .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();
     MariadbConnection connection3 = new MariadbConnectionFactory(conf).create().block();

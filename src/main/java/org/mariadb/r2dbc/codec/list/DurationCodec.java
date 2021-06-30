@@ -164,20 +164,19 @@ public class DurationCodec implements Codec<Duration> {
       if (negate) {
         s = s - 1;
         buf.writeCharSequence(
-                String.format("-%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), 1000000 - microSecond),
-                StandardCharsets.US_ASCII);
+            String.format(
+                "-%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), 1000000 - microSecond),
+            StandardCharsets.US_ASCII);
 
       } else {
         buf.writeCharSequence(
-                String.format("%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), microSecond),
-                StandardCharsets.US_ASCII);
-
+            String.format("%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), microSecond),
+            StandardCharsets.US_ASCII);
       }
     } else {
       String format = negate ? "-%d:%02d:%02d" : "%d:%02d:%02d";
       buf.writeCharSequence(
-              String.format(format, s / 3600, (s % 3600) / 60, (s % 60)),
-              StandardCharsets.US_ASCII);
+          String.format(format, s / 3600, (s % 3600) / 60, (s % 60)), StandardCharsets.US_ASCII);
     }
     buf.writeByte('\'');
   }
@@ -203,7 +202,7 @@ public class DurationCodec implements Codec<Duration> {
         buf.writeByte((int) (s % (24 * 3600)) / 3600);
         buf.writeByte((int) (s % 3600) / 60);
         buf.writeByte((int) (s % 60));
-        buf.writeIntLE((int)microSecond);
+        buf.writeIntLE((int) microSecond);
       }
     } else {
       buf.writeByte((byte) 8);
