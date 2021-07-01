@@ -95,4 +95,41 @@ public class Ed25519PluginTest extends BaseConnectionTest {
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close();
   }
+
+
+  @Test
+  public void multiAuthPlugin() throws Throwable {
+    Assumptions.assumeTrue(
+            !"maxscale".equals(System.getenv("srv"))
+                    && !"skysql".equals(System.getenv("srv"))
+                    && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(isMariaDBServer() && minVersion(10, 4, 2));
+
+    sharedConn.createStatement("drop user IF EXISTS mysqltest1").execute().blockLast();
+    sharedConn.createStatement(
+            "CREATE USER mysqltest1 IDENTIFIED "
+                    + "VIA ed25519 as password('!Passw0rd3') "
+                    + " OR mysql_native_password as password('!Passw0rd3Works')").execute().blockLast();
+
+    sharedConn.createStatement("GRANT SELECT on *.* to mysqltest1").execute().blockLast();
+    MariadbConnectionConfiguration conf =
+            TestConfiguration.defaultBuilder
+                    .clone()
+                    .username("mysqltest1")
+                    .password("!Passw0rd3")
+                    .build();
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    connection.close().block();
+
+    conf =
+            TestConfiguration.defaultBuilder
+                    .clone()
+                    .username("mysqltest1")
+                    .password("!Passw0rd3Works")
+                    .build();
+    connection = new MariadbConnectionFactory(conf).create().block();
+    connection.close().block();
+    sharedConn.createStatement("drop user mysqltest1@'%'").execute().blockLast();
+  }
+
 }
