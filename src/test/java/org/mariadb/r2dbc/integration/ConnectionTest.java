@@ -90,7 +90,7 @@ public class ConnectionTest extends BaseConnectionTest {
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
 
-    disableLog();
+    //disableLog();
     MariadbConnection connection = createProxyCon();
     try {
       proxy.stop();
@@ -105,7 +105,7 @@ public class ConnectionTest extends BaseConnectionTest {
           "real msg:" + t.getMessage());
     } finally {
       Thread.sleep(100);
-      reInitLog();
+      //reInitLog();
     }
   }
 
@@ -116,7 +116,7 @@ public class ConnectionTest extends BaseConnectionTest {
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
 
-    disableLog();
+    //disableLog();
     MariadbConnection connection = createProxyCon();
     Runnable runnable = () -> proxy.stop();
     Thread th = new Thread(runnable);
@@ -141,7 +141,7 @@ public class ConnectionTest extends BaseConnectionTest {
           "real msg:" + t.getCause().getMessage());
     } finally {
       Thread.sleep(100);
-      reInitLog();
+      //reInitLog();
       proxy.forceClose();
     }
   }
@@ -152,11 +152,11 @@ public class ConnectionTest extends BaseConnectionTest {
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
-    disableLog();
+    //disableLog();
     MariadbConnection connection = createProxyCon();
     proxy.stop();
     connection.close().block();
-    reInitLog();
+    //reInitLog();
   }
 
   @Test
@@ -165,7 +165,7 @@ public class ConnectionTest extends BaseConnectionTest {
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
-    disableLog();
+    //disableLog();
     MariadbConnection connection = createProxyCon();
     new Timer()
         .schedule(
@@ -177,29 +177,31 @@ public class ConnectionTest extends BaseConnectionTest {
             },
             200);
 
-    try {
-      connection
-          .createStatement(
-              "select * from information_schema.columns as c1, "
-                  + "information_schema.tables, information_schema.tables as t2")
-          .execute()
-          .flatMap(r -> r.map((rows, meta) -> ""))
-          .blockLast();
-      Assertions.fail("must have throw exception");
-    } catch (Throwable t) {
-      Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
-      Assertions.assertTrue(
-          t.getMessage().contains("Connection is close. Cannot send anything")
-              || t.getMessage().contains("Connection unexpectedly closed")
-              || t.getMessage().contains("Connection unexpected error"),
-          "real msg:" + t.getMessage());
-      connection
-          .validate(ValidationDepth.LOCAL)
-          .as(StepVerifier::create)
-          .expectNext(Boolean.FALSE)
-          .verifyComplete();
-      reInitLog();
-    }
+    assertTimeout(Duration.ofSeconds(2), () -> {
+      try {
+        connection
+                .createStatement(
+                        "select * from information_schema.columns as c1, "
+                                + "information_schema.tables, information_schema.tables as t2")
+                .execute()
+                .flatMap(r -> r.map((rows, meta) -> ""))
+                .blockLast();
+        Assertions.fail("must have throw exception");
+      } catch (Throwable t) {
+        Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
+        Assertions.assertTrue(
+                t.getMessage().contains("Connection is close. Cannot send anything")
+                        || t.getMessage().contains("Connection unexpectedly closed")
+                        || t.getMessage().contains("Connection unexpected error"),
+                "real msg:" + t.getMessage());
+        connection
+                .validate(ValidationDepth.LOCAL)
+                .as(StepVerifier::create)
+                .expectNext(Boolean.FALSE)
+                .verifyComplete();
+        //reInitLog();
+      }
+    });
   }
 
   @Test
@@ -452,7 +454,7 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void multiThreadingSameConnection() throws Throwable {
-    disableLog();
+    //disableLog();
     try {
       AtomicInteger completed = new AtomicInteger(0);
       ThreadPoolExecutor scheduler =
@@ -469,7 +471,7 @@ public class ConnectionTest extends BaseConnectionTest {
       Assertions.assertEquals(100, completed.get());
     } finally {
       Thread.sleep(100);
-      reInitLog();
+      //reInitLog();
     }
   }
 
@@ -517,8 +519,8 @@ public class ConnectionTest extends BaseConnectionTest {
                     (row, metadata) -> {
                       Assertions.assertEquals(row.get(0, BigInteger.class).intValue(), 2147483);
                       Assertions.assertEquals(row.get(1, BigInteger.class).intValue(), 60);
-                      Assertions.assertFalse(row.get(0, BigInteger.class).equals(res[0]));
-                      Assertions.assertFalse(row.get(1, BigInteger.class).equals(res[1]));
+                      Assertions.assertNotEquals(row.get(0, BigInteger.class).intValue(), res[0].intValue());
+                      Assertions.assertNotEquals(row.get(1, BigInteger.class).intValue(), res[1].intValue());
                       return 0;
                     }))
         .blockLast();
@@ -835,7 +837,7 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
-  public void errorOnConnection() {
+  public void errorOnConnection() throws Throwable {
     BigInteger maxConn =
         sharedConn
             .createStatement("select @@max_connections")
@@ -865,6 +867,7 @@ public class ConnectionTest extends BaseConnectionTest {
     }
     Assertions.assertNotNull(expected);
     Assertions.assertTrue(expected.getMessage().contains("Too many connections"));
+    Thread.sleep(1000);
   }
 
   @Test
@@ -887,17 +890,31 @@ public class ConnectionTest extends BaseConnectionTest {
         };
     Thread thread = new Thread(runnable);
     thread.start();
-    assertThrows(
-        R2dbcNonTransientResourceException.class,
-        () ->
-            connection
+    assertTimeout(Duration.ofSeconds(2), () -> {
+      try {
+        connection
                 .createStatement(
-                    "select * from information_schema.columns as c1, "
-                        + "information_schema.tables, "
-                        + "information_schema.tables as t2")
+                        "select * from information_schema.columns as c1, "
+                                + "information_schema.tables, information_schema.tables as t2")
                 .execute()
-                .blockLast(),
-        "Connection unexpectedly closed");
+                .flatMap(r -> r.map((rows, meta) -> ""))
+                .blockLast();
+        Assertions.fail("must have throw exception");
+      } catch (Throwable t) {
+        Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
+        Assertions.assertTrue(
+                t.getMessage().contains("Connection is close. Cannot send anything")
+                        || t.getMessage().contains("Connection unexpectedly closed")
+                        || t.getMessage().contains("Connection unexpected error"),
+                "real msg:" + t.getMessage());
+        connection
+                .validate(ValidationDepth.LOCAL)
+                .as(StepVerifier::create)
+                .expectNext(Boolean.FALSE)
+                .verifyComplete();
+        //reInitLog();
+      }
+    });
     connection
         .validate(ValidationDepth.LOCAL)
         .as(StepVerifier::create)

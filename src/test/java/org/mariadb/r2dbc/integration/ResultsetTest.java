@@ -23,9 +23,8 @@ import java.math.BigInteger;
 import java.sql.SQLException;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.Test;
+
+import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbStatement;
@@ -33,6 +32,23 @@ import reactor.test.StepVerifier;
 
 public class ResultsetTest extends BaseConnectionTest {
   private static String vals = "azertyuiopqsdfghjklmwxcvbn";
+
+    @BeforeAll
+    public static void before2() {
+        dropAll();
+        sharedConn
+                .createStatement(
+                        "CREATE TABLE prepare3 (t1 LONGTEXT, t2 LONGTEXT, t3 LONGTEXT, t4 LONGTEXT, t5 varchar(10))")
+                .execute()
+                .blockLast();
+    }
+
+    @AfterAll
+    public static void dropAll() {
+        sharedConn.createStatement("DROP TABLE prepare3").execute().blockLast();
+    }
+
+
 
   @Test
   void multipleResultSet() {
@@ -255,12 +271,13 @@ public class ResultsetTest extends BaseConnectionTest {
   private String generateLongText(int len) {
     int leftLimit = 97; // letter 'a'
     int rightLimit = 122; // letter 'z'
-    Random random = new Random();
-    return random
-        .ints(leftLimit, leftLimit + 1) // rightLimit + 1)
-        .limit(len)
-        .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
-        .toString();
+    StringBuilder sb = new StringBuilder(len);
+      Random random = new Random();
+
+      for (int i = 0; i < len; i++) {
+      sb.appendCodePoint(leftLimit + random.nextInt(rightLimit - leftLimit));
+    }
+    return sb.toString();
   }
 
   @Test
@@ -272,22 +289,15 @@ public class ResultsetTest extends BaseConnectionTest {
             .flatMap(r -> r.map((row, metadata) -> row.get(0, BigInteger.class)))
             .blockLast();
     Assumptions.assumeTrue(maxAllowedPacket.intValue() > 35_000_000);
-    sharedConn.createStatement("DROP TABLE IF EXISTS prepare3").execute().blockLast();
-    sharedConn
-        .createStatement(
-            "CREATE TABLE prepare3 (t1 LONGTEXT, t2 LONGTEXT, t3 LONGTEXT, t4 LONGTEXT, t5 varchar(10))")
-        .execute()
-        .blockLast();
-    skippingRes(sharedConn);
-    skippingRes(sharedConnPrepare);
+      String longText = generateLongText(20_000_000);
+      String mediumText = generateLongText(10_000_000);
+      String smallIntText = generateLongText(60_000);
+    skippingRes(sharedConn, longText, mediumText, smallIntText);
+    skippingRes(sharedConnPrepare, longText, mediumText, smallIntText);
   }
 
-  private void skippingRes(MariadbConnection con) {
+  private void skippingRes(MariadbConnection con, String longText, String mediumText, String smallIntText) {
     con.createStatement("TRUNCATE prepare3").execute().blockLast();
-    String longText = generateLongText(20_000_000);
-    String mediumText = generateLongText(10_000_000);
-    String smallIntText = generateLongText(60_000);
-
     con.createStatement("INSERT INTO prepare3 values (?,?,?,?,?)")
         .bind(0, longText)
         .bind(1, mediumText)

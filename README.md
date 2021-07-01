@@ -9,7 +9,7 @@
 [![Maven Central][maven-image]][maven-url]
 [![Test Build][travis-image]][travis-url]
 [![License][license-image]][license-url]
-
+[![codecov][codecov-image]][codecov-url]
 
 **Non-blocking MariaDB and MySQL client.**
 
@@ -107,6 +107,7 @@ Basic example:
 | **`prepareCacheSize`** | if useServerPrepStmts = true, cache the prepared informations in a LRU cache to avoid re-preparation of command. Next use of that command, only prepared identifier and parameters (if any) will be sent to server. This mainly permit for server to avoid reparsing query. |*int* |256 |
 | **`pamOtherPwd`** | Permit to provide additional password for PAM authentication with multiple authentication step. If multiple passwords, value must be URL encoded.|*string* | |  
 | **`autocommit`** | Set default autocommit value on connection initialization" |*boolean* | true |
+| **`tinyInt1isBit`** | Convert Bit(1)/TINYINT(1) default to boolean type |*boolean* | true |
 
 ## Roadmap
 
@@ -127,3 +128,5 @@ To file an issue or follow the development, see [JIRA](https://jira.mariadb.org/
 [maven-url]:https://maven-badges.herokuapp.com/maven-central/org.mariadb/r2dbc-mariadb
 [license-image]:https://img.shields.io/badge/License-Apache%202.0-blue.svg
 [license-url]:https://opensource.org/licenses/Apache-2.0
+[codecov-image]:https://codecov.io/gh/mariadb-corporation/mariadb-connector-r2dbc/branch/master/graph/badge.svg?token=8fIhax7q23
+[codecov-url]:https://codecov.io/gh/mariadb-corporation/mariadb-connector-r2dbc
