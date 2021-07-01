@@ -92,6 +92,49 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   }
 
   @Test
+  void bindWithName() {
+    assertThrows(
+        Exception.class,
+        () ->
+            sharedConnPrepare
+                .createStatement("INSERT INTO myTable (a) VALUES (:var1)")
+                .bind("var1", "test"),
+        "Cannot use getColumn(name) with prepared statement");
+    assertThrows(
+        Exception.class,
+        () ->
+            sharedConnPrepare
+                .createStatement("INSERT INTO myTable (a) VALUES (:var1)")
+                .bindNull("var1", String.class),
+        "Cannot use getColumn(name) with prepared statement");
+  }
+
+  @Test
+  void validateParam() {
+    sharedConnPrepare
+        .createStatement("CREATE TEMPORARY TABLE validateParam(t0 VARCHAR(10))")
+        .execute()
+        .blockLast();
+    Assertions.assertThrows(
+        Exception.class,
+        () ->
+            sharedConnPrepare
+                .createStatement("INSERT INTO validateParam (t0) VALUES (?)")
+                .execute()
+                .flatMap(r -> r.getRowsUpdated())
+                .blockLast());
+    assertThrows(
+        Exception.class,
+        () ->
+            sharedConnPrepare
+                .createStatement("INSERT INTO validateParam (t0) VALUES (?)")
+                .execute()
+                .flatMap(r -> r.getRowsUpdated())
+                .blockLast(),
+        "Parameter at position 0 is not set");
+  }
+
+  @Test
   void parameterLengthEncoded() {
     Assumptions.assumeTrue(maxAllowedPacket() >= 16 * 1024 * 1024);
 

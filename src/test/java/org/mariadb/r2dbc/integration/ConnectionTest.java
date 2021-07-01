@@ -365,19 +365,43 @@ public class ConnectionTest extends BaseConnectionTest {
   @Test
   void multipleBegin() throws Exception {
     MariadbConnection connection = factory.create().block();
-    connection.beginTransaction().subscribe();
-    connection.beginTransaction().block();
-    connection.beginTransaction().block();
+    multipleBegin(connection);
     connection.close().block();
+
+    connection =
+        new MariadbConnectionFactory(
+                TestConfiguration.defaultBuilder.clone().allowPipelining(false).build())
+            .create()
+            .block();
+    multipleBegin(connection);
+    connection.close().block();
+  }
+
+  void multipleBegin(MariadbConnection con) throws Exception {
+    con.beginTransaction().subscribe();
+    con.beginTransaction().block();
+    con.beginTransaction().block();
   }
 
   @Test
   void multipleAutocommit() throws Exception {
     MariadbConnection connection = factory.create().block();
-    connection.setAutoCommit(true).subscribe();
-    connection.setAutoCommit(true).block();
-    connection.setAutoCommit(false).block();
+    multipleAutocommit(connection);
     connection.close().block();
+
+    connection =
+        new MariadbConnectionFactory(
+                TestConfiguration.defaultBuilder.clone().allowPipelining(false).build())
+            .create()
+            .block();
+    multipleAutocommit(connection);
+    connection.close().block();
+  }
+
+  void multipleAutocommit(MariadbConnection con) throws Exception {
+    con.setAutoCommit(true).subscribe();
+    con.setAutoCommit(true).block();
+    con.setAutoCommit(false).block();
   }
 
   @Test
@@ -598,25 +622,46 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
-  void commitTransaction() {
-    sharedConn.createStatement("DROP TABLE IF EXISTS commitTransaction").execute().blockLast();
-    sharedConn
-        .createStatement("CREATE TABLE commitTransaction (t1 VARCHAR(256))")
-        .execute()
-        .blockLast();
-    sharedConn.setAutoCommit(false).block();
-    sharedConn.commitTransaction().block(); // must not do anything
-    sharedConn.createStatement("INSERT INTO commitTransaction VALUES ('a')").execute().blockLast();
-    sharedConn.commitTransaction().block();
-    sharedConn
-        .createStatement("SELECT * FROM commitTransaction")
+  void commitTransaction() throws Exception {
+
+    MariadbConnection connection = factory.create().block();
+    commitTransaction(connection);
+    MariadbStatement stmt = connection.createStatement("DO 1");
+    connection.close().block();
+    assertThrows(
+        R2dbcNonTransientResourceException.class,
+        () -> stmt.execute().blockLast(),
+        "Connection is close. Cannot send anything");
+
+    connection =
+        new MariadbConnectionFactory(
+                TestConfiguration.defaultBuilder.clone().allowPipelining(false).build())
+            .create()
+            .block();
+    commitTransaction(connection);
+    MariadbStatement stmt2 = connection.createStatement("DO 1");
+    connection.close().block();
+    assertThrows(
+        R2dbcNonTransientResourceException.class,
+        () -> stmt2.execute().blockLast(),
+        "Connection is close. Cannot send anything");
+  }
+
+  void commitTransaction(MariadbConnection con) {
+    con.createStatement("DROP TABLE IF EXISTS commitTransaction").execute().blockLast();
+    con.createStatement("CREATE TABLE commitTransaction (t1 VARCHAR(256))").execute().blockLast();
+    con.setAutoCommit(false).block();
+    con.commitTransaction().block(); // must not do anything
+    con.createStatement("INSERT INTO commitTransaction VALUES ('a')").execute().blockLast();
+    con.commitTransaction().block();
+    con.createStatement("SELECT * FROM commitTransaction")
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
         .expectNext(Optional.of("a"))
         .verifyComplete();
-    sharedConn.createStatement("DROP TABLE IF EXISTS commitTransaction").execute().blockLast();
-    sharedConn.setAutoCommit(true).block();
+    con.createStatement("DROP TABLE IF EXISTS commitTransaction").execute().blockLast();
+    con.setAutoCommit(true).block();
   }
 
   @Test

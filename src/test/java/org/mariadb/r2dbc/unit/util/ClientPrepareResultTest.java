@@ -39,7 +39,6 @@ public class ClientPrepareResultTest {
     }
     Assertions.assertEquals(allowMultiqueries, res.isQueryMultipleRewritable());
 
-
     res = ClientPrepareResult.parameterParts(sql, true);
     Assertions.assertEquals(paramNumber, res.getParamCount());
     Assertions.assertEquals(returning, res.isReturning());
@@ -52,13 +51,14 @@ public class ClientPrepareResultTest {
   }
 
   private void checkParsing(
-          String sql,
-          int paramNumber,
-          int paramNumberBackSlash,
-          boolean allowMultiqueries,
-          boolean returning,
-          boolean supportReturningAddition,
-          String[] partsMulti, String[] partsMultiBackSlash) {
+      String sql,
+      int paramNumber,
+      int paramNumberBackSlash,
+      boolean allowMultiqueries,
+      boolean returning,
+      boolean supportReturningAddition,
+      String[] partsMulti,
+      String[] partsMultiBackSlash) {
     ClientPrepareResult res = ClientPrepareResult.parameterParts(sql, false);
     Assertions.assertEquals(paramNumber, res.getParamCount());
     Assertions.assertEquals(returning, res.isReturning());
@@ -83,7 +83,8 @@ public class ClientPrepareResultTest {
   public void stringEscapeParsing() throws Exception {
     checkParsing(
         "select '\\'\"`/*#' as a, ? as \\b, \"\\\"'returningInsertDeleteUpdate\" as c, ? as d",
-        2,1,
+        2,
+        1,
         true,
         false,
         false,
@@ -92,10 +93,9 @@ public class ClientPrepareResultTest {
           " as \\b, \"\\\"'returningInsertDeleteUpdate\" as c, ",
           " as d"
         },
-            new String[] {
-                    "select '\\'\"`/*#' as a, ? as \\b, \"\\\"'returningInsertDeleteUpdate\" as c, ",
-                    " as d"
-            });
+        new String[] {
+          "select '\\'\"`/*#' as a, ? as \\b, \"\\\"'returningInsertDeleteUpdate\" as c, ", " as d"
+        });
   }
 
   @Test
@@ -342,14 +342,13 @@ public class ClientPrepareResultTest {
   public void testEscapeInString() throws Exception {
     checkParsing(
         "INSERT INTO tt (tt) VALUES (?, '\\'?', \"\\\"?\") --fin",
-        1,2,
+        1,
+        2,
         false,
         false,
         true,
         new String[] {"INSERT INTO tt (tt) VALUES (", ", '\\'?', \"\\\"?\") --fin"},
-    new String[] {"INSERT INTO tt (tt) VALUES (",
-            ", '\\'",
-            "', \"\\\"?\") --fin"});
+        new String[] {"INSERT INTO tt (tt) VALUES (", ", '\\'", "', \"\\\"?\") --fin"});
   }
 
   @Test

@@ -74,7 +74,7 @@ public class OkPacket implements ServerMessage {
             case StateChange.SESSION_TRACK_SCHEMA:
               ByteBuf sessionSchemaBuf = BufferUtils.readLengthEncodedBuffer(stateInfo);
               String database = BufferUtils.readLengthEncodedString(sessionSchemaBuf);
-              context.setDatabase(database);
+              // context.setDatabase(database);
               logger.debug("Database change : now is '{}'", database);
               break;
           }

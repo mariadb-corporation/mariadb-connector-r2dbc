@@ -57,9 +57,9 @@ public class Ed25519PluginTest extends BaseConnectionTest {
       }
       sharedConn
           .createStatement(
-                  String.format(
-                          "GRANT all on `%s`.* to verificationEd25519AuthPlugin", TestConfiguration.database
-                  ))
+              String.format(
+                  "GRANT SELECT on `%s`.* to verificationEd25519AuthPlugin",
+                  TestConfiguration.database))
           .execute()
           .blockLast();
       sharedConn.createStatement("FLUSH PRIVILEGES").execute().blockLast();

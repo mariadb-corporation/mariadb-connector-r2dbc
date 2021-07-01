@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.util.BufferUtils;
@@ -182,8 +183,8 @@ class BufferUtilsTest {
   @Test
   void write() {
     Context ctxNoBackSlash =
-        new Context("10.5.5-mariadb", 1, null, 1, ServerStatus.NO_BACKSLASH_ESCAPES, true);
-    Context ctx = new Context("10.5.5-mariadb", 1, null, 1, (short) 0, true);
+        new Context("10.5.5-mariadb", 1, 1, ServerStatus.NO_BACKSLASH_ESCAPES, true);
+    Context ctx = new Context("10.5.5-mariadb", 1, 1, (short) 0, true);
 
     ByteBuf buf = allocator.buffer(1000);
     buf.writerIndex(0);
@@ -228,5 +229,20 @@ class BufferUtilsTest {
     res = new byte[buf.writerIndex()];
     buf.getBytes(0, res);
     assertArrayEquals(new byte[] {-17, -65, -67}, res);
+  }
+
+  @Test
+  void toStringBuf() {
+    ByteBuf buf = allocator.buffer(1000);
+    buf.setBytes(
+        0,
+        new byte[] {
+          0x6d, 0x00, 0x00, 0x00, 0x0a, 0x35, 0x2e, 0x35, 0x2e, 0x35, 0x2d, 0x31, 0x30, 0x2e, 0x36,
+          0x2e
+        });
+    buf.readerIndex(0);
+    System.out.println(buf.readerIndex());
+    buf.writerIndex(16);
+    Assertions.assertEquals("6D0000000A352E352E352D31302E362E", BufferUtils.toString(buf));
   }
 }

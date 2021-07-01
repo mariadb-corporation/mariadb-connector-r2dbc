@@ -344,7 +344,6 @@ public abstract class ClientBase implements Client {
         new Context(
             handshake.getServerVersion(),
             handshake.getThreadId(),
-            handshake.getSeed(),
             handshake.getCapabilities(),
             handshake.getServerStatus(),
             handshake.isMariaDBServer());
@@ -387,7 +386,7 @@ public abstract class ClientBase implements Client {
         this.connection.dispose();
       }
       clearWaitingListWithError(
-          new R2dbcNonTransientResourceException("Connection unexpectedly closed"));
+          ExceptionFactory.INSTANCE.createException("Connection unexpectedly closed", "08000", -1));
 
     } else {
       clearWaitingListWithError(new R2dbcNonTransientResourceException("Connection closed"));
