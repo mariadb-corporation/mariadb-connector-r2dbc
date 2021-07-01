@@ -267,11 +267,13 @@ public class TlsTest extends BaseConnectionTest {
         !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeTrue(haveSsl(sharedConn));
     Assumptions.assumeTrue(serverSslCert != null);
-    Assumptions.assumeFalse("mariadb.example.com".equals(TestConfiguration.host));
+    Assumptions.assumeFalse(
+        "mariadb.example.com".equals(TestConfiguration.host) || "1".equals(System.getenv("local")));
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
             .port(sslPort)
+            .host("1".equals(System.getenv("local")) ? "127.0.0.1" : TestConfiguration.host)
             .sslMode(SslMode.VERIFY_FULL)
             .serverSslCert(serverSslCert)
             .build();
@@ -313,6 +315,37 @@ public class TlsTest extends BaseConnectionTest {
             })
         .verifyComplete();
     connection.close().block();
+  }
+
+  @Test
+  void fullValidationCertError() throws Exception {
+    Assumptions.assumeTrue(
+        !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(haveSsl(sharedConn));
+    Assumptions.assumeTrue(serverSslCert != null);
+    Assumptions.assumeTrue(
+        "mariadb.example.com".equals(TestConfiguration.host) || "1".equals(System.getenv("local")));
+
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .port(sslPort)
+            .sslMode(SslMode.VERIFY_FULL)
+            .host("mariadb2.example.com")
+            .serverSslCert(serverSslCert)
+            .build();
+
+    new MariadbConnectionFactory(conf)
+        .create()
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientException
+                    && throwable
+                        .getMessage()
+                        .contains(
+                            "SSL hostname verification failed : DNS host \"mariadb2.example.com\" doesn't correspond to certificate CN \"mariadb.example.com"))
+        .verify();
   }
 
   @Test

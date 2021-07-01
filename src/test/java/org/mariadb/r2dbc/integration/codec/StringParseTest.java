@@ -63,6 +63,26 @@ public class StringParseTest extends BaseConnectionTest {
   }
 
   @Test
+  void wrongType() {
+    wrongType(sharedConn);
+  }
+
+  @Test
+  void wrongTypePrepare() {
+    wrongType(sharedConnPrepare);
+  }
+
+  private void wrongType(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, this.getClass()))))
+        .as(StepVerifier::create)
+        .expectError();
+  }
+
+  @Test
   void defaultValue() {
     defaultValue(sharedConn);
   }
@@ -78,6 +98,14 @@ public class StringParseTest extends BaseConnectionTest {
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("some🌟"), Optional.of("1"), Optional.of("0"), Optional.empty())
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Object.class))))
         .as(StepVerifier::create)
         .expectNext(Optional.of("some🌟"), Optional.of("1"), Optional.of("0"), Optional.empty())
         .verifyComplete();

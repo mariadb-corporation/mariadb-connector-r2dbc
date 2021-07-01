@@ -6,10 +6,11 @@ jdk: openjdk11
 addons:
   hosts:
     - mariadb.example.com
+    - mariadb2.example.com
 
 before_install:
   - git clone https://github.com/mariadb-corporation/connector-test-machine.git
-
+env: packet=40
 install:
   - |-
     case $TRAVIS_OS_NAME in
@@ -19,7 +20,7 @@ install:
         connector-test-machine/launch.bat -t "$srv" -v "$v" -d testr2
         ;;
       linux)
-        source connector-test-machine/launch.sh -t "$srv" -v "$v" -d testr2 -n 0 -l "$local"
+        source connector-test-machine/launch.sh -t "$srv" -v "$v" -d testr2 -n 0 -l "$local" -p "$packet"
         ;;
     esac
 
@@ -31,11 +32,14 @@ jobs:
     - env: srv=mariadb v=10.5
       os: windows
       language: shell
-    - env: srv=mariadb v=10.2 local=1
+    - env: srv=mariadb v=10.2 local=1 packet=20
       dist: bionic
     - env: srv=mariadb v=10.3 local=1
     - env: srv=mariadb v=10.4 local=1
     - env: srv=mariadb v=10.5 local=1
+    - env: srv=mariadb v=10.5 local=1
+      jdk: openjdk8
+      dist: bionic
     - env: srv=mariadb v=10.6 local=1
     - env: srv=mariadb v=10.5 NO_BACKSLASH_ESCAPES=true
     - env: srv=mariadb v=10.6 BENCH=1
@@ -61,5 +65,5 @@ script:
   - if [ -z "$BENCH" ] ; then MAVEN_SKIP_RC=true MAVEN_OPTS="-Xmx2g -XX:MaxPermSize=512m" mvn test -P continuous-integration -DjobId=${TRAVIS_JOB_ID}; fi
 
 
-after_success:
+after_script:
   - bash <(curl -s https://codecov.io/bash)

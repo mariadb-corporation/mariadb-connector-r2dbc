@@ -33,6 +33,10 @@ public class SkipPacket implements ServerMessage {
     return this.ending;
   }
 
+  public boolean resultSetEnd() {
+    return this.ending;
+  }
+
   public Sequencer getSequencer() {
     return null;
   }

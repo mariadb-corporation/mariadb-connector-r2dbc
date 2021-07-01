@@ -19,7 +19,7 @@ package org.mariadb.r2dbc.util;
 import java.lang.reflect.Method;
 import java.util.function.Supplier;
 
-public class PidFactory {
+public final class PidFactory {
   private static Supplier<String> instance;
 
   static {

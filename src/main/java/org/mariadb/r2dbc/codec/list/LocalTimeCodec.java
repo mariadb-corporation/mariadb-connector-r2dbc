@@ -161,8 +161,9 @@ public class LocalTimeCodec implements Codec<LocalTime> {
               microseconds = buf.readIntLE();
             }
           }
+          return LocalTime.of(hour, minutes, seconds).plusNanos(microseconds * 1000);
         }
-        return LocalTime.of(hour, minutes, seconds).plusNanos(microseconds * 1000);
+        return null;
 
       case TIME:
         boolean negate = false;

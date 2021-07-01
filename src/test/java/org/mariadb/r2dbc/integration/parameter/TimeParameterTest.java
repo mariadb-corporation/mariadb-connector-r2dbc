@@ -38,9 +38,9 @@ public class TimeParameterTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     sharedConn
-            .createStatement("CREATE TABLE TimeParam (t1 TIME(6), t2 TIME(6), t3 TIME(6))")
-            .execute()
-            .blockLast();
+        .createStatement("CREATE TABLE TimeParam (t1 TIME(6), t2 TIME(6), t3 TIME(6))")
+        .execute()
+        .blockLast();
   }
 
   @AfterAll
@@ -65,12 +65,12 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   private void nullValue(MariadbConnection connection) {
     connection
-            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-            .bindNull(0, LocalTime.class)
-            .bindNull(1, LocalTime.class)
-            .bindNull(2, LocalTime.class)
-            .execute()
-            .blockLast();
+        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+        .bindNull(0, LocalTime.class)
+        .bindNull(1, LocalTime.class)
+        .bindNull(2, LocalTime.class)
+        .execute()
+        .blockLast();
     validate(Optional.empty(), Optional.empty(), Optional.empty());
   }
 
@@ -86,23 +86,23 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   private void bigIntValue(MariadbConnection connection) {
     Flux<MariadbResult> f =
-            connection
-                    .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-                    .bind(0, BigInteger.ONE)
-                    .bind(1, new BigInteger("9223372036854775807"))
-                    .bind(2, new BigInteger("-9"))
-                    .execute();
+        connection
+            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+            .bind(0, BigInteger.ONE)
+            .bind(1, new BigInteger("9223372036854775807"))
+            .bind(2, new BigInteger("-9"))
+            .execute();
     if ((isMariaDBServer() && !minVersion(10, 2, 0))
-            || (!isMariaDBServer() && !minVersion(5, 7, 0))) {
+        || (!isMariaDBServer() && !minVersion(5, 7, 0))) {
       f.blockLast();
     } else {
       f.flatMap(r -> r.getRowsUpdated())
-              .as(StepVerifier::create)
-              .expectErrorMatches(
-                      throwable ->
-                              throwable instanceof R2dbcBadGrammarException
-                                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
-              .verify();
+          .as(StepVerifier::create)
+          .expectErrorMatches(
+              throwable ->
+                  throwable instanceof R2dbcBadGrammarException
+                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
+          .verify();
     }
   }
 
@@ -118,23 +118,23 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   private void stringValue(MariadbConnection connection) {
     Flux<MariadbResult> f =
-            connection
-                    .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-                    .bind(0, "1")
-                    .bind(1, "9223372036854775807")
-                    .bind(2, "-9")
-                    .execute();
+        connection
+            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+            .bind(0, "1")
+            .bind(1, "9223372036854775807")
+            .bind(2, "-9")
+            .execute();
     if ((isMariaDBServer() && !minVersion(10, 2, 0))
-            || (!isMariaDBServer() && !minVersion(5, 7, 0))) {
+        || (!isMariaDBServer() && !minVersion(5, 7, 0))) {
       f.blockLast();
     } else {
       f.flatMap(r -> r.getRowsUpdated())
-              .as(StepVerifier::create)
-              .expectErrorMatches(
-                      throwable ->
-                              throwable instanceof R2dbcBadGrammarException
-                                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
-              .verify();
+          .as(StepVerifier::create)
+          .expectErrorMatches(
+              throwable ->
+                  throwable instanceof R2dbcBadGrammarException
+                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
+          .verify();
     }
   }
 
@@ -150,23 +150,23 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   private void decimalValue(MariadbConnection connection) {
     Flux<MariadbResult> f =
-            connection
-                    .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-                    .bind(0, BigDecimal.ONE)
-                    .bind(1, new BigDecimal("9223372036854775807"))
-                    .bind(2, new BigDecimal("-9"))
-                    .execute();
+        connection
+            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+            .bind(0, BigDecimal.ONE)
+            .bind(1, new BigDecimal("9223372036854775807"))
+            .bind(2, new BigDecimal("-9"))
+            .execute();
     if ((isMariaDBServer() && !minVersion(10, 2, 0))
-            || (!isMariaDBServer() && !minVersion(5, 7, 0))) {
+        || (!isMariaDBServer() && !minVersion(5, 7, 0))) {
       f.blockLast();
     } else {
       f.flatMap(r -> r.getRowsUpdated())
-              .as(StepVerifier::create)
-              .expectErrorMatches(
-                      throwable ->
-                              throwable instanceof R2dbcBadGrammarException
-                                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
-              .verify();
+          .as(StepVerifier::create)
+          .expectErrorMatches(
+              throwable ->
+                  throwable instanceof R2dbcBadGrammarException
+                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
+          .verify();
     }
   }
 
@@ -182,16 +182,16 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   private void intValue(MariadbConnection connection) {
     connection
-            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-            .bind(0, 1)
-            .bind(1, -1)
-            .bind(2, 0)
-            .execute()
-            .blockLast();
+        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+        .bind(0, 1)
+        .bind(1, -1)
+        .bind(2, 0)
+        .execute()
+        .blockLast();
     validate(
-            Optional.of(Duration.parse("PT1S")),
-            Optional.of(Duration.parse("PT-1S")),
-            Optional.of(Duration.parse("PT0M")));
+        Optional.of(Duration.parse("PT1S")),
+        Optional.of(Duration.parse("PT-1S")),
+        Optional.of(Duration.parse("PT0M")));
   }
 
   @Test
@@ -206,16 +206,16 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   private void byteValue(MariadbConnection connection) {
     connection
-            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-            .bind(0, (byte) 127)
-            .bind(1, (byte) -128)
-            .bind(2, (byte) 0)
-            .execute()
-            .blockLast();
+        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+        .bind(0, (byte) 127)
+        .bind(1, (byte) -128)
+        .bind(2, (byte) 0)
+        .execute()
+        .blockLast();
     validate(
-            Optional.of(Duration.parse("PT1M27S")),
-            Optional.of(Duration.parse("PT-1M-28S")),
-            Optional.of(Duration.parse("PT0M")));
+        Optional.of(Duration.parse("PT1M27S")),
+        Optional.of(Duration.parse("PT-1M-28S")),
+        Optional.of(Duration.parse("PT0M")));
   }
 
   @Test
@@ -230,16 +230,16 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   private void floatValue(MariadbConnection connection) {
     connection
-            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-            .bind(0, 127f)
-            .bind(1, -128f)
-            .bind(2, 0f)
-            .execute()
-            .blockLast();
+        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+        .bind(0, 127f)
+        .bind(1, -128f)
+        .bind(2, 0f)
+        .execute()
+        .blockLast();
     validate(
-            Optional.of(Duration.parse("PT1M27S")),
-            Optional.of(Duration.parse("PT-1M-28S")),
-            Optional.of(Duration.parse("PT0M")));
+        Optional.of(Duration.parse("PT1M27S")),
+        Optional.of(Duration.parse("PT-1M-28S")),
+        Optional.of(Duration.parse("PT0M")));
   }
 
   @Test
@@ -254,16 +254,16 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   private void doubleValue(MariadbConnection connection) {
     connection
-            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-            .bind(0, 127d)
-            .bind(1, 128d)
-            .bind(2, 0d)
-            .execute()
-            .blockLast();
+        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+        .bind(0, 127d)
+        .bind(1, 128d)
+        .bind(2, 0d)
+        .execute()
+        .blockLast();
     validate(
-            Optional.of(Duration.parse("PT1M27S")),
-            Optional.of(Duration.parse("PT1M28S")),
-            Optional.of(Duration.parse("PT0M")));
+        Optional.of(Duration.parse("PT1M27S")),
+        Optional.of(Duration.parse("PT1M28S")),
+        Optional.of(Duration.parse("PT0M")));
   }
 
   @Test
@@ -278,16 +278,16 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   private void shortValue(MariadbConnection connection) {
     connection
-            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-            .bind(0, Short.valueOf("1"))
-            .bind(1, Short.valueOf("-1"))
-            .bind(2, Short.valueOf("0"))
-            .execute()
-            .blockLast();
+        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+        .bind(0, Short.valueOf("1"))
+        .bind(1, Short.valueOf("-1"))
+        .bind(2, Short.valueOf("0"))
+        .execute()
+        .blockLast();
     validate(
-            Optional.of(Duration.parse("PT1S")),
-            Optional.of(Duration.parse("PT-1S")),
-            Optional.of(Duration.parse("PT0M")));
+        Optional.of(Duration.parse("PT1S")),
+        Optional.of(Duration.parse("PT-1S")),
+        Optional.of(Duration.parse("PT0M")));
   }
 
   @Test
@@ -302,16 +302,16 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   private void longValue(MariadbConnection connection) {
     connection
-            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-            .bind(0, Long.valueOf("1"))
-            .bind(1, Long.valueOf("-1"))
-            .bind(2, Long.valueOf("0"))
-            .execute()
-            .blockLast();
+        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+        .bind(0, Long.valueOf("1"))
+        .bind(1, Long.valueOf("-1"))
+        .bind(2, Long.valueOf("0"))
+        .execute()
+        .blockLast();
     validate(
-            Optional.of(Duration.parse("PT1S")),
-            Optional.of(Duration.parse("PT-1S")),
-            Optional.of(Duration.parse("PT0M")));
+        Optional.of(Duration.parse("PT1S")),
+        Optional.of(Duration.parse("PT-1S")),
+        Optional.of(Duration.parse("PT0M")));
   }
 
   @Test
@@ -326,16 +326,16 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   private void localDateTimeValue(MariadbConnection connection) {
     connection
-            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-            .bind(0, LocalDateTime.parse("2010-01-12T05:08:09.0014"))
-            .bind(1, LocalDateTime.parse("2018-12-15T05:08:10.123456"))
-            .bind(2, LocalDateTime.parse("2025-05-12T05:08:11.123"))
-            .execute()
-            .blockLast();
+        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+        .bind(0, LocalDateTime.parse("2010-01-12T05:08:09.0014"))
+        .bind(1, LocalDateTime.parse("2018-12-15T05:08:10.123456"))
+        .bind(2, LocalDateTime.parse("2025-05-12T05:08:11.123"))
+        .execute()
+        .blockLast();
     validate(
-            Optional.of(Duration.parse("PT5H8M9.0014S")),
-            Optional.of(Duration.parse("PT5H8M10.123456S")),
-            Optional.of(Duration.parse("PT5H8M11.123S")));
+        Optional.of(Duration.parse("PT5H8M9.0014S")),
+        Optional.of(Duration.parse("PT5H8M10.123456S")),
+        Optional.of(Duration.parse("PT5H8M11.123S")));
   }
 
   @Test
@@ -346,43 +346,43 @@ public class TimeParameterTest extends BaseConnectionTest {
   @Test
   void localDateValuePrepare() {
     sharedConnPrepare
-            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-            .bind(0, LocalDate.parse("2010-01-12"))
-            .bind(1, LocalDate.parse("2018-12-15"))
-            .bind(2, LocalDate.parse("2025-05-12"))
-            .execute()
-            .blockLast();
+        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+        .bind(0, LocalDate.parse("2010-01-12"))
+        .bind(1, LocalDate.parse("2018-12-15"))
+        .bind(2, LocalDate.parse("2025-05-12"))
+        .execute()
+        .blockLast();
     sharedConn
-            .createStatement("SELECT * FROM TimeParam")
-            .execute()
-            .flatMap(
-                    r ->
-                            r.map(
-                                    (row, metadata) ->
-                                            Flux.just(
-                                                    row.get(0, String.class),
-                                                    row.get(1, String.class),
-                                                    row.get(2, String.class))))
-            .blockLast()
-            .as(StepVerifier::create)
-            .expectNext("00:00:00.000000", "00:00:00.000000", "00:00:00.000000")
-            .verifyComplete();
+        .createStatement("SELECT * FROM TimeParam")
+        .execute()
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) ->
+                        Flux.just(
+                            row.get(0, String.class),
+                            row.get(1, String.class),
+                            row.get(2, String.class))))
+        .blockLast()
+        .as(StepVerifier::create)
+        .expectNext("00:00:00.000000", "00:00:00.000000", "00:00:00.000000")
+        .verifyComplete();
   }
 
   private void localDateValue(MariadbConnection connection) {
     connection
-            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-            .bind(0, LocalDate.parse("2010-01-12"))
-            .bind(1, LocalDate.parse("2018-12-15"))
-            .bind(2, LocalDate.parse("2025-05-12"))
-            .execute()
-            .flatMap(r -> r.getRowsUpdated())
-            .as(StepVerifier::create)
-            .expectErrorMatches(
-                    throwable ->
-                            throwable instanceof R2dbcBadGrammarException
-                                    && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
-            .verify();
+        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+        .bind(0, LocalDate.parse("2010-01-12"))
+        .bind(1, LocalDate.parse("2018-12-15"))
+        .bind(2, LocalDate.parse("2025-05-12"))
+        .execute()
+        .flatMap(r -> r.getRowsUpdated())
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcBadGrammarException
+                    && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
+        .verify();
   }
 
   @Test
@@ -399,34 +399,34 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   private void durationValue(MariadbConnection connection) {
     connection
-            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-            .bind(0, Duration.parse("PT5H8M9.0014S"))
-            .bind(1, Duration.parse("PT-5H8M10S"))
-            .bind(2, Duration.parse("PT5H8M11.123S"))
-            .execute()
-            .blockLast();
+        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+        .bind(0, Duration.parse("PT5H8M9.0014S"))
+        .bind(1, Duration.parse("PT-5H8M10S"))
+        .bind(2, Duration.parse("PT5H8M11.123S"))
+        .execute()
+        .blockLast();
     validate(
-            Optional.of(Duration.parse("PT5H8M9.0014S")),
-            Optional.of(Duration.parse("PT-5H8M10S")),
-            Optional.of(Duration.parse("PT5H8M11.123S")));
+        Optional.of(Duration.parse("PT5H8M9.0014S")),
+        Optional.of(Duration.parse("PT-5H8M10S")),
+        Optional.of(Duration.parse("PT5H8M11.123S")));
   }
 
   private void durationValue2(MariadbConnection connection) {
-    connection
-            .createStatement("TRUNCATE TABLE TimeParam").execute().blockLast();
+    connection.createStatement("TRUNCATE TABLE TimeParam").execute().blockLast();
 
     connection
-            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-            .bind(0, Duration.parse("PT0S"))
-            .bind(1, Duration.parse("PT-1.123S"))
-            .bind(2, Duration.parse("PT-5H8M11.123S"))
-            .execute()
-            .blockLast();
+        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+        .bind(0, Duration.parse("PT0S"))
+        .bind(1, Duration.parse("PT-1.123S"))
+        .bind(2, Duration.parse("PT-5H8M11.123S"))
+        .execute()
+        .blockLast();
     validate(
-            Optional.of(Duration.parse("PT0S")),
-            Optional.of(Duration.parse("PT-1.123S")),
-            Optional.of(Duration.parse("PT-5H8M11.123S")));
+        Optional.of(Duration.parse("PT0S")),
+        Optional.of(Duration.parse("PT-1.123S")),
+        Optional.of(Duration.parse("PT-5H8M11.123S")));
   }
+
   @Test
   void localTimeValue() {
     localTimeValue(sharedConn);
@@ -439,33 +439,33 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   private void localTimeValue(MariadbConnection connection) {
     connection
-            .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
-            .bind(0, LocalTime.parse("05:08:09.0014"))
-            .bind(1, LocalTime.parse("05:08:10"))
-            .bind(2, LocalTime.parse("05:08:11.123"))
-            .execute()
-            .blockLast();
+        .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
+        .bind(0, LocalTime.parse("05:08:09.0014"))
+        .bind(1, LocalTime.parse("05:08:10"))
+        .bind(2, LocalTime.parse("05:08:11.123"))
+        .execute()
+        .blockLast();
     validate(
-            Optional.of(Duration.parse("PT5H8M9.0014S")),
-            Optional.of(Duration.parse("PT5H8M10S")),
-            Optional.of(Duration.parse("PT5H8M11.123S")));
+        Optional.of(Duration.parse("PT5H8M9.0014S")),
+        Optional.of(Duration.parse("PT5H8M10S")),
+        Optional.of(Duration.parse("PT5H8M11.123S")));
   }
 
   private void validate(Optional<Duration> t1, Optional<Duration> t2, Optional<Duration> t3) {
     sharedConn
-            .createStatement("SELECT * FROM TimeParam")
-            .execute()
-            .flatMap(
-                    r ->
-                            r.map(
-                                    (row, metadata) ->
-                                            Flux.just(
-                                                    Optional.ofNullable((Duration) row.get(0)),
-                                                    Optional.ofNullable(row.get(1)),
-                                                    Optional.ofNullable(row.get(2)))))
-            .blockLast()
-            .as(StepVerifier::create)
-            .expectNext(t1, t2, t3)
-            .verifyComplete();
+        .createStatement("SELECT * FROM TimeParam")
+        .execute()
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) ->
+                        Flux.just(
+                            Optional.ofNullable((Duration) row.get(0)),
+                            Optional.ofNullable(row.get(1)),
+                            Optional.ofNullable(row.get(2)))))
+        .blockLast()
+        .as(StepVerifier::create)
+        .expectNext(t1, t2, t3)
+        .verifyComplete();
   }
 }

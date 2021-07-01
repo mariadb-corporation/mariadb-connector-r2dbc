@@ -27,6 +27,7 @@ import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.message.server.PrepareResultPacket;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.message.server.ServerMessage;
+import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 
@@ -95,16 +96,10 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
 
   private void handleBuffer(ByteBuf packet, Sequencer sequencer) {
     if (cmdElement == null && !loadNextResponse()) {
-      char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
-      char[] hexChars = new char[packet.readerIndex() * 2];
-      for (int j = 0; j < packet.readerIndex(); j++) {
-        int v = packet.getByte(j) & 0xFF;
-        hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-        hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
-      }
       throw new R2dbcNonTransientResourceException(
           String.format(
-              "unexpected message received when no command was send: 0x%s", new String(hexChars)));
+              "unexpected message received when no command was send: 0x%s",
+              BufferUtils.toString(packet)));
     }
 
     state =
@@ -133,10 +128,6 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
       cmdElement = null;
       state = null;
     }
-  }
-
-  public Client getClient() {
-    return client;
   }
 
   public Context getContext() {

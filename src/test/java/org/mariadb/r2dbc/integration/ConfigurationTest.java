@@ -321,4 +321,12 @@ public class ConfigurationTest extends BaseTest {
         "SslConfig{sslMode=TRUST, serverSslCert=null, clientSslCert=null, tlsProtocol=null, clientSslKey=null}",
         conf.getSslConfig().toString());
   }
+
+  @Test
+  public void emptySessionVariable() throws Exception {
+    MariadbConnectionConfiguration emptySessionConf =
+        TestConfiguration.defaultBuilder.clone().sessionVariables(new HashMap<>()).build();
+    MariadbConnection con = new MariadbConnectionFactory(emptySessionConf).create().block();
+    con.close().block();
+  }
 }

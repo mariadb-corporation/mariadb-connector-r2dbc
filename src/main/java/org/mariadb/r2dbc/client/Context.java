@@ -20,21 +20,17 @@ public class Context {
 
   private final long threadId;
   private final long serverCapabilities;
-  private byte[] seed;
   private short serverStatus;
-  private String database = null;
   private ServerVersion version;
 
   public Context(
       String serverVersion,
       long threadId,
-      byte[] seed,
       long capabilities,
       short serverStatus,
       boolean mariaDBServer) {
 
     this.threadId = threadId;
-    this.seed = seed;
     this.serverCapabilities = capabilities;
     this.serverStatus = serverStatus;
     this.version = new ServerVersion(serverVersion, mariaDBServer);
@@ -42,10 +38,6 @@ public class Context {
 
   public long getThreadId() {
     return threadId;
-  }
-
-  public byte[] getSeed() {
-    return seed;
   }
 
   public long getServerCapabilities() {
@@ -58,14 +50,6 @@ public class Context {
 
   public void setServerStatus(short serverStatus) {
     this.serverStatus = serverStatus;
-  }
-
-  public String getDatabase() {
-    return database;
-  }
-
-  public void setDatabase(String database) {
-    this.database = database;
   }
 
   public ServerVersion getVersion() {

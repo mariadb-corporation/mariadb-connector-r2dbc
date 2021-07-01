@@ -29,6 +29,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
+import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import reactor.test.StepVerifier;
 
@@ -97,7 +98,8 @@ public class RowMetadataTest extends BaseConnectionTest {
                       ColumnDefinitionPacket t1Meta =
                           (ColumnDefinitionPacket) colMeta.getNativeTypeMetadata();
                       assertEquals(
-                          System.getProperty("TEST_DATABASE", "testr2"), t1Meta.getSchema());
+                          System.getProperty("TEST_DATABASE", TestConfiguration.database),
+                          t1Meta.getSchema());
                       assertEquals("t1Alias", t1Meta.getColumnAlias());
                       assertEquals("t1", t1Meta.getColumn());
                       assertEquals("rowmeta", t1Meta.getTable());
@@ -132,7 +134,8 @@ public class RowMetadataTest extends BaseConnectionTest {
                       ColumnDefinitionPacket t2Meta =
                           (ColumnDefinitionPacket) colMeta.getNativeTypeMetadata();
                       assertEquals(
-                          System.getProperty("TEST_DATABASE", "testr2"), t2Meta.getSchema());
+                          System.getProperty("TEST_DATABASE", TestConfiguration.database),
+                          t2Meta.getSchema());
                       assertEquals("t2", t2Meta.getColumnAlias());
                       assertEquals("t2", t2Meta.getColumn());
                       assertEquals("rowmeta", t2Meta.getTable());

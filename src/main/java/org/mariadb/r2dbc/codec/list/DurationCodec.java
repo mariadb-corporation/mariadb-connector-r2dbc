@@ -30,13 +30,13 @@ public class DurationCodec implements Codec<Duration> {
   public static final DurationCodec INSTANCE = new DurationCodec();
 
   private static final EnumSet<DataType> COMPATIBLE_TYPES =
-          EnumSet.of(
-                  DataType.TIME,
-                  DataType.DATETIME,
-                  DataType.TIMESTAMP,
-                  DataType.VARSTRING,
-                  DataType.VARCHAR,
-                  DataType.STRING);
+      EnumSet.of(
+          DataType.TIME,
+          DataType.DATETIME,
+          DataType.TIMESTAMP,
+          DataType.VARSTRING,
+          DataType.VARCHAR,
+          DataType.STRING);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(Duration.class);
@@ -48,32 +48,32 @@ public class DurationCodec implements Codec<Duration> {
 
   @Override
   public Duration decodeText(
-          ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Duration> type) {
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Duration> type) {
 
     int[] parts;
     switch (column.getType()) {
       case TIMESTAMP:
       case DATETIME:
         parts =
-                LocalDateTimeCodec.parseTimestamp(
-                        buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
+            LocalDateTimeCodec.parseTimestamp(
+                buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
         if (parts == null) return null;
         return Duration.ZERO
-                .plusDays(parts[2] - 1)
-                .plusHours(parts[3])
-                .plusMinutes(parts[4])
-                .plusSeconds(parts[5])
-                .plusNanos(parts[6]);
+            .plusDays(parts[2] - 1)
+            .plusHours(parts[3])
+            .plusMinutes(parts[4])
+            .plusSeconds(parts[5])
+            .plusNanos(parts[6]);
 
       default:
         // TIME, VARCHAR, VARSTRING, STRING:
         parts = LocalTimeCodec.parseTime(buf, length, column);
         Duration d =
-                Duration.ZERO
-                        .plusHours(parts[1])
-                        .plusMinutes(parts[2])
-                        .plusSeconds(parts[3])
-                        .plusNanos(parts[4]);
+            Duration.ZERO
+                .plusHours(parts[1])
+                .plusMinutes(parts[2])
+                .plusSeconds(parts[3])
+                .plusNanos(parts[4]);
         if (parts[0] == 1) return d.negated();
         return d;
     }
@@ -81,7 +81,7 @@ public class DurationCodec implements Codec<Duration> {
 
   @Override
   public Duration decodeBinary(
-          ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Duration> type) {
+      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Duration> type) {
 
     long days = 0;
     int hours = 0;
@@ -104,12 +104,12 @@ public class DurationCodec implements Codec<Duration> {
         }
 
         Duration duration =
-                Duration.ZERO
-                        .plusDays(days)
-                        .plusHours(hours)
-                        .plusMinutes(minutes)
-                        .plusSeconds(seconds)
-                        .plusNanos(microseconds * 1000);
+            Duration.ZERO
+                .plusDays(days)
+                .plusHours(hours)
+                .plusMinutes(minutes)
+                .plusSeconds(seconds)
+                .plusNanos(microseconds * 1000);
         if (negate) return duration.negated();
         return duration;
 
@@ -129,21 +129,21 @@ public class DurationCodec implements Codec<Duration> {
           }
         }
         return Duration.ZERO
-                .plusDays(days - 1)
-                .plusHours(hours)
-                .plusMinutes(minutes)
-                .plusSeconds(seconds)
-                .plusNanos(microseconds * 1000);
+            .plusDays(days - 1)
+            .plusHours(hours)
+            .plusMinutes(minutes)
+            .plusSeconds(seconds)
+            .plusNanos(microseconds * 1000);
 
       default:
         // VARCHAR, VARSTRING, STRING:
         int[] parts = LocalTimeCodec.parseTime(buf, length, column);
         Duration d =
-                Duration.ZERO
-                        .plusHours(parts[1])
-                        .plusMinutes(parts[2])
-                        .plusSeconds(parts[3])
-                        .plusNanos(parts[4]);
+            Duration.ZERO
+                .plusHours(parts[1])
+                .plusMinutes(parts[2])
+                .plusSeconds(parts[3])
+                .plusNanos(parts[4]);
         if (parts[0] == 1) return d.negated();
         return d;
     }
@@ -164,20 +164,19 @@ public class DurationCodec implements Codec<Duration> {
       if (negate) {
         s = s - 1;
         buf.writeCharSequence(
-                String.format("-%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), 1000000 - microSecond),
-                StandardCharsets.US_ASCII);
+            String.format(
+                "-%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), 1000000 - microSecond),
+            StandardCharsets.US_ASCII);
 
       } else {
         buf.writeCharSequence(
-                String.format("%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), microSecond),
-                StandardCharsets.US_ASCII);
-
+            String.format("%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), microSecond),
+            StandardCharsets.US_ASCII);
       }
     } else {
       String format = negate ? "-%d:%02d:%02d" : "%d:%02d:%02d";
       buf.writeCharSequence(
-              String.format(format, s / 3600, (s % 3600) / 60, (s % 60)),
-              StandardCharsets.US_ASCII);
+          String.format(format, s / 3600, (s % 3600) / 60, (s % 60)), StandardCharsets.US_ASCII);
     }
     buf.writeByte('\'');
   }
@@ -203,7 +202,7 @@ public class DurationCodec implements Codec<Duration> {
         buf.writeByte((int) (s % (24 * 3600)) / 3600);
         buf.writeByte((int) (s % 3600) / 60);
         buf.writeByte((int) (s % 60));
-        buf.writeIntLE((int)microSecond);
+        buf.writeIntLE((int) microSecond);
       }
     } else {
       buf.writeByte((byte) 8);

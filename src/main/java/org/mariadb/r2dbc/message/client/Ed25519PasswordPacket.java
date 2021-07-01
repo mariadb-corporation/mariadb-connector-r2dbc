@@ -92,7 +92,7 @@ public final class Ed25519PasswordPacket implements ClientMessage {
 
   @Override
   public ByteBuf encode(Context context, ByteBufAllocator allocator) {
-    if (password == null || password.toString().isEmpty()) return allocator.ioBuffer(0);
+    if (password == null) return allocator.ioBuffer(0);
     ByteBuf buf = allocator.ioBuffer(64);
     buf.writeBytes(ed25519SignWithPassword(password, seed));
     return buf;

@@ -30,10 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseConnectionTest;
-import org.mariadb.r2dbc.MariadbConnectionConfiguration;
-import org.mariadb.r2dbc.MariadbConnectionFactory;
-import org.mariadb.r2dbc.TestConfiguration;
+import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.api.MariadbStatement;
@@ -178,7 +175,7 @@ public class ConnectionTest extends BaseConnectionTest {
                 proxy.stop();
               }
             },
-            1000);
+            200);
 
     try {
       connection
@@ -186,12 +183,7 @@ public class ConnectionTest extends BaseConnectionTest {
               "select * from information_schema.columns as c1, "
                   + "information_schema.tables, information_schema.tables as t2")
           .execute()
-          .flatMap(
-              r ->
-                  r.map(
-                      (rows, meta) -> {
-                        return "";
-                      }))
+          .flatMap(r -> r.map((rows, meta) -> ""))
           .blockLast();
       Assertions.fail("must have throw exception");
     } catch (Throwable t) {
@@ -201,6 +193,11 @@ public class ConnectionTest extends BaseConnectionTest {
               || t.getMessage().contains("Connection unexpectedly closed")
               || t.getMessage().contains("Connection unexpected error"),
           "real msg:" + t.getMessage());
+      connection
+          .validate(ValidationDepth.LOCAL)
+          .as(StepVerifier::create)
+          .expectNext(Boolean.FALSE)
+          .verifyComplete();
       reInitLog();
     }
   }
@@ -368,19 +365,43 @@ public class ConnectionTest extends BaseConnectionTest {
   @Test
   void multipleBegin() throws Exception {
     MariadbConnection connection = factory.create().block();
-    connection.beginTransaction().subscribe();
-    connection.beginTransaction().block();
-    connection.beginTransaction().block();
+    multipleBegin(connection);
     connection.close().block();
+
+    connection =
+        new MariadbConnectionFactory(
+                TestConfiguration.defaultBuilder.clone().allowPipelining(false).build())
+            .create()
+            .block();
+    multipleBegin(connection);
+    connection.close().block();
+  }
+
+  void multipleBegin(MariadbConnection con) throws Exception {
+    con.beginTransaction().subscribe();
+    con.beginTransaction().block();
+    con.beginTransaction().block();
   }
 
   @Test
   void multipleAutocommit() throws Exception {
     MariadbConnection connection = factory.create().block();
-    connection.setAutoCommit(true).subscribe();
-    connection.setAutoCommit(true).block();
-    connection.setAutoCommit(false).block();
+    multipleAutocommit(connection);
     connection.close().block();
+
+    connection =
+        new MariadbConnectionFactory(
+                TestConfiguration.defaultBuilder.clone().allowPipelining(false).build())
+            .create()
+            .block();
+    multipleAutocommit(connection);
+    connection.close().block();
+  }
+
+  void multipleAutocommit(MariadbConnection con) throws Exception {
+    con.setAutoCommit(true).subscribe();
+    con.setAutoCommit(true).block();
+    con.setAutoCommit(false).block();
   }
 
   @Test
@@ -601,45 +622,102 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
-  void commitTransaction() {
-    sharedConn.createStatement("DROP TABLE IF EXISTS commitTransaction").execute().blockLast();
-    sharedConn
-        .createStatement("CREATE TABLE commitTransaction (t1 VARCHAR(256))")
-        .execute()
-        .blockLast();
-    sharedConn.setAutoCommit(false).block();
-    sharedConn.commitTransaction().block(); // must not do anything
-    sharedConn.createStatement("INSERT INTO commitTransaction VALUES ('a')").execute().blockLast();
-    sharedConn.commitTransaction().block();
-    sharedConn
-        .createStatement("SELECT * FROM commitTransaction")
+  void commitTransaction() throws Exception {
+    MariadbConnection connection = factory.create().block();
+    commitTransaction(connection);
+    MariadbStatement stmt = connection.createStatement("DO 1");
+    connection.close().block();
+    assertThrows(
+        R2dbcNonTransientResourceException.class,
+        () -> stmt.execute().blockLast(),
+        "Connection is close. Cannot send anything");
+
+    connection =
+        new MariadbConnectionFactory(
+                TestConfiguration.defaultBuilder.clone().allowPipelining(false).build())
+            .create()
+            .block();
+    commitTransaction(connection);
+    MariadbStatement stmt2 = connection.createStatement("DO 1");
+    connection.close().block();
+    assertThrows(
+        R2dbcNonTransientResourceException.class,
+        () -> stmt2.execute().blockLast(),
+        "Connection is close. Cannot send anything");
+  }
+
+  void commitTransaction(MariadbConnection con) {
+    con.createStatement("DROP TABLE IF EXISTS commitTransaction").execute().blockLast();
+    con.createStatement("CREATE TABLE commitTransaction (t1 VARCHAR(256))").execute().blockLast();
+    con.setAutoCommit(false).subscribe();
+    con.setAutoCommit(false).block();
+    con.commitTransaction().block(); // must not do anything
+    con.createStatement("INSERT INTO commitTransaction VALUES ('a')").execute().blockLast();
+    con.commitTransaction().subscribe();
+    con.commitTransaction().block();
+    con.createStatement("SELECT * FROM commitTransaction")
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
         .expectNext(Optional.of("a"))
         .verifyComplete();
-    sharedConn.createStatement("DROP TABLE IF EXISTS commitTransaction").execute().blockLast();
-    sharedConn.setAutoCommit(true).block();
+    con.createStatement("DROP TABLE IF EXISTS commitTransaction").execute().blockLast();
+    con.setAutoCommit(true).block();
   }
 
   @Test
-  void useTransaction() {
-    sharedConn.createStatement("DROP TABLE IF EXISTS useTransaction").execute().blockLast();
-    sharedConn
+  void useTransaction() throws Exception {
+    MariadbConnection connection = factory.create().block();
+    useTransaction(connection);
+    MariadbStatement stmt = connection.createStatement("DO 1");
+    connection.close().block();
+    assertThrows(
+            R2dbcNonTransientResourceException.class,
+            () -> stmt.execute().blockLast(),
+            "Connection is close. Cannot send anything");
+
+    connection =
+            new MariadbConnectionFactory(
+                    TestConfiguration.defaultBuilder.clone().allowPipelining(false).build())
+                    .create()
+                    .block();
+    useTransaction(connection);
+    MariadbStatement stmt2 = connection.createStatement("DO 1");
+    connection.close().block();
+    assertThrows(
+            R2dbcNonTransientResourceException.class,
+            () -> stmt2.execute().blockLast(),
+            "Connection is close. Cannot send anything");
+  }
+
+  void useTransaction(MariadbConnection conn) {
+    conn.createStatement("DROP TABLE IF EXISTS useTransaction").execute().blockLast();
+    conn
         .createStatement("CREATE TABLE useTransaction (t1 VARCHAR(256))")
         .execute()
         .blockLast();
-    sharedConn.beginTransaction().block();
-    sharedConn.createStatement("INSERT INTO useTransaction VALUES ('a')").execute().blockLast();
-    sharedConn.commitTransaction().block();
-    sharedConn
+    conn.beginTransaction().subscribe();
+    conn.beginTransaction().block();
+    conn.createStatement("INSERT INTO useTransaction VALUES ('a')").execute().blockLast();
+    conn.commitTransaction().block();
+    conn
         .createStatement("SELECT * FROM useTransaction")
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
         .expectNext(Optional.of("a"))
         .verifyComplete();
-    sharedConn.createStatement("DROP TABLE IF EXISTS useTransaction").execute().blockLast();
+    conn.createStatement("DROP TABLE IF EXISTS useTransaction").execute().blockLast();
+  }
+
+  @Test
+  void wrongSavePoint() {
+    sharedConn.createStatement("START TRANSACTION").execute().blockLast();
+    assertThrows(
+        Exception.class,
+        () -> sharedConn.rollbackTransactionToSavepoint("wrong").block(),
+        "SAVEPOINT wrong does not exist");
+    sharedConn.rollbackTransaction().block();
   }
 
   @Test
@@ -715,6 +793,26 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
+  public void noDb() throws Throwable {
+    MariadbConnection connection =
+        new MariadbConnectionFactory(
+                TestConfiguration.defaultBuilder.clone().database(null).build())
+            .create()
+            .block();
+    try {
+      connection
+          .createStatement("SELECT DATABASE()")
+          .execute()
+          .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
+          .as(StepVerifier::create)
+          .expectNext(Optional.empty())
+          .verifyComplete();
+    } finally {
+      connection.close().block();
+    }
+  }
+
+  @Test
   public void initialIsolationLevel() {
     Assumptions.assumeTrue(
         !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
@@ -744,7 +842,7 @@ public class ConnectionTest extends BaseConnectionTest {
             .execute()
             .flatMap(r -> r.map((row, metadata) -> row.get(0, BigInteger.class)))
             .blockLast();
-    Assumptions.assumeTrue(maxConn.intValue() < 200);
+    Assumptions.assumeTrue(maxConn.intValue() < 600);
 
     R2dbcTransientResourceException expected = null;
     Mono<?>[] cons = new Mono<?>[maxConn.intValue()];
@@ -767,5 +865,43 @@ public class ConnectionTest extends BaseConnectionTest {
     }
     Assertions.assertNotNull(expected);
     Assertions.assertTrue(expected.getMessage().contains("Too many connections"));
+  }
+
+  @Test
+  void killedConnection() {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
+    MariadbConnection connection = factory.create().block();
+    long threadId = connection.getThreadId();
+
+    Runnable runnable =
+        () -> {
+          try {
+            Thread.sleep(10);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+          sharedConn.createStatement("KILL CONNECTION " + threadId).execute().blockLast();
+        };
+    Thread thread = new Thread(runnable);
+    thread.start();
+    assertThrows(
+        R2dbcNonTransientResourceException.class,
+        () ->
+            connection
+                .createStatement(
+                    "select * from information_schema.columns as c1, "
+                        + "information_schema.tables, "
+                        + "information_schema.tables as t2")
+                .execute()
+                .blockLast(),
+        "Connection unexpectedly closed");
+    connection
+        .validate(ValidationDepth.LOCAL)
+        .as(StepVerifier::create)
+        .expectNext(Boolean.FALSE)
+        .verifyComplete();
   }
 }

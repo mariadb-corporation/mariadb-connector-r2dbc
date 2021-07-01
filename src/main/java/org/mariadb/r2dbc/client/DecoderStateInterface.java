@@ -22,8 +22,12 @@ import org.mariadb.r2dbc.message.server.ServerMessage;
 
 public interface DecoderStateInterface {
 
+  //  default DecoderState decoder(short val, int len, long serverCapabilities) {
+  //    throw new IllegalArgumentException("unexpected state");
+  //  }
+
   default DecoderState decoder(short val, int len, long serverCapabilities) {
-    throw new IllegalArgumentException("unexpected state");
+    return (DecoderState) this;
   }
 
   default ServerMessage decode(

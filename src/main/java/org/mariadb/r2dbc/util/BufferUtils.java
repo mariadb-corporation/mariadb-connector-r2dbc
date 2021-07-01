@@ -22,7 +22,7 @@ import java.time.format.DateTimeFormatter;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 
-public class BufferUtils {
+public final class BufferUtils {
 
   private static final byte QUOTE = (byte) '\'';
   private static final byte DBL_QUOTE = (byte) '"';
@@ -239,5 +239,18 @@ public class BufferUtils {
       buf.writeByte(QUOTE);
     }
     return buf;
+  }
+
+  public static String toString(ByteBuf packet) {
+    char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+    char[] hexChars = new char[packet.readableBytes() * 2];
+    int j = 0;
+    while (packet.readableBytes() > 0) {
+      int v = packet.readByte() & 0xFF;
+      hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+      hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+      j++;
+    }
+    return new String(hexChars);
   }
 }

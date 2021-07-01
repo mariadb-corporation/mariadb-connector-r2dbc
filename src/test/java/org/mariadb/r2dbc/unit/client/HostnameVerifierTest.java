@@ -1,20 +1,10 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: LGPL-2.1-or-later
+// Copyright (c) 2012-2014 Monty Program Ab
+// Copyright (c) 2015-2021 MariaDB Corporation Ab
 
-package org.mariadb.r2dbc.unit.util;
+package org.mariadb.r2dbc.unit.client;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.ByteArrayInputStream;
 import java.security.cert.CertificateException;
@@ -26,7 +16,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.util.DefaultHostnameVerifier;
 
-public class DefaultHostnameVerifierTest {
+public class HostnameVerifierTest {
 
   private static X509Certificate getCertificate(String certString) throws CertificateException {
     CertificateFactory cf = CertificateFactory.getInstance("X.509");
@@ -35,12 +25,11 @@ public class DefaultHostnameVerifierTest {
   }
 
   private void verifyExceptionEqual(String host, X509Certificate cert, String exceptionMessage) {
-    try {
-      DefaultHostnameVerifier.verify(host, cert, -1);
-      Assertions.fail("must have failed");
-    } catch (SSLException exception) {
-      Assertions.assertEquals(exceptionMessage, exception.getMessage());
-    }
+    Exception e =
+        Assertions.assertThrows(
+            SSLException.class, () -> DefaultHostnameVerifier.verify(host, cert, -1));
+    Assertions.assertTrue(
+        e.getMessage().contains(exceptionMessage), "real message:" + e.getMessage());
   }
 
   // generating certificate example
@@ -82,11 +71,44 @@ public class DefaultHostnameVerifierTest {
     verifyExceptionEqual(
         "a.test.com",
         cert,
-        "DNS host \"a.test.com\" doesn't correspond to " + "certificate CN \"test.com\"");
+        "DNS host \"a.test.com\" doesn't correspond to certificate CN \"test.com\"");
     verifyExceptionEqual(
         "other.com",
         cert,
-        "DNS host \"other.com\" doesn't correspond to " + "certificate CN \"test.com\"");
+        "DNS host \"other.com\" doesn't correspond to certificate CN \"test.com\"");
+  }
+
+  @Test
+  public void verifyNoSan() throws Exception {
+    // CN=*.mariadb.com
+    X509Certificate cert =
+        getCertificate(
+            ""
+                + "-----BEGIN CERTIFICATE-----\n"
+                + "MIIDLjCCAhYCFEWSUFTlr/qGo/jC5R1nNQdE5zmrMA0GCSqGSIb3DQEBCwUAMFIx\n"
+                + "CzAJBgNVBAYTAkNOMQswCQYDVQQIDAJHRDELMAkGA1UEBwwCU1oxEjAQBgNVBAoM\n"
+                + "CUFjbWUsSW5jLjEVMBMGA1UEAwwMQWNtZSBSb290IENBMCAXDTIxMDMzMDA5MjQ1\n"
+                + "OVoYDzIxMjEwMzA2MDkyNDU5WjBTMQswCQYDVQQGEwJDTjELMAkGA1UECAwCR0Qx\n"
+                + "CzAJBgNVBAcMAlNaMRIwEAYDVQQKDAlBY21lLEluYy4xFjAUBgNVBAMMDSoubWFy\n"
+                + "aWFkYi5vcmcwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDdKvfR3PBZ\n"
+                + "7oo4bYlj+Z2F+g2s1Pnurs7KUIu04T8x1KI0tiHniBTuTKL4TinWx734VjnK4pJf\n"
+                + "mwtcWpuxcXY+Btj/C47HMwpZjABI4PbHcB46IVb3gg8XTEDMxZ/OLYACYe+PEwvI\n"
+                + "8Bdmydtn/A6IqIOd2eQTSFCX695CNczSWd3yrirZwe6xZCp2xYemW2UJkrjxRK66\n"
+                + "IpoYWyYVPCe4CiGBL0f6dLrWE6HUPuA3Pb68o0IFGP4NlmXv9qHm8kXejqE216Q/\n"
+                + "Fx4sUS/icH50zs+QtpoKYR8XQnUVeAO8lEuI09mAxII5jtWdYOA/s2oSz5e7m0i2\n"
+                + "xsSHvDJD0P6bAgMBAAEwDQYJKoZIhvcNAQELBQADggEBAKE/YucmKZldC2iE330u\n"
+                + "CiP9EvUJfd98j96clpzdqW2V/uDylJP96QDk0iY5rIfoGAu6a9xZP9Bju8F7crLz\n"
+                + "Ogx/Vdq//7uOHMe/kJ3kOjzI8jsdFKGA26BT8wBNZ/UT9ll0iFjYZ1YhsaURslX5\n"
+                + "+uW//GG6vpcMtWIMbkkHZnM5DKeZXF1VX55jrB01kxjaqrObhqNlQl887KQ/j5HF\n"
+                + "iAAiLwDQu171TQmCY7iesYv84cyUqLvRoAfLzOPb62AlLwGNWKeIOFJElnMSDx3y\n"
+                + "LzGv9zUUe1SdqqVASKJAAhzqGyu9eLkGYIKTHU7WdrPSyAhammdeq7C7AYLpMrPc\n"
+                + "CAM=\n"
+                + "-----END CERTIFICATE-----\n");
+    DefaultHostnameVerifier.verify("test.mariadb.org", cert, -1);
+    verifyExceptionEqual(
+        "test.org",
+        cert,
+        "DNS host \"test.org\" doesn't correspond to certificate CN \"*.mariadb.org\"");
   }
 
   @Test
@@ -117,9 +139,7 @@ public class DefaultHostnameVerifierTest {
                 + "-----END CERTIFICATE-----\n");
     DefaultHostnameVerifier.verify("😎.com", cert, -1);
     verifyExceptionEqual(
-        "a.😎.com",
-        cert,
-        "DNS host \"a.😎.com\" doesn't " + "correspond to certificate CN \"😎.com\"");
+        "a.😎.com", cert, "DNS host \"a.😎.com\" doesn't correspond to certificate CN \"😎.com\"");
   }
 
   @Test
@@ -220,6 +240,38 @@ public class DefaultHostnameVerifierTest {
   }
 
   @Test
+  public void noCn() throws Exception {
+    // subjectAlt=foo.com
+    X509Certificate cert =
+        getCertificate(
+            "-----BEGIN CERTIFICATE-----\n"
+                + "MIIDazCCAlOgAwIBAgIUFxeXaoK5VSZBV1UdBhcDIB0abUAwDQYJKoZIhvcNAQEF\n"
+                + "BQAwRTELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoM\n"
+                + "GEludGVybmV0IFdpZGdpdHMgUHR5IEx0ZDAeFw0yMTA0MTQxNjIxMTlaFw0zMTA0\n"
+                + "MTIxNjIxMTlaMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEw\n"
+                + "HwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwggEiMA0GCSqGSIb3DQEB\n"
+                + "AQUAA4IBDwAwggEKAoIBAQDRmmo+05f5oqKFidWhk6+EbCNJzxJ7fwrGV13ZfqqP\n"
+                + "HSyxZIcWI/bK6BCjb9BxJa/QaaThr6x7GxI6PaDqRWInpuHepqIBL2arJLq2H3ys\n"
+                + "2zErfA5n0rFkryYW6zQUW/TJTxz5dbagemYA4TvS5Tshm0fimtNDTcv6Vb7U3OXc\n"
+                + "pa42VeLgaaM+OeCQlFH4OEXzGqXwqU090D2aRp05uPJRCFhwvMI9QXG2R8zXogTx\n"
+                + "TAlmxm4piKmg123TLd2N1TxJHxskg4OR5guO/XaG/Zji4KCKJ7dJFHjvNztG0Nme\n"
+                + "dxOo/+I/AeWhLEq81fzGMg4/BYeU1cLv6wnqFi4pbyWLAgMBAAGjUzBRMB0GA1Ud\n"
+                + "DgQWBBTLvLm0GjjbZOg5fJYgt80FvCgxNzAfBgNVHSMEGDAWgBTLvLm0GjjbZOg5\n"
+                + "fJYgt80FvCgxNzAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBBQUAA4IBAQBp\n"
+                + "3Z8UMM8y++04mKRZEP7y88dmmLOt64TRjJhTFoHvZsC/VZi5glt3/FnYxhlf8sfQ\n"
+                + "sJB+TRlVcEWBff6yJd/uUScff56Zgy2PCCL4rjgBjxgq/kf28m6tC8nHlx88qz0Y\n"
+                + "CZR9eEwTN8xgRvgUx5OFNewDYpkY0QAHkzAddCl5uaO6Mi0E34gSECIQ/cJ75xhQ\n"
+                + "K3Qy/qj1Kl7r80WJtzmhpZbpKbVZXa3NpwTWUfaD6WhNW0H/BhAnQq3XkXVWK6sW\n"
+                + "rLfHdWz9hQ79AiNaTc1I3YDyrnNEQBvHAFZ87Y8XIk4RaPzttLAfL/IKHuJdb85M\n"
+                + "cMq0UjgrIuCJoKB8kcm/\n"
+                + "-----END CERTIFICATE-----");
+    verifyExceptionEqual(
+        "a.foo.com",
+        cert,
+        "CN not found in certificate principal \"O=Internet Widgits Pty Ltd, ST=Some-State, C=AU\" and certificate doesn't contain SAN");
+  }
+
+  @Test
   public void verifyMultipleCn() throws Exception {
     // CN=test1.org, CN=test2.org
     X509Certificate cert =
@@ -250,7 +302,7 @@ public class DefaultHostnameVerifierTest {
     verifyExceptionEqual(
         "test2.org",
         cert,
-        "DNS host \"test2.org\" doesn't correspond to " + "certificate CN \"test1.org\"");
+        "DNS host \"test2.org\" doesn't correspond to certificate CN \"test1.org\"");
   }
 
   @Test
@@ -285,15 +337,13 @@ public class DefaultHostnameVerifierTest {
                 + "l3Q/RK95bnA6cuRClGusLad0e6bjkBzx/VQ3VarDEpAkTLUGVAa0CLXtnyc=\n"
                 + "-----END CERTIFICATE-----\n");
     verifyExceptionEqual(
-        "foo.com",
-        cert,
-        "DNS host \"foo.com\" doesn't correspond to certificate " + "CN \"*.foo.com\"");
+        "foo.com", cert, "DNS host \"foo.com\" doesn't correspond to certificate CN \"*.foo.com\"");
     DefaultHostnameVerifier.verify("www.foo.com", cert, -1);
     DefaultHostnameVerifier.verify("花子.foo.com", cert, -1);
     verifyExceptionEqual(
         "a.b.foo.com",
         cert,
-        "DNS host \"a.b.foo.com\" doesn't correspond to " + "certificate CN \"*.foo.com\"");
+        "DNS host \"a.b.foo.com\" doesn't correspond to certificate CN \"*.foo.com\"");
   }
 
   @Test
@@ -340,28 +390,28 @@ public class DefaultHostnameVerifierTest {
         getCertificate(
             ""
                 + "-----BEGIN CERTIFICATE-----\n"
-                + "MIIDYTCCAkmgAwIBAgIJAPMG38xrY9DZMA0GCSqGSIb3DQEBCwUAMFMxCzAJBgNV\n"
-                + "BAYTAkNOMQswCQYDVQQIDAJHRDELMAkGA1UEBwwCU1oxEzARBgNVBAoMCkFjbWUs\n"
-                + "IEluYy4xFTATBgNVBAMMDEFjbWUgUm9vdCBDQTAgFw0xNzA2MjMxNTU0MjBaGA8y\n"
-                + "MTE3MDUzMDE1NTQyMFowVDELMAkGA1UEBhMCQ04xCzAJBgNVBAgMAkdEMQswCQYD\n"
-                + "VQQHDAJTWjETMBEGA1UECgwKQWNtZSwgSW5jLjEWMBQGA1UEAwwNKi5tYXJpYWRi\n"
-                + "Lm9yZzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALuoVA18cp1Xe/HD\n"
-                + "D+qxe4onCn6w2WJMVo5H7y5Lc9XmNpAbI2n1GaDuTPHJ0m8ykShvO5ACZTxQkgtD\n"
-                + "8n6OLIi1TORBRIMTsIuhOKEMQc7WxAW0Z1ZeaiVTXHPfiG0cHFWPXPDIMgrvCGtM\n"
-                + "Pt7UuxsP1XAgT0nKwzQk2eVM/JWgvvdcv3mYFGKLYXsW3NneqQsv1IcVbBEI9e44\n"
-                + "joVPSo+Qgx9u/7dOKruDJPd6Pecsoa4OTzorrn3iwycdJAoopN0fb7Q1op1Fr64s\n"
-                + "RwR9urGZpdvduinaM+wm5v/ENyML4r0oDDwPTkHy+eiKUeJ4NvMqj4vFtbrcWM34\n"
-                + "fd4sBj0CAwEAAaM1MDMwMQYDVR0RBCowKIIVbG9jYWxob3N0LmxvY2FsZG9tYWlu\n"
-                + "gglsb2NhbGhvc3SHBH8AAAEwDQYJKoZIhvcNAQELBQADggEBAKIhFtp3bgOfsvVp\n"
-                + "RDY8DlJDmtrxKZi1aXGEjr0MqfQ8BZbh1Mb4ZXOrNQRskyP+6/BWPqIbHQ5qLEEW\n"
-                + "V8B4XYlX18VEzOX/J1e9oztPNmJ4MvQGgmEr07bgbEBQNtb9Xexdr8UVBDNq7/qg\n"
-                + "si1WCJjOyBU9UrnElxwjIAX2wIt1W7WoGtluDEiliTcsoYoIDNSe8pW1Y5Z+KxDQ\n"
-                + "MxoqD23bvutZXm1nM/mCYMIYAj8g+RE4CSHwd7N2q05p1uM1BYdXP5GflR6Ols1t\n"
-                + "RD6IzYEdpvx6RkLk5ZJYlPASH1WnOC0jg4CcPozfrFsATHOJbvQBjoHIsFeozTqA\n"
-                + "Zs/akKg=\n"
+                + "MIIDfDCCAmSgAwIBAgIURZJQVOWv+oaj+MLlHWc1B0TnOaowDQYJKoZIhvcNAQEL\n"
+                + "BQAwUjELMAkGA1UEBhMCQ04xCzAJBgNVBAgMAkdEMQswCQYDVQQHDAJTWjESMBAG\n"
+                + "A1UECgwJQWNtZSxJbmMuMRUwEwYDVQQDDAxBY21lIFJvb3QgQ0EwIBcNMjEwMzMw\n"
+                + "MDkwODAxWhgPMjEyMTAzMDYwOTA4MDFaMFMxCzAJBgNVBAYTAkNOMQswCQYDVQQI\n"
+                + "DAJHRDELMAkGA1UEBwwCU1oxEjAQBgNVBAoMCUFjbWUsSW5jLjEWMBQGA1UEAwwN\n"
+                + "Ki5tYXJpYWRiLm9yZzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBANAJ\n"
+                + "xqbqTGmwO5n3kVd6QJPRSh+0M1HIQacyM/tkE7jLw3725/KtknuwuFbPpxKyTCLC\n"
+                + "IoNx4yaBbmx783OPP3pokXTWiMdrVZdLltBNamNzekNFN4YhR5oN479M5cKgrk94\n"
+                + "Ud+ql0NN5FscrSQ0fSdJf0idJMqThro1MJVp9rp5cdCba6/lKyDbdOybe5f7rmrg\n"
+                + "+37J+src67+rqwVT8ZwZgLTGDf4X9OSIzyw6+PCWYWr89aurrOuOyqA3QqXVRZa/\n"
+                + "IxOMHIdzXMgLN6+HduwdZ+DNv1NPT2MDlRQvOnDop3NoEVKWekOTv50LbKRgWTYO\n"
+                + "TK/dfcsDpZmdyHv7pb8CAwEAAaNHMEUwQwYDVR0RBDwwOoIVbG9jYWxob3N0Lmxv\n"
+                + "Y2FsZG9tYWlugglsb2NhbGhvc3SHBH8AAAGHECABDbg5AjRoAAAAAAAABEMwDQYJ\n"
+                + "KoZIhvcNAQELBQADggEBAHsiJz9cpmL8BTa/o10S+pmap3iOnYYuJT0llCRLJ+Ji\n"
+                + "msO2niyIwqCJHMLcEABCENJt0HDOEKlnunVgc+X/6K8DnPrYhfWQbYI/dwUBoSIQ\n"
+                + "siK/yKW0q+S+YjCVpNMA3iMfhJ9Qe9LDO+xdCBhzplgrV8YwG+J2FUNbZfvl5cML\n"
+                + "TjKLWrWo9dgZyH/7mjwryRzswfUfr/lRARCyrMotaXfYmjPjwTSRc0aPGrEjs3ns\n"
+                + "WMtimgh7Zw3Tbxc51miz9CRy767lq/9BGTdeBLmW0EXssIJb9uO0Ht3C/Pqy0ojk\n"
+                + "8e1eYtofjTsqWHZ1s2LhtT0HvXdL6BnWP9GWc/zxiKM=\n"
                 + "-----END CERTIFICATE-----\n");
-    Assertions.assertEquals(
-        new X500Principal("CN=*.mariadb.org, O=\"Acme, Inc.\", L=SZ, ST=GD, C=CN"),
+    assertEquals(
+        new X500Principal("CN=*.mariadb.org, O=\"Acme,Inc.\", L=SZ, ST=GD, C=CN"),
         cert.getSubjectX500Principal());
 
     DefaultHostnameVerifier.verify("localhost", cert, -1);
@@ -370,14 +420,21 @@ public class DefaultHostnameVerifierTest {
         "local.host",
         cert,
         "DNS host \"local.host\" doesn't correspond to certificate "
-            + "CN \"*.mariadb.org\" and SAN[{DNS:\"localhost.localdomain\"},{DNS:\"localhost\"},{IP:\"127.0.0.1\"}]");
+            + "CN \"*.mariadb.org\" and SAN[{DNS:\"localhost.localdomain\"},{DNS:\"localhost\"},{IP:\"127.0.0.1\"},{IP:\"2001:db8:3902:3468:0:0:0:443\"}]");
 
     DefaultHostnameVerifier.verify("127.0.0.1", cert, -1);
     verifyExceptionEqual(
         "127.0.0.2",
         cert,
         "IPv4 host \"127.0.0.2\" doesn't correspond to certificate "
-            + "CN \"*.mariadb.org\" and SAN[{DNS:\"localhost.localdomain\"},{DNS:\"localhost\"},{IP:\"127.0.0.1\"}]");
+            + "CN \"*.mariadb.org\" and SAN[{DNS:\"localhost.localdomain\"},{DNS:\"localhost\"},{IP:\"127.0.0.1\"},{IP:\"2001:db8:3902:3468:0:0:0:443\"}]");
+
+    DefaultHostnameVerifier.verify("2001:db8:3902:3468:0:0:0:443", cert, -1);
+    verifyExceptionEqual(
+        "2001:db8:1::",
+        cert,
+        "IPv6 host \"2001:db8:1::\" doesn't correspond to certificate "
+            + "CN \"*.mariadb.org\" and SAN[{DNS:\"localhost.localdomain\"},{DNS:\"localhost\"},{IP:\"127.0.0.1\"},{IP:\"2001:db8:3902:3468:0:0:0:443\"}]");
   }
 
   @Test

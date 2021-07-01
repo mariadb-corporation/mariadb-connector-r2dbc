@@ -170,9 +170,6 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
                         case "READ-UNCOMMITTED":
                           return IsolationLevel.READ_UNCOMMITTED;
 
-                        case "READ-COMMITTED":
-                          return IsolationLevel.READ_COMMITTED;
-
                         case "SERIALIZABLE":
                           return IsolationLevel.SERIALIZABLE;
 

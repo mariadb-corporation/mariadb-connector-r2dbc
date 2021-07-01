@@ -141,9 +141,9 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
 
               // This is for server that doesn't permit RETURNING: rely on OK_packet LastInsertId
               // to retrieve the last generated ID.
-              if (serverMessage instanceof OkPacket
-                  && generatedColumns != null
-                  && !supportReturning) {
+              if (generatedColumns != null
+                  && !supportReturning
+                  && serverMessage instanceof OkPacket) {
 
                 String colName = generatedColumns.length > 0 ? generatedColumns[0] : "ID";
                 metadataList = new ColumnDefinitionPacket[1];

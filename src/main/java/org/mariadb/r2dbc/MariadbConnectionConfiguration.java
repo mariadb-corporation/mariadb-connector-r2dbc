@@ -91,11 +91,11 @@ public final class MariadbConnectionConfiguration {
     this.socketTimeout = socketTimeout;
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
     this.tcpAbortiveClose = tcpAbortiveClose == null ? Boolean.FALSE : tcpAbortiveClose;
-    this.database = database;
+    this.database = database != null && !database.isEmpty() ? database : null;
     this.host = host;
     this.connectionAttributes = connectionAttributes;
     this.sessionVariables = sessionVariables;
-    this.password = password;
+    this.password = password != null && !password.toString().isEmpty() ? password : null;
     this.port = port;
     this.socket = socket;
     this.username = username;

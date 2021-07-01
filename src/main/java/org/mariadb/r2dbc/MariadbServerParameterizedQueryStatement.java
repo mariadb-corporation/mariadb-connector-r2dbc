@@ -32,6 +32,7 @@ import org.mariadb.r2dbc.codec.Parameter;
 import org.mariadb.r2dbc.message.client.ExecutePacket;
 import org.mariadb.r2dbc.message.client.PreparePacket;
 import org.mariadb.r2dbc.message.server.CompletePrepareResult;
+import org.mariadb.r2dbc.message.server.ErrorPacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
@@ -61,19 +62,17 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   @Override
   public MariadbServerParameterizedQueryStatement add() {
     // check valid parameters
-    if (this.parameters != null) {
-      if (prepareResult.get() != null) {
-        for (int i = 0; i < prepareResult.get().getNumParams(); i++) {
-          if (parameters.get(i) == null) {
-            throw new IllegalArgumentException(
-                String.format("Parameter at position %s is not set", i));
-          }
+    if (prepareResult.get() != null) {
+      for (int i = 0; i < prepareResult.get().getNumParams(); i++) {
+        if (this.parameters == null || parameters.get(i) == null) {
+          throw new IllegalArgumentException(
+              String.format("Parameter at position %s is not set", i));
         }
       }
-      if (batchingParameters == null) batchingParameters = new ArrayList<>();
-      batchingParameters.add(parameters);
-      parameters = null;
     }
+    if (batchingParameters == null) batchingParameters = new ArrayList<>();
+    batchingParameters.add(parameters);
+    parameters = null;
     return this;
   }
 
@@ -166,10 +165,10 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   }
 
   private void validateParameters() {
-    if (prepareResult.get() != null && this.parameters != null) {
+    if (prepareResult.get() != null) {
       // valid parameters
       for (int i = 0; i < prepareResult.get().getNumParams(); i++) {
-        if (parameters.get(i) == null) {
+        if (this.parameters == null || parameters.get(i) == null) {
           throw new IllegalArgumentException(
               String.format("Parameter at position %s is not set", i));
         }
@@ -189,17 +188,15 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     }
 
     if (batchingParameters == null) {
-      validateParameters();
-      return executeSingleQuery(sql, parameters, this.generatedColumns);
+      return executeSingleQuery(sql, this.generatedColumns);
     } else {
       // add current set of parameters. see https://github.com/r2dbc/r2dbc-spi/issues/229
-      this.add();
-
+      if (parameters != null) this.add();
       // prepare command, if not already done
       if (prepareResult.get() == null) {
         prepareResult.set(client.getPrepareCache().get(sql));
         if (prepareResult.get() == null) {
-          sendPrepare(sql).block();
+          sendPrepare(sql, ExceptionFactory.withSql(sql)).block();
         }
       }
 
@@ -261,7 +258,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   }
 
   private Flux<org.mariadb.r2dbc.api.MariadbResult> executeSingleQuery(
-      String sql, Map<Integer, Parameter<?>> parameters, String[] generatedColumns) {
+      String sql, String[] generatedColumns) {
     ExceptionFactory factory = ExceptionFactory.withSql(sql);
 
     if (prepareResult.get() == null && client.getPrepareCache() != null) {
@@ -286,13 +283,14 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                     sink -> {
                       prepareResult.get().decrementUse(client);
                       sink.complete();
-                      parameters.clear();
+                      parameters = null;
                     }));
       } else {
         // prepare is closing
         prepareResult.set(null);
       }
     }
+    if (this.parameters == null) this.parameters = new HashMap<>();
 
     Flux<org.mariadb.r2dbc.api.MariadbResult> flux;
     if (configuration.allowPipelining()
@@ -301,7 +299,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
       flux = sendPrepareAndExecute(sql, factory, parameters, generatedColumns);
     } else {
       flux =
-          sendPrepare(sql)
+          sendPrepare(sql, factory)
               .flatMapMany(
                   prepareResult1 -> {
                     prepareResult.set(prepareResult1);
@@ -316,7 +314,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                 prepareResult.get().decrementUse(client);
               }
               sink.complete();
-              parameters.clear();
+              parameters = null;
             }));
   }
 
@@ -340,12 +338,16 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
                     client.getConf()));
   }
 
-  private Mono<ServerPrepareResult> sendPrepare(String sql) {
+  private Mono<ServerPrepareResult> sendPrepare(String sql, ExceptionFactory factory) {
     Flux<ServerPrepareResult> f =
         this.client
             .sendCommand(new PreparePacket(sql), DecoderState.PREPARE_RESPONSE, sql)
             .handle(
                 (it, sink) -> {
+                  if (it instanceof ErrorPacket) {
+                    sink.error(factory.from((ErrorPacket) it));
+                    return;
+                  }
                   if (it instanceof CompletePrepareResult) {
                     prepareResult.set(((CompletePrepareResult) it).getPrepare());
                     sink.next(prepareResult.get());

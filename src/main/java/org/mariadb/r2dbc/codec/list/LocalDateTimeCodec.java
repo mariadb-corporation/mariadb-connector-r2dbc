@@ -186,7 +186,7 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
               microseconds = buf.readUnsignedIntLE();
             }
           }
-        }
+        } else return null;
         break;
 
       default:

@@ -87,112 +87,103 @@ public class BinaryRowDecoder extends RowDecoder {
       index++;
     }
 
-    for (; index <= newIndex; index++) {
+    for (; index < newIndex; index++) {
       if ((nullBitmap[(index + 2) / 8] & (1 << ((index + 2) % 8))) == 0) {
-        if (index != newIndex) {
-          // skip bytes
-          switch (columns[index].getType()) {
-            case BIGINT:
-            case DOUBLE:
-              buf.skipBytes(8);
-              break;
+        // skip bytes
+        switch (columns[index].getType()) {
+          case BIGINT:
+          case DOUBLE:
+            buf.skipBytes(8);
+            break;
 
-            case INTEGER:
-            case MEDIUMINT:
-            case FLOAT:
-              buf.skipBytes(4);
-              break;
+          case INTEGER:
+          case MEDIUMINT:
+          case FLOAT:
+            buf.skipBytes(4);
+            break;
 
-            case SMALLINT:
-            case YEAR:
-              buf.skipBytes(2);
-              break;
+          case SMALLINT:
+          case YEAR:
+            buf.skipBytes(2);
+            break;
 
-            case TINYINT:
-              buf.skipBytes(1);
-              break;
+          case TINYINT:
+            buf.skipBytes(1);
+            break;
 
-            default:
-              int type = this.buf.readUnsignedByte();
-              switch (type) {
-                case 251:
-                  break;
+          default:
+            int type = this.buf.readUnsignedByte();
+            switch (type) {
+              case 251:
+                break;
 
-                case 252:
-                  this.buf.skipBytes(this.buf.readUnsignedShortLE());
-                  break;
+              case 252:
+                this.buf.skipBytes(this.buf.readUnsignedShortLE());
+                break;
 
-                case 253:
-                  this.buf.skipBytes(this.buf.readUnsignedMediumLE());
-                  break;
+              case 253:
+                this.buf.skipBytes(this.buf.readUnsignedMediumLE());
+                break;
 
-                case 254:
-                  this.buf.skipBytes((int) this.buf.readLongLE());
-                  break;
+              case 254:
+                this.buf.skipBytes((int) this.buf.readLongLE());
+                break;
 
-                default:
-                  this.buf.skipBytes(type);
-                  break;
-              }
-              break;
-          }
-        } else {
-          // read asked field position and length
-          switch (columns[index].getType()) {
-            case BIGINT:
-            case DOUBLE:
-              length = 8;
-              return;
-
-            case INTEGER:
-            case MEDIUMINT:
-            case FLOAT:
-              length = 4;
-              return;
-
-            case SMALLINT:
-            case YEAR:
-              length = 2;
-              return;
-
-            case TINYINT:
-              length = 1;
-              return;
-
-            default:
-              // field with variable length
-              int len = this.buf.readUnsignedByte();
-              switch (len) {
-                case 251:
-                  // null length field
-                  // must never occur
-                  // null value are set in NULL-Bitmap, not send with a null length indicator.
-                  throw new IllegalStateException(
-                      "null data is encoded in binary protocol but NULL-Bitmap is not set");
-
-                case 252:
-                  // length is encoded on 3 bytes (0xfc header + 2 bytes indicating length)
-                  length = this.buf.readUnsignedShortLE();
-                  return;
-
-                case 253:
-                  // length is encoded on 4 bytes (0xfd header + 3 bytes indicating length)
-                  length = this.buf.readUnsignedMediumLE();
-                  return;
-
-                case 254:
-                  // length is encoded on 9 bytes (0xfe header + 8 bytes indicating length)
-                  length = (int) this.buf.readLongLE();
-                  return;
-
-                default:
-                  // length is encoded on 1 bytes (is then less than 251)
-                  length = len;
-                  return;
-              }
-          }
+              default:
+                this.buf.skipBytes(type);
+                break;
+            }
+            break;
         }
       }
+    }
+
+    // read asked field position and length
+    switch (columns[index].getType()) {
+      case BIGINT:
+      case DOUBLE:
+        length = 8;
+        return;
+
+      case INTEGER:
+      case MEDIUMINT:
+      case FLOAT:
+        length = 4;
+        return;
+
+      case SMALLINT:
+      case YEAR:
+        length = 2;
+        return;
+
+      case TINYINT:
+        length = 1;
+        return;
+
+      default:
+        // field with variable length
+        int len = this.buf.readUnsignedByte();
+        switch (len) {
+          case 252:
+            // length is encoded on 3 bytes (0xfc header + 2 bytes indicating length)
+            length = this.buf.readUnsignedShortLE();
+            return;
+
+          case 253:
+            // length is encoded on 4 bytes (0xfd header + 3 bytes indicating length)
+            length = this.buf.readUnsignedMediumLE();
+            return;
+
+          case 254:
+            // length is encoded on 9 bytes (0xfe header + 8 bytes indicating length)
+            length = (int) this.buf.readLongLE();
+            return;
+
+          default:
+            // length is encoded on 1 bytes (is then less than 251)
+            length = len;
+            return;
+        }
     }
   }
 }
