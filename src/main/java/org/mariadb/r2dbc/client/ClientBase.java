@@ -123,6 +123,10 @@ public abstract class ClientBase implements Client {
       err =
           new R2dbcNonTransientResourceException("Connection unexpected error", "08000", throwable);
       logger.error("Connection unexpected error", throwable);
+      Channel channel = this.connection.channel();
+      if (!channel.isOpen()) {
+        this.connection.dispose();
+      }
     } else {
       err = new R2dbcNonTransientResourceException("Connection error", "08000", throwable);
       logger.error("Connection error", throwable);
@@ -378,6 +382,10 @@ public abstract class ClientBase implements Client {
 
   private void closedServlet() {
     if (this.isClosed.compareAndSet(false, true)) {
+      Channel channel = this.connection.channel();
+      if (!channel.isOpen()) {
+        this.connection.dispose();
+      }
       clearWaitingListWithError(
           new R2dbcNonTransientResourceException("Connection unexpectedly closed"));
 

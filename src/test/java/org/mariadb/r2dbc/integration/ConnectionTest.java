@@ -816,7 +816,6 @@ public class ConnectionTest extends BaseConnectionTest {
         };
     Thread thread = new Thread(runnable);
     thread.start();
-
     assertThrows(
         R2dbcNonTransientResourceException.class,
         () ->
@@ -828,5 +827,10 @@ public class ConnectionTest extends BaseConnectionTest {
                 .execute()
                 .blockLast(),
         "Connection unexpectedly closed");
+    connection
+        .validate(ValidationDepth.LOCAL)
+        .as(StepVerifier::create)
+        .expectNext(Boolean.FALSE)
+        .verifyComplete();
   }
 }
