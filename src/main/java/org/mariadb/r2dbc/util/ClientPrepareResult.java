@@ -116,8 +116,6 @@ public class ClientPrepareResult implements PrepareResult {
             singleQuotes = false;
           } else if (state == LexState.String && !singleQuotes) {
             state = LexState.Normal;
-          } else if (state == LexState.Escape && !singleQuotes) {
-            state = LexState.String;
           }
           break;
 
@@ -127,16 +125,11 @@ public class ClientPrepareResult implements PrepareResult {
             singleQuotes = true;
           } else if (state == LexState.String && singleQuotes) {
             state = LexState.Normal;
-          } else if (state == LexState.Escape && singleQuotes) {
-            state = LexState.String;
           }
           break;
 
         case '\\':
-          if (noBackslashEscapes) {
-            break;
-          }
-          if (state == LexState.String) {
+          if (!noBackslashEscapes && state == LexState.String) {
             state = LexState.Escape;
           }
           break;

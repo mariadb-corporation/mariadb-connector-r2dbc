@@ -318,6 +318,34 @@ public class TlsTest extends BaseConnectionTest {
   }
 
   @Test
+  void fullValidationCertError() throws Exception {
+    Assumptions.assumeTrue(
+            !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(haveSsl(sharedConn));
+    Assumptions.assumeTrue(serverSslCert != null);
+    Assumptions.assumeTrue(
+            "mariadb.example.com".equals(TestConfiguration.host) || "1".equals(System.getenv("local")));
+
+    MariadbConnectionConfiguration conf =
+            TestConfiguration.defaultBuilder
+                    .clone()
+                    .port(sslPort)
+                    .sslMode(SslMode.VERIFY_FULL)
+                    .host("mariadb2.example.com")
+                    .serverSslCert(serverSslCert)
+                    .build();
+
+    new MariadbConnectionFactory(conf)
+            .create()
+            .as(StepVerifier::create)
+            .expectErrorMatches(
+                    throwable ->
+                            throwable instanceof R2dbcNonTransientException
+                                    && throwable.getMessage().contains("SSL hostname verification failed : DNS host \"mariadb2.example.com\" doesn't correspond to certificate CN \"mariadb.example.com"))
+            .verify();
+  }
+
+  @Test
   void fullMutualWithoutClientCerts() throws Exception {
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));

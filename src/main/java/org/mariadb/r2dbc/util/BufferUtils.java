@@ -22,7 +22,7 @@ import java.time.format.DateTimeFormatter;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 
-public class BufferUtils {
+public final class BufferUtils {
 
   private static final byte QUOTE = (byte) '\'';
   private static final byte DBL_QUOTE = (byte) '"';

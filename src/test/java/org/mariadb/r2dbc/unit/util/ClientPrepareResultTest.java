@@ -38,13 +38,52 @@ public class ClientPrepareResultTest {
       Assertions.assertEquals(partsMulti[i], new String(res.getQueryParts().get(i)));
     }
     Assertions.assertEquals(allowMultiqueries, res.isQueryMultipleRewritable());
+
+
+    res = ClientPrepareResult.parameterParts(sql, true);
+    Assertions.assertEquals(paramNumber, res.getParamCount());
+    Assertions.assertEquals(returning, res.isReturning());
+    Assertions.assertEquals(supportReturningAddition, res.supportAddingReturning());
+
+    for (int i = 0; i < partsMulti.length; i++) {
+      Assertions.assertEquals(partsMulti[i], new String(res.getQueryParts().get(i)));
+    }
+    Assertions.assertEquals(allowMultiqueries, res.isQueryMultipleRewritable());
+  }
+
+  private void checkParsing(
+          String sql,
+          int paramNumber,
+          int paramNumberBackSlash,
+          boolean allowMultiqueries,
+          boolean returning,
+          boolean supportReturningAddition,
+          String[] partsMulti, String[] partsMultiBackSlash) {
+    ClientPrepareResult res = ClientPrepareResult.parameterParts(sql, false);
+    Assertions.assertEquals(paramNumber, res.getParamCount());
+    Assertions.assertEquals(returning, res.isReturning());
+    Assertions.assertEquals(supportReturningAddition, res.supportAddingReturning());
+
+    for (int i = 0; i < partsMulti.length; i++) {
+      Assertions.assertEquals(partsMulti[i], new String(res.getQueryParts().get(i)));
+    }
+    Assertions.assertEquals(allowMultiqueries, res.isQueryMultipleRewritable());
+
+    res = ClientPrepareResult.parameterParts(sql, true);
+    Assertions.assertEquals(paramNumberBackSlash, res.getParamCount());
+    Assertions.assertEquals(returning, res.isReturning());
+    Assertions.assertEquals(supportReturningAddition, res.supportAddingReturning());
+
+    for (int i = 0; i < partsMultiBackSlash.length; i++) {
+      Assertions.assertEquals(partsMultiBackSlash[i], new String(res.getQueryParts().get(i)));
+    }
   }
 
   @Test
   public void stringEscapeParsing() throws Exception {
     checkParsing(
         "select '\\'\"`/*#' as a, ? as \\b, \"\\\"'returningInsertDeleteUpdate\" as c, ? as d",
-        2,
+        2,1,
         true,
         false,
         false,
@@ -52,7 +91,11 @@ public class ClientPrepareResultTest {
           "select '\\'\"`/*#' as a, ",
           " as \\b, \"\\\"'returningInsertDeleteUpdate\" as c, ",
           " as d"
-        });
+        },
+            new String[] {
+                    "select '\\'\"`/*#' as a, ? as \\b, \"\\\"'returningInsertDeleteUpdate\" as c, ",
+                    " as d"
+            });
   }
 
   @Test
@@ -73,12 +116,12 @@ public class ClientPrepareResultTest {
   @Test
   public void testNamedParam() throws Exception {
     checkParsing(
-        "SELECT * FROM TABLE WHERE 1 = :firstParam and 2 = :secondParam",
+        "SELECT * FROM TABLE WHERE 1 = :firstParam AND 3 = ':para' and 2 = :secondParam",
         2,
         true,
         false,
         false,
-        new String[] {"SELECT * FROM TABLE WHERE 1 = ", " and 2 = ", ""});
+        new String[] {"SELECT * FROM TABLE WHERE 1 = ", " AND 3 = ':para' and 2 = ", ""});
   }
 
   @Test
@@ -100,7 +143,7 @@ public class ClientPrepareResultTest {
   @Test
   public void testComment() throws Exception {
     checkParsing(
-        "/* insert Select INSERT INTO tt VALUES (?,?,?,?)  */"
+        "/* insert Select INSERT INTO tt VALUES (?,?,?,?) insert update delete select returning */"
             + " INSERT into "
             + "/* insert Select INSERT INTO tt VALUES (?,?,?,?)  */"
             + " tt VALUES "
@@ -112,7 +155,7 @@ public class ClientPrepareResultTest {
         false,
         true,
         new String[] {
-          "/* insert Select INSERT INTO tt VALUES (?,?,?,?)  */"
+          "/* insert Select INSERT INTO tt VALUES (?,?,?,?) insert update delete select returning */"
               + " INSERT into "
               + "/* insert Select INSERT INTO tt VALUES (?,?,?,?)  */"
               + " tt VALUES "
@@ -299,11 +342,14 @@ public class ClientPrepareResultTest {
   public void testEscapeInString() throws Exception {
     checkParsing(
         "INSERT INTO tt (tt) VALUES (?, '\\'?', \"\\\"?\") --fin",
-        1,
+        1,2,
         false,
         false,
         true,
-        new String[] {"INSERT INTO tt (tt) VALUES (", ", '\\'?', \"\\\"?\") --fin"});
+        new String[] {"INSERT INTO tt (tt) VALUES (", ", '\\'?', \"\\\"?\") --fin"},
+    new String[] {"INSERT INTO tt (tt) VALUES (",
+            ", '\\'",
+            "', \"\\\"?\") --fin"});
   }
 
   @Test

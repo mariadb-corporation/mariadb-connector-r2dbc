@@ -175,7 +175,7 @@ public class ConnectionTest extends BaseConnectionTest {
                 proxy.stop();
               }
             },
-            1000);
+            200);
 
     try {
       connection
@@ -183,12 +183,7 @@ public class ConnectionTest extends BaseConnectionTest {
               "select * from information_schema.columns as c1, "
                   + "information_schema.tables, information_schema.tables as t2")
           .execute()
-          .flatMap(
-              r ->
-                  r.map(
-                      (rows, meta) -> {
-                        return "";
-                      }))
+          .flatMap(r -> r.map((rows, meta) -> ""))
           .blockLast();
       Assertions.fail("must have throw exception");
     } catch (Throwable t) {
@@ -198,6 +193,11 @@ public class ConnectionTest extends BaseConnectionTest {
               || t.getMessage().contains("Connection unexpectedly closed")
               || t.getMessage().contains("Connection unexpected error"),
           "real msg:" + t.getMessage());
+      connection
+          .validate(ValidationDepth.LOCAL)
+          .as(StepVerifier::create)
+          .expectNext(Boolean.FALSE)
+          .verifyComplete();
       reInitLog();
     }
   }

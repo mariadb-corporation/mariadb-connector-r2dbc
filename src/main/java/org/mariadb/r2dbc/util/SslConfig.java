@@ -63,9 +63,7 @@ public class SslConfig {
     this.clientSslCert = clientSslCert;
     this.clientSslKey = clientSslKey;
     this.clientSslPassword = clientSslPassword;
-    if (sslMode != SslMode.DISABLE) {
-      sslContextBuilder = getSslContextBuilder();
-    }
+    this.sslContextBuilder = getSslContextBuilder();
   }
 
   public SslConfig(SslMode sslMode) {

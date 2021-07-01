@@ -57,9 +57,9 @@ public class Ed25519PluginTest extends BaseConnectionTest {
       }
       sharedConn
           .createStatement(
-              "GRANT SELECT on `"
-                  + TestConfiguration.database
-                  + "`.* to verificationEd25519AuthPlugin")
+                  String.format(
+                          "GRANT all on `%s`.* to verificationEd25519AuthPlugin", TestConfiguration.database
+                  ))
           .execute()
           .blockLast();
       sharedConn.createStatement("FLUSH PRIVILEGES").execute().blockLast();
@@ -68,15 +68,12 @@ public class Ed25519PluginTest extends BaseConnectionTest {
 
   @AfterAll
   public static void after2() {
-    MariadbConnectionMetadata meta = sharedConn.getMetadata();
-    if (meta.isMariaDBServer() && meta.minVersion(10, 2, 0)) {
-      sharedConn
-          .createStatement("DROP USER verificationEd25519AuthPlugin")
-          .execute()
-          .map(res -> res.getRowsUpdated())
-          .onErrorReturn(Mono.empty())
-          .blockLast();
-    }
+    sharedConn
+        .createStatement("DROP USER IF EXISTS verificationEd25519AuthPlugin")
+        .execute()
+        .map(res -> res.getRowsUpdated())
+        .onErrorReturn(Mono.empty())
+        .blockLast();
   }
 
   @Test
