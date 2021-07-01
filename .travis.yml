@@ -10,7 +10,7 @@ addons:
 
 before_install:
   - git clone https://github.com/mariadb-corporation/connector-test-machine.git
-
+env: packet=40
 install:
   - |-
     case $TRAVIS_OS_NAME in
@@ -20,7 +20,7 @@ install:
         connector-test-machine/launch.bat -t "$srv" -v "$v" -d testr2
         ;;
       linux)
-        source connector-test-machine/launch.sh -t "$srv" -v "$v" -d testr2 -n 0 -l "$local" -p "40"
+        source connector-test-machine/launch.sh -t "$srv" -v "$v" -d testr2 -n 0 -l "$local" -p "$packet"
         ;;
     esac
 
@@ -32,7 +32,7 @@ jobs:
     - env: srv=mariadb v=10.5
       os: windows
       language: shell
-    - env: srv=mariadb v=10.2 local=1
+    - env: srv=mariadb v=10.2 local=1 packet=20
       dist: bionic
     - env: srv=mariadb v=10.3 local=1
     - env: srv=mariadb v=10.4 local=1

@@ -623,7 +623,6 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void commitTransaction() throws Exception {
-
     MariadbConnection connection = factory.create().block();
     commitTransaction(connection);
     MariadbStatement stmt = connection.createStatement("DO 1");
@@ -650,9 +649,11 @@ public class ConnectionTest extends BaseConnectionTest {
   void commitTransaction(MariadbConnection con) {
     con.createStatement("DROP TABLE IF EXISTS commitTransaction").execute().blockLast();
     con.createStatement("CREATE TABLE commitTransaction (t1 VARCHAR(256))").execute().blockLast();
+    con.setAutoCommit(false).subscribe();
     con.setAutoCommit(false).block();
     con.commitTransaction().block(); // must not do anything
     con.createStatement("INSERT INTO commitTransaction VALUES ('a')").execute().blockLast();
+    con.commitTransaction().subscribe();
     con.commitTransaction().block();
     con.createStatement("SELECT * FROM commitTransaction")
         .execute()
@@ -665,23 +666,48 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
-  void useTransaction() {
-    sharedConn.createStatement("DROP TABLE IF EXISTS useTransaction").execute().blockLast();
-    sharedConn
+  void useTransaction() throws Exception {
+    MariadbConnection connection = factory.create().block();
+    useTransaction(connection);
+    MariadbStatement stmt = connection.createStatement("DO 1");
+    connection.close().block();
+    assertThrows(
+            R2dbcNonTransientResourceException.class,
+            () -> stmt.execute().blockLast(),
+            "Connection is close. Cannot send anything");
+
+    connection =
+            new MariadbConnectionFactory(
+                    TestConfiguration.defaultBuilder.clone().allowPipelining(false).build())
+                    .create()
+                    .block();
+    useTransaction(connection);
+    MariadbStatement stmt2 = connection.createStatement("DO 1");
+    connection.close().block();
+    assertThrows(
+            R2dbcNonTransientResourceException.class,
+            () -> stmt2.execute().blockLast(),
+            "Connection is close. Cannot send anything");
+  }
+
+  void useTransaction(MariadbConnection conn) {
+    conn.createStatement("DROP TABLE IF EXISTS useTransaction").execute().blockLast();
+    conn
         .createStatement("CREATE TABLE useTransaction (t1 VARCHAR(256))")
         .execute()
         .blockLast();
-    sharedConn.beginTransaction().block();
-    sharedConn.createStatement("INSERT INTO useTransaction VALUES ('a')").execute().blockLast();
-    sharedConn.commitTransaction().block();
-    sharedConn
+    conn.beginTransaction().subscribe();
+    conn.beginTransaction().block();
+    conn.createStatement("INSERT INTO useTransaction VALUES ('a')").execute().blockLast();
+    conn.commitTransaction().block();
+    conn
         .createStatement("SELECT * FROM useTransaction")
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
         .expectNext(Optional.of("a"))
         .verifyComplete();
-    sharedConn.createStatement("DROP TABLE IF EXISTS useTransaction").execute().blockLast();
+    conn.createStatement("DROP TABLE IF EXISTS useTransaction").execute().blockLast();
   }
 
   @Test
