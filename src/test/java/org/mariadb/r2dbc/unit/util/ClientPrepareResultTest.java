@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.unit.util;
 
@@ -38,38 +25,112 @@ public class ClientPrepareResultTest {
       Assertions.assertEquals(partsMulti[i], new String(res.getQueryParts().get(i)));
     }
     Assertions.assertEquals(allowMultiqueries, res.isQueryMultipleRewritable());
+
+    res = ClientPrepareResult.parameterParts(sql, true);
+    Assertions.assertEquals(paramNumber, res.getParamCount());
+    Assertions.assertEquals(returning, res.isReturning());
+    Assertions.assertEquals(supportReturningAddition, res.supportAddingReturning());
+
+    for (int i = 0; i < partsMulti.length; i++) {
+      Assertions.assertEquals(partsMulti[i], new String(res.getQueryParts().get(i)));
+    }
+    Assertions.assertEquals(allowMultiqueries, res.isQueryMultipleRewritable());
+  }
+
+  private void checkParsing(
+      String sql,
+      int paramNumber,
+      int paramNumberBackSlash,
+      boolean allowMultiqueries,
+      boolean returning,
+      boolean supportReturningAddition,
+      String[] partsMulti,
+      String[] partsMultiBackSlash) {
+    ClientPrepareResult res = ClientPrepareResult.parameterParts(sql, false);
+    Assertions.assertEquals(paramNumber, res.getParamCount());
+    Assertions.assertEquals(returning, res.isReturning());
+    Assertions.assertEquals(supportReturningAddition, res.supportAddingReturning());
+
+    for (int i = 0; i < partsMulti.length; i++) {
+      Assertions.assertEquals(partsMulti[i], new String(res.getQueryParts().get(i)));
+    }
+    Assertions.assertEquals(allowMultiqueries, res.isQueryMultipleRewritable());
+
+    res = ClientPrepareResult.parameterParts(sql, true);
+    Assertions.assertEquals(paramNumberBackSlash, res.getParamCount());
+    Assertions.assertEquals(returning, res.isReturning());
+    Assertions.assertEquals(supportReturningAddition, res.supportAddingReturning());
+
+    for (int i = 0; i < partsMultiBackSlash.length; i++) {
+      Assertions.assertEquals(partsMultiBackSlash[i], new String(res.getQueryParts().get(i)));
+    }
   }
 
   @Test
   public void stringEscapeParsing() throws Exception {
     checkParsing(
-        "select '\\'' as a, ? as b, \"\\\"\" as c, ? as d",
+        "select '\\'\"`/*#' as a, ? as \\b, \"\\\"'returningInsertDeleteUpdate\" as c, ? as d",
         2,
+        1,
         true,
         false,
         false,
-        new String[] {"select '\\'' as a, ", " as b, \"\\\"\" as c, ", " as d"});
+        new String[] {
+          "select '\\'\"`/*#' as a, ",
+          " as \\b, \"\\\"'returningInsertDeleteUpdate\" as c, ",
+          " as d"
+        },
+        new String[] {
+          "select '\\'\"`/*#' as a, ? as \\b, \"\\\"'returningInsertDeleteUpdate\" as c, ", " as d"
+        });
   }
 
   @Test
   public void testRewritableWithConstantParameter() throws Exception {
     checkParsing(
-        "INSERT INTO TABLE(col1,col2,col3,col4, col5) VALUES (9, ?, 5, ?, 8) ON DUPLICATE KEY UPDATE col2=col2+10",
+        "INSERT INTO TABLE_INSERT(col1,col2,col3,col4, col5) VALUES (9, ?, 5, ?, 8) ON DUPLICATE KEY UPDATE col2=col2+10",
         2,
         true,
         false,
         true,
         new String[] {
-          "INSERT INTO TABLE(col1,col2,col3,col4, col5) VALUES (9, ",
+          "INSERT INTO TABLE_INSERT(col1,col2,col3,col4, col5) VALUES (9, ",
           ", 5, ",
           ", 8) ON DUPLICATE KEY UPDATE col2=col2+10"
         });
   }
 
   @Test
+  public void testNamedParam() throws Exception {
+    checkParsing(
+        "SELECT * FROM TABLE WHERE 1 = :firstParam AND 3 = ':para' and 2 = :secondParam",
+        2,
+        true,
+        false,
+        false,
+        new String[] {"SELECT * FROM TABLE WHERE 1 = ", " AND 3 = ':para' and 2 = ", ""});
+  }
+
+  @Test
+  public void stringEscapeParsing2() throws Exception {
+    checkParsing(
+        "SELECT '\\\\test' /*test* #/ ;`*/",
+        0,
+        true,
+        false,
+        false,
+        new String[] {"SELECT '\\\\test' /*test* #/ ;`*/"});
+  }
+
+  @Test
+  public void stringEscapeParsing3() throws Exception {
+    checkParsing("DO '\\\"', \"\\'\"", 0, true, false, false, new String[] {"DO '\\\"', \"\\'\""});
+  }
+
+  @Test
   public void testComment() throws Exception {
     checkParsing(
-        "/* insert Select INSERT INTO tt VALUES (?,?,?,?)  */"
+        "/* insert Select INSERT INTO tt VALUES (?,?,?,?) insert update delete select returning */"
             + " INSERT into "
             + "/* insert Select INSERT INTO tt VALUES (?,?,?,?)  */"
             + " tt VALUES "
@@ -81,7 +142,7 @@ public class ClientPrepareResultTest {
         false,
         true,
         new String[] {
-          "/* insert Select INSERT INTO tt VALUES (?,?,?,?)  */"
+          "/* insert Select INSERT INTO tt VALUES (?,?,?,?) insert update delete select returning */"
               + " INSERT into "
               + "/* insert Select INSERT INTO tt VALUES (?,?,?,?)  */"
               + " tt VALUES "
@@ -133,6 +194,39 @@ public class ClientPrepareResultTest {
         false,
         true,
         new String[] {"UPDATE MultiTestt4 SET test = ", " WHERE test = ", ""});
+  }
+
+  @Test
+  public void testUpdate2() throws Exception {
+    checkParsing(
+        "UPDATE UpdateMultiTestt4UPDATE() SET test = ? WHERE test = ?",
+        2,
+        true,
+        false,
+        true,
+        new String[] {"UPDATE UpdateMultiTestt4UPDATE() SET test = ", " WHERE test = ", ""});
+  }
+
+  @Test
+  public void testDelete() throws Exception {
+    checkParsing(
+        "DELETE FROM MultiTestt4  WHERE test = ?",
+        1,
+        true,
+        false,
+        true,
+        new String[] {"DELETE FROM MultiTestt4  WHERE test = ", ""});
+  }
+
+  @Test
+  public void testDelete2() throws Exception {
+    checkParsing(
+        "DELETE FROM DELETEMultiTestt4DELETE WHERE test = ?",
+        1,
+        true,
+        false,
+        true,
+        new String[] {"DELETE FROM DELETEMultiTestt4DELETE WHERE test = ", ""});
   }
 
   @Test
@@ -236,10 +330,12 @@ public class ClientPrepareResultTest {
     checkParsing(
         "INSERT INTO tt (tt) VALUES (?, '\\'?', \"\\\"?\") --fin",
         1,
+        2,
         false,
         false,
         true,
-        new String[] {"INSERT INTO tt (tt) VALUES (", ", '\\'?', \"\\\"?\") --fin"});
+        new String[] {"INSERT INTO tt (tt) VALUES (", ", '\\'?', \"\\\"?\") --fin"},
+        new String[] {"INSERT INTO tt (tt) VALUES (", ", '\\'", "', \"\\\"?\") --fin"});
   }
 
   @Test
@@ -365,11 +461,24 @@ public class ClientPrepareResultTest {
   }
 
   @Test
+  public void testEolskip() throws Exception {
+    checkParsing(
+        "CREATE TABLE tt \n # test \n(ID INT)",
+        0,
+        true,
+        false,
+        false,
+        new String[] {"CREATE TABLE tt \n # test \n(ID INT)"});
+  }
+
+  @Test
   public void hasParameter() {
     Assertions.assertTrue(ClientPrepareResult.hasParameter("SELECT ?", false));
+    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT  \n / /* /* / # ? */", false));
     Assertions.assertTrue(ClientPrepareResult.hasParameter("SELECT :param", false));
     Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT ':param''", false));
-    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT '?'", false));
+    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT '?\\''", false));
+    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT \"\\\"?\"", false));
     Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT \"?\"", false));
     Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT \"\\?\"", false));
     Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT `?`", false));
@@ -377,5 +486,6 @@ public class ClientPrepareResultTest {
     Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT //?\n '?'", false));
     Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT #? \n '?'", false));
     Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT --? \n '?'", false));
+    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT '`\\n' from `gg`", true));
   }
 }

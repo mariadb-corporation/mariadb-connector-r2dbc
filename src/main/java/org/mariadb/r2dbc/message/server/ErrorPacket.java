@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.message.server;
 
@@ -28,15 +15,18 @@ public final class ErrorPacket implements ServerMessage {
   private final String message;
   private final String sqlState;
   private Sequencer sequencer;
+  private final boolean ending;
 
-  private ErrorPacket(Sequencer sequencer, short errorCode, String sqlState, String message) {
+  private ErrorPacket(
+      Sequencer sequencer, short errorCode, String sqlState, String message, boolean ending) {
     this.sequencer = sequencer;
     this.errorCode = errorCode;
     this.message = message;
     this.sqlState = sqlState;
+    this.ending = ending;
   }
 
-  public static ErrorPacket decode(Sequencer sequencer, ByteBuf buf) {
+  public static ErrorPacket decode(Sequencer sequencer, ByteBuf buf, boolean ending) {
     Assert.requireNonNull(buf, "buffer must not be null");
     buf.skipBytes(1);
     short errorCode = buf.readShortLE();
@@ -52,7 +42,7 @@ public final class ErrorPacket implements ServerMessage {
       msg = buf.readCharSequence(buf.readableBytes(), StandardCharsets.UTF_8).toString();
       sqlState = "HY000";
     }
-    ErrorPacket err = new ErrorPacket(sequencer, errorCode, sqlState, msg);
+    ErrorPacket err = new ErrorPacket(sequencer, errorCode, sqlState, msg, ending);
     logger.warn("Error: '{}' sqlState='{}' code={} ", msg, sqlState, errorCode);
     return err;
   }
@@ -71,6 +61,6 @@ public final class ErrorPacket implements ServerMessage {
 
   @Override
   public boolean ending() {
-    return true;
+    return ending;
   }
 }

@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.authentication;
 
@@ -57,9 +44,9 @@ public class Ed25519PluginTest extends BaseConnectionTest {
       }
       sharedConn
           .createStatement(
-              "GRANT SELECT on `"
-                  + TestConfiguration.database
-                  + "`.* to verificationEd25519AuthPlugin")
+              String.format(
+                  "GRANT SELECT on `%s`.* to verificationEd25519AuthPlugin",
+                  TestConfiguration.database))
           .execute()
           .blockLast();
       sharedConn.createStatement("FLUSH PRIVILEGES").execute().blockLast();
@@ -68,15 +55,12 @@ public class Ed25519PluginTest extends BaseConnectionTest {
 
   @AfterAll
   public static void after2() {
-    MariadbConnectionMetadata meta = sharedConn.getMetadata();
-    if (meta.isMariaDBServer() && meta.minVersion(10, 2, 0)) {
-      sharedConn
-          .createStatement("DROP USER verificationEd25519AuthPlugin")
-          .execute()
-          .map(res -> res.getRowsUpdated())
-          .onErrorReturn(Mono.empty())
-          .blockLast();
-    }
+    sharedConn
+        .createStatement("DROP USER IF EXISTS verificationEd25519AuthPlugin")
+        .execute()
+        .map(res -> res.getRowsUpdated())
+        .onErrorReturn(Mono.empty())
+        .blockLast();
   }
 
   @Test
@@ -94,5 +78,43 @@ public class Ed25519PluginTest extends BaseConnectionTest {
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close();
+  }
+
+  @Test
+  public void multiAuthPlugin() throws Throwable {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(isMariaDBServer() && minVersion(10, 4, 2));
+
+    sharedConn.createStatement("drop user IF EXISTS mysqltest1").execute().blockLast();
+    sharedConn
+        .createStatement(
+            "CREATE USER mysqltest1 IDENTIFIED "
+                + "VIA ed25519 as password('!Passw0rd3') "
+                + " OR mysql_native_password as password('!Passw0rd3Works')")
+        .execute()
+        .blockLast();
+
+    sharedConn.createStatement("GRANT SELECT on *.* to mysqltest1").execute().blockLast();
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .username("mysqltest1")
+            .password("!Passw0rd3")
+            .build();
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    connection.close().block();
+
+    conf =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .username("mysqltest1")
+            .password("!Passw0rd3Works")
+            .build();
+    connection = new MariadbConnectionFactory(conf).create().block();
+    connection.close().block();
+    sharedConn.createStatement("drop user mysqltest1@'%'").execute().blockLast();
   }
 }

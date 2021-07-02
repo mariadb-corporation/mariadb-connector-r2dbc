@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.util;
 
@@ -38,7 +25,7 @@ import org.mariadb.r2dbc.SslMode;
 
 public class SslConfig {
 
-  public static final SslConfig DISABLE_INSTANCE = new SslConfig(SslMode.DISABLED);
+  public static final SslConfig DISABLE_INSTANCE = new SslConfig(SslMode.DISABLE);
 
   private SslMode sslMode;
   private String serverSslCert;
@@ -63,9 +50,7 @@ public class SslConfig {
     this.clientSslCert = clientSslCert;
     this.clientSslKey = clientSslKey;
     this.clientSslPassword = clientSslPassword;
-    if (sslMode != SslMode.DISABLED) {
-      sslContextBuilder = getSslContextBuilder();
-    }
+    this.sslContextBuilder = getSslContextBuilder();
   }
 
   public SslConfig(SslMode sslMode) {
@@ -79,7 +64,7 @@ public class SslConfig {
   private SslContextBuilder getSslContextBuilder() throws R2dbcTransientResourceException {
     final SslContextBuilder sslCtxBuilder = SslContextBuilder.forClient();
 
-    if (sslMode == SslMode.ENABLE_TRUST) {
+    if (sslMode == SslMode.TRUST) {
       sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE);
     } else {
 
@@ -97,30 +82,29 @@ public class SslConfig {
         throw new R2dbcTransientResourceException(
             "Server certificate needed (option `serverSslCert`) for ssl mode " + sslMode, "08000");
       }
+    }
+    if (clientSslCert != null && clientSslKey != null) {
+      InputStream certificatesStream;
+      try {
+        certificatesStream = loadCert(clientSslCert);
+      } catch (FileNotFoundException fileNotFoundEx) {
+        throw new R2dbcTransientResourceException(
+            "Failed to find clientSslCert file. clientSslCert=" + clientSslCert,
+            "08000",
+            fileNotFoundEx);
+      }
 
-      if (clientSslCert != null && clientSslKey != null) {
-        InputStream certificatesStream;
-        try {
-          certificatesStream = loadCert(clientSslCert);
-        } catch (FileNotFoundException fileNotFoundEx) {
-          throw new R2dbcTransientResourceException(
-              "Failed to find clientSslCert file. clientSslCert=" + clientSslCert,
-              "08000",
-              fileNotFoundEx);
-        }
-
-        try {
-          InputStream privateKeyStream = new FileInputStream(clientSslKey);
-          sslCtxBuilder.keyManager(
-              certificatesStream,
-              privateKeyStream,
-              clientSslPassword == null ? null : clientSslPassword.toString());
-        } catch (FileNotFoundException fileNotFoundEx) {
-          throw new R2dbcTransientResourceException(
-              "Failed to find clientSslKey file. clientSslKey=" + clientSslKey,
-              "08000",
-              fileNotFoundEx);
-        }
+      try {
+        InputStream privateKeyStream = new FileInputStream(clientSslKey);
+        sslCtxBuilder.keyManager(
+            certificatesStream,
+            privateKeyStream,
+            clientSslPassword == null ? null : clientSslPassword.toString());
+      } catch (FileNotFoundException fileNotFoundEx) {
+        throw new R2dbcTransientResourceException(
+            "Failed to find clientSslKey file. clientSslKey=" + clientSslKey,
+            "08000",
+            fileNotFoundEx);
       }
     }
 
@@ -156,7 +140,7 @@ public class SslConfig {
         result.completeExceptionally(future.cause());
         return;
       }
-      if (sslMode == SslMode.ENABLE) {
+      if (sslMode == SslMode.VERIFY_FULL) {
         try {
           DefaultHostnameVerifier hostnameVerifier = new DefaultHostnameVerifier();
           SSLSession session = engine.getSession();
@@ -184,14 +168,14 @@ public class SslConfig {
     return "SslConfig{"
         + "sslMode="
         + sslMode
-        + ", serverSslCert='"
+        + ", serverSslCert="
         + serverSslCert
-        + '\''
-        + ", clientSslCert='"
+        + ", clientSslCert="
         + clientSslCert
-        + '\''
         + ", tlsProtocol="
         + tlsProtocol
+        + ", clientSslKey="
+        + clientSslKey
         + '}';
   }
 }

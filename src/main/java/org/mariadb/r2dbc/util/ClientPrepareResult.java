@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.util;
 
@@ -24,9 +11,7 @@ public class ClientPrepareResult implements PrepareResult {
 
   private final List<byte[]> queryParts;
   private final List<String> paramNameList;
-  private final boolean rewriteType;
   private final int paramCount;
-  private boolean isQueryMultiValuesRewritable;
   private boolean isQueryMultipleRewritable;
   private boolean isReturning;
   private boolean supportAddingReturning;
@@ -34,17 +19,13 @@ public class ClientPrepareResult implements PrepareResult {
   private ClientPrepareResult(
       List<byte[]> queryParts,
       List<String> paramNameList,
-      boolean isQueryMultiValuesRewritable,
       boolean isQueryMultipleRewritable,
-      boolean rewriteType,
       boolean isReturning,
       boolean supportAddingReturning) {
     this.queryParts = queryParts;
     this.paramNameList = paramNameList;
-    this.isQueryMultiValuesRewritable = isQueryMultiValuesRewritable;
     this.isQueryMultipleRewritable = isQueryMultipleRewritable;
-    this.paramCount = queryParts.size() - (rewriteType ? 3 : 1);
-    this.rewriteType = rewriteType;
+    this.paramCount = queryParts.size() - 1;
     this.isReturning = isReturning;
     this.supportAddingReturning = supportAddingReturning;
   }
@@ -58,7 +39,6 @@ public class ClientPrepareResult implements PrepareResult {
    * @return ClientPrepareResult
    */
   public static ClientPrepareResult parameterParts(String queryString, boolean noBackslashEscapes) {
-    boolean reWritablePrepare = false;
     boolean multipleQueriesPrepare = true;
     List<byte[]> partList = new ArrayList<>();
     List<String> paramNameList = new ArrayList<>();
@@ -123,8 +103,6 @@ public class ClientPrepareResult implements PrepareResult {
             singleQuotes = false;
           } else if (state == LexState.String && !singleQuotes) {
             state = LexState.Normal;
-          } else if (state == LexState.Escape && !singleQuotes) {
-            state = LexState.String;
           }
           break;
 
@@ -134,16 +112,11 @@ public class ClientPrepareResult implements PrepareResult {
             singleQuotes = true;
           } else if (state == LexState.String && singleQuotes) {
             state = LexState.Normal;
-          } else if (state == LexState.Escape && singleQuotes) {
-            state = LexState.String;
           }
           break;
 
         case '\\':
-          if (noBackslashEscapes) {
-            break;
-          }
-          if (state == LexState.String) {
+          if (!noBackslashEscapes && state == LexState.String) {
             state = LexState.Escape;
           }
           break;
@@ -315,13 +288,7 @@ public class ClientPrepareResult implements PrepareResult {
     }
 
     return new ClientPrepareResult(
-        partList,
-        paramNameList,
-        reWritablePrepare,
-        multipleQueriesPrepare,
-        false,
-        returning,
-        supportAddingReturning);
+        partList, paramNameList, multipleQueriesPrepare, returning, supportAddingReturning);
   }
 
   /**
@@ -386,8 +353,6 @@ public class ClientPrepareResult implements PrepareResult {
             singleQuotes = false;
           } else if (state == LexState.String && !singleQuotes) {
             state = LexState.Normal;
-          } else if (state == LexState.Escape && !singleQuotes) {
-            state = LexState.String;
           }
           break;
 
@@ -397,8 +362,6 @@ public class ClientPrepareResult implements PrepareResult {
             singleQuotes = true;
           } else if (state == LexState.String && singleQuotes) {
             state = LexState.Normal;
-          } else if (state == LexState.Escape && singleQuotes) {
-            state = LexState.String;
           }
           break;
 
@@ -451,16 +414,8 @@ public class ClientPrepareResult implements PrepareResult {
     return paramNameList;
   }
 
-  public boolean isQueryMultiValuesRewritable() {
-    return isQueryMultiValuesRewritable;
-  }
-
   public boolean isQueryMultipleRewritable() {
     return isQueryMultipleRewritable;
-  }
-
-  public boolean isRewriteType() {
-    return rewriteType;
   }
 
   public boolean isReturning() {
@@ -498,7 +453,7 @@ public class ClientPrepareResult implements PrepareResult {
     }
 
     if (!supportAddingReturning()) {
-      throw new IllegalStateException("Cannot add RETUNING clause to query");
+      throw new IllegalStateException("Cannot add RETURNING clause to query");
     }
   }
 

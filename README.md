@@ -9,7 +9,7 @@
 [![Maven Central][maven-image]][maven-url]
 [![Test Build][travis-image]][travis-url]
 [![License][license-image]][license-url]
-
+[![codecov][codecov-image]][codecov-url]
 
 **Non-blocking MariaDB and MySQL client.**
 
@@ -32,7 +32,7 @@ The MariaDB Connector is available through maven using :
     <dependency>
         <groupId>org.mariadb</groupId>
         <artifactId>r2dbc-mariadb</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.2</version>
     </dependency>
 ```
 
@@ -67,7 +67,8 @@ Basic example:
     MariadbConnectionFactory factory = new MariadbConnectionFactory(conf);
 
     MariadbConnection connection = factory.create().block();
-    connection.createStatement("SELECT * FROM myTable")
+    connection.createStatement("SELECT * FROM myTable WHERE val = ?")
+            .bind(0, "myVal") // setting parameter
             .execute()
             .flatMap(r -> r.map((row, metadata) -> {
               return "value=" + row.get(0, String.class);
@@ -97,7 +98,7 @@ Basic example:
 | **`clientSslCert`** | Permits providing client's certificate in DER form (use only for mutual authentication). Can be used in one of 3 forms : <ul><li>clientSslCert=/path/to/cert.pem (full path to certificate)</li><li> clientSslCert=classpath:relative/cert.pem (relative to current classpath)</li><li> as verbatim DER-encoded certificate string "------BEGIN CERTIFICATE-----"</li></ul> |*String*| |
 | **`clientSslKey`** | client private key path(for mutual authentication) |*String* | |
 | **`clientSslPassword`** | client private key password |*charsequence* | |
-| **`sslMode`** | ssl requirement. Possible value are <ul><li>DISABLED, // NO SSL</li><li>ENABLE_TRUST, // Encryption, but no certificate and hostname validation  (DEVELOPMENT ONLY)</li><li>ENABLE_WITHOUT_HOSTNAME_VERIFICATION, // Encryption, certificates validation, BUT no hostname validation</li><li>ENABLE, // Standard SSL use: Encryption, certificate validation and hostname validation</li></ul> | SslMode |DISABLED|
+| **`sslMode`** | ssl requirement. Possible value are <ul><li>DISABLE, // NO SSL</li><li>TRUST, // Encryption, but no certificate and hostname validation  (DEVELOPMENT ONLY)</li><li>VERIFY_CA, // Encryption, certificates validation, BUT no hostname validation</li><li>VERIFY_FULL, // Standard SSL use: Encryption, certificate validation and hostname validation</li></ul> | SslMode |DISABLE|
 | **`rsaPublicKey`** | <i>only for MySQL server</i><br/> Server RSA public key, for SHA256 authentication |*String* | |
 | **`cachingRsaPublicKey`** | <i>only for MySQL server</i><br/> Server caching RSA public key, for cachingSHA256 authentication |*String* | |
 | **`allowPublicKeyRetrieval`** | <i>only for MySQL server</i><br/> Permit retrieved Server RSA public key from server. This can create a security issue |*boolean* | true | 
@@ -106,6 +107,7 @@ Basic example:
 | **`prepareCacheSize`** | if useServerPrepStmts = true, cache the prepared informations in a LRU cache to avoid re-preparation of command. Next use of that command, only prepared identifier and parameters (if any) will be sent to server. This mainly permit for server to avoid reparsing query. |*int* |256 |
 | **`pamOtherPwd`** | Permit to provide additional password for PAM authentication with multiple authentication step. If multiple passwords, value must be URL encoded.|*string* | |  
 | **`autocommit`** | Set default autocommit value on connection initialization" |*boolean* | true |
+| **`tinyInt1isBit`** | Convert Bit(1)/TINYINT(1) default to boolean type |*boolean* | true |
 
 ## Roadmap
 
@@ -126,3 +128,5 @@ To file an issue or follow the development, see [JIRA](https://jira.mariadb.org/
 [maven-url]:https://maven-badges.herokuapp.com/maven-central/org.mariadb/r2dbc-mariadb
 [license-image]:https://img.shields.io/badge/License-Apache%202.0-blue.svg
 [license-url]:https://opensource.org/licenses/Apache-2.0
+[codecov-image]:https://codecov.io/gh/mariadb-corporation/mariadb-connector-r2dbc/branch/master/graph/badge.svg?token=8fIhax7q23
+[codecov-url]:https://codecov.io/gh/mariadb-corporation/mariadb-connector-r2dbc

@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.unit.util;
 
@@ -28,8 +15,6 @@ import org.mariadb.r2dbc.util.DefaultHostnameVerifier;
 
 public class DefaultHostnameVerifierTest {
 
-  private final DefaultHostnameVerifier verifier = new DefaultHostnameVerifier();
-
   private static X509Certificate getCertificate(String certString) throws CertificateException {
     CertificateFactory cf = CertificateFactory.getInstance("X.509");
     return (X509Certificate)
@@ -38,7 +23,7 @@ public class DefaultHostnameVerifierTest {
 
   private void verifyExceptionEqual(String host, X509Certificate cert, String exceptionMessage) {
     try {
-      verifier.verify(host, cert, -1);
+      DefaultHostnameVerifier.verify(host, cert, -1);
       Assertions.fail("must have failed");
     } catch (SSLException exception) {
       Assertions.assertEquals(exceptionMessage, exception.getMessage());
@@ -80,7 +65,7 @@ public class DefaultHostnameVerifierTest {
                 + "UEjb+vAN7FxXzXzH4oqIeycnxP+/MA82iieew7nlOMlYrppM6igjP0CUzw4ys6lG\n"
                 + "8QdWBcm2Ybo4XFjOnC98VlQl+WBu4CiToxjGphDmsMIO3Hf5PSTRwTKxtuWn45Y=\n"
                 + "-----END CERTIFICATE-----\n");
-    verifier.verify("test.com", cert, -1);
+    DefaultHostnameVerifier.verify("test.com", cert, -1);
     verifyExceptionEqual(
         "a.test.com",
         cert,
@@ -117,7 +102,7 @@ public class DefaultHostnameVerifierTest {
                 + "x51XCozrD1yW9JK/YyBnjYk04iEfQLW7+pGMJOcsX7x9EGwpEg1gsDg2mM0EEIwU\n"
                 + "d6DHlYvpD9JkzyEScg8Supztoc2aGbGE4SHBKB1riTLBAHWqqwas4sGSgZxu\n"
                 + "-----END CERTIFICATE-----\n");
-    verifier.verify("😎.com", cert, -1);
+    DefaultHostnameVerifier.verify("😎.com", cert, -1);
     verifyExceptionEqual(
         "a.😎.com",
         cert,
@@ -166,19 +151,19 @@ public class DefaultHostnameVerifierTest {
         cert,
         "DNS host \"mariadb.org\" doesn't correspond to certificate "
             + "CN \"*.mariadb.org\" and SAN[{DNS:\"other.org\"},{DNS:\"www.other.org\"}]");
-    verifier.verify("a.mariadb.org", cert, -1);
+    DefaultHostnameVerifier.verify("a.mariadb.org", cert, -1);
     verifyExceptionEqual(
         "a.other2.org",
         cert,
         "DNS host \"a.other2.org\" doesn't correspond to certificate "
             + "CN \"*.mariadb.org\" and SAN[{DNS:\"other.org\"},{DNS:\"www.other.org\"}]");
-    verifier.verify("other.org", cert, -1);
+    DefaultHostnameVerifier.verify("other.org", cert, -1);
     verifyExceptionEqual(
         "a.other.org",
         cert,
         "DNS host \"a.other.org\" doesn't correspond to certificate "
             + "CN \"*.mariadb.org\" and SAN[{DNS:\"other.org\"},{DNS:\"www.other.org\"}]");
-    verifier.verify("www.other.org", cert, -1);
+    DefaultHostnameVerifier.verify("www.other.org", cert, -1);
   }
 
   @Test
@@ -212,7 +197,7 @@ public class DefaultHostnameVerifierTest {
                 + "qAVqixM+J0qJmQStgAc53i2aTMvAQu3A3snvH/PHTBo+5UL72n9S1kZyNCsVf1Qo\n"
                 + "n8jKTiRriEM+fMFlcgQP284EBFzYHyCXFb9O/hMjK2+6mY9euMB1U1aFFzM/Bg==\n"
                 + "-----END CERTIFICATE-----\n");
-    verifier.verify("foo.com", cert, -1);
+    DefaultHostnameVerifier.verify("foo.com", cert, -1);
     verifyExceptionEqual(
         "a.foo.com",
         cert,
@@ -248,7 +233,7 @@ public class DefaultHostnameVerifierTest {
                 + "A94gKVaU6XS6EdDGc6oSfKAR/pqKnWAmDc0ofvYniojquzm4fUO3JgzXN/xTDPUc\n"
                 + "GiY3dV92GD9wZfbUWsQRzLizRzIrsvZfCn/LLeUvOQPuCCeLzIxD\n"
                 + "-----END CERTIFICATE-----\n");
-    verifier.verify("test1.org", cert, -1);
+    DefaultHostnameVerifier.verify("test1.org", cert, -1);
     verifyExceptionEqual(
         "test2.org",
         cert,
@@ -290,8 +275,8 @@ public class DefaultHostnameVerifierTest {
         "foo.com",
         cert,
         "DNS host \"foo.com\" doesn't correspond to certificate " + "CN \"*.foo.com\"");
-    verifier.verify("www.foo.com", cert, -1);
-    verifier.verify("花子.foo.com", cert, -1);
+    DefaultHostnameVerifier.verify("www.foo.com", cert, -1);
+    DefaultHostnameVerifier.verify("花子.foo.com", cert, -1);
     verifyExceptionEqual(
         "a.b.foo.com",
         cert,
@@ -330,8 +315,8 @@ public class DefaultHostnameVerifierTest {
                 + "UGPLEUDzRHMPHLnSqT1n5UU5UDRytbjJPXzF+l/+WZIsanefWLsxnkgAuZe/oMMF\n"
                 + "EJMryEzOjg4Tfuc5qM0EXoPcQ/JlheaxZ40p2IyHqbsWV4MRYuFH4bkM\n"
                 + "-----END CERTIFICATE-----\n");
-    verifier.verify("foo.co.jp", cert, -1);
-    verifier.verify("花子.co.jp", cert, -1);
+    DefaultHostnameVerifier.verify("foo.co.jp", cert, -1);
+    DefaultHostnameVerifier.verify("花子.co.jp", cert, -1);
   }
 
   @Test
@@ -366,15 +351,15 @@ public class DefaultHostnameVerifierTest {
         new X500Principal("CN=*.mariadb.org, O=\"Acme, Inc.\", L=SZ, ST=GD, C=CN"),
         cert.getSubjectX500Principal());
 
-    verifier.verify("localhost", cert, -1);
-    verifier.verify("localhost.localdomain", cert, -1);
+    DefaultHostnameVerifier.verify("localhost", cert, -1);
+    DefaultHostnameVerifier.verify("localhost.localdomain", cert, -1);
     verifyExceptionEqual(
         "local.host",
         cert,
         "DNS host \"local.host\" doesn't correspond to certificate "
             + "CN \"*.mariadb.org\" and SAN[{DNS:\"localhost.localdomain\"},{DNS:\"localhost\"},{IP:\"127.0.0.1\"}]");
 
-    verifier.verify("127.0.0.1", cert, -1);
+    DefaultHostnameVerifier.verify("127.0.0.1", cert, -1);
     verifyExceptionEqual(
         "127.0.0.2",
         cert,
@@ -447,7 +432,7 @@ public class DefaultHostnameVerifierTest {
         cert,
         "DNS host \"other.org\" doesn't correspond "
             + "to certificate CN \"*.mariadb.org\" and SAN[{DNS:\"*.other.org\"},{DNS:\"a*b.other2.com\"}]");
-    verifier.verify("www.other.org", cert, -1);
+    DefaultHostnameVerifier.verify("www.other.org", cert, -1);
     verifyExceptionEqual(
         "other2.org",
         cert,
@@ -458,8 +443,8 @@ public class DefaultHostnameVerifierTest {
         cert,
         "DNS host \"www.other2.org\" doesn't correspond "
             + "to certificate CN \"*.mariadb.org\" and SAN[{DNS:\"*.other.org\"},{DNS:\"a*b.other2.com\"}]");
-    verifier.verify("ab.other2.com", cert, -1);
-    verifier.verify("axxxxb.other2.com", cert, -1);
+    DefaultHostnameVerifier.verify("ab.other2.com", cert, -1);
+    DefaultHostnameVerifier.verify("axxxxb.other2.com", cert, -1);
     verifyExceptionEqual(
         "axxxxbc.other2.org",
         cert,

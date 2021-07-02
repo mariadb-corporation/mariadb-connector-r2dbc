@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.codec;
 
@@ -41,7 +28,7 @@ public class TimeParseTest extends BaseConnectionTest {
     sharedConn
         .createStatement(
             "INSERT INTO TimeParseTest VALUES ('90:00:00.012340', '-10:01:02.012340'), ('800:00:00.123', '-00:00:10"
-                + ".123'), (800, -800), "
+                + ".123'), (800, 0), "
                 + "(22, -22)"
                 + ", (null, null)")
         .execute()
@@ -52,6 +39,17 @@ public class TimeParseTest extends BaseConnectionTest {
   @AfterAll
   public static void afterAll2() {
     sharedConn.createStatement("DROP TABLE TimeParseTest").execute().blockLast();
+  }
+
+  @Test
+  void wrongType() {
+    sharedConn
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, this.getClass()))))
+        .as(StepVerifier::create)
+        .expectError();
   }
 
   @Test
@@ -76,6 +74,19 @@ public class TimeParseTest extends BaseConnectionTest {
             Optional.of(Duration.parse("P33DT8H0.123S")),
             Optional.of(Duration.parse("PT8M")),
             Optional.of(Duration.parse("PT22S")),
+            Optional.empty())
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t2 FROM TimeParseTest WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(
+            Optional.of(Duration.parse("PT-10H-1M-2.01234S")),
+            Optional.of(Duration.parse("PT-10.123S")),
+            Optional.of(Duration.parse("PT0M")),
+            Optional.of(Duration.parse("PT-22S")),
             Optional.empty())
         .verifyComplete();
   }
@@ -139,7 +150,7 @@ public class TimeParseTest extends BaseConnectionTest {
         .expectNext(
             Optional.of(LocalTime.parse("13:58:57.987660")),
             Optional.of(LocalTime.parse("23:59:49.877")),
-            Optional.of(LocalTime.parse("23:52")),
+            Optional.of(LocalTime.parse("00:00")),
             Optional.of(LocalTime.parse("23:59:38")),
             Optional.empty())
         .verifyComplete();

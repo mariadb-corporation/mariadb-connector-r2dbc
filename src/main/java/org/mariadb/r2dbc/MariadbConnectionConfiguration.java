@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc;
 
@@ -56,6 +43,7 @@ public final class MariadbConnectionConfiguration {
   private IsolationLevel isolationLevel;
   private final boolean useServerPrepStmts;
   private final boolean autocommit;
+  private final boolean tinyInt1isBit;
 
   private MariadbConnectionConfiguration(
       @Nullable Duration connectTimeout,
@@ -84,22 +72,23 @@ public final class MariadbConnectionConfiguration {
       boolean useServerPrepStmts,
       boolean autocommit,
       @Nullable Integer prepareCacheSize,
-      @Nullable CharSequence[] pamOtherPwd) {
+      @Nullable CharSequence[] pamOtherPwd,
+      boolean tinyInt1isBit) {
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
     this.socketTimeout = socketTimeout;
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
     this.tcpAbortiveClose = tcpAbortiveClose == null ? Boolean.FALSE : tcpAbortiveClose;
-    this.database = database;
+    this.database = database != null && !database.isEmpty() ? database : null;
     this.host = host;
     this.connectionAttributes = connectionAttributes;
     this.sessionVariables = sessionVariables;
-    this.password = password;
+    this.password = password != null && !password.toString().isEmpty() ? password : null;
     this.port = port;
     this.socket = socket;
     this.username = username;
     this.allowMultiQueries = allowMultiQueries;
     this.allowPipelining = allowPipelining;
-    if (sslMode == SslMode.DISABLED) {
+    if (sslMode == SslMode.DISABLE) {
       this.sslConfig = SslConfig.DISABLE_INSTANCE;
     } else {
       this.sslConfig =
@@ -113,36 +102,28 @@ public final class MariadbConnectionConfiguration {
     this.prepareCacheSize = (prepareCacheSize == null) ? 250 : prepareCacheSize.intValue();
     this.pamOtherPwd = pamOtherPwd;
     this.autocommit = autocommit;
+    this.tinyInt1isBit = tinyInt1isBit;
   }
 
   static boolean boolValue(Object value) {
     if (value instanceof Boolean) {
       return ((Boolean) value).booleanValue();
     }
-    if (value instanceof String) {
-      return Boolean.parseBoolean(value.toString());
-    }
-    throw new IllegalArgumentException(String.format("Option %s wrong boolean format", value));
+    return Boolean.parseBoolean(value.toString()) || "1".equals(value);
   }
 
   static Duration durationValue(Object value) {
     if (value instanceof Duration) {
       return ((Duration) value);
     }
-    if (value instanceof String) {
-      return Duration.parse(value.toString());
-    }
-    throw new IllegalArgumentException(String.format("Option %s wrong duration format", value));
+    return Duration.parse(value.toString());
   }
 
   static int intValue(Object value) {
     if (value instanceof Number) {
       return ((Number) value).intValue();
     }
-    if (value instanceof String) {
-      return Integer.parseInt(value.toString());
-    }
-    throw new IllegalArgumentException(String.format("Option %s wrong integer format", value));
+    return Integer.parseInt(value.toString());
   }
 
   public static Builder fromOptions(ConnectionFactoryOptions connectionFactoryOptions) {
@@ -188,6 +169,12 @@ public final class MariadbConnectionConfiguration {
                   MariadbConnectionFactoryProvider.TCP_ABORTIVE_CLOSE)));
     }
 
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SESSION_VARIABLES)) {
+      String sessionVarString =
+          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SESSION_VARIABLES);
+      builder.sessionVariables(getMapFromString(sessionVarString));
+    }
+
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.ALLOW_PIPELINING)) {
       builder.allowPipelining(
           boolValue(
@@ -206,18 +193,17 @@ public final class MariadbConnectionConfiguration {
           boolValue(
               connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.AUTO_COMMIT)));
     }
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TINY_IS_BIT)) {
+      builder.tinyInt1isBit(
+          boolValue(
+              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.TINY_IS_BIT)));
+    }
+
     if (connectionFactoryOptions.hasOption(
         MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES)) {
-      Map<String, String> myMap = new HashMap<>();
-      String s =
+      String connAttributes =
           connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES);
-      String[] pairs = s.split(",");
-      for (int i = 0; i < pairs.length; i++) {
-        String pair = pairs[i];
-        String[] keyValue = pair.split("=");
-        myMap.put(keyValue[0], (keyValue.length > 1) ? keyValue[1] : "");
-      }
-      builder.connectionAttributes(myMap);
+      builder.connectionAttributes(getMapFromString(connAttributes));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.PREPARE_CACHE_SIZE)) {
@@ -236,6 +222,10 @@ public final class MariadbConnectionConfiguration {
         connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SERVER_SSL_CERT));
     builder.clientSslCert(
         connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_CERT));
+    builder.clientSslKey(
+        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_KEY));
+    builder.clientSslPassword(
+        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_PWD));
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TLS_PROTOCOL)) {
       String[] protocols =
@@ -251,20 +241,32 @@ public final class MariadbConnectionConfiguration {
     }
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.PAM_OTHER_PASSWORD)) {
       String s =
-          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES);
+          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.PAM_OTHER_PASSWORD);
       String[] pairs = s.split(",");
       try {
         for (int i = 0; i < pairs.length; i++) {
           pairs[i] = URLDecoder.decode(pairs[i], StandardCharsets.UTF_8.toString());
-          ;
         }
       } catch (UnsupportedEncodingException e) {
-        // eat
+        // eat, StandardCharsets.UTF_8 is always supported
       }
       builder.pamOtherPwd(pairs);
     }
 
     return builder;
+  }
+
+  private static Map<String, String> getMapFromString(String s) {
+    Map<String, String> map = new HashMap<>();
+    if (s != null && !s.isEmpty()) {
+      String[] pairs = s.split(",");
+      for (int i = 0; i < pairs.length; i++) {
+        String pair = pairs[i];
+        String[] keyValue = pair.split("=");
+        map.put(keyValue[0], (keyValue.length > 1) ? keyValue[1] : "");
+      }
+    }
+    return map;
   }
 
   public static Builder builder() {
@@ -358,6 +360,10 @@ public final class MariadbConnectionConfiguration {
     return autocommit;
   }
 
+  public boolean tinyInt1isBit() {
+    return tinyInt1isBit;
+  }
+
   public int getPrepareCacheSize() {
     return prepareCacheSize;
   }
@@ -378,16 +384,12 @@ public final class MariadbConnectionConfiguration {
   public String toString() {
     StringBuilder hiddenPwd = new StringBuilder();
     if (password != null) {
-      for (int i = 0; i < password.length(); i++) {
-        hiddenPwd.append("*");
-      }
+      hiddenPwd.append("*");
     }
     StringBuilder hiddenPamPwd = new StringBuilder();
     if (pamOtherPwd != null) {
       for (CharSequence s : pamOtherPwd) {
-        for (int i = 0; i < s.length(); i++) {
-          hiddenPamPwd.append("*");
-        }
+        hiddenPamPwd.append("*");
         hiddenPamPwd.append(",");
       }
       hiddenPamPwd.deleteCharAt(hiddenPamPwd.length() - 1);
@@ -444,6 +446,8 @@ public final class MariadbConnectionConfiguration {
         + useServerPrepStmts
         + ", autocommit="
         + autocommit
+        + ", tinyInt1isBit="
+        + tinyInt1isBit
         + ", pamOtherPwd="
         + hiddenPamPwd
         + '}';
@@ -475,13 +479,14 @@ public final class MariadbConnectionConfiguration {
     private boolean allowPipelining = true;
     private boolean useServerPrepStmts = false;
     private boolean autocommit = true;
+    private boolean tinyInt1isBit = true;
     @Nullable Integer prepareCacheSize;
     @Nullable private List<String> tlsProtocol;
     @Nullable private String serverSslCert;
     @Nullable private String clientSslCert;
     @Nullable private String clientSslKey;
     @Nullable private CharSequence clientSslPassword;
-    private SslMode sslMode = SslMode.DISABLED;
+    private SslMode sslMode = SslMode.DISABLE;
     private CharSequence[] pamOtherPwd;
 
     private Builder() {}
@@ -533,7 +538,8 @@ public final class MariadbConnectionConfiguration {
           this.useServerPrepStmts,
           this.autocommit,
           this.prepareCacheSize,
-          this.pamOtherPwd);
+          this.pamOtherPwd,
+          this.tinyInt1isBit);
     }
 
     /**
@@ -622,10 +628,11 @@ public final class MariadbConnectionConfiguration {
         this.tlsProtocol = null;
         return this;
       }
-      this.tlsProtocol = new ArrayList<>();
+      List<String> tmp = new ArrayList<>();
       for (String protocol : tlsProtocol) {
-        this.tlsProtocol.add(protocol);
+        if (protocol != null) tmp.add(protocol);
       }
+      if (!tmp.isEmpty()) this.tlsProtocol = tmp;
       return this;
     }
 
@@ -709,7 +716,7 @@ public final class MariadbConnectionConfiguration {
 
     public Builder sslMode(SslMode sslMode) {
       this.sslMode = sslMode;
-      if (sslMode == null) this.sslMode = SslMode.DISABLED;
+      if (sslMode == null) this.sslMode = SslMode.DISABLE;
       return this;
     }
 
@@ -765,6 +772,18 @@ public final class MariadbConnectionConfiguration {
      */
     public Builder autocommit(boolean autocommit) {
       this.autocommit = autocommit;
+      return this;
+    }
+
+    /**
+     * Permit to indicate how BIT(1) must return as boolean or byte . Default value True (returns
+     * boolean).
+     *
+     * @param tinyInt1isBit return boolean for BIT(1)
+     * @return this {@link Builder}
+     */
+    public Builder tinyInt1isBit(boolean tinyInt1isBit) {
+      this.tinyInt1isBit = tinyInt1isBit;
       return this;
     }
 
@@ -827,33 +846,26 @@ public final class MariadbConnectionConfiguration {
     public String toString() {
       StringBuilder hiddenPwd = new StringBuilder();
       if (password != null) {
-        for (int i = 0; i < password.length(); i++) {
-          hiddenPwd.append("*");
-        }
+        hiddenPwd.append("*");
       }
       StringBuilder hiddenPamPwd = new StringBuilder();
       if (pamOtherPwd != null) {
         for (CharSequence s : pamOtherPwd) {
-          for (int i = 0; i < s.length(); i++) {
-            hiddenPamPwd.append("*");
-          }
+          hiddenPamPwd.append("*");
           hiddenPamPwd.append(",");
         }
         hiddenPamPwd.deleteCharAt(hiddenPamPwd.length() - 1);
       }
 
       return "Builder{"
-          + "rsaPublicKey='"
+          + "rsaPublicKey="
           + rsaPublicKey
-          + '\''
-          + ", cachingRsaPublicKey='"
+          + ", cachingRsaPublicKey="
           + cachingRsaPublicKey
-          + '\''
           + ", allowPublicKeyRetrieval="
           + allowPublicKeyRetrieval
-          + ", username='"
+          + ", username="
           + username
-          + '\''
           + ", connectTimeout="
           + connectTimeout
           + ", socketTimeout="
@@ -862,12 +874,10 @@ public final class MariadbConnectionConfiguration {
           + tcpKeepAlive
           + ", tcpAbortiveClose="
           + tcpAbortiveClose
-          + ", database='"
+          + ", database="
           + database
-          + '\''
-          + ", host='"
+          + ", host="
           + host
-          + '\''
           + ", sessionVariables="
           + sessionVariables
           + ", connectionAttributes="
@@ -876,9 +886,8 @@ public final class MariadbConnectionConfiguration {
           + hiddenPwd
           + ", port="
           + port
-          + ", socket='"
+          + ", socket="
           + socket
-          + '\''
           + ", allowMultiQueries="
           + allowMultiQueries
           + ", allowPipelining="
@@ -889,21 +898,22 @@ public final class MariadbConnectionConfiguration {
           + prepareCacheSize
           + ", tlsProtocol="
           + tlsProtocol
-          + ", serverSslCert='"
+          + ", serverSslCert="
           + serverSslCert
-          + '\''
-          + ", clientSslCert='"
+          + ", clientSslCert="
           + clientSslCert
-          + '\''
-          + ", clientSslKey='"
+          + ", clientSslKey="
           + clientSslKey
-          + '\''
           + ", clientSslPassword="
           + clientSslPassword
           + ", sslMode="
           + sslMode
           + ", pamOtherPwd="
           + hiddenPamPwd
+          + ", tinyInt1isBit="
+          + tinyInt1isBit
+          + ", autoCommit="
+          + autocommit
           + '}';
     }
   }

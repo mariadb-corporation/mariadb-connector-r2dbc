@@ -1,22 +1,10 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.authentication;
 
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.io.File;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
@@ -49,15 +37,19 @@ public class Sha256PluginTest extends BaseConnectionTest {
     Assumptions.assumeTrue(!isMariaDBServer() && minVersion(5, 7, 0));
 
     rsaPublicKey = System.getProperty("rsaPublicKey");
-    if (!validPath(rsaPublicKey) && minVersion(8, 0, 0)) {
-      rsaPublicKey =
-          sharedConn
-              .createStatement("SELECT @@caching_sha2_password_public_key_path")
-              .execute()
-              .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
-              .blockLast();
+    if (!validPath(rsaPublicKey) && minVersion(5, 7, 0)) {
+      rsaPublicKey = System.getenv("TEST_DB_RSA_PUBLIC_KEY");
       if (!validPath(rsaPublicKey)) {
-        rsaPublicKey = System.getenv("TEST_DB_RSA_PUBLIC_KEY");
+        try {
+          rsaPublicKey =
+              sharedConn
+                  .createStatement("SELECT @@sha256_password_public_key_path")
+                  .execute()
+                  .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+                  .blockLast();
+        } catch (R2dbcTransientResourceException e) {
+          // eat
+        }
         if (!validPath(rsaPublicKey)) {
           File sslDir = new File(System.getProperty("user.dir") + "/ssl");
           if (sslDir.exists() && sslDir.isDirectory()) {
@@ -65,95 +57,123 @@ public class Sha256PluginTest extends BaseConnectionTest {
           } else rsaPublicKey = null;
         }
       }
-    }
 
-    cachingRsaPublicKey = System.getProperty("cachingRsaPublicKey");
-    if (!validPath(cachingRsaPublicKey)) {
-      cachingRsaPublicKey =
-          sharedConn
-              .createStatement("SELECT @@sha256_password_public_key_path")
-              .execute()
-              .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
-              .blockLast();
+      cachingRsaPublicKey = System.getProperty("cachingRsaPublicKey");
       if (!validPath(cachingRsaPublicKey)) {
         cachingRsaPublicKey = System.getenv("TEST_DB_RSA_PUBLIC_KEY");
         if (!validPath(cachingRsaPublicKey)) {
-          File sslDir = new File(System.getProperty("user.dir") + "/ssl");
-          if (sslDir.exists() && sslDir.isDirectory()) {
-            cachingRsaPublicKey = System.getProperty("user.dir") + "/ssl/public.key";
-          } else cachingRsaPublicKey = null;
+          try {
+            cachingRsaPublicKey =
+                sharedConn
+                    .createStatement("SELECT @@caching_sha2_password_public_key_path")
+                    .execute()
+                    .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+                    .blockLast();
+          } catch (R2dbcTransientResourceException e) {
+            // eat
+          }
+          if (!validPath(cachingRsaPublicKey)) {
+            File sslDir = new File(System.getProperty("user.dir") + "/ssl");
+            if (sslDir.exists() && sslDir.isDirectory()) {
+              cachingRsaPublicKey = System.getProperty("user.dir") + "/ssl/public.key";
+            } else cachingRsaPublicKey = null;
+          }
         }
       }
-    }
+      dropAll();
 
-    sharedConn
-        .createStatement("DROP USER IF EXISTS 'sha256User'@'%'")
-        .execute()
-        .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
-        .blockLast();
-    sharedConn
-        .createStatement("DROP USER IF EXISTS 'cachingSha256User'@'%'")
-        .execute()
-        .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
-        .blockLast();
-    sharedConn
-        .createStatement("DROP USER IF EXISTS 'cachingSha256User2'@'%'")
-        .execute()
-        .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
-        .blockLast();
+      String sqlCreateUser;
+      String sqlGrant;
+      String sqlCreateUser2;
+      String sqlGrant2;
+      String sqlCreateUser3;
+      String sqlGrant3;
 
-    String sqlCreateUser;
-    String sqlGrant;
-    if (minVersion(8, 0, 0)) {
-      sqlCreateUser = "CREATE USER 'sha256User'@'%' IDENTIFIED WITH sha256_password BY 'password'";
-      sqlGrant = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User'@'%'";
-    } else {
-      sqlCreateUser = "CREATE USER 'sha256User'@'%'";
-      sqlGrant =
-          "GRANT ALL PRIVILEGES ON *.* TO 'sha256User'@'%' IDENTIFIED WITH "
-              + "sha256_password BY 'password'";
-    }
-    sharedConn.createStatement(sqlCreateUser).execute().blockLast();
-    sharedConn.createStatement(sqlGrant).execute().blockLast();
-    if (minVersion(8, 0, 0)) {
-      sharedConn
-          .createStatement(
-              "CREATE USER 'cachingSha256User'@'%'  IDENTIFIED WITH caching_sha2_password BY 'password'")
-          .execute()
-          .blockLast();
-      sharedConn
-          .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User'@'%'")
-          .execute()
-          .blockLast();
-      sharedConn
-          .createStatement(
-              "CREATE USER 'cachingSha256User2'@'%'  IDENTIFIED WITH caching_sha2_password BY 'password'")
-          .execute()
-          .blockLast();
-      sharedConn
-          .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User2'@'%'")
-          .execute()
-          .blockLast();
-      sharedConn
-          .createStatement(
-              "CREATE USER 'cachingSha256User3'@'%'  IDENTIFIED WITH caching_sha2_password BY 'password'")
-          .execute()
-          .blockLast();
-      sharedConn
-          .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User3'@'%'")
-          .execute()
-          .blockLast();
+      if (minVersion(8, 0, 0)) {
+        sqlCreateUser = "CREATE USER 'sha256User' IDENTIFIED WITH sha256_password BY 'password'";
+        sqlGrant = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User'";
+        sqlCreateUser2 = "CREATE USER 'sha256User2' IDENTIFIED WITH sha256_password BY 'password'";
+        sqlGrant2 = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User2'";
+        sqlCreateUser3 = "CREATE USER 'sha256User3' IDENTIFIED WITH sha256_password BY ''";
+        sqlGrant3 = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User3'";
+      } else {
+        sqlCreateUser = "CREATE USER 'sha256User'";
+        sqlGrant =
+            "GRANT ALL PRIVILEGES ON *.* TO 'sha256User' IDENTIFIED WITH "
+                + "sha256_password BY 'password'";
+        sqlCreateUser2 = "CREATE USER 'sha256User2'";
+        sqlGrant2 =
+            "GRANT ALL PRIVILEGES ON *.* TO 'sha256User2' IDENTIFIED WITH "
+                + "sha256_password BY 'password'";
+        sqlCreateUser3 = "CREATE USER 'sha256User3'";
+        sqlGrant3 =
+            "GRANT ALL PRIVILEGES ON *.* TO 'sha256User3' IDENTIFIED WITH "
+                + "sha256_password BY ''";
+      }
+      sharedConn.createStatement(sqlCreateUser).execute().blockLast();
+      sharedConn.createStatement(sqlGrant).execute().blockLast();
+      sharedConn.createStatement(sqlCreateUser2).execute().blockLast();
+      sharedConn.createStatement(sqlGrant2).execute().blockLast();
+      sharedConn.createStatement(sqlCreateUser3).execute().blockLast();
+      sharedConn.createStatement(sqlGrant3).execute().blockLast();
+      if (minVersion(8, 0, 0)) {
+        sharedConn
+            .createStatement(
+                "CREATE USER 'cachingSha256User'  IDENTIFIED WITH caching_sha2_password BY 'password'")
+            .execute()
+            .blockLast();
+        sharedConn
+            .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User'")
+            .execute()
+            .blockLast();
+        sharedConn
+            .createStatement(
+                "CREATE USER 'cachingSha256User2'  IDENTIFIED WITH caching_sha2_password BY 'password'")
+            .execute()
+            .blockLast();
+        sharedConn
+            .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User2'")
+            .execute()
+            .blockLast();
+        sharedConn
+            .createStatement(
+                "CREATE USER 'cachingSha256User3'  IDENTIFIED WITH caching_sha2_password BY 'password'")
+            .execute()
+            .blockLast();
+        sharedConn
+            .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User3'")
+            .execute()
+            .blockLast();
+        sharedConn
+            .createStatement(
+                "CREATE USER 'cachingSha256User4'  IDENTIFIED WITH caching_sha2_password BY ''")
+            .execute()
+            .blockLast();
+        sharedConn
+            .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User4'")
+            .execute()
+            .blockLast();
+      }
     }
   }
 
   @AfterAll
-  public static void after2() {
+  public static void dropAll() {
     Assumptions.assumeTrue(!isMariaDBServer() && minVersion(5, 7, 0));
     sharedConn
         .createStatement("DROP USER sha256User")
+        .execute()
+        .map(res -> res.getRowsUpdated())
+        .onErrorReturn(Mono.empty())
+        .blockLast();
+    sharedConn
+        .createStatement("DROP USER sha256User2")
+        .execute()
+        .map(res -> res.getRowsUpdated())
+        .onErrorReturn(Mono.empty())
+        .blockLast();
+    sharedConn
+        .createStatement("DROP USER sha256User3")
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
@@ -176,12 +196,18 @@ public class Sha256PluginTest extends BaseConnectionTest {
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
         .blockLast();
+    sharedConn
+        .createStatement("DROP USER cachingSha256User4")
+        .execute()
+        .map(res -> res.getRowsUpdated())
+        .onErrorReturn(Mono.empty())
+        .blockLast();
   }
 
   @Test
   public void sha256PluginTestWithServerRsaKey() throws Exception {
     Assumptions.assumeTrue(
-        !isWindows && !isMariaDBServer() && rsaPublicKey != null && minVersion(8, 0, 0));
+        !isWindows && !isMariaDBServer() && rsaPublicKey != null && minVersion(5, 7, 0));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
@@ -195,13 +221,30 @@ public class Sha256PluginTest extends BaseConnectionTest {
   }
 
   @Test
+  public void sha256PluginTestWrongServerRsaKey() throws Exception {
+    Assumptions.assumeTrue(!isWindows && !isMariaDBServer() && minVersion(5, 7, 0));
+
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .username("sha256User")
+            .password("password")
+            .rsaPublicKey("/wrongPath")
+            .build();
+    assertThrows(
+        Exception.class,
+        () -> new MariadbConnectionFactory(conf).create().block(),
+        "Could not read server RSA public key from file");
+  }
+
+  @Test
   public void sha256PluginTestWithoutServerRsaKey() throws Exception {
     Assumptions.assumeTrue(!isWindows && !isMariaDBServer() && minVersion(8, 0, 0));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
-            .username("sha256User")
+            .username("sha256User2")
             .password("password")
             .allowPublicKeyRetrieval(true)
             .build();
@@ -240,7 +283,21 @@ public class Sha256PluginTest extends BaseConnectionTest {
             .username("sha256User")
             .password("password")
             .allowPublicKeyRetrieval(true)
-            .sslMode(SslMode.ENABLE_TRUST)
+            .sslMode(SslMode.TRUST)
+            .build();
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    connection.close().block();
+  }
+
+  @Test
+  public void sha256PluginTestSslNoPwd() throws Exception {
+    Assumptions.assumeTrue(haveSsl(sharedConn));
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .username("sha256User3")
+            .password(null)
+            .sslMode(SslMode.TRUST)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();
@@ -275,15 +332,6 @@ public class Sha256PluginTest extends BaseConnectionTest {
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();
-
-    MariadbConnectionConfiguration conf2 =
-        TestConfiguration.defaultBuilder
-            .clone()
-            .username("cachingSha256User")
-            .password("password")
-            .build();
-    MariadbConnection connection2 = new MariadbConnectionFactory(conf2).create().block();
-    connection2.close().block();
   }
 
   @Test
@@ -318,7 +366,25 @@ public class Sha256PluginTest extends BaseConnectionTest {
             .clone()
             .username("cachingSha256User")
             .password("password")
-            .sslMode(SslMode.ENABLE_TRUST)
+            .sslMode(SslMode.TRUST)
+            .build();
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    connection.close().block();
+    MariadbConnection connection3 = new MariadbConnectionFactory(conf).create().block();
+    connection3.close().block();
+  }
+
+  @Test
+  public void cachingSha256PluginTestNoPwd() throws Exception {
+    Assumptions.assumeTrue(!isMariaDBServer() && minVersion(8, 0, 0));
+    Assumptions.assumeTrue(haveSsl(sharedConn));
+
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .username("cachingSha256User4")
+            .password(null)
+            .sslMode(SslMode.TRUST)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();

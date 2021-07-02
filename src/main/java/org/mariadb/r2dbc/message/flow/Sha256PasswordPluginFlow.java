@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.message.flow;
 
@@ -116,46 +103,37 @@ public class Sha256PasswordPluginFlow implements AuthenticationPlugin {
       AuthMoreDataPacket authMoreDataPacket)
       throws R2dbcException {
 
-    switch (state) {
-      case INIT:
-        CharSequence password = configuration.getPassword();
-        if (password == null
-            || password.toString().isEmpty()
-            || configuration.getSslConfig().getSslMode() != SslMode.DISABLED) {
-          return new ClearPasswordPacket(authSwitchPacket.getSequencer(), password);
+    if (state == State.INIT) {
+      CharSequence password = configuration.getPassword();
+      if (password == null || configuration.getSslConfig().getSslMode() != SslMode.DISABLE) {
+        return new ClearPasswordPacket(authSwitchPacket.getSequencer(), password);
+      } else {
+        // retrieve public key from configuration or from server
+        if (configuration.getRsaPublicKey() != null && !configuration.getRsaPublicKey().isEmpty()) {
+          publicKey = readPublicKeyFromFile(configuration.getRsaPublicKey());
         } else {
-          // retrieve public key from configuration or from server
-          if (configuration.getRsaPublicKey() != null
-              && !configuration.getRsaPublicKey().isEmpty()) {
-            publicKey = readPublicKeyFromFile(configuration.getRsaPublicKey());
-          } else {
-            if (!configuration.allowPublicKeyRetrieval()) {
-              throw new R2dbcNonTransientResourceException(
-                  "RSA public key is not available client side (option "
-                      + "serverRsaPublicKeyFile)",
-                  "S1009");
-            }
-            state = State.REQUEST_SERVER_KEY;
-            // ask public Key Retrieval
-            return new RsaPublicKeyRequestPacket(authSwitchPacket.getSequencer());
+          if (!configuration.allowPublicKeyRetrieval()) {
+            throw new R2dbcNonTransientResourceException(
+                "RSA public key is not available client side (option " + "serverRsaPublicKeyFile)",
+                "S1009");
           }
+          state = State.REQUEST_SERVER_KEY;
+          // ask public Key Retrieval
+          return new RsaPublicKeyRequestPacket(authSwitchPacket.getSequencer());
         }
-        return new Sha256PasswordPacket(
-            authSwitchPacket.getSequencer(),
-            configuration.getPassword(),
-            authSwitchPacket.getSeed(),
-            publicKey);
-
-      case REQUEST_SERVER_KEY:
-        publicKey = readPublicKey(authMoreDataPacket);
-        return new Sha256PasswordPacket(
-            authMoreDataPacket.getSequencer(),
-            configuration.getPassword(),
-            authSwitchPacket.getSeed(),
-            publicKey);
-
-      default:
-        throw new R2dbcNonTransientResourceException("Wrong state", "S1009");
+      }
+      return new Sha256PasswordPacket(
+          authSwitchPacket.getSequencer(),
+          configuration.getPassword(),
+          authSwitchPacket.getSeed(),
+          publicKey);
+    } else {
+      publicKey = readPublicKey(authMoreDataPacket);
+      return new Sha256PasswordPacket(
+          authMoreDataPacket.getSequencer(),
+          configuration.getPassword(),
+          authSwitchPacket.getSeed(),
+          publicKey);
     }
   }
 

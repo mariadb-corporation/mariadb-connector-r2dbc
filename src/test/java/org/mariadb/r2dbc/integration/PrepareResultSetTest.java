@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
@@ -92,6 +79,49 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   }
 
   @Test
+  void bindWithName() {
+    assertThrows(
+        Exception.class,
+        () ->
+            sharedConnPrepare
+                .createStatement("INSERT INTO myTable (a) VALUES (:var1)")
+                .bind("var1", "test"),
+        "Cannot use getColumn(name) with prepared statement");
+    assertThrows(
+        Exception.class,
+        () ->
+            sharedConnPrepare
+                .createStatement("INSERT INTO myTable (a) VALUES (:var1)")
+                .bindNull("var1", String.class),
+        "Cannot use getColumn(name) with prepared statement");
+  }
+
+  @Test
+  void validateParam() {
+    sharedConnPrepare
+        .createStatement("CREATE TEMPORARY TABLE validateParam(t0 VARCHAR(10))")
+        .execute()
+        .blockLast();
+    Assertions.assertThrows(
+        Exception.class,
+        () ->
+            sharedConnPrepare
+                .createStatement("INSERT INTO validateParam (t0) VALUES (?)")
+                .execute()
+                .flatMap(r -> r.getRowsUpdated())
+                .blockLast());
+    assertThrows(
+        Exception.class,
+        () ->
+            sharedConnPrepare
+                .createStatement("INSERT INTO validateParam (t0) VALUES (?)")
+                .execute()
+                .flatMap(r -> r.getRowsUpdated())
+                .blockLast(),
+        "Parameter at position 0 is not set");
+  }
+
+  @Test
   void parameterLengthEncoded() {
     Assumptions.assumeTrue(maxAllowedPacket() >= 16 * 1024 * 1024);
 
@@ -118,7 +148,24 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     sharedConnPrepare
-        .createStatement("SELECT * FROM parameterLengthEncoded")
+        .createStatement("SELECT * FROM parameterLengthEncoded WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      String t0 = row.get(0, String.class);
+                      String t1 = row.get(1, String.class);
+                      Assertions.assertEquals(String.valueOf(arr1024), t0);
+                      Assertions.assertEquals(String.valueOf(arr), t1);
+                      return t0;
+                    }))
+        .as(StepVerifier::create)
+        .expectNext(String.valueOf(arr1024))
+        .verifyComplete();
+    sharedConnPrepare
+        .createStatement("SELECT * FROM parameterLengthEncoded /* ? */")
         .execute()
         .flatMap(
             r ->
@@ -137,7 +184,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
 
   @Test
   void parameterLengthEncodedLong() {
-    Assumptions.assumeTrue(maxAllowedPacket() >= 20 * 1024 * 1024);
+    Assumptions.assumeTrue(maxAllowedPacket() >= 20 * 1024 * 1024 + 500);
     // out of memory on travis and 10.1
     Assumptions.assumeFalse(
         "mariadb:10.1".equals(System.getenv("DB")) || "mysql:5.6".equals(System.getenv("DB")));
@@ -147,7 +194,6 @@ public class PrepareResultSetTest extends BaseConnectionTest {
       arr[i] = (char) ('a' + (i % 10));
     }
     String val = String.valueOf(arr);
-    arr = null;
     sharedConnPrepare
         .createStatement(
             "CREATE TEMPORARY TABLE parameterLengthEncodedLong"
@@ -238,13 +284,15 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .execute()
         .blockLast();
 
-    sharedConnPrepare
-        .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
-        .bind(0, "test1")
-        .bind(1, "test2")
-        .fetchSize(44)
-        .returnGeneratedValues("id", "test")
-        .execute()
+    MariadbStatement st =
+        sharedConnPrepare
+            .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
+            .bind(0, "test1")
+            .bind(1, "test2")
+            .fetchSize(44)
+            .returnGeneratedValues("id", "test");
+    Assertions.assertTrue(st.toString().contains("generatedColumns=[id, test]"));
+    st.execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
         .as(StepVerifier::create)
         .expectNext("1test1", "2test2")
@@ -377,6 +425,29 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         "Parameter at position 0 is not " + "set");
     assertThrows(
         IllegalArgumentException.class, () -> stmt.add(), "Parameter at position 0 is not set");
+  }
+
+  @Test
+  void cannotPrepare() throws Throwable {
+    // unexpected error "unexpected message received when no command was send: 0x48000002"
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+    MariadbConnectionConfiguration confPipeline =
+        TestConfiguration.defaultBuilder.clone().useServerPrepStmts(true).build();
+    MariadbConnection conn = new MariadbConnectionFactory(confPipeline).create().block();
+    try {
+      assertThrows(
+          Exception.class,
+          () ->
+              conn.createStatement("xa start ?, 'abcdef', 3")
+                  .bind(0, "12")
+                  .execute()
+                  .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+                  .blockLast(),
+          "You have an error in your SQL syntax");
+    } finally {
+      conn.close().block();
+    }
   }
 
   @Test

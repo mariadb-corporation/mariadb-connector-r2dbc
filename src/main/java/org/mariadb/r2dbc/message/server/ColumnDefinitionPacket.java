@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.message.server;
 
@@ -27,6 +14,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.BitSet;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
@@ -291,7 +279,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
     }
   }
 
-  public Codec<?> getDefaultCodec() {
+  public Codec<?> getDefaultCodec(MariadbConnectionConfiguration conf) {
     switch (dataType) {
       case VARCHAR:
       case JSON:
@@ -301,6 +289,8 @@ public final class ColumnDefinitionPacket implements ServerMessage {
       case STRING:
         return isBinary() ? ByteArrayCodec.INSTANCE : StringCodec.INSTANCE;
       case TINYINT:
+        // TINYINT(1) are considered as boolean
+        if (length == 1 && conf.tinyInt1isBit()) return BooleanCodec.INSTANCE;
         return isSigned() ? ByteCodec.INSTANCE : ShortCodec.INSTANCE;
       case SMALLINT:
         return isSigned() ? ShortCodec.INSTANCE : IntCodec.INSTANCE;
@@ -328,6 +318,8 @@ public final class ColumnDefinitionPacket implements ServerMessage {
       case DECIMAL:
         return BigDecimalCodec.INSTANCE;
       case BIT:
+        // BIT(1) are considered as boolean
+        if (length == 1 && conf.tinyInt1isBit()) return BooleanCodec.INSTANCE;
         return BitSetCodec.INSTANCE;
       case GEOMETRY:
         return ByteArrayCodec.INSTANCE;

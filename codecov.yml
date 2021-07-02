@@ -1,0 +1,5 @@
+comment: off
+codecov:
+  token: 4e71e90c-99a8-40b8-b69c-181457ec4861
+ignore:
+  - "src/main/java/org/mariadb/r2dbc/authentication/ed25519/**/*"

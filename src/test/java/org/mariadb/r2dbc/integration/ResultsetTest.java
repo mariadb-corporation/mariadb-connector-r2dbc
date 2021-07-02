@@ -1,33 +1,41 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import io.r2dbc.spi.R2dbcTransientResourceException;
+import java.math.BigInteger;
+import java.sql.SQLException;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.Test;
+
+import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.test.StepVerifier;
 
 public class ResultsetTest extends BaseConnectionTest {
   private static String vals = "azertyuiopqsdfghjklmwxcvbn";
+
+    @BeforeAll
+    public static void before2() {
+        dropAll();
+        sharedConn
+                .createStatement(
+                        "CREATE TABLE prepare3 (t1 LONGTEXT, t2 LONGTEXT, t3 LONGTEXT, t4 LONGTEXT, t5 varchar(10))")
+                .execute()
+                .blockLast();
+    }
+
+    @AfterAll
+    public static void dropAll() {
+        sharedConn.createStatement("DROP TABLE prepare3").execute().blockLast();
+    }
+
+
 
   @Test
   void multipleResultSet() {
@@ -89,12 +97,14 @@ public class ResultsetTest extends BaseConnectionTest {
         .execute()
         .blockLast();
 
-    sharedConn
-        .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
-        .bind(0, "test1")
-        .bind(1, "test2")
-        .returnGeneratedValues("id", "test")
-        .execute()
+    MariadbStatement st =
+        sharedConn
+            .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES (?), (?)")
+            .bind(0, "test1")
+            .bind(1, "test2")
+            .returnGeneratedValues("id", "test");
+    Assertions.assertTrue(st.toString().contains("generatedColumns=[id, test]"));
+    st.execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
         .as(StepVerifier::create)
         .expectNext("1test1", "2test2")
@@ -121,6 +131,30 @@ public class ResultsetTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext("5a", "6b")
         .verifyComplete();
+  }
+
+  @Test
+  public void returningError() {
+    assertThrows(
+        Exception.class,
+        () -> sharedConn.createStatement("CREATE TABLE tt (id int)").returnGeneratedValues("id"),
+        "Cannot add RETURNING clause to query");
+    assertThrows(
+        Exception.class,
+        () -> sharedConn.createStatement("CREATE TABLE tt (? int)").returnGeneratedValues("id"),
+        "Cannot add RETURNING clause to query");
+    assertThrows(
+        Exception.class,
+        () ->
+            sharedConn.createStatement("DELETE * FROM tt RETURNING id").returnGeneratedValues("id"),
+        "Statement already includes RETURNING clause");
+    assertThrows(
+        Exception.class,
+        () ->
+            sharedConn
+                .createStatement("DELETE * FROM tt WHERE id = ? RETURNING id")
+                .returnGeneratedValues("id"),
+        "Statement already includes RETURNING clause");
   }
 
   @Test
@@ -219,5 +253,62 @@ public class ResultsetTest extends BaseConnectionTest {
                 throwable instanceof R2dbcTransientResourceException
                     && throwable.getMessage().equals("Column index -5 must be positive"))
         .verify();
+  }
+
+  private String generateLongText(int len) {
+    int leftLimit = 97; // letter 'a'
+    int rightLimit = 122; // letter 'z'
+    StringBuilder sb = new StringBuilder(len);
+      Random random = new Random();
+
+      for (int i = 0; i < len; i++) {
+      sb.appendCodePoint(leftLimit + random.nextInt(rightLimit - leftLimit));
+    }
+    return sb.toString();
+  }
+
+  @Test
+  public void skippingRes() throws SQLException {
+    BigInteger maxAllowedPacket =
+        sharedConn
+            .createStatement("select @@max_allowed_packet")
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> row.get(0, BigInteger.class)))
+            .blockLast();
+    Assumptions.assumeTrue(maxAllowedPacket.intValue() > 35_000_000);
+      String longText = generateLongText(20_000_000);
+      String mediumText = generateLongText(10_000_000);
+      String smallIntText = generateLongText(60_000);
+    skippingRes(sharedConn, longText, mediumText, smallIntText);
+    skippingRes(sharedConnPrepare, longText, mediumText, smallIntText);
+  }
+
+  private void skippingRes(MariadbConnection con, String longText, String mediumText, String smallIntText) {
+    con.createStatement("TRUNCATE prepare3").execute().blockLast();
+    con.createStatement("INSERT INTO prepare3 values (?,?,?,?,?)")
+        .bind(0, longText)
+        .bind(1, mediumText)
+        .bind(2, smallIntText)
+        .bind(3, "expected")
+        .bind(4, "small")
+        .execute()
+        .blockLast();
+    con.createStatement("SELECT * FROM prepare3 WHERE 1=?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      assertEquals("small", row.get(4));
+                      assertEquals("expected", row.get(3));
+                      assertEquals(smallIntText, row.get(2));
+                      assertEquals(mediumText, row.get(1));
+                      assertEquals(longText, row.get(0));
+                      return row.get(3);
+                    }))
+        .as(StepVerifier::create)
+        .expectNext("expected")
+        .verifyComplete();
   }
 }

@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.client;
 
@@ -23,8 +10,13 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.util.List;
 import java.util.Queue;
+import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.message.server.PrepareResultPacket;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.message.server.ServerMessage;
+import org.mariadb.r2dbc.util.BufferUtils;
+import org.mariadb.r2dbc.util.PrepareCache;
+import org.mariadb.r2dbc.util.ServerPrepareResult;
 
 public class MariadbPacketDecoder extends ByteToMessageDecoder {
 
@@ -38,6 +30,8 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
   private CompositeByteBuf multipart;
   private long serverCapabilities;
   private int stateCounter = 0;
+  private PrepareResultPacket prepare;
+  private ColumnDefinitionPacket[] prepareColumns;
 
   public MariadbPacketDecoder(Queue<CmdElement> responseReceivers, Client client) {
     this.responseReceivers = responseReceivers;
@@ -89,16 +83,10 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
 
   private void handleBuffer(ByteBuf packet, Sequencer sequencer) {
     if (cmdElement == null && !loadNextResponse()) {
-      char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
-      char[] hexChars = new char[packet.readerIndex() * 2];
-      for (int j = 0; j < packet.readerIndex(); j++) {
-        int v = packet.getByte(j) & 0xFF;
-        hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-        hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
-      }
       throw new R2dbcNonTransientResourceException(
           String.format(
-              "unexpected message received when no command was send: 0x%s", new String(hexChars)));
+              "unexpected message received when no command was send: 0x%s",
+              BufferUtils.toString(packet)));
     }
 
     state =
@@ -129,10 +117,6 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
     }
   }
 
-  public Client getClient() {
-    return client;
-  }
-
   public Context getContext() {
     return context;
   }
@@ -143,6 +127,37 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
 
   public void setStateCounter(int counter) {
     stateCounter = counter;
+  }
+
+  public PrepareResultPacket getPrepare() {
+    return prepare;
+  }
+
+  public void setPrepare(PrepareResultPacket prepare) {
+    this.prepare = prepare;
+    this.prepareColumns = new ColumnDefinitionPacket[prepare.getNumColumns()];
+  }
+
+  public ColumnDefinitionPacket[] getPrepareColumns() {
+    return prepareColumns;
+  }
+
+  public ServerPrepareResult endPrepare() {
+    // this.prepareColumns = new ColumnDefinitionPacket[prepare.getNumColumns()];
+    ServerPrepareResult prepareResult =
+        new ServerPrepareResult(
+            this.prepare.getStatementId(), this.prepare.getNumParams(), prepareColumns);
+    PrepareCache prepareCache = client.getPrepareCache();
+    if (prepareCache != null) {
+      ServerPrepareResult cached = prepareCache.put(cmdElement.getSql(), prepareResult);
+      if (cached != null) {
+        // race condition, remove new one to get the one in cache
+        prepareResult.decrementUse(client);
+        prepareResult = cached;
+      }
+    }
+    this.prepare = null;
+    return prepareResult;
   }
 
   public void decrementStateCounter() {

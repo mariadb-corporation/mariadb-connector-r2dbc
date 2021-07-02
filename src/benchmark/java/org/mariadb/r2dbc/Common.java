@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc;
 
@@ -27,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark)
 @Warmup(iterations = 10, timeUnit = TimeUnit.SECONDS, time = 1)
 @Measurement(iterations = 10, timeUnit = TimeUnit.SECONDS, time = 1)
-@Fork(value = 5)
+@Fork(value = 2)
 @Threads(value = -1) // detecting CPU count
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -46,6 +33,8 @@ public class Common {
 
     // connections
     protected Connection jdbc;
+    protected Connection jdbcPrepare;
+
     protected io.r2dbc.spi.Connection r2dbc;
     protected io.r2dbc.spi.Connection r2dbcPrepare;
 //    protected io.r2dbc.spi.Connection r2dbcMysql;
@@ -86,6 +75,7 @@ public class Common {
 
       try {
         jdbc = DriverManager.getConnection("jdbc:" + jdbcUrl);
+        jdbcPrepare = DriverManager.getConnection("jdbc:" + jdbcUrl + "&useServerPrepStmts=true");
         r2dbc = MariadbConnectionFactory.from(conf).create().block();
         r2dbcPrepare = MariadbConnectionFactory.from(confPrepare).create().block();
 //        r2dbcMysql = MySqlConnectionFactory.from(confMysql).create().block();
@@ -99,6 +89,7 @@ public class Common {
     @TearDown(Level.Trial)
     public void doTearDown() throws SQLException {
       jdbc.close();
+      jdbcPrepare.close();
       Mono.from(r2dbc.close()).block();
       Mono.from(r2dbcPrepare.close()).block();
 //      Mono.from(r2dbcMysql.close()).block();

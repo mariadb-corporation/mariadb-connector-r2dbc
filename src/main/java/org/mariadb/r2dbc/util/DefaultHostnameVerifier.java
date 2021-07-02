@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.util;
 
@@ -22,6 +9,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.util.*;
+import java.util.regex.Pattern;
 import javax.naming.InvalidNameException;
 import javax.naming.ldap.LdapName;
 import javax.naming.ldap.Rdn;
@@ -38,6 +26,17 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
 
   private static final Logger logger = Loggers.getLogger(DefaultHostnameVerifier.class);
 
+  private static final Pattern IP_V4 =
+      Pattern.compile(
+          "^(([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){1}"
+              + "(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){2}"
+              + "([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+  private static final Pattern IP_V6 = Pattern.compile("^[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4}){7}$");
+  private static final Pattern IP_V6_COMPRESSED =
+      Pattern.compile(
+          "^(([0-9A-Fa-f]{1,4}(:[0-9A-Fa-f]{1,4}){0,5})?)"
+              + "::(([0-9A-Fa-f]{1,4}(:[0-9A-Fa-f]{1,4}){0,5})?)$");
+
   /**
    * DNS verification : Matching is performed using the matching rules specified by [RFC2459]. If
    * more than one identity of a given type is present in the certificate (e.g., more than one
@@ -51,7 +50,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
    * @return true if matching
    */
   private static boolean matchDns(String hostname, String tlsDnsPattern) throws SSLException {
-    boolean hostIsIp = Utility.isIPv4(hostname) || Utility.isIPv6(hostname);
+    boolean hostIsIp = isIPv4(hostname) || isIPv6(hostname);
     StringTokenizer hostnameSt = new StringTokenizer(hostname.toLowerCase(Locale.ROOT), ".");
     StringTokenizer templateSt = new StringTokenizer(tlsDnsPattern.toLowerCase(Locale.ROOT), ".");
     if (hostnameSt.countTokens() != templateSt.countTokens()) {
@@ -142,9 +141,9 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
 
   private static String normalizedHostMsg(String normalizedHost) {
     StringBuilder msg = new StringBuilder();
-    if (Utility.isIPv4(normalizedHost)) {
+    if (isIPv4(normalizedHost)) {
       msg.append("IPv4 host \"");
-    } else if (Utility.isIPv6(normalizedHost)) {
+    } else if (isIPv6(normalizedHost)) {
       msg.append("IPv6 host \"");
     } else {
       msg.append("DNS host \"");
@@ -153,11 +152,18 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
     return msg.toString();
   }
 
-  private SubjectAltNames getSubjectAltNames(X509Certificate cert)
+  public static boolean isIPv4(final String ip) {
+    return IP_V4.matcher(ip).matches();
+  }
+
+  public static boolean isIPv6(final String ip) {
+    return IP_V6.matcher(ip).matches() || IP_V6_COMPRESSED.matcher(ip).matches();
+  }
+
+  private static SubjectAltNames getSubjectAltNames(X509Certificate cert)
       throws CertificateParsingException {
     Collection<List<?>> entries = cert.getSubjectAlternativeNames();
-    SubjectAltNames subjectAltNames =
-        new SubjectAltNames();
+    SubjectAltNames subjectAltNames = new SubjectAltNames();
     if (entries != null) {
       for (List<?> entry : entries) {
         if (entry.size() >= 2) {
@@ -167,18 +173,14 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
             String altNameDns = (String) entry.get(1);
             if (altNameDns != null) {
               String normalizedSubjectAlt = altNameDns.toLowerCase(Locale.ROOT);
-              subjectAltNames.add(
-                  new GeneralName(
-                      normalizedSubjectAlt, Extension.DNS));
+              subjectAltNames.add(new GeneralName(normalizedSubjectAlt, Extension.DNS));
             }
           }
 
           if (type == 7) { // IP
             String altNameIp = (String) entry.get(1);
             if (altNameIp != null) {
-              subjectAltNames.add(
-                  new GeneralName(
-                      altNameIp, Extension.IP));
+              subjectAltNames.add(new GeneralName(altNameIp, Extension.IP));
             }
           }
         }
@@ -223,7 +225,8 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
    * @param serverThreadId server thread Identifier to identify connection in logs
    * @throws SSLException exception
    */
-  public void verify(String host, X509Certificate cert, long serverThreadId) throws SSLException {
+  public static void verify(String host, X509Certificate cert, long serverThreadId)
+      throws SSLException {
     if (host == null) {
       return; // no validation if no host (possible for name pipe)
     }
@@ -238,7 +241,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
         // ***********************************************************
         // Host is IPv4 : Check corresponding entries in subject alternative names
         // ***********************************************************
-        if (Utility.isIPv4(lowerCaseHost)) {
+        if (isIPv4(lowerCaseHost)) {
           for (GeneralName entry : subjectAltNames.getGeneralNames()) {
             if (logger.isTraceEnabled()) {
               logger.trace(
@@ -249,12 +252,11 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
                   lowerCaseHost);
             }
 
-            if (entry.extension == Extension.IP
-                && lowerCaseHost.equals(entry.value)) {
+            if (entry.extension == Extension.IP && lowerCaseHost.equals(entry.value)) {
               return;
             }
           }
-        } else if (Utility.isIPv6(lowerCaseHost)) {
+        } else if (isIPv6(lowerCaseHost)) {
           // ***********************************************************
           // Host is IPv6 : Check corresponding entries in subject alternative names
           // ***********************************************************
@@ -270,7 +272,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
             }
 
             if (entry.extension == Extension.IP
-                && !Utility.isIPv4(entry.value)
+                && !isIPv4(entry.value)
                 && normalisedHost.equals(normaliseAddress(entry.value))) {
               return;
             }
@@ -306,7 +308,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
       if (cn == null) {
         if (subjectAltNames.isEmpty()) {
           throw new SSLException(
-              "CN not found in certificate principal \"{}"
+              "CN not found in certificate principal \""
                   + subjectPrincipal
                   + "\" and certificate doesn't contain SAN");
         } else {
@@ -316,7 +318,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
                   + "\" and "
                   + normalizedHostMsg(lowerCaseHost)
                   + " doesn't correspond to "
-                  + subjectAltNames.toString());
+                  + subjectAltNames);
         }
       }
 
@@ -335,7 +337,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
                 + normalizedCn
                 + "\"";
         if (!subjectAltNames.isEmpty()) {
-          errorMsg += " and " + subjectAltNames.toString();
+          errorMsg += " and " + subjectAltNames;
         }
         throw new SSLException(errorMsg);
       }
@@ -350,7 +352,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
     IP
   }
 
-  private class GeneralName {
+  private static class GeneralName {
 
     private final String value;
     private final Extension extension;
@@ -366,16 +368,12 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
     }
   }
 
-  private class SubjectAltNames {
+  private static class SubjectAltNames {
 
     private final List<GeneralName> generalNames = new ArrayList<>();
 
     @Override
     public String toString() {
-      if (isEmpty()) {
-        return "SAN[-empty-]";
-      }
-
       StringBuilder sb = new StringBuilder("SAN[");
       boolean first = true;
 

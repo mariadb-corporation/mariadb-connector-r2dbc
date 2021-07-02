@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.codec;
 
@@ -24,6 +11,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
@@ -33,13 +21,14 @@ import reactor.test.StepVerifier;
 public class DateTimeParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    Assumptions.assumeTrue(isMariaDBServer());
     sharedConn
         .createStatement("CREATE TABLE DateTimeTable (t1 DATETIME(6) NULL)")
         .execute()
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO DateTimeTable VALUES('2013-07-22 12:50:05.01230'), ('2035-01-31 10:45:01'), (null)")
+            "INSERT INTO DateTimeTable VALUES('2013-07-22 12:50:05.01230'), ('2035-01-31 10:45:01'), (null), (0), ('2021-01-01')")
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
@@ -48,6 +37,17 @@ public class DateTimeParseTest extends BaseConnectionTest {
   @AfterAll
   public static void afterAll2() {
     sharedConn.createStatement("DROP TABLE DateTimeTable").execute().blockLast();
+  }
+
+  @Test
+  void wrongType() {
+    sharedConn
+        .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, this.getClass()))))
+        .as(StepVerifier::create)
+        .expectError();
   }
 
   @Test
@@ -70,7 +70,9 @@ public class DateTimeParseTest extends BaseConnectionTest {
         .expectNext(
             Optional.of(LocalDateTime.parse("2013-07-22T12:50:05.01230")),
             Optional.of(LocalDateTime.parse("2035-01-31T10:45:01")),
-            Optional.empty())
+            Optional.empty(),
+            Optional.empty(),
+            Optional.of(LocalDateTime.parse("2021-01-01T00:00:00")))
         .verifyComplete();
   }
 
@@ -94,7 +96,9 @@ public class DateTimeParseTest extends BaseConnectionTest {
         .expectNext(
             Optional.of(LocalDate.parse("2013-07-22")),
             Optional.of(LocalDate.parse("2035-01-31")),
-            Optional.empty())
+            Optional.empty(),
+            Optional.empty(),
+            Optional.of(LocalDate.parse("2021-01-01")))
         .verifyComplete();
   }
 
@@ -118,7 +122,9 @@ public class DateTimeParseTest extends BaseConnectionTest {
         .expectNext(
             Optional.of(LocalTime.parse("12:50:05.012300")),
             Optional.of(LocalTime.parse("10:45:01")),
-            Optional.empty())
+            Optional.empty(),
+            Optional.empty(),
+            Optional.of(LocalTime.parse("00:00")))
         .verifyComplete();
   }
 
@@ -362,7 +368,9 @@ public class DateTimeParseTest extends BaseConnectionTest {
         sharedConn,
         Optional.of("2013-07-22 12:50:05.012300"),
         Optional.of("2035-01-31 10:45:01.000000"),
-        Optional.empty());
+        Optional.empty(),
+        Optional.of("0000-00-00 00:00:00.000000"),
+        Optional.of("2021-01-01 00:00:00.000000"));
   }
 
   @Test
@@ -371,18 +379,25 @@ public class DateTimeParseTest extends BaseConnectionTest {
         sharedConnPrepare,
         Optional.of("2013-07-22 12:50:05.012300"),
         Optional.of("2035-01-31 10:45:01"),
-        Optional.empty());
+        Optional.empty(),
+        Optional.empty(),
+        Optional.of("2021-01-01 00:00"));
   }
 
   private void stringValue(
-      MariadbConnection connection, Optional<String> t1, Optional<String> t2, Optional<String> t3) {
+      MariadbConnection connection,
+      Optional<String> t1,
+      Optional<String> t2,
+      Optional<String> t3,
+      Optional<String> t4,
+      Optional<String> t5) {
     connection
         .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
         .as(StepVerifier::create)
-        .expectNext(t1, t2, t3)
+        .expectNext(t1, t2, t3, t4, t5)
         .verifyComplete();
   }
 
@@ -461,7 +476,9 @@ public class DateTimeParseTest extends BaseConnectionTest {
         .expectNext(
             Optional.of(LocalDateTime.parse("2013-07-22T12:50:05.01230")),
             Optional.of(LocalDateTime.parse("2035-01-31T10:45:01")),
-            Optional.empty())
+            Optional.empty(),
+            Optional.empty(),
+            Optional.of(LocalDateTime.parse("2021-01-01T00:00:00")))
         .verifyComplete();
   }
 

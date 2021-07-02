@@ -1,22 +1,10 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
 import io.r2dbc.spi.*;
+import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -24,6 +12,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
@@ -75,28 +64,51 @@ public class ConfigurationTest extends BaseTest {
   }
 
   @Test
-  void checkOptions() {
+  void checkOptions() throws Exception {
+
+    String serverSslCert = System.getenv("TEST_DB_SERVER_CERT");
+    String clientSslCert = System.getenv("TEST_DB_CLIENT_CERT");
+    String clientSslKey = System.getenv("TEST_DB_CLIENT_KEY");
+
+    // try default if not present
+    if (serverSslCert == null) {
+      File sslDir = new File(System.getProperty("user.dir") + "/../../ssl");
+      if (sslDir.exists() && sslDir.isDirectory()) {
+
+        serverSslCert = System.getProperty("user.dir") + "/../../ssl/server.crt";
+        clientSslCert = System.getProperty("user.dir") + "/../../ssl/client.crt";
+        clientSslKey = System.getProperty("user.dir") + "/../../ssl/client.key";
+      }
+    }
+    Assumptions.assumeTrue(clientSslCert != null);
     MariadbConnectionFactory factory =
         (MariadbConnectionFactory)
             ConnectionFactories.get(
-                "r2dbc:mariadb://root:pwd@localhost:3306/db?socket=ff&allowMultiQueries=true&tlsProtocol=TLSv1"
-                    + ".2&serverSslCert=myCert&clientSslCert=myClientCert&allowPipelining=true&useServerPrepStmts"
+                "r2dbc:mariadb://root:pwd@localhost:3306/db?socket=ff&allowMultiQueries=true"
+                    + "&tlsProtocol=TLSv1.2"
+                    + "&serverSslCert="
+                    + serverSslCert
+                    + "&clientSslCert="
+                    + clientSslCert
+                    + "&clientSslKey="
+                    + clientSslKey
+                    + "&allowPipelining=true&useServerPrepStmts"
                     + "=true&prepareCacheSize=2560&connectTimeout=PT10S&socketTimeout=PT1H&tcpKeepAlive=true"
-                    + "&tcpAbortiveClose=true&sslMode=ENABLE_TRUST"
+                    + "&tcpAbortiveClose=true&sslMode=TRUST"
                     + "&connectionAttributes"
                     + "=test=2,"
                     + "h=4&pamOtherPwd=p%40ssword,pwd");
     Assertions.assertTrue(factory.toString().contains("socket='ff'"));
     Assertions.assertTrue(factory.toString().contains("allowMultiQueries=true"));
     Assertions.assertTrue(factory.toString().contains("tlsProtocol=[TLSv1.2]"));
-    Assertions.assertTrue(factory.toString().contains("serverSslCert='myCert'"));
-    Assertions.assertTrue(factory.toString().contains("clientSslCert='myClientCert'"));
+    Assertions.assertTrue(factory.toString().contains("serverSslCert=" + serverSslCert));
+    Assertions.assertTrue(factory.toString().contains("clientSslCert=" + clientSslCert));
     Assertions.assertTrue(factory.toString().contains("allowPipelining=true"));
     Assertions.assertTrue(factory.toString().contains("useServerPrepStmts=true"));
     Assertions.assertTrue(factory.toString().contains("prepareCacheSize=2560"));
-    Assertions.assertTrue(factory.toString().contains("sslMode=ENABLE_TRUST"));
+    Assertions.assertTrue(factory.toString().contains("sslMode=TRUST"));
     Assertions.assertTrue(factory.toString().contains("connectionAttributes={test=2, h=4}"));
-    Assertions.assertTrue(factory.toString().contains("pamOtherPwd=******,***"));
+    Assertions.assertTrue(factory.toString().contains("pamOtherPwd=*,*"));
     Assertions.assertTrue(factory.toString().contains("connectTimeout=PT10S"));
     Assertions.assertTrue(factory.toString().contains("socketTimeout=PT1H"));
     Assertions.assertTrue(factory.toString().contains("tcpKeepAlive=true"));
@@ -258,5 +270,50 @@ public class ConfigurationTest extends BaseTest {
         IllegalArgumentException.class,
         () -> MariadbConnectionConfiguration.builder().host("jj").build(),
         "username must not be null");
+  }
+
+  @Test
+  void sessionVariablesParsing() {
+    String connectionUrl =
+        "r2dbc:mariadb://admin:pass@localhost:3306/dbname?sessionVariables=sql_mode='ANSI'";
+    ConnectionFactoryOptions factoryOptions = ConnectionFactoryOptions.parse(connectionUrl);
+    Assertions.assertTrue(factoryOptions.toString().contains("sessionVariables=sql_mode='ANSI'"));
+    ConnectionFactory connectionFactory = ConnectionFactories.get(factoryOptions);
+    Assertions.assertTrue(
+        connectionFactory.toString().contains("sessionVariables={sql_mode='ANSI'}"));
+  }
+
+  @Test
+  void confStringValue() {
+    String connectionUrl =
+        "r2dbc:mariadb://admin:pass@localhost:3306/dbname?allowMultiQueries=blabla&autoCommit=1&tinyInt1isBit=0";
+    ConnectionFactoryOptions options = ConnectionFactoryOptions.parse(connectionUrl);
+    MariadbConnectionConfiguration.Builder builder =
+        MariadbConnectionConfiguration.fromOptions(options);
+    builder.sslMode(null);
+    Assertions.assertTrue(builder.toString().contains("sslMode=DISABLE"));
+    builder.sslMode(SslMode.TRUST);
+    Assertions.assertTrue(builder.toString().contains("sslMode=TRUST"));
+    builder.pamOtherPwd(new String[] {"fff", "ddd"});
+    builder.tlsProtocol((String[]) null);
+    Assertions.assertEquals(
+        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, socketTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, port=3306, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST, pamOtherPwd=*,*, tinyInt1isBit=false, autoCommit=true}",
+        builder.toString());
+    builder.tlsProtocol((String) null);
+    Assertions.assertEquals(
+        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, socketTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, port=3306, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST, pamOtherPwd=*,*, tinyInt1isBit=false, autoCommit=true}",
+        builder.toString());
+    MariadbConnectionConfiguration conf = builder.build();
+    Assertions.assertEquals(
+        "SslConfig{sslMode=TRUST, serverSslCert=null, clientSslCert=null, tlsProtocol=null, clientSslKey=null}",
+        conf.getSslConfig().toString());
+  }
+
+  @Test
+  public void emptySessionVariable() throws Exception {
+    MariadbConnectionConfiguration emptySessionConf =
+        TestConfiguration.defaultBuilder.clone().sessionVariables(new HashMap<>()).build();
+    MariadbConnection con = new MariadbConnectionFactory(emptySessionConf).create().block();
+    con.close().block();
   }
 }

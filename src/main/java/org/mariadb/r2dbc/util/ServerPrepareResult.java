@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.util;
 
@@ -21,33 +8,34 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.message.client.ClosePreparePacket;
+import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
 public class ServerPrepareResult {
 
   private final int statementId;
-  private final int numColumns;
   private final int numParams;
+  private final ColumnDefinitionPacket[] columns;
 
   private final AtomicBoolean closing = new AtomicBoolean();
   private final AtomicInteger use = new AtomicInteger(1);
   private final AtomicBoolean cached = new AtomicBoolean(false);
 
-  public ServerPrepareResult(int statementId, int numColumns, int numParams) {
+  public ServerPrepareResult(int statementId, int numParams, ColumnDefinitionPacket[] columns) {
     this.statementId = statementId;
-    this.numColumns = numColumns;
     this.numParams = numParams;
+    this.columns = columns;
   }
 
   public int getStatementId() {
     return statementId;
   }
 
-  public int getNumColumns() {
-    return numColumns;
-  }
-
   public int getNumParams() {
     return numParams;
+  }
+
+  public ColumnDefinitionPacket[] getColumns() {
+    return columns;
   }
 
   public void close(Client client) {
@@ -89,10 +77,10 @@ public class ServerPrepareResult {
     return "ServerPrepareResult{"
         + "statementId="
         + statementId
-        + ", numColumns="
-        + numColumns
         + ", numParams="
         + numParams
+        + ", numColumns="
+        + columns.length
         + ", closing="
         + closing
         + ", use="

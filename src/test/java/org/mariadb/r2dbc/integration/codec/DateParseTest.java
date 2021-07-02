@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.codec;
 
@@ -27,6 +14,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
+import org.mariadb.r2dbc.BaseTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
@@ -153,6 +141,32 @@ public class DateParseTest extends BaseConnectionTest {
                         .getMessage()
                         .equals("No decoder for type java.lang.Boolean and column type DATE"))
         .verify();
+
+    connection
+        .createStatement("SELECT t1 FROM DateTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BaseTest.class))))
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcTransientResourceException
+                    && throwable
+                        .getMessage()
+                        .equals(
+                            "No decoder for type org.mariadb.r2dbc.BaseTest and column type DATE"))
+        .verify();
+  }
+
+  @Test
+  void wrongType() {
+    sharedConn
+        .createStatement("SELECT t1 FROM DateTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, this.getClass()))))
+        .as(StepVerifier::create)
+        .expectError();
   }
 
   @Test

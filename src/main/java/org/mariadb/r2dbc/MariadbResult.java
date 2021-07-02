@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc;
 
@@ -21,11 +8,13 @@ import io.netty.buffer.Unpooled;
 import io.r2dbc.spi.Row;
 import io.r2dbc.spi.RowMetadata;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import org.mariadb.r2dbc.codec.BinaryRowDecoder;
 import org.mariadb.r2dbc.codec.RowDecoder;
 import org.mariadb.r2dbc.codec.TextRowDecoder;
 import org.mariadb.r2dbc.message.server.*;
+import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -37,6 +26,8 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
   private final String[] generatedColumns;
   private final boolean supportReturning;
   private final boolean text;
+  private final MariadbConnectionConfiguration conf;
+  private AtomicReference<ServerPrepareResult> prepareResult;
 
   private volatile ColumnDefinitionPacket[] metadataList;
   private volatile int metadataIndex;
@@ -45,15 +36,19 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
 
   MariadbResult(
       boolean text,
+      AtomicReference<ServerPrepareResult> prepareResult,
       Flux<ServerMessage> dataRows,
       ExceptionFactory factory,
       String[] generatedColumns,
-      boolean supportReturning) {
+      boolean supportReturning,
+      MariadbConnectionConfiguration conf) {
     this.text = text;
     this.dataRows = dataRows;
     this.factory = factory;
     this.generatedColumns = generatedColumns;
     this.supportReturning = supportReturning;
+    this.conf = conf;
+    this.prepareResult = prepareResult;
   }
 
   @Override
@@ -89,9 +84,21 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
                 return;
               }
 
+              if (serverMessage instanceof CompletePrepareResult) {
+                this.prepareResult.set(((CompletePrepareResult) serverMessage).getPrepare());
+                metadataList = this.prepareResult.get().getColumns();
+                return;
+              }
+
               if (serverMessage instanceof ColumnCountPacket) {
                 this.columnNumber = ((ColumnCountPacket) serverMessage).getColumnCount();
-                metadataList = new ColumnDefinitionPacket[this.columnNumber];
+                if (!((ColumnCountPacket) serverMessage).isMetaFollows()) {
+                  metadataList = this.prepareResult.get().getColumns();
+                  rowMetadata = MariadbRowMetadata.toRowMetadata(this.metadataList);
+                  this.decoder = new BinaryRowDecoder(columnNumber, this.metadataList, this.conf);
+                } else {
+                  metadataList = new ColumnDefinitionPacket[this.columnNumber];
+                }
                 return;
               }
 
@@ -101,8 +108,8 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
                   rowMetadata = MariadbRowMetadata.toRowMetadata(this.metadataList);
                   this.decoder =
                       text
-                          ? new TextRowDecoder(columnNumber, this.metadataList)
-                          : new BinaryRowDecoder(columnNumber, this.metadataList);
+                          ? new TextRowDecoder(columnNumber, this.metadataList, this.conf)
+                          : new BinaryRowDecoder(columnNumber, this.metadataList, this.conf);
                 }
                 return;
               }
@@ -121,15 +128,15 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
 
               // This is for server that doesn't permit RETURNING: rely on OK_packet LastInsertId
               // to retrieve the last generated ID.
-              if (serverMessage instanceof OkPacket
-                  && generatedColumns != null
-                  && !supportReturning) {
-                if (metadataList == null) {
-                  String colName = generatedColumns.length > 0 ? generatedColumns[0] : "ID";
-                  metadataList = new ColumnDefinitionPacket[1];
-                  metadataList[0] = ColumnDefinitionPacket.fromGeneratedId(colName);
-                  rowMetadata = MariadbRowMetadata.toRowMetadata(this.metadataList);
-                }
+              if (generatedColumns != null
+                  && !supportReturning
+                  && serverMessage instanceof OkPacket) {
+
+                String colName = generatedColumns.length > 0 ? generatedColumns[0] : "ID";
+                metadataList = new ColumnDefinitionPacket[1];
+                metadataList[0] = ColumnDefinitionPacket.fromGeneratedId(colName);
+                rowMetadata = MariadbRowMetadata.toRowMetadata(this.metadataList);
+
                 OkPacket okPacket = ((OkPacket) serverMessage);
                 if (okPacket.getAffectedRows() > 1) {
                   sink.error(
@@ -140,7 +147,7 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
                   return;
                 }
                 ByteBuf buf = getLongTextEncoded(okPacket.getLastInsertId());
-                decoder = new TextRowDecoder(1, this.metadataList);
+                decoder = new TextRowDecoder(1, this.metadataList, this.conf);
                 try {
                   sink.next(f.apply(new MariadbRow(metadataList, decoder, buf), rowMetadata));
                 } finally {

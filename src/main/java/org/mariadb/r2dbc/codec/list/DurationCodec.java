@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.codec.list;
 
@@ -152,38 +139,65 @@ public class DurationCodec implements Codec<Duration> {
   @Override
   public void encodeText(ByteBuf buf, Context context, Duration val) {
     long s = val.getSeconds();
+    boolean negate = false;
+    if (s < 0) {
+      negate = true;
+      s = -s;
+    }
+
     long microSecond = val.getNano() / 1000;
     buf.writeByte('\'');
     if (microSecond != 0) {
-      buf.writeCharSequence(
-          String.format("%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), microSecond),
-          StandardCharsets.US_ASCII);
+      if (negate) {
+        s = s - 1;
+        buf.writeCharSequence(
+            String.format(
+                "-%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), 1000000 - microSecond),
+            StandardCharsets.US_ASCII);
+
+      } else {
+        buf.writeCharSequence(
+            String.format("%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), microSecond),
+            StandardCharsets.US_ASCII);
+      }
     } else {
+      String format = negate ? "-%d:%02d:%02d" : "%d:%02d:%02d";
       buf.writeCharSequence(
-          String.format("%d:%02d:%02d", s / 3600, (s % 3600) / 60, (s % 60)),
-          StandardCharsets.US_ASCII);
+          String.format(format, s / 3600, (s % 3600) / 60, (s % 60)), StandardCharsets.US_ASCII);
     }
     buf.writeByte('\'');
   }
 
   @Override
   public void encodeBinary(ByteBuf buf, Context context, Duration value) {
-    int nano = value.getNano();
-    if (nano > 0) {
-      buf.writeByte((byte) 12);
-      buf.writeByte((byte) (value.isNegative() ? 1 : 0));
-      buf.writeIntLE((int) value.toDays());
-      buf.writeByte((byte) (value.toHours() - 24 * value.toDays()));
-      buf.writeByte((byte) (value.toMinutes() - 60 * value.toHours()));
-      buf.writeByte((byte) (value.getSeconds() - 60 * value.toMinutes()));
-      buf.writeIntLE(nano / 1000);
+    long microSecond = value.getNano() / 1000;
+    long s = Math.abs(value.getSeconds());
+    if (microSecond > 0) {
+      if (value.isNegative()) {
+        s = s - 1;
+        buf.writeByte((byte) 12);
+        buf.writeByte((byte) (value.isNegative() ? 1 : 0));
+        buf.writeIntLE((int) (s / (24 * 3600)));
+        buf.writeByte((int) (s % (24 * 3600)) / 3600);
+        buf.writeByte((int) (s % 3600) / 60);
+        buf.writeByte((int) (s % 60));
+        buf.writeIntLE((int) (1000000 - microSecond));
+      } else {
+        buf.writeByte((byte) 12);
+        buf.writeByte((byte) (value.isNegative() ? 1 : 0));
+        buf.writeIntLE((int) (s / (24 * 3600)));
+        buf.writeByte((int) (s % (24 * 3600)) / 3600);
+        buf.writeByte((int) (s % 3600) / 60);
+        buf.writeByte((int) (s % 60));
+        buf.writeIntLE((int) microSecond);
+      }
     } else {
       buf.writeByte((byte) 8);
       buf.writeByte((byte) (value.isNegative() ? 1 : 0));
-      buf.writeIntLE((int) value.toDays());
-      buf.writeByte((byte) (value.toHours() - 24 * value.toDays()));
-      buf.writeByte((byte) (value.toMinutes() - 60 * value.toHours()));
-      buf.writeByte((byte) (value.getSeconds() - 60 * value.toMinutes()));
+      buf.writeIntLE((int) (s / (24 * 3600)));
+      buf.writeByte((int) (s % (24 * 3600)) / 3600);
+      buf.writeByte((int) (s % 3600) / 60);
+      buf.writeByte((int) (s % 60));
     }
   }
 

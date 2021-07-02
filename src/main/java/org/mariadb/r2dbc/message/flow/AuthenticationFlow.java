@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.message.flow;
 
@@ -99,7 +86,8 @@ public final class AuthenticationFlow {
             | Capabilities.CONNECT_ATTRS
             | Capabilities.PLUGIN_AUTH_LENENC_CLIENT_DATA
             | Capabilities.CLIENT_SESSION_TRACK
-            | Capabilities.FOUND_ROWS;
+            | Capabilities.FOUND_ROWS
+            | Capabilities.MARIADB_CLIENT_CACHE_METADATA;
 
     if (configuration.allowMultiQueries()) {
       capabilities |= Capabilities.MULTI_STATEMENTS;
@@ -109,7 +97,7 @@ public final class AuthenticationFlow {
       capabilities |= Capabilities.CLIENT_DEPRECATE_EOF;
     }
 
-    if (configuration.getDatabase() != null && !configuration.getDatabase().isEmpty()) {
+    if (configuration.getDatabase() != null) {
       capabilities |= Capabilities.CONNECT_WITH_DB;
     }
     return capabilities;
@@ -139,7 +127,9 @@ public final class AuthenticationFlow {
             .receive(DecoderState.INIT_HANDSHAKE)
             .<State>handle(
                 (message, sink) -> {
-                  if (message instanceof InitialHandshakePacket) {
+                  if (message instanceof ErrorPacket) {
+                    sink.error(ExceptionFactory.INSTANCE.from((ErrorPacket) message));
+                  } else if (message instanceof InitialHandshakePacket) {
                     flow.client.setContext((InitialHandshakePacket) message);
                     // TODO SET connection context with server data.
                     InitialHandshakePacket packet = (InitialHandshakePacket) message;
@@ -148,7 +138,7 @@ public final class AuthenticationFlow {
                         initializeClientCapabilities(
                             flow.initialHandshakePacket.getCapabilities(), flow.configuration);
 
-                    if (flow.configuration.getSslConfig().getSslMode() != SslMode.DISABLED) {
+                    if (flow.configuration.getSslConfig().getSslMode() != SslMode.DISABLE) {
                       if ((packet.getCapabilities() & Capabilities.SSL) == 0) {
                         sink.error(
                             new R2dbcNonTransientResourceException(

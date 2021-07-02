@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.message.server;
 
@@ -27,26 +14,34 @@ public final class PrepareResultPacket implements ServerMessage {
   private final int numParams;
   private final boolean eofDeprecated;
   private Sequencer sequencer;
+  private boolean continueOnEnd;
 
   private PrepareResultPacket(
       final Sequencer sequencer,
       final int statementId,
       final int numColumns,
       final int numParams,
-      final boolean eofDeprecated) {
+      final boolean eofDeprecated,
+      boolean continueOnEnd) {
     this.sequencer = sequencer;
     this.statementId = statementId;
     this.numColumns = numColumns;
     this.numParams = numParams;
     this.eofDeprecated = eofDeprecated;
+    this.continueOnEnd = continueOnEnd;
   }
 
   @Override
   public boolean ending() {
-    return numParams == 0 && numColumns == 0 && eofDeprecated;
+    return continueOnEnd && numParams == 0 && numColumns == 0 && eofDeprecated;
   }
 
-  public static PrepareResultPacket decode(Sequencer sequencer, ByteBuf buffer, Context context) {
+  public boolean isContinueOnEnd() {
+    return continueOnEnd;
+  }
+
+  public static PrepareResultPacket decode(
+      Sequencer sequencer, ByteBuf buffer, Context context, boolean continueOnEnd) {
     /* Prepared Statement OK */
     buffer.readByte(); /* skip field count */
     final int statementId = buffer.readIntLE();
@@ -57,7 +52,8 @@ public final class PrepareResultPacket implements ServerMessage {
         statementId,
         numColumns,
         numParams,
-        ((context.getServerCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0));
+        ((context.getServerCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0),
+        continueOnEnd);
   }
 
   public int getStatementId() {

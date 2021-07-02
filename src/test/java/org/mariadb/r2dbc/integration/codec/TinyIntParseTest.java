@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.codec;
 
@@ -25,6 +12,9 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.MariadbConnectionFactory;
+import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
@@ -47,6 +37,11 @@ public class TinyIntParseTest extends BaseConnectionTest {
         .createStatement("INSERT INTO tinyIntUnsignedTable VALUES (0), (1), (255), (null)")
         .execute()
         .blockLast();
+    sharedConn.createStatement("CREATE TABLE tinyIntTable1 (t1 TINYINT(1))").execute().blockLast();
+    sharedConn
+        .createStatement("INSERT INTO tinyIntTable1 VALUES (0),(1),(null)")
+        .execute()
+        .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
@@ -54,6 +49,18 @@ public class TinyIntParseTest extends BaseConnectionTest {
   public static void afterAll2() {
     sharedConn.createStatement("DROP TABLE tinyIntTable").execute().blockLast();
     sharedConn.createStatement("DROP TABLE tinyIntUnsignedTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE tinyIntTable1").execute().blockLast();
+  }
+
+  @Test
+  void wrongType() {
+    sharedConn
+        .createStatement("SELECT t1 FROM tinyIntTable1 WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, this.getClass()))))
+        .as(StepVerifier::create)
+        .expectError();
   }
 
   @Test
@@ -64,6 +71,25 @@ public class TinyIntParseTest extends BaseConnectionTest {
   @Test
   void defaultValuePrepare() {
     defaultValue(sharedConnPrepare);
+  }
+
+  @Test
+  void defaultValueNoTiny() throws Throwable {
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder.clone().tinyInt1isBit(false).build();
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    try {
+      connection
+          .createStatement("SELECT t1 FROM tinyIntTable1 WHERE 1 = ?")
+          .bind(0, 1)
+          .execute()
+          .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+          .as(StepVerifier::create)
+          .expectNext(Optional.of((byte) 0), Optional.of((byte) 1), Optional.empty())
+          .verifyComplete();
+    } finally {
+      connection.close().block();
+    }
   }
 
   private void defaultValue(MariadbConnection connection) {
@@ -87,6 +113,14 @@ public class TinyIntParseTest extends BaseConnectionTest {
             Optional.of((short) 1),
             Optional.of((short) 255),
             Optional.empty())
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM tinyIntTable1 WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of(Boolean.FALSE), Optional.of(Boolean.TRUE), Optional.empty())
         .verifyComplete();
   }
 

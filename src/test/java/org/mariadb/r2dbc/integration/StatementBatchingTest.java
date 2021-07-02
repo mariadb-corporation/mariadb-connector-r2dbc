@@ -1,18 +1,5 @@
-/*
- * Copyright 2020 MariaDB Ab.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2021 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
@@ -47,6 +34,18 @@ public class StatementBatchingTest extends BaseConnectionTest {
         .add()
         .bind(1, "test2")
         .bind(0, 2)
+        .execute()
+        .blockLast();
+
+    // this is normally an error in specs (see https://github.com/r2dbc/r2dbc-spi/issues/229)
+    // but permitting this allowed for old behavior to be ok and following spec
+    connection
+        .createStatement("INSERT INTO batchStatement values (?, ?)")
+        .bind(0, 3)
+        .bind(1, "test")
+        .add()
+        .bind(1, "test2")
+        .bind(0, 4)
         .add()
         .execute()
         .blockLast();
@@ -56,7 +55,7 @@ public class StatementBatchingTest extends BaseConnectionTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class) + row.get(1, String.class)))
         .as(StepVerifier::create)
-        .expectNext("1test", "2test2")
+        .expectNext("1test", "2test2", "3test", "4test2")
         .verifyComplete();
   }
 
@@ -80,6 +79,7 @@ public class StatementBatchingTest extends BaseConnectionTest {
         .createStatement("INSERT INTO batchStatementResultSet values (1, 'test1'), (2, 'test2')")
         .execute()
         .blockLast();
+
     connection
         .createStatement("SELECT test FROM batchStatementResultSet WHERE id = ?")
         .bind(0, 1)
@@ -87,7 +87,6 @@ public class StatementBatchingTest extends BaseConnectionTest {
         .bind(0, 2)
         .add()
         .bind(0, 1)
-        .add()
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
         .as(StepVerifier::create)
