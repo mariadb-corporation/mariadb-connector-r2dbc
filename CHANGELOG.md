@@ -1,4 +1,16 @@
 # Change Log
+## [1.0.2](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.0.2) (02 Jul 2021)
+[Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.0.1...1.0.2)
+
+Corrections:
+* [R2DBC-24] columns of type Bit(1)/TINYINT(1) now convert as Boolean (new option `tinyInt1isBit`)
+* [R2DBC-25] Statement::add correction after specification precision
+* [R2DBC-26] handle error like 'too many connection" on socket creation
+* [R2DBC-27] Options not parsed from connection string
+* [R2DBC-28] mutual authentication not done when using ssl TRUST option
+* [R2DBC-29] improve coverage to reaching 90%
+* [R2DBC-30] Native Password plugin error
+
 ## [1.0.1](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.0.1) (09 Mar 2021)
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.0.0...1.0.1)
 
