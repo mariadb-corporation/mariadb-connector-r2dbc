@@ -16,6 +16,7 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.util.MariadbType;
 import reactor.test.StepVerifier;
 
 public class BitParseTest extends BaseConnectionTest {
@@ -492,6 +493,22 @@ public class BitParseTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
         .as(StepVerifier::create)
         .expectNextMatches(c -> c.equals(BitSet.class))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM BitTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(MariadbType.BIT))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM BitTable2 WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(MariadbType.BOOLEAN))
         .verifyComplete();
   }
 }

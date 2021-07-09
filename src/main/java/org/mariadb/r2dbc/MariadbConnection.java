@@ -4,7 +4,9 @@
 package org.mariadb.r2dbc;
 
 import io.r2dbc.spi.IsolationLevel;
+import io.r2dbc.spi.TransactionDefinition;
 import io.r2dbc.spi.ValidationDepth;
+import java.time.Duration;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.message.client.PingPacket;
@@ -40,6 +42,11 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
   }
 
   @Override
+  public Mono<Void> beginTransaction(TransactionDefinition definition) {
+    return this.client.beginTransaction(definition);
+  }
+
+  @Override
   public Mono<Void> close() {
     return this.client.close().then(Mono.empty());
   }
@@ -69,7 +76,7 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
     if (MariadbSimpleQueryStatement.supports(sql, this.client)) {
       return new MariadbSimpleQueryStatement(this.client, sql);
     } else {
-      if (this.configuration.useServerPrepStmts()) {
+      if (this.configuration.useServerPrepStmts() || sql.contains("call")) {
         return new MariadbServerParameterizedQueryStatement(this.client, sql, this.configuration);
       }
       return new MariadbClientParameterizedQueryStatement(this.client, sql, this.configuration);
@@ -116,6 +123,44 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
   @Override
   public Mono<Void> setAutoCommit(boolean autoCommit) {
     return client.setAutoCommit(autoCommit);
+  }
+
+  @Override
+  public Mono<Void> setLockWaitTimeout(Duration timeout) {
+    return Mono.empty();
+  }
+
+  @Override
+  public Mono<Void> setStatementTimeout(Duration timeout) {
+    Assert.requireNonNull(timeout, "timeout must not be null");
+    if ((client.getVersion().isMariaDBServer()
+            && (!client.getVersion().versionGreaterOrEqual(10, 1, 1))
+        || (!client.getVersion().isMariaDBServer()
+            && !client.getVersion().versionGreaterOrEqual(5, 7, 4)))) {
+      return Mono.error(
+          ExceptionFactory.createException(
+              "query timeout not supported by server. (required MariaDB 10.1.1+ | MySQL 5.7.4+)",
+              "HY000",
+              -1,
+              "SET max_statement_time"));
+    }
+
+    long msValue = timeout.toMillis();
+
+    // MariaDB did implement max_statement_time in seconds, MySQL copied feature but in ms ...
+
+    String sql;
+    if (client.getVersion().isMariaDBServer()) {
+      sql = String.format("SET max_statement_time=%s", (double) msValue / 1000);
+    } else {
+      sql = String.format("SET SESSION MAX_EXECUTION_TIME=%s", msValue);
+    }
+
+    ExceptionFactory exceptionFactory = ExceptionFactory.withSql(sql);
+    return client
+        .sendCommand(new QueryPacket(sql))
+        .handle(exceptionFactory::handleErrorResponse)
+        .then();
   }
 
   @Override

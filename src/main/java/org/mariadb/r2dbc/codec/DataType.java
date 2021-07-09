@@ -19,7 +19,7 @@ public enum DataType {
   DATETIME(12),
   YEAR(13),
   NEWDATE(14),
-  VARCHAR(15),
+  TEXT(15),
   BIT(16),
   JSON(245),
   DECIMAL(246),
@@ -65,7 +65,7 @@ public enum DataType {
 
     if (charsetNumber != 63 && typeValue >= 249 && typeValue <= 252) {
       // MariaDB Text dataType
-      return DataType.VARCHAR;
+      return DataType.TEXT;
     }
 
     return dataType;

@@ -93,9 +93,10 @@ public final class AuthenticationFlow {
       capabilities |= Capabilities.MULTI_STATEMENTS;
     }
 
-    if ((serverCapabilities & Capabilities.CLIENT_DEPRECATE_EOF) != 0) {
-      capabilities |= Capabilities.CLIENT_DEPRECATE_EOF;
-    }
+    // EOF is needed in order to detect output parameters
+    //    if ((serverCapabilities & Capabilities.CLIENT_DEPRECATE_EOF) != 0) {
+    //      capabilities |= Capabilities.CLIENT_DEPRECATE_EOF;
+    //    }
 
     if (configuration.getDatabase() != null) {
       capabilities |= Capabilities.CONNECT_WITH_DB;
@@ -130,13 +131,12 @@ public final class AuthenticationFlow {
                   if (message instanceof ErrorPacket) {
                     sink.error(ExceptionFactory.INSTANCE.from((ErrorPacket) message));
                   } else if (message instanceof InitialHandshakePacket) {
-                    flow.client.setContext((InitialHandshakePacket) message);
-                    // TODO SET connection context with server data.
                     InitialHandshakePacket packet = (InitialHandshakePacket) message;
                     flow.initialHandshakePacket = packet;
                     flow.clientCapabilities =
                         initializeClientCapabilities(
                             flow.initialHandshakePacket.getCapabilities(), flow.configuration);
+                    flow.client.setContext(packet, flow.clientCapabilities);
 
                     if (flow.configuration.getSslConfig().getSslMode() != SslMode.DISABLE) {
                       if ((packet.getCapabilities() & Capabilities.SSL) == 0) {
@@ -235,8 +235,7 @@ public final class AuthenticationFlow {
                 (message, sink) -> {
                   if (message instanceof ErrorPacket) {
                     sink.error(
-                        new R2dbcNonTransientResourceException(
-                            ((ErrorPacket) message).getMessage()));
+                        new R2dbcNonTransientResourceException(((ErrorPacket) message).message()));
                   } else if (message instanceof OkPacket) {
                     sink.next(COMPLETED);
                   } else if (message instanceof AuthSwitchPacket) {

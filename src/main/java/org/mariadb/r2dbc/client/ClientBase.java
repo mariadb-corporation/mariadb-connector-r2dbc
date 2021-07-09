@@ -12,6 +12,7 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
+import io.r2dbc.spi.TransactionDefinition;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -21,6 +22,7 @@ import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.MariadbTransactionDefinition;
 import org.mariadb.r2dbc.message.client.ClientMessage;
 import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.message.client.QuitPacket;
@@ -55,9 +57,9 @@ public abstract class ClientBase implements Client {
     this.connection = connection;
     this.configuration = configuration;
     this.prepareCache =
-        this.configuration.useServerPrepStmts()
-            ? new PrepareCache(this.configuration.getPrepareCacheSize(), this)
-            : null;
+        new PrepareCache(
+            this.configuration.useServerPrepStmts() ? this.configuration.getPrepareCacheSize() : 0,
+            this);
     this.mariadbPacketDecoder = new MariadbPacketDecoder(responseReceivers, this);
 
     connection.addHandler(mariadbPacketDecoder);
@@ -204,7 +206,7 @@ public abstract class ClientBase implements Client {
         });
   }
 
-  abstract void begin(FluxSink<ServerMessage> sink);
+  abstract void begin(FluxSink<ServerMessage> sink, String sql);
 
   abstract void executeWhenTransaction(FluxSink<ServerMessage> sink, String cmd);
 
@@ -213,6 +215,7 @@ public abstract class ClientBase implements Client {
   public long getThreadId() {
     return context.getThreadId();
   }
+
   /**
    * Specific implementation, to avoid executing BEGIN if already in transaction
    *
@@ -221,8 +224,37 @@ public abstract class ClientBase implements Client {
   public Mono<Void> beginTransaction() {
     try {
       lock.lock();
-      return execute(sink -> begin(sink))
+      return execute(sink -> begin(sink, "BEGIN"))
           .handle(ExceptionFactory.withSql("BEGIN")::handleErrorResponse)
+          .then();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * Specific implementation, to avoid executing START TRANSACTION if already in transaction
+   *
+   * @return publisher
+   */
+  public Mono<Void> beginTransaction(TransactionDefinition definition) {
+    StringBuilder sb = new StringBuilder("START TRANSACTION");
+    boolean first = true;
+    if (Boolean.TRUE.equals(definition.getAttribute(TransactionDefinition.READ_ONLY))) {
+      sb.append(" READ ONLY");
+      first = false;
+    }
+    if (Boolean.TRUE.equals(
+        definition.getAttribute(MariadbTransactionDefinition.WITH_CONSISTENT_SNAPSHOT))) {
+      if (!first) sb.append(",");
+      sb.append(" WITH CONSISTENT SNAPSHOT");
+    }
+
+    String sql = sb.toString();
+    try {
+      lock.lock();
+      return execute(sink -> begin(sink, sql))
+          .handle(ExceptionFactory.withSql(sql)::handleErrorResponse)
           .then();
     } finally {
       lock.unlock();
@@ -326,14 +358,15 @@ public abstract class ClientBase implements Client {
         });
   }
 
-  public void setContext(InitialHandshakePacket handshake) {
+  public void setContext(InitialHandshakePacket handshake, long clientCapabilities) {
     this.context =
         new Context(
             handshake.getServerVersion(),
             handshake.getThreadId(),
             handshake.getCapabilities(),
             handshake.getServerStatus(),
-            handshake.isMariaDBServer());
+            handshake.isMariaDBServer(),
+            clientCapabilities);
     mariadbPacketDecoder.setContext(context);
     mariadbPacketEncoder.setContext(context);
   }

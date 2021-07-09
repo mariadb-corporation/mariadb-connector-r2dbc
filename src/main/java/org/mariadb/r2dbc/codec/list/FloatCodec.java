@@ -31,12 +31,12 @@ public class FloatCodec implements Codec<Float> {
           DataType.DECIMAL,
           DataType.YEAR,
           DataType.DOUBLE,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.VARSTRING,
           DataType.STRING);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType())
+    return COMPATIBLE_TYPES.contains(column.getDataType())
         && ((type.isPrimitive() && type == Float.TYPE) || type.isAssignableFrom(Float.class));
   }
 
@@ -47,7 +47,7 @@ public class FloatCodec implements Codec<Float> {
   @Override
   public Float decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Float> type) {
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TINYINT:
       case SMALLINT:
       case MEDIUMINT:
@@ -76,7 +76,7 @@ public class FloatCodec implements Codec<Float> {
   public Float decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Float> type) {
 
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case FLOAT:
         return buf.readFloatLE();
 
@@ -137,13 +137,13 @@ public class FloatCodec implements Codec<Float> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Float value) {
-    BufferUtils.writeAscii(buf, String.valueOf(value));
+  public void encodeText(ByteBuf buf, Context context, Object value) {
+    BufferUtils.writeAscii(buf, String.valueOf((float) value));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Float value) {
-    buf.writeFloatLE(value);
+  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+    buf.writeFloatLE((float) value);
   }
 
   public DataType getBinaryEncodeType() {

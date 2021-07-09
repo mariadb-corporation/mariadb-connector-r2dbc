@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.util.MariadbType;
 import reactor.test.StepVerifier;
 
 public class IntParseTest extends BaseConnectionTest {
@@ -631,6 +632,22 @@ public class IntParseTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
         .as(StepVerifier::create)
         .expectNextMatches(c -> c.equals(Long.class))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM IntTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(MariadbType.INTEGER))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(MariadbType.UNSIGNED_INTEGER))
         .verifyComplete();
   }
 }

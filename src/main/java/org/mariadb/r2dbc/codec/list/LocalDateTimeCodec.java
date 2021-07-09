@@ -31,7 +31,7 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
           DataType.DATETIME,
           DataType.TIMESTAMP,
           DataType.VARSTRING,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.STRING,
           DataType.TIME,
           DataType.DATE);
@@ -84,7 +84,7 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType())
+    return COMPATIBLE_TYPES.contains(column.getDataType())
         && type.isAssignableFrom(LocalDateTime.class);
   }
 
@@ -97,7 +97,7 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalDateTime> type) {
 
     int[] parts;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case DATE:
         parts = LocalDateCodec.parseDate(buf, length);
         if (parts == null) return null;
@@ -125,7 +125,7 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
         } catch (DateTimeException dte) {
           throw new R2dbcNonTransientResourceException(
               String.format(
-                  "value '%s' (%s) cannot be decoded as LocalDateTime", val, column.getType()));
+                  "value '%s' (%s) cannot be decoded as LocalDateTime", val, column.getDataType()));
         }
     }
   }
@@ -142,7 +142,7 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
     int seconds = 0;
     long microseconds = 0;
 
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TIME:
         // specific case for TIME, to handle value not in 00:00:00-23:59:59
         if (length > 0) {
@@ -187,7 +187,7 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
         } catch (DateTimeException dte) {
           throw new R2dbcNonTransientResourceException(
               String.format(
-                  "value '%s' (%s) cannot be decoded as LocalDateTime", val, column.getType()));
+                  "value '%s' (%s) cannot be decoded as LocalDateTime", val, column.getDataType()));
         }
     }
 
@@ -196,8 +196,8 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, LocalDateTime val) {
-
+  public void encodeText(ByteBuf buf, Context context, Object value) {
+    LocalDateTime val = (LocalDateTime) value;
     buf.writeByte('\'');
     buf.writeCharSequence(
         val.format(val.getNano() != 0 ? TIMESTAMP_FORMAT : TIMESTAMP_FORMAT_NO_FRACTIONAL),
@@ -206,8 +206,8 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, LocalDateTime value) {
-
+  public void encodeBinary(ByteBuf buf, Context context, Object val) {
+    LocalDateTime value = (LocalDateTime) val;
     int nano = value.getNano();
     if (nano > 0) {
       buf.writeByte((byte) 11);

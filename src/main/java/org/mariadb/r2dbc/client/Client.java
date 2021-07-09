@@ -3,6 +3,7 @@
 
 package org.mariadb.r2dbc.client;
 
+import io.r2dbc.spi.TransactionDefinition;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.client.ClientMessage;
 import org.mariadb.r2dbc.message.client.ExecutePacket;
@@ -41,7 +42,7 @@ public interface Client {
 
   boolean isConnected();
 
-  void setContext(InitialHandshakePacket packet);
+  void setContext(InitialHandshakePacket packet, long clientCapabilities);
 
   void sendNext();
 
@@ -50,6 +51,8 @@ public interface Client {
   PrepareCache getPrepareCache();
 
   Mono<Void> beginTransaction();
+
+  Mono<Void> beginTransaction(TransactionDefinition definition);
 
   Mono<Void> commitTransaction();
 

@@ -7,6 +7,7 @@ public class Context {
 
   private final long threadId;
   private final long serverCapabilities;
+  private final long clientCapabilities;
   private short serverStatus;
   private ServerVersion version;
 
@@ -15,10 +16,12 @@ public class Context {
       long threadId,
       long capabilities,
       short serverStatus,
-      boolean mariaDBServer) {
+      boolean mariaDBServer,
+      long clientCapabilities) {
 
     this.threadId = threadId;
     this.serverCapabilities = capabilities;
+    this.clientCapabilities = clientCapabilities;
     this.serverStatus = serverStatus;
     this.version = new ServerVersion(serverVersion, mariaDBServer);
   }
@@ -29,6 +32,10 @@ public class Context {
 
   public long getServerCapabilities() {
     return serverCapabilities;
+  }
+
+  public long getClientCapabilities() {
+    return clientCapabilities;
   }
 
   public short getServerStatus() {

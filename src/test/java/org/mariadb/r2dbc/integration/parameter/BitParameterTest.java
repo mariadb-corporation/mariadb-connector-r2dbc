@@ -87,11 +87,10 @@ public class BitParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
                 .contains(
-                    "parameters=[Parameter{codec=BooleanCodec, value=true}, Parameter{codec=BooleanCodec, value=true}, Parameter{codec=BooleanCodec, value=false}]")
+                    "parameters=[In{Inferred: java.lang.Boolean}, In{Inferred: java.lang.Boolean}, In{Inferred: java.lang.Boolean}]")
             || stmt.toString()
                 .contains(
-                    "parameters={0=Parameter{codec=BooleanCodec, value=true}, 1=Parameter{codec=BooleanCodec, "
-                        + "value=true}, 2=Parameter{codec=BooleanCodec, value=false}}"),
+                    "parameters={0=In{Inferred: java.lang.Boolean}, 1=In{Inferred: java.lang.Boolean}, 2=In{Inferred: java.lang.Boolean}}"),
         stmt.toString());
     stmt.execute().blockLast();
     validate(

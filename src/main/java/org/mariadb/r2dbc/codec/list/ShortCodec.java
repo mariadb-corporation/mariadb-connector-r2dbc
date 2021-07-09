@@ -24,7 +24,7 @@ public class ShortCodec implements Codec<Short> {
           DataType.FLOAT,
           DataType.DOUBLE,
           DataType.OLDDECIMAL,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.DECIMAL,
           DataType.ENUM,
           DataType.VARSTRING,
@@ -38,7 +38,7 @@ public class ShortCodec implements Codec<Short> {
           DataType.YEAR);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType())
+    return COMPATIBLE_TYPES.contains(column.getDataType())
         && ((type.isPrimitive() && type == Short.TYPE) || type.isAssignableFrom(Short.class));
   }
 
@@ -50,7 +50,7 @@ public class ShortCodec implements Codec<Short> {
   public Short decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Short> type) {
     long result;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TINYINT:
       case SMALLINT:
       case MEDIUMINT:
@@ -92,7 +92,7 @@ public class ShortCodec implements Codec<Short> {
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Short> type) {
 
     long result;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TINYINT:
         result = column.isSigned() ? buf.readByte() : buf.readUnsignedByte();
         break;
@@ -153,13 +153,13 @@ public class ShortCodec implements Codec<Short> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Short value) {
-    BufferUtils.writeAscii(buf, String.valueOf(value));
+  public void encodeText(ByteBuf buf, Context context, Object value) {
+    BufferUtils.writeAscii(buf, Integer.toString((short) value));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Short value) {
-    buf.writeShortLE(value);
+  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+    buf.writeShortLE((short) value);
   }
 
   public DataType getBinaryEncodeType() {

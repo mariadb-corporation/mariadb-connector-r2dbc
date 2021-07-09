@@ -15,12 +15,12 @@ public interface Codec<T> {
 
   T decodeText(ByteBuf buffer, int length, ColumnDefinitionPacket column, Class<? extends T> type);
 
-  void encodeText(ByteBuf buf, Context context, T value);
+  void encodeText(ByteBuf buf, Context context, Object value);
 
   T decodeBinary(
       ByteBuf buffer, int length, ColumnDefinitionPacket column, Class<? extends T> type);
 
-  void encodeBinary(ByteBuf buf, Context context, T value);
+  void encodeBinary(ByteBuf buf, Context context, Object value);
 
   DataType getBinaryEncodeType();
 }

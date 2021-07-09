@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.util.MariadbType;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -30,11 +31,12 @@ public class StringParseTest extends BaseConnectionTest {
     sharedConn.createStatement("DROP TABLE IF EXISTS StringTable").execute().blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE StringTable (t1 varchar(256)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+            "CREATE TABLE StringTable (t1 varchar(256), t2 TEXT) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
         .execute()
         .blockLast();
     sharedConn
-        .createStatement("INSERT INTO StringTable VALUES ('some🌟'),('1'),('0'), (null)")
+        .createStatement(
+            "INSERT INTO StringTable VALUES ('some🌟', 'some🌟'),('1', '1'),('0', '0'), (null, null)")
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
@@ -82,6 +84,14 @@ public class StringParseTest extends BaseConnectionTest {
   private void defaultValue(MariadbConnection connection) {
     connection
         .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("some🌟"), Optional.of("1"), Optional.of("0"), Optional.empty())
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t2 FROM StringTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
@@ -740,6 +750,22 @@ public class StringParseTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
         .as(StepVerifier::create)
         .expectNextMatches(c -> c.equals(String.class))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(MariadbType.VARCHAR))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t2 FROM StringTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(MariadbType.CLOB))
         .verifyComplete();
   }
 }

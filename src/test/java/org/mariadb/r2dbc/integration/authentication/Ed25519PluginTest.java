@@ -13,7 +13,7 @@ import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 
 public class Ed25519PluginTest extends BaseConnectionTest {
 
@@ -25,7 +25,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
           .createStatement("INSTALL SONAME 'auth_ed25519'")
           .execute()
           .map(res -> res.getRowsUpdated())
-          .onErrorReturn(Mono.empty())
+          .onErrorReturn(Flux.empty())
           .blockLast();
       if (meta.minVersion(10, 4, 0)) {
         sharedConn
@@ -59,7 +59,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
         .createStatement("DROP USER IF EXISTS verificationEd25519AuthPlugin")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
+        .onErrorReturn(Flux.empty())
         .blockLast();
   }
 

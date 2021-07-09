@@ -49,7 +49,7 @@ public final class Codecs {
     CODEC_LIST.put(DataType.DATETIME, LocalDateTimeCodec.INSTANCE);
     CODEC_LIST.put(DataType.YEAR, ShortCodec.INSTANCE);
     CODEC_LIST.put(DataType.NEWDATE, LocalDateTimeCodec.INSTANCE);
-    CODEC_LIST.put(DataType.VARCHAR, StringCodec.INSTANCE);
+    CODEC_LIST.put(DataType.TEXT, StringCodec.INSTANCE);
     CODEC_LIST.put(DataType.BIT, BitSetCodec.INSTANCE);
     CODEC_LIST.put(DataType.JSON, StringCodec.INSTANCE);
     CODEC_LIST.put(DataType.DECIMAL, BigDecimalCodec.INSTANCE);
@@ -62,5 +62,15 @@ public final class Codecs {
     CODEC_LIST.put(DataType.VARSTRING, StringCodec.INSTANCE);
     CODEC_LIST.put(DataType.STRING, StringCodec.INSTANCE);
     CODEC_LIST.put(DataType.GEOMETRY, ByteArrayCodec.INSTANCE);
+  }
+
+  public static Codec<?> codecByClass(Class<?> value, int index) {
+    for (Codec<?> codec : Codecs.LIST) {
+      if (codec.canEncode(value)) {
+        return codec;
+      }
+    }
+    throw new IllegalArgumentException(
+        String.format("No encoder for class %s (parameter at index %s) ", value.getName(), index));
   }
 }

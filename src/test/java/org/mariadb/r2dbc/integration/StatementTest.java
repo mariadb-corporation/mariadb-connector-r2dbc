@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
+import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.test.StepVerifier;
@@ -134,9 +135,9 @@ public class StatementTest extends BaseConnectionTest {
 
   @Test
   void bindUnknownClass() {
-    Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (?)");
+    MariadbStatement stmt = sharedConn.createStatement("INSERT INTO someTable values (?)");
     try {
-      stmt.bind(0, sharedConn);
+      stmt.bind(0, sharedConn).execute().subscribe();
       Assertions.fail("must have thrown exception");
     } catch (IllegalArgumentException e) {
       Assertions.assertTrue(
@@ -270,6 +271,7 @@ public class StatementTest extends BaseConnectionTest {
   @Test
   public void returning() {
     Assumptions.assumeTrue(isMariaDBServer());
+
     if (!minVersion(10, 5, 1)) {
       Assertions.assertThrows(
           IllegalArgumentException.class,
@@ -531,16 +533,19 @@ public class StatementTest extends BaseConnectionTest {
 
   @Test
   void parameterNull() {
-    sharedConn
-        .createStatement("CREATE TEMPORARY TABLE parameterNull(t varchar(10), t2 varchar(10))")
+    parameterNull(sharedConn);
+    parameterNull(sharedConnPrepare);
+  }
+
+  void parameterNull(MariadbConnection conn) {
+    conn.createStatement("CREATE TEMPORARY TABLE parameterNull(t varchar(10), t2 varchar(10))")
         .execute()
         .blockLast();
-    sharedConn
-        .createStatement("INSERT INTO parameterNull VALUES ('1', '1'), (null, '2'), (null, null)")
+    conn.createStatement("INSERT INTO parameterNull VALUES ('1', '1'), (null, '2'), (null, null)")
         .execute()
         .blockLast();
     MariadbStatement stmt =
-        sharedConn.createStatement("SELECT t2 FROM parameterNull WHERE COALESCE(t,?) is null");
+        conn.createStatement("SELECT t2 FROM parameterNull WHERE COALESCE(t,?) is null");
     stmt.bindNull(0, Integer.class)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))

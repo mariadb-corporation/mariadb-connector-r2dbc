@@ -127,6 +127,14 @@ public class ConfigurationTest extends BaseTest {
 
   @Test
   void factory() {
+
+    final ConnectionFactoryOptions option1s = ConnectionFactoryOptions.builder().build();
+
+    assertThrows(
+        NoSuchOptionException.class,
+        () -> MariadbConnectionConfiguration.fromOptions(option1s).build(),
+        "");
+
     ConnectionFactoryOptions options =
         ConnectionFactoryOptions.builder()
             .option(ConnectionFactoryOptions.DRIVER, "mariadb")

@@ -32,12 +32,13 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
           DataType.OLDDECIMAL,
           DataType.YEAR,
           DataType.DECIMAL,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.VARSTRING,
           DataType.STRING);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(BigDecimal.class);
+    return COMPATIBLE_TYPES.contains(column.getDataType())
+        && type.isAssignableFrom(BigDecimal.class);
   }
 
   public boolean canEncode(Class<?> value) {
@@ -47,7 +48,7 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
   @Override
   public BigDecimal decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BigDecimal> type) {
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TINYINT:
       case SMALLINT:
       case MEDIUMINT:
@@ -84,7 +85,7 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
   public BigDecimal decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BigDecimal> type) {
 
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TINYINT:
         if (!column.isSigned()) {
           return BigDecimal.valueOf(buf.readUnsignedByte());
@@ -152,13 +153,13 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, BigDecimal value) {
-    BufferUtils.writeAscii(buf, value.toPlainString());
+  public void encodeText(ByteBuf buf, Context context, Object value) {
+    BufferUtils.writeAscii(buf, ((BigDecimal) value).toPlainString());
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, BigDecimal value) {
-    String asciiFormat = value.toPlainString();
+  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+    String asciiFormat = ((BigDecimal) value).toPlainString();
     BufferUtils.writeLengthEncode(asciiFormat.length(), buf);
     BufferUtils.writeAscii(buf, asciiFormat);
   }

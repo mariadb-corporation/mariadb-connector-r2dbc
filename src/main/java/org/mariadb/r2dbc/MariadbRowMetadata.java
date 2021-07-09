@@ -10,23 +10,15 @@ import org.mariadb.r2dbc.util.Assert;
 
 final class MariadbRowMetadata implements RowMetadata {
 
-  private final List<MariadbColumnMetadata> metadataList;
+  private final List<ColumnDefinitionPacket> metadataList;
   private volatile Collection<String> columnNames;
 
-  MariadbRowMetadata(List<MariadbColumnMetadata> metadataList) {
+  MariadbRowMetadata(List<ColumnDefinitionPacket> metadataList) {
     this.metadataList = metadataList;
   }
 
-  static MariadbRowMetadata toRowMetadata(ColumnDefinitionPacket[] metadataList) {
-    List<MariadbColumnMetadata> columnMetadata = new ArrayList<>(metadataList.length);
-    for (ColumnDefinitionPacket col : metadataList) {
-      columnMetadata.add(new MariadbColumnMetadata(col));
-    }
-    return new MariadbRowMetadata(columnMetadata);
-  }
-
   @Override
-  public MariadbColumnMetadata getColumnMetadata(int index) {
+  public ColumnDefinitionPacket getColumnMetadata(int index) {
     if (index < 0 || index >= this.metadataList.size()) {
       throw new IllegalArgumentException(
           String.format(
@@ -36,7 +28,7 @@ final class MariadbRowMetadata implements RowMetadata {
   }
 
   @Override
-  public MariadbColumnMetadata getColumnMetadata(String name) {
+  public ColumnDefinitionPacket getColumnMetadata(String name) {
     return metadataList.get(getColumn(name));
   }
 
@@ -53,11 +45,12 @@ final class MariadbRowMetadata implements RowMetadata {
   }
 
   @Override
-  public List<MariadbColumnMetadata> getColumnMetadatas() {
+  public List<ColumnDefinitionPacket> getColumnMetadatas() {
     return Collections.unmodifiableList(this.metadataList);
   }
 
   @Override
+  @Deprecated
   public Collection<String> getColumnNames() {
     if (this.columnNames == null) {
       this.columnNames = getColumnNames(this.metadataList);
@@ -65,9 +58,9 @@ final class MariadbRowMetadata implements RowMetadata {
     return Collections.unmodifiableCollection(this.columnNames);
   }
 
-  private Collection<String> getColumnNames(List<MariadbColumnMetadata> columnMetadatas) {
+  private Collection<String> getColumnNames(List<ColumnDefinitionPacket> columnMetadatas) {
     List<String> columnNames = new ArrayList<>();
-    for (MariadbColumnMetadata columnMetadata : columnMetadatas) {
+    for (ColumnDefinitionPacket columnMetadata : columnMetadatas) {
       columnNames.add(columnMetadata.getName());
     }
     return Collections.unmodifiableCollection(columnNames);
@@ -81,5 +74,13 @@ final class MariadbRowMetadata implements RowMetadata {
     StringBuilder sb = new StringBuilder("MariadbRowMetadata{");
     sb.append("columnNames=").append(columnNames).append("}");
     return sb.toString();
+  }
+
+  @Override
+  public boolean contains(String columnName) {
+    if (this.columnNames == null) {
+      this.columnNames = getColumnNames(this.metadataList);
+    }
+    return this.columnNames.contains(columnName);
   }
 }

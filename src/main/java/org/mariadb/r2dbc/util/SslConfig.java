@@ -133,6 +133,7 @@ public class SslConfig {
     return inStream;
   }
 
+  @SuppressWarnings("static")
   public GenericFutureListener<Future<? super io.netty.channel.Channel>> getHostNameVerifier(
       CompletableFuture<Void> result, String host, long threadId, SSLEngine engine) {
     return future -> {
@@ -150,6 +151,7 @@ public class SslConfig {
             // of error.
             Certificate[] certs = session.getPeerCertificates();
             X509Certificate cert = (X509Certificate) certs[0];
+
             hostnameVerifier.verify(host, cert, threadId);
           }
         } catch (SSLException ex) {

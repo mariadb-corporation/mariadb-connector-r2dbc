@@ -4,6 +4,7 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
+import io.r2dbc.spi.Result;
 import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.constants.Capabilities;
@@ -12,7 +13,7 @@ import org.mariadb.r2dbc.util.constants.StateChange;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
-public class OkPacket implements ServerMessage {
+public class OkPacket implements ServerMessage, Result.UpdateCount {
   public static final byte TYPE = (byte) 0x00;
   private static final Logger logger = Loggers.getLogger(OkPacket.class);
   private final Sequencer sequencer;
@@ -78,10 +79,6 @@ public class OkPacket implements ServerMessage {
         (serverStatus & ServerStatus.MORE_RESULTS_EXISTS) == 0);
   }
 
-  public long getAffectedRows() {
-    return affectedRows;
-  }
-
   public long getLastInsertId() {
     return lastInsertId;
   }
@@ -102,5 +99,26 @@ public class OkPacket implements ServerMessage {
   @Override
   public boolean resultSetEnd() {
     return true;
+  }
+
+  @Override
+  public long value() {
+    return affectedRows;
+  }
+
+  @Override
+  public String toString() {
+    return "OkPacket{"
+        + "affectedRows="
+        + affectedRows
+        + ", lastInsertId="
+        + lastInsertId
+        + ", serverStatus="
+        + serverStatus
+        + ", warningCount="
+        + warningCount
+        + ", ending="
+        + ending
+        + '}';
   }
 }

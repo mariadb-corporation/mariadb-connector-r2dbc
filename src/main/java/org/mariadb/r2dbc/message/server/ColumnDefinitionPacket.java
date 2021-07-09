@@ -4,26 +4,20 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.Blob;
+import io.r2dbc.spi.ColumnMetadata;
 import io.r2dbc.spi.Nullability;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
+import io.r2dbc.spi.OutParameterMetadata;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.BitSet;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.client.Context;
-import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
-import org.mariadb.r2dbc.codec.list.*;
+import org.mariadb.r2dbc.util.MariadbType;
 import org.mariadb.r2dbc.util.constants.ColumnFlags;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
-public final class ColumnDefinitionPacket implements ServerMessage {
+public final class ColumnDefinitionPacket
+    implements ServerMessage, ColumnMetadata, OutParameterMetadata {
   private static final Logger logger = Loggers.getLogger(ColumnDefinitionPacket.class);
 
   // This array stored character length for every collation id up to collation id 256
@@ -71,6 +65,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
   private final byte decimals;
   private final int flags;
   private boolean ending;
+  private final MariadbConnectionConfiguration conf;
 
   private ColumnDefinitionPacket(
       byte[] meta,
@@ -79,7 +74,8 @@ public final class ColumnDefinitionPacket implements ServerMessage {
       DataType dataType,
       byte decimals,
       int flags,
-      boolean ending) {
+      boolean ending,
+      MariadbConnectionConfiguration conf) {
     this.meta = meta;
     this.charset = charset;
     this.length = length;
@@ -87,9 +83,10 @@ public final class ColumnDefinitionPacket implements ServerMessage {
     this.decimals = decimals;
     this.flags = flags;
     this.ending = ending;
+    this.conf = conf;
   }
 
-  private ColumnDefinitionPacket(String name) {
+  private ColumnDefinitionPacket(String name, MariadbConnectionConfiguration conf) {
     byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
     byte[] arr = new byte[6 + 2 * nameBytes.length];
     int pos = 0;
@@ -117,10 +114,15 @@ public final class ColumnDefinitionPacket implements ServerMessage {
     this.decimals = 0;
     this.flags = ColumnFlags.PRIMARY_KEY;
     this.ending = false;
+    this.conf = conf;
   }
 
   public static ColumnDefinitionPacket decode(
-      Sequencer sequencer, ByteBuf buf, Context context, boolean ending) {
+      Sequencer sequencer,
+      ByteBuf buf,
+      Context context,
+      boolean ending,
+      MariadbConnectionConfiguration conf) {
     byte[] meta = new byte[buf.readableBytes() - 12];
     buf.readBytes(meta);
     int charset = buf.readUnsignedShortLE();
@@ -128,11 +130,13 @@ public final class ColumnDefinitionPacket implements ServerMessage {
     DataType dataType = DataType.fromServer(buf.readUnsignedByte(), charset);
     int flags = buf.readUnsignedShortLE();
     byte decimals = buf.readByte();
-    return new ColumnDefinitionPacket(meta, charset, length, dataType, decimals, flags, ending);
+    return new ColumnDefinitionPacket(
+        meta, charset, length, dataType, decimals, flags, ending, conf);
   }
 
-  public static ColumnDefinitionPacket fromGeneratedId(String name) {
-    return new ColumnDefinitionPacket(name);
+  public static ColumnDefinitionPacket fromGeneratedId(
+      String name, MariadbConnectionConfiguration conf) {
+    return new ColumnDefinitionPacket(name, conf);
   }
 
   private String getString(int idx) {
@@ -159,7 +163,8 @@ public final class ColumnDefinitionPacket implements ServerMessage {
     return this.getString(3);
   }
 
-  public String getColumnAlias() {
+  @Override
+  public String getName() {
     return this.getString(4);
   }
 
@@ -175,7 +180,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
     return length;
   }
 
-  public DataType getType() {
+  public DataType getDataType() {
     return dataType;
   }
 
@@ -188,7 +193,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
   }
 
   public int getDisplaySize() {
-    if (dataType == DataType.VARCHAR
+    if (dataType == DataType.TEXT
         || dataType == DataType.JSON
         || dataType == DataType.ENUM
         || dataType == DataType.SET
@@ -229,108 +234,106 @@ public final class ColumnDefinitionPacket implements ServerMessage {
     return (charset == 63);
   }
 
-  public Class<?> getJavaClass() {
+  public MariadbType getType() {
     switch (dataType) {
       case TINYINT:
-        return isSigned() ? Byte.class : Short.class;
+        // TINYINT(1) are considered as boolean
+        if (length == 1 && conf.tinyInt1isBit()) return MariadbType.BOOLEAN;
+        return isSigned() ? MariadbType.TINYINT : MariadbType.UNSIGNED_TINYINT;
+      case YEAR:
+        return MariadbType.SMALLINT;
       case SMALLINT:
-        return isSigned() ? Short.class : Integer.class;
+        return isSigned() ? MariadbType.SMALLINT : MariadbType.UNSIGNED_SMALLINT;
       case INTEGER:
-        return isSigned() ? Integer.class : Long.class;
+        return isSigned() ? MariadbType.INTEGER : MariadbType.UNSIGNED_INTEGER;
       case FLOAT:
-        return Float.class;
+        return MariadbType.FLOAT;
       case DOUBLE:
-        return Double.class;
+        return MariadbType.DOUBLE;
       case TIMESTAMP:
       case DATETIME:
-        return LocalDateTime.class;
+        return MariadbType.TIMESTAMP;
       case BIGINT:
-        return isSigned() ? Long.class : BigInteger.class;
+        return isSigned() ? MariadbType.BIGINT : MariadbType.UNSIGNED_BIGINT;
       case MEDIUMINT:
-        return Integer.class;
+        return MariadbType.INTEGER;
       case DATE:
       case NEWDATE:
-        return LocalDate.class;
+        return MariadbType.DATE;
       case TIME:
-        return Duration.class;
-      case YEAR:
-        return Short.class;
-      case VARCHAR:
+        return MariadbType.TIME;
       case JSON:
       case ENUM:
       case SET:
-      case VARSTRING:
       case STRING:
-        return isBinary() ? ByteBuffer.class : String.class;
+      case VARSTRING:
+        return MariadbType.VARCHAR;
+      case TEXT:
+        return MariadbType.CLOB;
       case OLDDECIMAL:
       case DECIMAL:
-        return BigDecimal.class;
+        return MariadbType.DECIMAL;
       case BIT:
-        return BitSet.class;
+        // BIT(1) are considered as boolean
+        if (length == 1 && conf.tinyInt1isBit()) return MariadbType.BOOLEAN;
+        return MariadbType.BIT;
       case TINYBLOB:
       case MEDIUMBLOB:
       case LONGBLOB:
       case BLOB:
       case GEOMETRY:
-        return Blob.class;
+        return MariadbType.BLOB;
 
       default:
         return null;
     }
   }
 
-  public Codec<?> getDefaultCodec(MariadbConnectionConfiguration conf) {
+  @Override
+  public Integer getPrecision() {
     switch (dataType) {
-      case VARCHAR:
-      case JSON:
-      case ENUM:
-      case SET:
-      case VARSTRING:
-      case STRING:
-        return isBinary() ? ByteArrayCodec.INSTANCE : StringCodec.INSTANCE;
-      case TINYINT:
-        // TINYINT(1) are considered as boolean
-        if (length == 1 && conf.tinyInt1isBit()) return BooleanCodec.INSTANCE;
-        return isSigned() ? ByteCodec.INSTANCE : ShortCodec.INSTANCE;
-      case SMALLINT:
-        return isSigned() ? ShortCodec.INSTANCE : IntCodec.INSTANCE;
-      case INTEGER:
-        return isSigned() ? IntCodec.INSTANCE : LongCodec.INSTANCE;
-      case FLOAT:
-        return FloatCodec.INSTANCE;
-      case DOUBLE:
-        return DoubleCodec.INSTANCE;
-      case TIMESTAMP:
-      case DATETIME:
-        return LocalDateTimeCodec.INSTANCE;
-      case BIGINT:
-        return isSigned() ? LongCodec.INSTANCE : BigIntegerCodec.INSTANCE;
-      case MEDIUMINT:
-        return IntCodec.INSTANCE;
-      case DATE:
-      case NEWDATE:
-        return LocalDateCodec.INSTANCE;
-      case TIME:
-        return DurationCodec.INSTANCE;
-      case YEAR:
-        return ShortCodec.INSTANCE;
       case OLDDECIMAL:
       case DECIMAL:
-        return BigDecimalCodec.INSTANCE;
-      case BIT:
-        // BIT(1) are considered as boolean
-        if (length == 1 && conf.tinyInt1isBit()) return BooleanCodec.INSTANCE;
-        return BitSetCodec.INSTANCE;
-      case GEOMETRY:
-        return ByteArrayCodec.INSTANCE;
-      case TINYBLOB:
-      case MEDIUMBLOB:
-      case LONGBLOB:
-      case BLOB:
-        return BlobCodec.INSTANCE;
+        // DECIMAL and OLDDECIMAL are  "exact" fixed-point number.
+        // so :
+        // - if can be signed, 1 byte is saved for sign
+        // - if decimal > 0, one byte more for dot
+        if (isSigned()) {
+          return (int) (length - ((getDecimals() > 0) ? 2 : 1));
+        } else {
+          return (int) (length - ((decimals > 0) ? 1 : 0));
+        }
       default:
-        return null;
+        return (int) length;
     }
+  }
+
+  @Override
+  public Integer getScale() {
+    switch (dataType) {
+      case OLDDECIMAL:
+      case TINYINT:
+      case SMALLINT:
+      case INTEGER:
+      case FLOAT:
+      case DOUBLE:
+      case BIGINT:
+      case MEDIUMINT:
+      case BIT:
+      case DECIMAL:
+        return (int) decimals;
+      default:
+        return 0;
+    }
+  }
+
+  @Override
+  public Class<?> getJavaType() {
+    return getType().getJavaType();
+  }
+
+  public ColumnDefinitionPacket getNativeTypeMetadata() {
+    return this;
   }
 
   @Override

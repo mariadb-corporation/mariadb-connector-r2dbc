@@ -20,10 +20,10 @@ public class ClobCodec implements Codec<Clob> {
   public static final ClobCodec INSTANCE = new ClobCodec();
 
   private static final EnumSet<DataType> COMPATIBLE_TYPES =
-      EnumSet.of(DataType.VARCHAR, DataType.VARSTRING, DataType.STRING);
+      EnumSet.of(DataType.TEXT, DataType.VARSTRING, DataType.STRING);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType()) && (type.isAssignableFrom(Clob.class));
+    return COMPATIBLE_TYPES.contains(column.getDataType()) && (type.isAssignableFrom(Clob.class));
   }
 
   public boolean canEncode(Class<?> value) {
@@ -45,9 +45,9 @@ public class ClobCodec implements Codec<Clob> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Clob value) {
+  public void encodeText(ByteBuf buf, Context context, Object value) {
     buf.writeByte('\'');
-    Flux.from(value.stream())
+    Flux.from(((Clob) value).stream())
         .handle(
             (tempVal, sync) -> {
               BufferUtils.write(buf, tempVal.toString(), false, context);
@@ -58,11 +58,11 @@ public class ClobCodec implements Codec<Clob> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Clob value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object value) {
     buf.writeByte(0xfe);
     int initialPos = buf.writerIndex();
     buf.writerIndex(buf.writerIndex() + 8); // reserve length encoded length bytes
-    Flux.from(value.stream())
+    Flux.from(((Clob) value).stream())
         .handle(
             (tempVal, sync) -> {
               buf.writeCharSequence(tempVal, StandardCharsets.UTF_8);

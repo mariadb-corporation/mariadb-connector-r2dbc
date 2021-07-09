@@ -27,7 +27,7 @@ public class LocalDateCodec implements Codec<LocalDate> {
           DataType.TIMESTAMP,
           DataType.YEAR,
           DataType.VARSTRING,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.STRING);
 
   public static int[] parseDate(ByteBuf buf, int length) {
@@ -51,7 +51,8 @@ public class LocalDateCodec implements Codec<LocalDate> {
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(LocalDate.class);
+    return COMPATIBLE_TYPES.contains(column.getDataType())
+        && type.isAssignableFrom(LocalDate.class);
   }
 
   public boolean canEncode(Class<?> value) {
@@ -63,7 +64,7 @@ public class LocalDateCodec implements Codec<LocalDate> {
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalDate> type) {
 
     int[] parts;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case YEAR:
         short y = (short) LongCodec.parse(buf, length);
 
@@ -95,7 +96,8 @@ public class LocalDateCodec implements Codec<LocalDate> {
         String[] stDatePart = val.split("-| ");
         if (stDatePart.length < 3) {
           throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' (%s) cannot be decoded as Date", val, column.getType()));
+              String.format(
+                  "value '%s' (%s) cannot be decoded as Date", val, column.getDataType()));
         }
 
         try {
@@ -105,7 +107,8 @@ public class LocalDateCodec implements Codec<LocalDate> {
           return LocalDate.of(year, month, dayOfMonth);
         } catch (NumberFormatException nfe) {
           throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' (%s) cannot be decoded as Date", val, column.getType()));
+              String.format(
+                  "value '%s' (%s) cannot be decoded as Date", val, column.getDataType()));
         }
     }
     if (parts == null) return null;
@@ -120,7 +123,7 @@ public class LocalDateCodec implements Codec<LocalDate> {
     int month = 1;
     int dayOfMonth = 1;
 
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TIMESTAMP:
       case DATETIME:
         if (length > 0) {
@@ -163,7 +166,8 @@ public class LocalDateCodec implements Codec<LocalDate> {
         String[] stDatePart = val.split("-| ");
         if (stDatePart.length < 3) {
           throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' (%s) cannot be decoded as Date", val, column.getType()));
+              String.format(
+                  "value '%s' (%s) cannot be decoded as Date", val, column.getDataType()));
         }
 
         try {
@@ -173,21 +177,23 @@ public class LocalDateCodec implements Codec<LocalDate> {
           return LocalDate.of(year, month, dayOfMonth);
         } catch (NumberFormatException nfe) {
           throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' (%s) cannot be decoded as Date", val, column.getType()));
+              String.format(
+                  "value '%s' (%s) cannot be decoded as Date", val, column.getDataType()));
         }
     }
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, LocalDate value) {
+  public void encodeText(ByteBuf buf, Context context, Object value) {
     buf.writeByte('\'');
     buf.writeCharSequence(
-        value.format(DateTimeFormatter.ISO_LOCAL_DATE), StandardCharsets.US_ASCII);
+        ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE), StandardCharsets.US_ASCII);
     buf.writeByte('\'');
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, LocalDate value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object val) {
+    LocalDate value = (LocalDate) val;
     buf.writeByte(7); // length
     buf.writeShortLE((short) value.get(ChronoField.YEAR));
     buf.writeByte(value.get(ChronoField.MONTH_OF_YEAR));

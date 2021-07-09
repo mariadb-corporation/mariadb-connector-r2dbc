@@ -42,6 +42,25 @@ public class EofPacket implements ServerMessage {
         resultSetEnd && (serverStatus & ServerStatus.MORE_RESULTS_EXISTS) == 0);
   }
 
+  /**
+   * This is for mysql that doesn't send MORE_RESULTS_EXISTS flag, but sending an OK_Packet after,
+   * breaking protocol.
+   *
+   * @param sequencer sequencer
+   * @param buf current EOF buf
+   * @param context current context
+   * @return
+   */
+  public static EofPacket decodeOutputParam(Sequencer sequencer, ByteBuf buf, Context context) {
+    buf.skipBytes(1);
+    short warningCount = buf.readShortLE();
+    short serverStatus =
+        (short)
+            (buf.readShortLE() | ServerStatus.PS_OUT_PARAMETERS | ServerStatus.MORE_RESULTS_EXISTS);
+    context.setServerStatus(serverStatus);
+    return new EofPacket(sequencer, serverStatus, warningCount, false, false);
+  }
+
   public short getServerStatus() {
     return serverStatus;
   }
@@ -58,5 +77,19 @@ public class EofPacket implements ServerMessage {
   @Override
   public boolean resultSetEnd() {
     return resultSetEnd;
+  }
+
+  @Override
+  public String toString() {
+    return "EofPacket{"
+        + "serverStatus="
+        + serverStatus
+        + ", warningCount="
+        + warningCount
+        + ", ending="
+        + ending
+        + ", resultSetEnd="
+        + resultSetEnd
+        + '}';
   }
 }

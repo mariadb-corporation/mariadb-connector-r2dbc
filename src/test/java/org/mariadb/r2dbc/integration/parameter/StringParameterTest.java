@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -105,9 +104,6 @@ public class StringParameterTest extends BaseConnectionTest {
             .bind(0, BitSet.valueOf(revertOrder("çà¤\\".getBytes(StandardCharsets.UTF_8))))
             .bind(1, BitSet.valueOf(revertOrder("你好".getBytes(StandardCharsets.UTF_8))))
             .bind(2, BitSet.valueOf(revertOrder("🌟hello\\".getBytes(StandardCharsets.UTF_8))));
-    Assertions.assertTrue(
-        stmt.toString().contains("parameters=[Parameter{codec=BitSetCodec, value={")
-            || stmt.toString().contains("parameters={0=Parameter{codec=BitSetCodec, value={"));
     stmt.execute().blockLast();
     validate(Optional.of("çà¤\\"), Optional.of("你好"), Optional.of("🌟hello\\"));
   }
@@ -130,9 +126,6 @@ public class StringParameterTest extends BaseConnectionTest {
             .bind(0, "çà¤\\".getBytes(StandardCharsets.UTF_8))
             .bind(1, "你好".getBytes(StandardCharsets.UTF_8))
             .bind(2, "🌟hello\\".getBytes(StandardCharsets.UTF_8));
-    Assertions.assertTrue(
-        stmt.toString().contains("parameters=[Parameter{codec=ByteArrayCodec, value=")
-            || stmt.toString().contains("parameters={0=Parameter{codec=ByteArrayCodec, value="));
     stmt.execute().blockLast();
     validate(Optional.of("çà¤\\"), Optional.of("你好"), Optional.of("🌟hello\\"));
   }
@@ -218,7 +211,6 @@ public class StringParameterTest extends BaseConnectionTest {
             .bind(0, Clob.from(Mono.just("123")))
             .bind(1, Clob.from(Mono.just("你好")))
             .bind(2, Clob.from(Mono.just("🌟hello\\")));
-    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=ClobCodec,"));
     stmt.execute().blockLast();
     validate(Optional.of("123"), Optional.of("你好"), Optional.of("🌟hello\\"));
   }
@@ -477,7 +469,6 @@ public class StringParameterTest extends BaseConnectionTest {
             .bind(0, Duration.parse("P3DT18H0.012340S"))
             .bind(1, Duration.parse("PT8M"))
             .bind(2, Duration.parse("PT22S"));
-    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=DurationCodec,"));
     stmt.execute().blockLast();
   }
 

@@ -229,14 +229,19 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     MariadbStatement stmt =
         sharedConnPrepare.createStatement("INSERT INTO missingParameter(t1, t2) VALUES (?, ?)");
 
-    stmt.bind(1, "test").execute().blockLast();
-
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.bind(1, "test").execute().blockLast(),
+        "Parameter at position 0 is not set");
     assertThrows(
         IllegalArgumentException.class, () -> stmt.bind(null, null), "identifier cannot be null");
     assertThrows(
         IllegalArgumentException.class,
         () -> stmt.bind("test", null),
         "Cannot use getColumn(name) with prepared statement");
+    stmt.bindNull(0, null).bind(1, "test").execute().blockLast();
+
+    stmt.bind(1, "test");
     assertThrows(
         IllegalArgumentException.class, () -> stmt.add(), "Parameter at position 0 is not set");
     sharedConnPrepare
@@ -262,12 +267,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
           .createStatement("SELECT * FROM PrepareResultSetTest WHERE 1 = ?")
           .bind(0, 1)
           .execute()
-          .flatMap(
-              r ->
-                  r.map(
-                      (row, metadata) -> {
-                        return row.get(finalI, String.class);
-                      }))
+          .flatMap(r -> r.map((row, metadata) -> row.get(finalI, String.class)))
           .as(StepVerifier::create)
           .expectNext(stringList.get(i))
           .verifyComplete();
@@ -406,7 +406,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         "index must be in 0-0 range but value is 2");
     assertThrows(
         IllegalArgumentException.class,
-        () -> stmt.bind(0, this),
+        () -> stmt.bind(0, this).execute().blockLast(),
         "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest (parameter at index 0) ");
     assertThrows(
         IndexOutOfBoundsException.class,
@@ -422,9 +422,8 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> stmt.execute().blockLast(),
-        "Parameter at position 0 is not " + "set");
-    assertThrows(
-        IllegalArgumentException.class, () -> stmt.add(), "Parameter at position 0 is not set");
+        "No parameter have been set");
+    stmt.add();
   }
 
   @Test
@@ -506,7 +505,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         "index must be in 0-0 range but value is 2");
     assertThrows(
         IllegalArgumentException.class,
-        () -> stmt.bind(0, this),
+        () -> stmt.bind(0, this).execute().blockLast(),
         "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest (parameter at index 0) ");
     assertThrows(
         IndexOutOfBoundsException.class,

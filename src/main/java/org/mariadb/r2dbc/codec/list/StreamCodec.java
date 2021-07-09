@@ -26,12 +26,13 @@ public class StreamCodec implements Codec<InputStream> {
           DataType.TINYBLOB,
           DataType.MEDIUMBLOB,
           DataType.LONGBLOB,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.VARSTRING,
           DataType.STRING);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(InputStream.class);
+    return COMPATIBLE_TYPES.contains(column.getDataType())
+        && type.isAssignableFrom(InputStream.class);
   }
 
   @Override
@@ -52,12 +53,12 @@ public class StreamCodec implements Codec<InputStream> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, InputStream is) {
+  public void encodeText(ByteBuf buf, Context context, Object is) {
     try {
       buf.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
       byte[] array = new byte[4096];
       int len;
-      while ((len = is.read(array)) > 0) {
+      while ((len = ((InputStream) is).read(array)) > 0) {
         BufferUtils.writeEscaped(buf, array, 0, len, context);
       }
       buf.writeByte('\'');
@@ -67,7 +68,7 @@ public class StreamCodec implements Codec<InputStream> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, InputStream value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object value) {
 
     // reserve place for length
     buf.writeByte(0xfe);
@@ -77,7 +78,7 @@ public class StreamCodec implements Codec<InputStream> {
     byte[] array = new byte[4096];
     int len;
     try {
-      while ((len = value.read(array)) > 0) {
+      while ((len = ((InputStream) value).read(array)) > 0) {
         buf.writeBytes(array, 0, len);
       }
     } catch (IOException ioe) {

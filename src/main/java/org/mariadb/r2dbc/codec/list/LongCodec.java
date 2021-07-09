@@ -25,7 +25,7 @@ public class LongCodec implements Codec<Long> {
           DataType.FLOAT,
           DataType.DOUBLE,
           DataType.OLDDECIMAL,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.DECIMAL,
           DataType.ENUM,
           DataType.VARSTRING,
@@ -57,7 +57,7 @@ public class LongCodec implements Codec<Long> {
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType())
+    return COMPATIBLE_TYPES.contains(column.getDataType())
         && ((type.isPrimitive() && type == Long.TYPE) || type.isAssignableFrom(Long.class));
   }
 
@@ -69,7 +69,7 @@ public class LongCodec implements Codec<Long> {
   public Long decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Long> type) {
     long result;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case DECIMAL:
       case OLDDECIMAL:
       case DOUBLE:
@@ -130,7 +130,7 @@ public class LongCodec implements Codec<Long> {
   public Long decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Long> type) {
 
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case BIGINT:
         if (column.isSigned()) {
           return buf.readLongLE();
@@ -201,13 +201,13 @@ public class LongCodec implements Codec<Long> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Long value) {
-    BufferUtils.writeAscii(buf, String.valueOf(value));
+  public void encodeText(ByteBuf buf, Context context, Object value) {
+    BufferUtils.writeAscii(buf, String.valueOf((long) value));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Long value) {
-    buf.writeLongLE(value);
+  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+    buf.writeLongLE((long) value);
   }
 
   public DataType getBinaryEncodeType() {

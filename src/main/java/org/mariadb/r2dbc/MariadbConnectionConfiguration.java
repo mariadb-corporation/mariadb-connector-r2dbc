@@ -128,13 +128,14 @@ public final class MariadbConnectionConfiguration {
 
   public static Builder fromOptions(ConnectionFactoryOptions connectionFactoryOptions) {
     Builder builder = new Builder();
-    builder.database(connectionFactoryOptions.getValue(DATABASE));
+    builder.database((String) connectionFactoryOptions.getValue(DATABASE));
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SOCKET)) {
       builder.socket(
-          connectionFactoryOptions.getRequiredValue(MariadbConnectionFactoryProvider.SOCKET));
+          (String)
+              connectionFactoryOptions.getRequiredValue(MariadbConnectionFactoryProvider.SOCKET));
     } else {
-      builder.host(connectionFactoryOptions.getRequiredValue(HOST));
+      builder.host((String) connectionFactoryOptions.getRequiredValue(HOST));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES)) {
@@ -171,7 +172,8 @@ public final class MariadbConnectionConfiguration {
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SESSION_VARIABLES)) {
       String sessionVarString =
-          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SESSION_VARIABLES);
+          (String)
+              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SESSION_VARIABLES);
       builder.sessionVariables(getMapFromString(sessionVarString));
     }
 
@@ -202,7 +204,9 @@ public final class MariadbConnectionConfiguration {
     if (connectionFactoryOptions.hasOption(
         MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES)) {
       String connAttributes =
-          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES);
+          (String)
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES);
       builder.connectionAttributes(getMapFromString(connAttributes));
     }
 
@@ -216,32 +220,39 @@ public final class MariadbConnectionConfiguration {
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SSL_MODE)) {
       builder.sslMode(
           SslMode.from(
-              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SSL_MODE)));
+              (String)
+                  connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SSL_MODE)));
     }
     builder.serverSslCert(
-        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SERVER_SSL_CERT));
+        (String)
+            connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SERVER_SSL_CERT));
     builder.clientSslCert(
-        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_CERT));
+        (String)
+            connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_CERT));
     builder.clientSslKey(
-        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_KEY));
+        (String)
+            connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_KEY));
     builder.clientSslPassword(
-        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_PWD));
+        (String)
+            connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_PWD));
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TLS_PROTOCOL)) {
       String[] protocols =
-          connectionFactoryOptions
-              .getValue(MariadbConnectionFactoryProvider.TLS_PROTOCOL)
+          ((String)
+                  connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.TLS_PROTOCOL))
               .split("[,;\\s]+");
       builder.tlsProtocol(protocols);
     }
-    builder.password(connectionFactoryOptions.getValue(PASSWORD));
-    builder.username(connectionFactoryOptions.getRequiredValue(USER));
+    builder.password((CharSequence) connectionFactoryOptions.getValue(PASSWORD));
+    builder.username((String) connectionFactoryOptions.getRequiredValue(USER));
     if (connectionFactoryOptions.hasOption(PORT)) {
       builder.port(intValue(connectionFactoryOptions.getValue(PORT)));
     }
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.PAM_OTHER_PASSWORD)) {
       String s =
-          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.PAM_OTHER_PASSWORD);
+          (String)
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.PAM_OTHER_PASSWORD);
       String[] pairs = s.split(",");
       try {
         for (int i = 0; i < pairs.length; i++) {

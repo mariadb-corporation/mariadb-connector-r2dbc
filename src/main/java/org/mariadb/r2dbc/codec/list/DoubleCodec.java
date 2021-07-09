@@ -31,12 +31,12 @@ public class DoubleCodec implements Codec<Double> {
           DataType.YEAR,
           DataType.OLDDECIMAL,
           DataType.DECIMAL,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.VARSTRING,
           DataType.STRING);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType())
+    return COMPATIBLE_TYPES.contains(column.getDataType())
         && ((type.isPrimitive() && type == Double.TYPE) || type.isAssignableFrom(Double.class));
   }
 
@@ -47,7 +47,7 @@ public class DoubleCodec implements Codec<Double> {
   @Override
   public Double decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Double> type) {
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TINYINT:
       case SMALLINT:
       case MEDIUMINT:
@@ -75,7 +75,7 @@ public class DoubleCodec implements Codec<Double> {
   @Override
   public Double decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Double> type) {
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case DOUBLE:
         return buf.readDoubleLE();
 
@@ -137,13 +137,13 @@ public class DoubleCodec implements Codec<Double> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Double value) {
-    BufferUtils.writeAscii(buf, String.valueOf(value));
+  public void encodeText(ByteBuf buf, Context context, Object value) {
+    BufferUtils.writeAscii(buf, value.toString());
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Double value) {
-    buf.writeDoubleLE(value);
+  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+    buf.writeDoubleLE((double) value);
   }
 
   public DataType getBinaryEncodeType() {

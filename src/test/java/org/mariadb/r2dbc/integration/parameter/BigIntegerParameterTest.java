@@ -81,10 +81,11 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
                 .contains(
-                    "parameters=[Parameter{codec=BigIntegerCodec, value=1}, Parameter{codec=BigIntegerCodec, value=9223372036854775807}, Parameter{codec=BigIntegerCodec, value=-9}]")
+                    "parameters=[In{Inferred: java.math.BigInteger}, In{Inferred: java.math.BigInteger}, In{Inferred: java.math.BigInteger}]")
             || stmt.toString()
                 .contains(
-                    "parameters={0=Parameter{codec=BigIntegerCodec, value=1}, 1=Parameter{codec=BigIntegerCodec, value=9223372036854775807}, 2=Parameter{codec=BigIntegerCodec, value=-9}}"));
+                    "parameters={0=In{Inferred: java.math.BigInteger}, 1=In{Inferred: java.math.BigInteger}, 2=In{Inferred: java.math.BigInteger}}"),
+        stmt.toString());
 
     stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("9223372036854775807"), Optional.of("-9"));
@@ -110,10 +111,11 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
                 .contains(
-                    "parameters=[Parameter{codec=StringCodec, value=1}, Parameter{codec=StringCodec, value=9223372036854775807}, Parameter{codec=StringCodec, value=-9}]")
+                    "parameters=[In{Inferred: java.lang.String}, In{Inferred: java.lang.String}, In{Inferred: java.lang.String}]")
             || stmt.toString()
                 .contains(
-                    "parameters={0=Parameter{codec=StringCodec, value=1}, 1=Parameter{codec=StringCodec, value=9223372036854775807}, 2=Parameter{codec=StringCodec, value=-9}}"));
+                    "parameters={0=In{Inferred: java.lang.String}, 1=In{Inferred: java.lang.String}, 2=In{Inferred: java.lang.String}}"),
+        stmt.toString());
 
     stmt.execute().blockLast();
 
@@ -141,10 +143,11 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
                 .contains(
-                    "Parameter{codec=BigDecimalCodec, value=9223372036854775807}, Parameter{codec=BigDecimalCodec, value=-9}]")
+                    "parameters=[In{Inferred: java.math.BigDecimal}, In{Inferred: java.math.BigDecimal}, In{Inferred: java.math.BigDecimal}]")
             || stmt.toString()
                 .contains(
-                    "parameters={0=Parameter{codec=BigDecimalCodec, value=1}, 1=Parameter{codec=BigDecimalCodec, value=9223372036854775807}, 2=Parameter{codec=BigDecimalCodec, value=-9}}"));
+                    "parameters={0=In{Inferred: java.math.BigDecimal}, 1=In{Inferred: java.math.BigDecimal}, 2=In{Inferred: java.math.BigDecimal}}"),
+        stmt.toString());
 
     stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("9223372036854775807"), Optional.of("-9"));
@@ -170,10 +173,11 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
                 .contains(
-                    "parameters=[Parameter{codec=IntCodec, value=1}, Parameter{codec=IntCodec, value=-1}, Parameter{codec=IntCodec, value=0}]")
+                    "parameters=[In{Inferred: java.lang.Integer}, In{Inferred: java.lang.Integer}, In{Inferred: java.lang.Integer}]")
             || stmt.toString()
                 .contains(
-                    "parameters={0=Parameter{codec=IntCodec, value=1}, 1=Parameter{codec=IntCodec, value=-1}, 2=Parameter{codec=IntCodec, value=0}}"));
+                    "parameters={0=In{Inferred: java.lang.Integer}, 1=In{Inferred: java.lang.Integer}, 2=In{Inferred: java.lang.Integer}}"),
+        stmt.toString());
 
     stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
@@ -196,13 +200,14 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
             .bind(0, (byte) 127)
             .bind(1, (byte) -128)
             .bind(2, (byte) 0);
+
     Assertions.assertTrue(
         stmt.toString()
                 .contains(
-                    "parameters=[Parameter{codec=ByteCodec, value=127}, Parameter{codec=ByteCodec, value=-128}, Parameter{codec=ByteCodec, value=0}]")
+                    "parameters=[In{Inferred: java.lang.Byte}, In{Inferred: java.lang.Byte}, In{Inferred: java.lang.Byte}]")
             || stmt.toString()
                 .contains(
-                    "parameters={0=Parameter{codec=ByteCodec, value=127}, 1=Parameter{codec=ByteCodec, value=-128}, 2=Parameter{codec=ByteCodec, value=0}}"));
+                    "parameters={0=In{Inferred: java.lang.Byte}, 1=In{Inferred: java.lang.Byte}, 2=In{Inferred: java.lang.Byte}"));
 
     stmt.execute().blockLast();
     validate(Optional.of("127"), Optional.of("-128"), Optional.of("0"));
@@ -228,10 +233,11 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
                 .contains(
-                    "parameters=[Parameter{codec=FloatCodec, value=127.0}, Parameter{codec=FloatCodec, value=-128.0}, Parameter{codec=FloatCodec, value=0.0}]")
+                    "parameters=[In{Inferred: java.lang.Float}, In{Inferred: java.lang.Float}, In{Inferred: java.lang.Float}]")
             || stmt.toString()
                 .contains(
-                    "parameters={0=Parameter{codec=FloatCodec, value=127.0}, 1=Parameter{codec=FloatCodec, value=-128.0}, 2=Parameter{codec=FloatCodec, value=0.0}}"));
+                    "parameters={0=In{Inferred: java.lang.Float}, 1=In{Inferred: java.lang.Float}, 2=In{Inferred: java.lang.Float}}"),
+        stmt.toString());
 
     stmt.execute().blockLast();
     validate(Optional.of("127"), Optional.of("-128"), Optional.of("0"));
@@ -258,10 +264,11 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
                 .contains(
-                    "parameters=[Parameter{codec=DoubleCodec, value=127.0}, Parameter{codec=DoubleCodec, value=-128.0}, Parameter{codec=DoubleCodec, value=0.0}]")
+                    "parameters=[In{Inferred: java.lang.Double}, In{Inferred: java.lang.Double}, In{Inferred: java.lang.Double}]")
             || stmt.toString()
                 .contains(
-                    "parameters={0=Parameter{codec=DoubleCodec, value=127.0}, 1=Parameter{codec=DoubleCodec, value=-128.0}, 2=Parameter{codec=DoubleCodec, value=0.0}}"));
+                    "parameters={0=In{Inferred: java.lang.Double}, 1=In{Inferred: java.lang.Double}, 2=In{Inferred: java.lang.Double}}"),
+        stmt.toString());
     stmt.execute().blockLast();
     validate(Optional.of("127"), Optional.of("-128"), Optional.of("0"));
   }
@@ -286,10 +293,11 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
                 .contains(
-                    "Parameter{codec=ShortCodec, value=-1}, Parameter{codec=ShortCodec, value=0}]")
+                    "parameters=[In{Inferred: java.lang.Short}, In{Inferred: java.lang.Short}, In{Inferred: java.lang.Short}]")
             || stmt.toString()
                 .contains(
-                    "1=Parameter{codec=ShortCodec, value=-1}, 2=Parameter{codec=ShortCodec, value=0}}"));
+                    "parameters={0=In{Inferred: java.lang.Short}, 1=In{Inferred: java.lang.Short}, 2=In{Inferred: java.lang.Short}}"),
+        stmt.toString());
     stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
   }
@@ -314,10 +322,11 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
                 .contains(
-                    "parameters=[Parameter{codec=LongCodec, value=1}, Parameter{codec=LongCodec, value=-1}, Parameter{codec=LongCodec, value=0}]")
+                    "parameters=[In{Inferred: java.lang.Long}, In{Inferred: java.lang.Long}, In{Inferred: java.lang.Long}]")
             || stmt.toString()
                 .contains(
-                    "parameters={0=Parameter{codec=LongCodec, value=1}, 1=Parameter{codec=LongCodec, value=-1}, 2=Parameter{codec=LongCodec, value=0}}"));
+                    "parameters={0=In{Inferred: java.lang.Long}, 1=In{Inferred: java.lang.Long}, 2=In{Inferred: java.lang.Long}}"),
+        stmt.toString());
     stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
   }
@@ -342,10 +351,11 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
                 .contains(
-                    "parameters=[Parameter{codec=LongCodec, value=1}, Parameter{codec=LongCodec, value=-1}, Parameter{codec=LongCodec, value=0}]")
+                    "parameters=[In{Inferred: java.lang.Long}, In{Inferred: java.lang.Long}, In{Inferred: java.lang.Long}]")
             || stmt.toString()
                 .contains(
-                    "parameters={0=Parameter{codec=LongCodec, value=1}, 1=Parameter{codec=LongCodec, value=-1}, 2=Parameter{codec=LongCodec, value=0}}"));
+                    "parameters={0=In{Inferred: java.lang.Long}, 1=In{Inferred: java.lang.Long}, 2=In{Inferred: java.lang.Long}}"),
+        stmt.toString());
 
     stmt.execute().blockLast();
     validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
@@ -364,7 +374,10 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
             .bind(1, LocalDateTime.now())
             .bind(2, LocalDateTime.now());
     Assertions.assertTrue(
-        stmt.toString().contains("parameters=[Parameter{codec=LocalDateTimeCodec, value="));
+        stmt.toString()
+            .contains(
+                "parameters=[In{Inferred: java.time.LocalDateTime}, In{Inferred: java.time.LocalDateTime}, In{Inferred: java.time.LocalDateTime}]"),
+        stmt.toString());
     stmt.execute()
         .flatMap(r -> r.getRowsUpdated())
         .as(StepVerifier::create)
@@ -409,8 +422,12 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
             .bind(0, LocalDate.now())
             .bind(1, LocalDate.now())
             .bind(2, LocalDate.now());
+
     Assertions.assertTrue(
-        stmt.toString().contains("parameters=[Parameter{codec=LocalDateCodec, value="));
+        stmt.toString()
+            .contains(
+                "parameters=[In{Inferred: java.time.LocalDate}, In{Inferred: java.time.LocalDate}, In{Inferred: java.time.LocalDate}]"),
+        stmt.toString());
     stmt.execute()
         .flatMap(r -> r.getRowsUpdated())
         .as(StepVerifier::create)
@@ -436,7 +453,10 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
             .bind(2, LocalTime.now());
     Assertions.assertTrue(
         stmt.toString().contains("parameters=[Parameter{codec=LocalTimeCodec, value=")
-            || stmt.toString().contains("parameters={0=Parameter{codec=LocalTimeCodec, value="));
+            || stmt.toString()
+                .contains(
+                    "parameters={0=In{Inferred: java.time.LocalTime}, 1=In{Inferred: java.time.LocalTime}, 2=In{Inferred: java.time.LocalTime}}"),
+        stmt.toString());
 
     stmt.execute().blockLast();
   }

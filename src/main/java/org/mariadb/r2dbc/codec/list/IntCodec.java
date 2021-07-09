@@ -25,7 +25,7 @@ public class IntCodec implements Codec<Integer> {
           DataType.FLOAT,
           DataType.DOUBLE,
           DataType.OLDDECIMAL,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.DECIMAL,
           DataType.ENUM,
           DataType.VARSTRING,
@@ -39,7 +39,7 @@ public class IntCodec implements Codec<Integer> {
           DataType.YEAR);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType())
+    return COMPATIBLE_TYPES.contains(column.getDataType())
         && ((type.isPrimitive() && type == Integer.TYPE) || type.isAssignableFrom(Integer.class));
   }
 
@@ -51,7 +51,7 @@ public class IntCodec implements Codec<Integer> {
   public Integer decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Integer> type) {
     long result;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TINYINT:
       case SMALLINT:
       case MEDIUMINT:
@@ -99,7 +99,7 @@ public class IntCodec implements Codec<Integer> {
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Integer> type) {
 
     long result;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case INTEGER:
         result = column.isSigned() ? buf.readIntLE() : buf.readUnsignedIntLE();
         break;
@@ -170,13 +170,13 @@ public class IntCodec implements Codec<Integer> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Integer value) {
-    BufferUtils.writeAscii(buf, String.valueOf(value));
+  public void encodeText(ByteBuf buf, Context context, Object value) {
+    BufferUtils.writeAscii(buf, Integer.toString((int) value));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Integer value) {
-    buf.writeIntLE(value);
+  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+    buf.writeIntLE((int) value);
   }
 
   public DataType getBinaryEncodeType() {

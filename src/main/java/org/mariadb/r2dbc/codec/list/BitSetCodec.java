@@ -37,7 +37,7 @@ public class BitSetCodec implements Codec<BitSet> {
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return column.getType() == DataType.BIT && type.isAssignableFrom(BitSet.class);
+    return column.getDataType() == DataType.BIT && type.isAssignableFrom(BitSet.class);
   }
 
   @Override
@@ -57,8 +57,8 @@ public class BitSetCodec implements Codec<BitSet> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, BitSet value) {
-    byte[] bytes = value.toByteArray();
+  public void encodeText(ByteBuf buf, Context context, Object value) {
+    byte[] bytes = ((BitSet) value).toByteArray();
     revertOrder(bytes);
 
     StringBuilder sb = new StringBuilder(bytes.length * Byte.SIZE + 3);
@@ -70,8 +70,8 @@ public class BitSetCodec implements Codec<BitSet> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, BitSet value) {
-    byte[] bytes = value.toByteArray();
+  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+    byte[] bytes = ((BitSet) value).toByteArray();
     revertOrder(bytes);
     BufferUtils.writeLengthEncode(bytes.length, buf);
     buf.writeBytes(bytes);

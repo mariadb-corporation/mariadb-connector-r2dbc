@@ -52,7 +52,7 @@ public final class PrepareResultPacket implements ServerMessage {
         statementId,
         numColumns,
         numParams,
-        ((context.getServerCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0),
+        ((context.getClientCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0),
         continueOnEnd);
   }
 

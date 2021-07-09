@@ -36,18 +36,18 @@ public abstract class RowDecoder {
               DataType.MEDIUMINT,
               DataType.INTEGER,
               DataType.BIGINT)
-          .contains(column.getType())) {
+          .contains(column.getDataType())) {
         throw new IllegalArgumentException(
             String.format(
                 "No decoder for type %s[] and column type %s(%s)",
                 type.getComponentType().getName(),
-                column.getType().toString(),
+                column.getDataType().toString(),
                 column.isSigned() ? "signed" : "unsigned"));
       }
       throw new IllegalArgumentException(
           String.format(
               "No decoder for type %s[] and column type %s",
-              type.getComponentType().getName(), column.getType().toString()));
+              type.getComponentType().getName(), column.getDataType().toString()));
     }
     if (EnumSet.of(
             DataType.TINYINT,
@@ -55,18 +55,18 @@ public abstract class RowDecoder {
             DataType.MEDIUMINT,
             DataType.INTEGER,
             DataType.BIGINT)
-        .contains(column.getType())) {
+        .contains(column.getDataType())) {
       throw new IllegalArgumentException(
           String.format(
               "No decoder for type %s and column type %s(%s)",
               type.getName(),
-              column.getType().toString(),
+              column.getDataType().toString(),
               column.isSigned() ? "signed" : "unsigned"));
     }
     throw new IllegalArgumentException(
         String.format(
             "No decoder for type %s and column type %s",
-            type.getName(), column.getType().toString()));
+            type.getName(), column.getDataType().toString()));
   }
 
   public abstract void setPosition(int position);

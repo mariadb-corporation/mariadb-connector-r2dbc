@@ -54,7 +54,7 @@ public final class MariadbConnectionFactoryProvider implements ConnectionFactory
   public boolean supports(ConnectionFactoryOptions connectionFactoryOptions) {
     Assert.requireNonNull(connectionFactoryOptions, "connectionFactoryOptions must not be null");
 
-    String driver = connectionFactoryOptions.getValue(DRIVER);
+    String driver = (String) connectionFactoryOptions.getValue(DRIVER);
     return MARIADB_DRIVER.equals(driver);
   }
 }

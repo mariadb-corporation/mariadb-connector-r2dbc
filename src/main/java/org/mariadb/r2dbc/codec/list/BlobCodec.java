@@ -31,24 +31,24 @@ public class BlobCodec implements Codec<Blob> {
           DataType.LONGBLOB,
           DataType.STRING,
           DataType.VARSTRING,
-          DataType.VARCHAR);
+          DataType.TEXT);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(Blob.class);
+    return COMPATIBLE_TYPES.contains(column.getDataType()) && type.isAssignableFrom(Blob.class);
   }
 
   @Override
   public Blob decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Blob> type) {
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case STRING:
-      case VARCHAR:
+      case TEXT:
       case VARSTRING:
         if (!column.isBinary()) {
           buf.skipBytes(length);
           throw new R2dbcNonTransientResourceException(
               String.format(
-                  "Data type %s (not binary) cannot be decoded as Blob", column.getType()));
+                  "Data type %s (not binary) cannot be decoded as Blob", column.getDataType()));
         }
         return new MariaDbBlob(buf.readRetainedSlice(length));
 
@@ -61,7 +61,7 @@ public class BlobCodec implements Codec<Blob> {
   @Override
   public Blob decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Blob> type) {
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case BIT:
       case TINYBLOB:
       case MEDIUMBLOB:
@@ -76,7 +76,7 @@ public class BlobCodec implements Codec<Blob> {
           buf.skipBytes(length);
           throw new R2dbcNonTransientResourceException(
               String.format(
-                  "Data type %s (not binary) cannot be decoded as Blob", column.getType()));
+                  "Data type %s (not binary) cannot be decoded as Blob", column.getDataType()));
         }
         return new MariaDbBlob(buf.readRetainedSlice(length));
     }
@@ -87,9 +87,9 @@ public class BlobCodec implements Codec<Blob> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Blob value) {
+  public void encodeText(ByteBuf buf, Context context, Object value) {
     buf.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
-    Flux.from(value.stream())
+    Flux.from(((Blob) value).stream())
         .handle(
             (tempVal, sync) -> {
               if (tempVal.hasArray()) {
@@ -110,12 +110,13 @@ public class BlobCodec implements Codec<Blob> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Blob value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+    Blob b = (Blob) value;
     buf.writeByte(0xfe);
     int initialPos = buf.writerIndex();
     buf.writerIndex(buf.writerIndex() + 8); // reserve length encoded length bytes
 
-    Flux.from(value.stream())
+    Flux.from(b.stream())
         .handle(
             (tempVal, sync) -> {
               buf.writeBytes(tempVal);

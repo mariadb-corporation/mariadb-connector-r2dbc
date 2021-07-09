@@ -4,20 +4,22 @@
 package org.mariadb.r2dbc.codec;
 
 import io.netty.buffer.ByteBuf;
+import java.util.List;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
 public class BinaryRowDecoder extends RowDecoder {
 
   private int columnNumber;
-  private ColumnDefinitionPacket[] columns;
+  private List<ColumnDefinitionPacket> columns;
   private byte[] nullBitmap;
 
   public BinaryRowDecoder(
-      int columnNumber, ColumnDefinitionPacket[] columns, MariadbConnectionConfiguration conf) {
+      List<ColumnDefinitionPacket> columns, MariadbConnectionConfiguration conf) {
     super(conf);
     this.columns = columns;
-    this.columnNumber = columnNumber;
+    this.columnNumber = columns.size();
+    nullBitmap = new byte[(columnNumber + 9) / 8];
   }
 
   @SuppressWarnings("unchecked")
@@ -26,7 +28,7 @@ public class BinaryRowDecoder extends RowDecoder {
 
     // check NULL-Bitmap that indicate if field is null
     if ((nullBitmap[(index + 2) / 8] & (1 << ((index + 2) % 8))) != 0) {
-      if (type.isPrimitive()) {
+      if (type != null && type.isPrimitive()) {
         throw new IllegalArgumentException(
             String.format("Cannot return null for primitive %s", type.getName()));
       }
@@ -36,8 +38,8 @@ public class BinaryRowDecoder extends RowDecoder {
     setPosition(index);
 
     // type generic, return "natural" java type
-    if (Object.class == type || type == null) {
-      Codec<T> defaultCodec = ((Codec<T>) column.getDefaultCodec(conf));
+    if (Object.class == type) {
+      Codec<T> defaultCodec = ((Codec<T>) column.getType().getDefaultCodec());
       return defaultCodec.decodeBinary(buf, length, column, type);
     }
 
@@ -55,7 +57,6 @@ public class BinaryRowDecoder extends RowDecoder {
   @Override
   public void resetRow(ByteBuf buf) {
     buf.skipBytes(1); // skip 0x00 header
-    nullBitmap = new byte[(columnNumber + 9) / 8];
     buf.readBytes(nullBitmap);
     super.resetRow(buf);
   }
@@ -77,7 +78,7 @@ public class BinaryRowDecoder extends RowDecoder {
     for (; index < newIndex; index++) {
       if ((nullBitmap[(index + 2) / 8] & (1 << ((index + 2) % 8))) == 0) {
         // skip bytes
-        switch (columns[index].getType()) {
+        switch (columns.get(index).getDataType()) {
           case BIGINT:
           case DOUBLE:
             buf.skipBytes(8);
@@ -126,7 +127,7 @@ public class BinaryRowDecoder extends RowDecoder {
     }
 
     // read asked field position and length
-    switch (columns[index].getType()) {
+    switch (columns.get(index).getDataType()) {
       case BIGINT:
       case DOUBLE:
         length = 8;

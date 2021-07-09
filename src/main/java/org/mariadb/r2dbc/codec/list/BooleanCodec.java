@@ -19,7 +19,7 @@ public class BooleanCodec implements Codec<Boolean> {
 
   private static final EnumSet<DataType> COMPATIBLE_TYPES =
       EnumSet.of(
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.VARSTRING,
           DataType.STRING,
           DataType.BIGINT,
@@ -34,7 +34,7 @@ public class BooleanCodec implements Codec<Boolean> {
           DataType.BIT);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType())
+    return COMPATIBLE_TYPES.contains(column.getDataType())
         && ((type.isPrimitive() && type == Boolean.TYPE) || type.isAssignableFrom(Boolean.class));
   }
 
@@ -45,7 +45,7 @@ public class BooleanCodec implements Codec<Boolean> {
   @Override
   public Boolean decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Boolean> type) {
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case BIT:
         return ByteCodec.parseBit(buf, length) != 0;
 
@@ -77,7 +77,7 @@ public class BooleanCodec implements Codec<Boolean> {
   public Boolean decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Boolean> type) {
 
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case BIT:
         return ByteCodec.parseBit(buf, length) != 0;
 
@@ -113,13 +113,13 @@ public class BooleanCodec implements Codec<Boolean> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Boolean value) {
-    BufferUtils.writeAscii(buf, value ? "1" : "0");
+  public void encodeText(ByteBuf buf, Context context, Object value) {
+    BufferUtils.writeAscii(buf, ((boolean) value) ? "1" : "0");
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Boolean value) {
-    buf.writeByte(value ? 1 : 0);
+  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+    buf.writeByte(((Boolean) value) ? 1 : 0);
   }
 
   public DataType getBinaryEncodeType() {

@@ -52,6 +52,7 @@ public class RowMetadataTest extends BaseConnectionTest {
   }
 
   @Test
+  @SuppressWarnings("deprecation")
   void rowMeta() {
     sharedConn
         .createStatement(
@@ -65,6 +66,9 @@ public class RowMetadataTest extends BaseConnectionTest {
                       List<String> expected =
                           Arrays.asList("t1Alias", "t2", "t3", "t4", "t5", "t6");
                       assertEquals(expected.size(), metadata.getColumnNames().size());
+                      assertTrue(metadata.contains("t1Alias"));
+                      assertFalse(metadata.contains("t1Aliass"));
+
                       assertArrayEquals(expected.toArray(), metadata.getColumnNames().toArray());
                       this.assertThrows(
                           IllegalArgumentException.class,
@@ -87,7 +91,7 @@ public class RowMetadataTest extends BaseConnectionTest {
                       assertEquals(
                           System.getProperty("TEST_DATABASE", TestConfiguration.database),
                           t1Meta.getSchema());
-                      assertEquals("t1Alias", t1Meta.getColumnAlias());
+                      assertEquals("t1Alias", t1Meta.getName());
                       assertEquals("t1", t1Meta.getColumn());
                       assertEquals("rowmeta", t1Meta.getTable());
                       assertEquals("rowMetaAlias", t1Meta.getTableAlias());
@@ -123,7 +127,7 @@ public class RowMetadataTest extends BaseConnectionTest {
                       assertEquals(
                           System.getProperty("TEST_DATABASE", TestConfiguration.database),
                           t2Meta.getSchema());
-                      assertEquals("t2", t2Meta.getColumnAlias());
+                      assertEquals("t2", t2Meta.getName());
                       assertEquals("t2", t2Meta.getColumn());
                       assertEquals("rowmeta", t2Meta.getTable());
                       assertEquals("rowMetaAlias", t2Meta.getTableAlias());

@@ -3,15 +3,17 @@
 
 package org.mariadb.r2dbc.api;
 
-import io.r2dbc.spi.Connection;
-import io.r2dbc.spi.IsolationLevel;
-import io.r2dbc.spi.ValidationDepth;
+import io.r2dbc.spi.*;
+import java.time.Duration;
 import reactor.core.publisher.Mono;
 
 public interface MariadbConnection extends Connection {
 
   @Override
   Mono<Void> beginTransaction();
+
+  @Override
+  Mono<Void> beginTransaction(TransactionDefinition definition);
 
   @Override
   Mono<Void> close();
@@ -54,6 +56,12 @@ public interface MariadbConnection extends Connection {
 
   @Override
   Mono<Boolean> validate(ValidationDepth depth);
+
+  @Override
+  Mono<Void> setLockWaitTimeout(Duration timeout);
+
+  @Override
+  Mono<Void> setStatementTimeout(Duration timeout);
 
   long getThreadId();
 }

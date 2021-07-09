@@ -22,13 +22,13 @@ public final class ExceptionFactory {
   }
 
   public static R2dbcException createException(ErrorPacket error, String sql) {
-    return createException(error.getMessage(), error.getSqlState(), error.getErrorCode(), sql);
+    return createException(error.message(), error.sqlState(), error.errorCode(), sql);
   }
 
   public static R2dbcException createException(
       String message, String sqlState, int errorCode, String sql) {
 
-    if ("70100".equals(sqlState)) { // ER_QUERY_INTERRUPTED
+    if ("70100".equals(sqlState) || errorCode == 3024) { // ER_QUERY_INTERRUPTED
       return new R2dbcTimeoutException(message, sqlState, errorCode);
     }
 

@@ -32,12 +32,13 @@ public class BigIntegerCodec implements Codec<BigInteger> {
           DataType.OLDDECIMAL,
           DataType.FLOAT,
           DataType.BIT,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.VARSTRING,
           DataType.STRING);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(BigInteger.class);
+    return COMPATIBLE_TYPES.contains(column.getDataType())
+        && type.isAssignableFrom(BigInteger.class);
   }
 
   public boolean canEncode(Class<?> value) {
@@ -48,7 +49,7 @@ public class BigIntegerCodec implements Codec<BigInteger> {
   public BigInteger decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BigInteger> type) {
 
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case FLOAT:
       case DOUBLE:
       case DECIMAL:
@@ -88,7 +89,7 @@ public class BigIntegerCodec implements Codec<BigInteger> {
   public BigInteger decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BigInteger> type) {
 
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case BIT:
         long result = 0;
         for (int i = 0; i < length; i++) {
@@ -154,12 +155,12 @@ public class BigIntegerCodec implements Codec<BigInteger> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, BigInteger value) {
+  public void encodeText(ByteBuf buf, Context context, Object value) {
     BufferUtils.writeAscii(buf, value.toString());
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, BigInteger value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object value) {
     String asciiFormat = value.toString();
     BufferUtils.writeLengthEncode(asciiFormat.length(), buf);
     BufferUtils.writeAscii(buf, asciiFormat);

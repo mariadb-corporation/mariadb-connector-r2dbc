@@ -3,6 +3,8 @@
 
 package org.mariadb.r2dbc;
 
+import io.r2dbc.spi.Parameter;
+import io.r2dbc.spi.Parameters;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -12,16 +14,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.client.DecoderState;
-import org.mariadb.r2dbc.codec.Codec;
-import org.mariadb.r2dbc.codec.Codecs;
-import org.mariadb.r2dbc.codec.DataType;
-import org.mariadb.r2dbc.codec.Parameter;
+import org.mariadb.r2dbc.codec.*;
 import org.mariadb.r2dbc.message.client.ExecutePacket;
 import org.mariadb.r2dbc.message.client.PreparePacket;
 import org.mariadb.r2dbc.message.server.CompletePrepareResult;
 import org.mariadb.r2dbc.message.server.ErrorPacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.Assert;
+import org.mariadb.r2dbc.util.MariadbType;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -32,8 +32,8 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   private final Client client;
   private final String initialSql;
   private final MariadbConnectionConfiguration configuration;
-  private Map<Integer, Parameter<?>> parameters;
-  private List<Map<Integer, Parameter<?>>> batchingParameters;
+  private Map<Integer, Parameter> parameters;
+  private List<Map<Integer, Parameter>> batchingParameters;
   private String[] generatedColumns;
   private AtomicReference<ServerPrepareResult> prepareResult;
 
@@ -84,17 +84,11 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
               "index must be in 0-%d range but value is %d",
               prepareResult.get().getNumParams() - 1, index));
     }
+
     if (value == null) return bindNull(index, null);
     if (parameters == null) parameters = new HashMap<>();
-    for (Codec<?> codec : Codecs.LIST) {
-      if (codec.canEncode(value.getClass())) {
-        parameters.put(index, (Parameter<?>) new Parameter(codec, value));
-        return this;
-      }
-    }
-    throw new IllegalArgumentException(
-        String.format(
-            "No encoder for class %s (parameter at index %s) ", value.getClass().getName(), index));
+    parameters.put(index, (value instanceof Parameter) ? (Parameter) value : Parameters.in(value));
+    return this;
   }
 
   @Override
@@ -106,7 +100,8 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
 
   @Override
   @SuppressWarnings({"unchecked", "rawtypes"})
-  public MariadbServerParameterizedQueryStatement bindNull(int index, @Nullable Class<?> type) {
+  public MariadbServerParameterizedQueryStatement bindNull(
+      int index, @Nullable Class<?> classType) {
     if (index < 0) {
       throw new IndexOutOfBoundsException(
           String.format("wrong index value %d, index must be positive", index));
@@ -118,32 +113,10 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
               "index must be in 0-%d range but value is %d",
               prepareResult.get().getNumParams() - 1, index));
     }
-    Parameter<?> parameter = null;
-    if (type != null) {
-      for (Codec<?> codec : Codecs.LIST) {
-        if (codec.canEncode(type)) {
 
-          parameter =
-              new Parameter(codec, null) {
-                @Override
-                public DataType getBinaryEncodeType() {
-                  return DataType.VARCHAR;
-                }
-
-                @Override
-                public boolean isNull() {
-                  return true;
-                }
-              };
-          break;
-        }
-      }
-    }
-    if (parameter == null) {
-      parameter = Parameter.NULL_PARAMETER;
-    }
     if (parameters == null) parameters = new HashMap<>();
-    parameters.put(index, parameter);
+    parameters.put(
+        index, (classType == null) ? Parameters.in(MariadbType.VARCHAR) : Parameters.in(classType));
     return this;
   }
 
@@ -189,16 +162,13 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
 
       Flux<ServerMessage> fluxMsg =
           this.client.sendCommand(
-              new ExecutePacket(
-                  prepareResult.get().getStatementId(), this.batchingParameters.get(0)));
+              new ExecutePacket(prepareResult.get(), this.batchingParameters.get(0)));
       int index = 1;
       while (index < this.batchingParameters.size()) {
         fluxMsg =
             fluxMsg.concatWith(
                 this.client.sendCommand(
-                    new ExecutePacket(
-                        prepareResult.get().getStatementId(),
-                        this.batchingParameters.get(index++))));
+                    new ExecutePacket(prepareResult.get(), this.batchingParameters.get(index++))));
       }
       fluxMsg =
           fluxMsg.concatWith(
@@ -308,10 +278,10 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   private Flux<org.mariadb.r2dbc.api.MariadbResult> sendPrepareAndExecute(
       String sql,
       ExceptionFactory factory,
-      Map<Integer, Parameter<?>> parameters,
+      Map<Integer, Parameter> parameters,
       String[] generatedColumns) {
     return this.client
-        .sendCommand(new PreparePacket(sql), new ExecutePacket(-1, parameters))
+        .sendCommand(new PreparePacket(sql), new ExecutePacket(null, parameters))
         .windowUntil(it -> it.resultSetEnd())
         .map(
             dataRow ->
@@ -345,12 +315,9 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
   }
 
   private Flux<org.mariadb.r2dbc.api.MariadbResult> sendExecuteCmd(
-      ExceptionFactory factory, Map<Integer, Parameter<?>> parameters, String[] generatedColumns) {
+      ExceptionFactory factory, Map<Integer, Parameter> parameters, String[] generatedColumns) {
     return this.client
-        .sendCommand(
-            new ExecutePacket(
-                prepareResult.get() != null ? prepareResult.get().getStatementId() : -1,
-                parameters))
+        .sendCommand(new ExecutePacket(prepareResult.get(), parameters))
         .windowUntil(it -> it.resultSetEnd())
         .map(
             dataRow ->

@@ -40,7 +40,7 @@ public class StringCodec implements Codec<String> {
           DataType.DECIMAL,
           DataType.ENUM,
           DataType.SET,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.VARSTRING,
           DataType.STRING);
 
@@ -54,7 +54,7 @@ public class StringCodec implements Codec<String> {
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(String.class);
+    return COMPATIBLE_TYPES.contains(column.getDataType()) && type.isAssignableFrom(String.class);
   }
 
   public boolean canEncode(Class<?> value) {
@@ -64,7 +64,7 @@ public class StringCodec implements Codec<String> {
   @Override
   public String decodeText(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends String> type) {
-    if (column.getType() == DataType.BIT) {
+    if (column.getDataType() == DataType.BIT) {
 
       byte[] bytes = new byte[length];
       buf.readBytes(bytes);
@@ -91,7 +91,7 @@ public class StringCodec implements Codec<String> {
   public String decodeBinary(
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends String> type) {
     String rawValue;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case BIT:
         byte[] bytes = new byte[length];
         buf.readBytes(bytes);
@@ -133,6 +133,8 @@ public class StringCodec implements Codec<String> {
       case MEDIUMINT:
         rawValue =
             String.valueOf(column.isSigned() ? buf.readMediumLE() : buf.readUnsignedMediumLE());
+        // medium int is encoded on 3 bytes + one empty byte
+        buf.skipBytes(1);
         if (column.isZeroFill()) {
           return zeroFilling(rawValue, column);
         }
@@ -247,18 +249,18 @@ public class StringCodec implements Codec<String> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, String value) {
-    BufferUtils.write(buf, value, true, context);
+  public void encodeText(ByteBuf buf, Context context, Object value) {
+    BufferUtils.write(buf, ((String) value), true, context);
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, String value) {
-    byte[] b = value.getBytes(StandardCharsets.UTF_8);
+  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+    byte[] b = ((String) value).getBytes(StandardCharsets.UTF_8);
     BufferUtils.writeLengthEncode(b.length, buf);
     buf.writeBytes(b);
   }
 
   public DataType getBinaryEncodeType() {
-    return DataType.VARSTRING;
+    return DataType.TEXT;
   }
 }

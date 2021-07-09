@@ -13,7 +13,7 @@ public interface DecoderStateInterface {
   //    throw new IllegalArgumentException("unexpected state");
   //  }
 
-  default DecoderState decoder(short val, int len, long serverCapabilities) {
+  default DecoderState decoder(short val, int len) {
     return (DecoderState) this;
   }
 

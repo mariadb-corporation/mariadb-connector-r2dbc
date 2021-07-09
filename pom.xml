@@ -11,7 +11,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.mariadb</groupId>
   <artifactId>r2dbc-mariadb</artifactId>
-  <version>1.0.2</version>
+  <version>1.1.0-SHAPSHOT</version>
   <packaging>jar</packaging>
   <url>https://github.com/mariadb-corporation/mariadb-connector-r2dbc</url>
 
@@ -26,7 +26,7 @@
     <logback.version>1.2.3</logback.version>
     <netty.version>4.1.65.Final</netty.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <r2dbc-spi.version>0.8.5.RELEASE</r2dbc-spi.version>
+    <r2dbc-spi.version>0.9.0.BUILD-SNAPSHOT</r2dbc-spi.version>
     <reactor.version>Dysprosium-SR21</reactor.version>
     <mariadb-jdbc.version>3.0.0-alpha</mariadb-jdbc.version>
     <uberjar.name>benchmarks</uberjar.name>
@@ -96,6 +96,14 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
+
+  <repositories>
+    <repository>
+      <id>sonatype-nexus-snapshots</id>
+      <name>Sonatype Nexus Snapshots</name>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </repository>
+  </repositories>
 
   <dependencies>
     <dependency>

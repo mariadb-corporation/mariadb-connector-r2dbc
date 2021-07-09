@@ -4,12 +4,15 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
+import io.r2dbc.spi.R2dbcException;
+import io.r2dbc.spi.Result;
 import java.nio.charset.StandardCharsets;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.util.Assert;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
-public final class ErrorPacket implements ServerMessage {
+public final class ErrorPacket implements ServerMessage, Result.Message {
   private static final Logger logger = Loggers.getLogger(ErrorPacket.class);
   private final short errorCode;
   private final String message;
@@ -47,16 +50,28 @@ public final class ErrorPacket implements ServerMessage {
     return err;
   }
 
-  public short getErrorCode() {
-    return errorCode;
-  }
-
   public String getMessage() {
     return message;
   }
 
-  public String getSqlState() {
+  @Override
+  public R2dbcException exception() {
+    return ExceptionFactory.createException(this, null);
+  }
+
+  @Override
+  public int errorCode() {
+    return errorCode;
+  }
+
+  @Override
+  public String sqlState() {
     return sqlState;
+  }
+
+  @Override
+  public String message() {
+    return message;
   }
 
   @Override

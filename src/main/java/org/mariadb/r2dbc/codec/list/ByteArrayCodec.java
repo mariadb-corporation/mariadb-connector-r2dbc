@@ -25,11 +25,11 @@ public class ByteArrayCodec implements Codec<byte[]> {
           DataType.LONGBLOB,
           DataType.GEOMETRY,
           DataType.VARSTRING,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.STRING);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType())
+    return COMPATIBLE_TYPES.contains(column.getDataType())
         && ((type.isPrimitive() && type == Byte.TYPE && type.isArray())
             || type.isAssignableFrom(byte[].class));
   }
@@ -56,15 +56,16 @@ public class ByteArrayCodec implements Codec<byte[]> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, byte[] value) {
+  public void encodeText(ByteBuf buf, Context context, Object val) {
+    byte[] value = (byte[]) val;
     buf.writeBytes(BINARY_PREFIX);
     BufferUtils.writeEscaped(buf, value, 0, value.length, context);
     buf.writeByte('\'');
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, byte[] value) {
-
+  public void encodeBinary(ByteBuf buf, Context context, Object val) {
+    byte[] value = (byte[]) val;
     BufferUtils.writeLengthEncode(value.length, buf);
     buf.writeBytes(value);
   }

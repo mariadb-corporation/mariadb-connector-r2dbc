@@ -10,6 +10,7 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.util.List;
 import java.util.Queue;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.message.server.PrepareResultPacket;
 import org.mariadb.r2dbc.message.server.Sequencer;
@@ -28,7 +29,7 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
   private DecoderState state = DecoderState.INIT_HANDSHAKE;
   private CmdElement cmdElement;
   private CompositeByteBuf multipart;
-  private long serverCapabilities;
+  private long clientCapabilities;
   private int stateCounter = 0;
   private PrepareResultPacket prepare;
   private ColumnDefinitionPacket[] prepareColumns;
@@ -89,11 +90,7 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
               BufferUtils.toString(packet)));
     }
 
-    state =
-        state.decoder(
-            packet.getUnsignedByte(packet.readerIndex()),
-            packet.readableBytes(),
-            serverCapabilities);
+    state = state.decoder(packet.getUnsignedByte(packet.readerIndex()), packet.readableBytes());
     ServerMessage msg = state.decode(packet, sequencer, this, cmdElement);
     cmdElement.getSink().next(msg);
     if (msg.ending()) {
@@ -142,8 +139,11 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
     return prepareColumns;
   }
 
+  public MariadbConnectionConfiguration getConf() {
+    return this.client.getConf();
+  }
+
   public ServerPrepareResult endPrepare() {
-    // this.prepareColumns = new ColumnDefinitionPacket[prepare.getNumColumns()];
     ServerPrepareResult prepareResult =
         new ServerPrepareResult(
             this.prepare.getStatementId(), this.prepare.getNumParams(), prepareColumns);
@@ -164,8 +164,8 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
     stateCounter--;
   }
 
-  public long getServerCapabilities() {
-    return serverCapabilities;
+  public long getClientCapabilities() {
+    return clientCapabilities;
   }
 
   private boolean loadNextResponse() {
@@ -180,6 +180,6 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
 
   public void setContext(Context context) {
     this.context = context;
-    this.serverCapabilities = this.context.getServerCapabilities();
+    this.clientCapabilities = this.context.getClientCapabilities();
   }
 }

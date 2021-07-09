@@ -3,18 +3,18 @@
 
 package org.mariadb.r2dbc;
 
+import io.r2dbc.spi.Parameter;
+import io.r2dbc.spi.Parameters;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
-import org.mariadb.r2dbc.codec.Codec;
-import org.mariadb.r2dbc.codec.Codecs;
-import org.mariadb.r2dbc.codec.Parameter;
 import org.mariadb.r2dbc.message.client.QueryWithParametersPacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.ClientPrepareResult;
+import org.mariadb.r2dbc.util.MariadbType;
 import reactor.core.publisher.Flux;
 import reactor.util.annotation.Nullable;
 
@@ -24,8 +24,8 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
   private final String sql;
   private final ClientPrepareResult prepareResult;
   private final MariadbConnectionConfiguration configuration;
-  private Parameter<?>[] parameters;
-  private List<Parameter<?>[]> batchingParameters;
+  private Parameter[] parameters;
+  private List<Parameter[]> batchingParameters;
   private String[] generatedColumns;
 
   MariadbClientParameterizedQueryStatement(
@@ -65,7 +65,6 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
   @SuppressWarnings({"rawtypes", "unchecked"})
   @Override
   public MariadbClientParameterizedQueryStatement bind(int index, @Nullable Object value) {
-    if (value == null) return bindNull(index, null);
     if (index >= prepareResult.getParamCount() || index < 0) {
       throw new IndexOutOfBoundsException(
           String.format(
@@ -73,16 +72,10 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
               prepareResult.getParamCount() - 1, index));
     }
 
-    for (Codec<?> codec : Codecs.LIST) {
-      if (codec.canEncode(value.getClass())) {
-        if (parameters == null) parameters = new Parameter<?>[prepareResult.getParamCount()];
-        parameters[index] = (Parameter<?>) new Parameter(codec, value);
-        return this;
-      }
-    }
-    throw new IllegalArgumentException(
-        String.format(
-            "No encoder for class %s (parameter at index %s) ", value.getClass().getName(), index));
+    if (value == null) return bindNull(index, null);
+    if (parameters == null) parameters = new Parameter[prepareResult.getParamCount()];
+    parameters[index] = (value instanceof Parameter) ? (Parameter) value : Parameters.in(value);
+    return this;
   }
 
   @Override
@@ -100,8 +93,8 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
               "index must be in 0-%d range but value is " + "%d",
               prepareResult.getParamCount() - 1, index));
     }
-    if (parameters == null) parameters = new Parameter<?>[prepareResult.getParamCount()];
-    parameters[index] = Parameter.NULL_PARAMETER;
+    if (parameters == null) parameters = new Parameter[prepareResult.getParamCount()];
+    parameters[index] = (type == null) ? Parameters.in(MariadbType.VARCHAR) : Parameters.in(type);
     return this;
   }
 
@@ -214,7 +207,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
         Flux.create(
             sink -> {
               sink.complete();
-              parameters = new Parameter<?>[prepareResult.getParamCount()];
+              parameters = null;
             }));
   }
 

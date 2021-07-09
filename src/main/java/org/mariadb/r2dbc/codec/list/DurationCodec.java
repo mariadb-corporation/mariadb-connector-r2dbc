@@ -22,11 +22,11 @@ public class DurationCodec implements Codec<Duration> {
           DataType.DATETIME,
           DataType.TIMESTAMP,
           DataType.VARSTRING,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.STRING);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(Duration.class);
+    return COMPATIBLE_TYPES.contains(column.getDataType()) && type.isAssignableFrom(Duration.class);
   }
 
   public boolean canEncode(Class<?> value) {
@@ -38,7 +38,7 @@ public class DurationCodec implements Codec<Duration> {
       ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Duration> type) {
 
     int[] parts;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TIMESTAMP:
       case DATETIME:
         parts =
@@ -76,7 +76,7 @@ public class DurationCodec implements Codec<Duration> {
     int seconds = 0;
     long microseconds = 0;
 
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TIME:
         boolean negate = false;
         if (length > 0) {
@@ -137,7 +137,8 @@ public class DurationCodec implements Codec<Duration> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Duration val) {
+  public void encodeText(ByteBuf buf, Context context, Object value) {
+    Duration val = (Duration) value;
     long s = val.getSeconds();
     boolean negate = false;
     if (s < 0) {
@@ -169,7 +170,8 @@ public class DurationCodec implements Codec<Duration> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Duration value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object val) {
+    Duration value = (Duration) val;
     long microSecond = value.getNano() / 1000;
     long s = Math.abs(value.getSeconds());
     if (microSecond > 0) {

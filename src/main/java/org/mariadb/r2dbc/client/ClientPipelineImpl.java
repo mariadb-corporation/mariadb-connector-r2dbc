@@ -97,13 +97,13 @@ public final class ClientPipelineImpl extends ClientBase {
         });
   }
 
-  protected void begin(FluxSink<ServerMessage> sink) {
+  protected void begin(FluxSink<ServerMessage> sink, String sql) {
     if (!responseReceivers.isEmpty()
         || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
-      this.responseReceivers.add(new CmdElement(sink, DecoderState.QUERY_RESPONSE, "BEGIN"));
-      connection.channel().writeAndFlush(new QueryPacket("BEGIN"));
+      this.responseReceivers.add(new CmdElement(sink, DecoderState.QUERY_RESPONSE, sql));
+      connection.channel().writeAndFlush(new QueryPacket(sql));
     } else {
-      logger.debug("Skipping begin transaction because already in transaction");
+      logger.debug("Skipping start transaction because already in transaction");
       sink.complete();
     }
   }
