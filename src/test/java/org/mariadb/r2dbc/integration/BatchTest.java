@@ -143,4 +143,31 @@ public class BatchTest extends BaseConnectionTest {
           e.getMessage().contains("Statement with parameters cannot be batched (sql:'"));
     }
   }
+
+  @Test
+  void batchError() {
+    batchError(sharedConn);
+    batchError(sharedConnPrepare);
+  }
+
+  void batchError(MariadbConnection conn) {
+    conn.createStatement("CREATE TEMPORARY TABLE basicBatch2 (id int, test varchar(10))")
+        .execute()
+        .blockLast();
+    conn.createStatement("INSERT INTO basicBatch2 VALUES (?, ?)")
+        .bind(0, 1)
+        .bind(1, "dd")
+        .execute()
+        .blockLast();
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            conn.createStatement("INSERT INTO basicBatch2 VALUES (?, ?)")
+                .bind(0, 1)
+                .bind(1, "dd")
+                .add()
+                .bind(1, "dd")
+                .add(),
+        "Parameter at position 0 is not set");
+  }
 }

@@ -64,11 +64,7 @@ public final class HandshakeResponse implements ClientMessage {
         || (serverLanguage >= 224 && serverLanguage <= 247)) {
       return (byte) serverLanguage;
     }
-    if (majorVersion == 5 && minorVersion <= 1) {
-      // 5.1 version doesn't know 4 bytes utf8
-      return (byte) 33; // utf8_general_ci
-    }
-    return (byte) 224; // UTF8MB4_UNICODE_CI;
+    return (byte) ((majorVersion == 5 && minorVersion <= 1) ? 33 : 224);
   }
 
   @Override
@@ -87,11 +83,8 @@ public final class HandshakeResponse implements ClientMessage {
     switch (authenticationPluginType) {
       case ClearPasswordPluginFlow.TYPE:
         // TODO check that SSL is enable
-        if (password == null) {
-          authData = new byte[0];
-        } else {
-          authData = password.toString().getBytes(StandardCharsets.UTF_8);
-        }
+        authData =
+            (password == null) ? new byte[0] : password.toString().getBytes(StandardCharsets.UTF_8);
         break;
 
       default:
@@ -107,12 +100,8 @@ public final class HandshakeResponse implements ClientMessage {
     buf.writeZero(19); // 19
     buf.writeIntLE((int) (clientCapabilities >> 32)); // Maria extended flag
 
-    if (username != null && !username.isEmpty()) {
-      buf.writeCharSequence(username, StandardCharsets.UTF_8);
-    } else {
-      // to permit SSO
-      buf.writeCharSequence(System.getProperty("user.name"), StandardCharsets.UTF_8);
-    }
+    // to permit SSO
+    buf.writeCharSequence((username != null && !username.isEmpty()) ? username : System.getProperty("user.name"), StandardCharsets.UTF_8);
     buf.writeZero(1);
 
     if ((initialHandshakePacket.getCapabilities() & Capabilities.PLUGIN_AUTH_LENENC_CLIENT_DATA)

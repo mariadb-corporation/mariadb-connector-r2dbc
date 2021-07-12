@@ -3,6 +3,7 @@
 
 package org.mariadb.r2dbc.integration;
 
+import io.r2dbc.spi.OutParametersMetadata;
 import io.r2dbc.spi.Parameters;
 import io.r2dbc.spi.R2dbcType;
 import io.r2dbc.spi.Result;
@@ -54,13 +55,33 @@ public class ProcedureResultsetTest extends BaseConnectionTest {
                 r ->
                     ((MariadbResult) r.filter(Result.OutSegment.class::isInstance))
                         .flatMap(
-                            seg ->
-                                Flux.just(
-                                    ((Result.OutSegment) seg).outParameters().get(0),
-                                    ((Result.OutSegment) seg).outParameters().get(1),
-                                    ((Result.OutSegment) seg).outParameters().get(2),
-                                    ((Result.OutSegment) seg).outParameters().get(3),
-                                    ((Result.OutSegment) seg).outParameters().get(4)))
+                            seg -> {
+                              OutParametersMetadata metas =
+                                  ((Result.OutSegment) seg).outParameters().getMetadata();
+
+                              assertThrows(
+                                  IllegalArgumentException.class,
+                                  () -> metas.getParameterMetadata(-1),
+                                  "Column index -1 is not in permit range[0,4]");
+                              assertThrows(
+                                  IllegalArgumentException.class,
+                                  () -> metas.getParameterMetadata(10),
+                                  "Column index 10 is not in permit range[0,4]");
+
+                              Assertions.assertEquals(
+                                  metas.getParameterMetadata(0), metas.getParameterMetadata("t2"));
+                              Assertions.assertEquals(5, metas.getParameterMetadatas().size());
+                              assertThrows(
+                                  IllegalArgumentException.class,
+                                  () -> metas.getParameterMetadata("wrong"),
+                                  "Column name 'wrong' does not exist in column names [t2, t3, t5, t6, t7]");
+                              return Flux.just(
+                                  ((Result.OutSegment) seg).outParameters().get(0),
+                                  ((Result.OutSegment) seg).outParameters().get(1),
+                                  ((Result.OutSegment) seg).outParameters().get(2),
+                                  ((Result.OutSegment) seg).outParameters().get(3),
+                                  ((Result.OutSegment) seg).outParameters().get(4));
+                            })
                         .collectList())
             .collectList()
             .block();

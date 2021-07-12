@@ -133,10 +133,12 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
   @Override
   public Mono<Void> setStatementTimeout(Duration timeout) {
     Assert.requireNonNull(timeout, "timeout must not be null");
-    if ((client.getVersion().isMariaDBServer()
-            && (!client.getVersion().versionGreaterOrEqual(10, 1, 1))
-        || (!client.getVersion().isMariaDBServer()
-            && !client.getVersion().versionGreaterOrEqual(5, 7, 4)))) {
+    boolean serverSupportTimeout =
+        (client.getVersion().isMariaDBServer()
+                && client.getVersion().versionGreaterOrEqual(10, 1, 1)
+            || (!client.getVersion().isMariaDBServer()
+                && client.getVersion().versionGreaterOrEqual(5, 7, 4)));
+    if (!serverSupportTimeout) {
       return Mono.error(
           ExceptionFactory.createException(
               "query timeout not supported by server. (required MariaDB 10.1.1+ | MySQL 5.7.4+)",

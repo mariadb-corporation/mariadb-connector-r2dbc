@@ -67,11 +67,6 @@ final class MariadbSimpleQueryStatement implements MariadbStatement {
   }
 
   @Override
-  public MariadbSimpleQueryStatement fetchSize(int rows) {
-    return this;
-  }
-
-  @Override
   public MariadbSimpleQueryStatement returnGeneratedValues(String... columns) {
     Assert.requireNonNull(columns, "columns must not be null");
 

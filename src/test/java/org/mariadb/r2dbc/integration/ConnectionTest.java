@@ -967,4 +967,9 @@ public class ConnectionTest extends BaseConnectionTest {
       connection.close().block();
     }
   }
+
+  @Test
+  public void setLockWaitTimeout() {
+    sharedConn.setLockWaitTimeout(Duration.ofMillis(1)).block();
+  }
 }

@@ -162,11 +162,6 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
   }
 
   @Override
-  public MariadbClientParameterizedQueryStatement fetchSize(int rows) {
-    return this;
-  }
-
-  @Override
   public MariadbClientParameterizedQueryStatement returnGeneratedValues(String... columns) {
     Assert.requireNonNull(columns, "columns must not be null");
 

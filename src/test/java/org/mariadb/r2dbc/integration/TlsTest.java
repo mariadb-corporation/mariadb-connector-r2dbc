@@ -78,6 +78,38 @@ public class TlsTest extends BaseConnectionTest {
   }
 
   @Test
+  public void testWithoutPassword() throws Throwable {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(haveSsl(sharedConn));
+    sharedConn.createStatement("CREATE USER userWithoutPassword").execute().blockLast();
+    sharedConn
+        .createStatement(
+            String.format(
+                "GRANT SELECT on `%s`.* to userWithoutPassword", TestConfiguration.database))
+        .execute()
+        .blockLast();
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .username("userWithoutPassword")
+            .password("")
+            .port(sslPort)
+            .sslMode(SslMode.TRUST)
+            .build();
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    connection.close();
+    sharedConn
+        .createStatement("DROP USER IF EXISTS userWithoutPassword")
+        .execute()
+        .map(res -> res.getRowsUpdated())
+        .onErrorReturn(Flux.empty())
+        .blockLast();
+  }
+
+  @Test
   void defaultHasNoSSL() throws Exception {
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
