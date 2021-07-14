@@ -52,7 +52,7 @@ MariadbConnectionFactory factory = new MariadbConnectionFactory(conf);
 
 //OR
 
-ConnectionFactory factory = ConnectionFactories.get("r2dbc:mariadb://user:password@host:3306/myDB?option1=value");
+ConnectionFactory factory = ConnectionFactories.get("r2dbc:mariadb://user:password@host:3306,host2:3302/myDB?option1=value");
 ```
 
 Basic example: 
@@ -82,7 +82,7 @@ Basic example:
 |---:|---|:---:|:---:| 
 | **`username`** | User to access database. |*string* | 
 | **`password`** | User password. |*string* | 
-| **`host`** | IP address or DNS of the database server. *Not used when using option `socketPath`*. |*string*| "localhost"|
+| **`host`** | IP address or DNS of the database server. Multiple host can be set, separate by comma. If first host is not reachable (timeout is connectTimeout), driver use next hosts.*Not used when using option `socketPath`*. |*string*| "localhost"|
 | **`port`** | Database server port number. *Not used when using option `socketPath`*|*integer*| 3306|
 | **`database`** | Default database to use when establishing the connection. | *string* | 
 | **`connectTimeout`** | Sets the connection timeout |  *Duration* | 10s|

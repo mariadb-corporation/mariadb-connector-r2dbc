@@ -64,4 +64,8 @@ public interface MariadbConnection extends Connection {
   Mono<Void> setStatementTimeout(Duration timeout);
 
   long getThreadId();
+
+  String getHost();
+
+  int getPort();
 }

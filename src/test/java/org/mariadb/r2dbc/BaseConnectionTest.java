@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.tools.TcpProxy;
+import org.mariadb.r2dbc.util.HostAddress;
 import reactor.test.StepVerifier;
 
 public class BaseConnectionTest extends BaseTest {
@@ -58,10 +59,9 @@ public class BaseConnectionTest extends BaseTest {
   }
 
   public MariadbConnection createProxyCon() throws Exception {
+    HostAddress hostAddress = TestConfiguration.defaultConf.getHostAddresses().get(0);
     try {
-      proxy =
-          new TcpProxy(
-              TestConfiguration.defaultConf.getHost(), TestConfiguration.defaultConf.getPort());
+      proxy = new TcpProxy(hostAddress.getHost(), hostAddress.getPort());
     } catch (IOException i) {
       throw new SQLException("proxy error", i);
     }
@@ -69,10 +69,7 @@ public class BaseConnectionTest extends BaseTest {
         TestConfiguration.defaultBuilder
             .clone()
             .port(proxy.getLocalPort())
-            .host(
-                System.getenv("TRAVIS") != null
-                    ? TestConfiguration.defaultConf.getHost()
-                    : "localhost")
+            .host(System.getenv("TRAVIS") != null ? hostAddress.getHost() : "localhost")
             .build();
     return new MariadbConnectionFactory(confProxy).create().block();
   }

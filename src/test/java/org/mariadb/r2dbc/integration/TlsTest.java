@@ -82,6 +82,7 @@ public class TlsTest extends BaseConnectionTest {
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
+            && !"mariadb-es".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeTrue(haveSsl(sharedConn));
     sharedConn.createStatement("CREATE USER userWithoutPassword").execute().blockLast();

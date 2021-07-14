@@ -199,7 +199,7 @@ public class ConfigurationTest extends BaseTest {
             .build();
     MariadbConnectionConfiguration conf =
         MariadbConnectionConfiguration.fromOptions(options).build();
-    Assertions.assertEquals("someHost", conf.getHost());
+    Assertions.assertEquals("someHost", conf.getHostAddresses().get(0).getHost());
     Assertions.assertEquals(43306, conf.getPort());
     Assertions.assertEquals(true, conf.allowMultiQueries());
 

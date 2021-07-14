@@ -29,6 +29,7 @@ import org.mariadb.r2dbc.message.client.QuitPacket;
 import org.mariadb.r2dbc.message.client.SslRequestPacket;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
+import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 import reactor.core.publisher.Flux;
@@ -46,6 +47,7 @@ public abstract class ClientBase implements Client {
   protected final ReentrantLock lock = new ReentrantLock();
   private final MariadbConnectionConfiguration configuration;
   protected final Connection connection;
+  protected final HostAddress hostAddress;
   protected final Queue<CmdElement> responseReceivers = Queues.<CmdElement>unbounded().get();
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final MariadbPacketDecoder mariadbPacketDecoder;
@@ -53,9 +55,13 @@ public abstract class ClientBase implements Client {
   protected volatile Context context;
   private final PrepareCache prepareCache;
 
-  protected ClientBase(Connection connection, MariadbConnectionConfiguration configuration) {
+  protected ClientBase(
+      Connection connection,
+      MariadbConnectionConfiguration configuration,
+      HostAddress hostAddress) {
     this.connection = connection;
     this.configuration = configuration;
+    this.hostAddress = hostAddress;
     this.prepareCache =
         new PrepareCache(
             this.configuration.useServerPrepStmts() ? this.configuration.getPrepareCacheSize() : 0,
@@ -162,7 +168,11 @@ public abstract class ClientBase implements Client {
       final GenericFutureListener<Future<? super Channel>> listener =
           configuration
               .getSslConfig()
-              .getHostNameVerifier(result, configuration.getHost(), context.getThreadId(), engine);
+              .getHostNameVerifier(
+                  result,
+                  this.hostAddress == null ? null : this.hostAddress.getHost(),
+                  context.getThreadId(),
+                  engine);
 
       sslHandler.handshakeFuture().addListener(listener);
       // send SSL request in clear
@@ -423,6 +433,10 @@ public abstract class ClientBase implements Client {
 
   public MariadbConnectionConfiguration getConf() {
     return configuration;
+  }
+
+  public HostAddress getHostAddress() {
+    return hostAddress;
   }
 
   public abstract void sendNext();

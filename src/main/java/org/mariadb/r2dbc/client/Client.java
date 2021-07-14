@@ -11,6 +11,7 @@ import org.mariadb.r2dbc.message.client.PreparePacket;
 import org.mariadb.r2dbc.message.client.SslRequestPacket;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
+import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.PrepareCache;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -67,4 +68,6 @@ public interface Client {
   Mono<Void> createSavepoint(String name);
 
   long getThreadId();
+
+  HostAddress getHostAddress();
 }

@@ -110,6 +110,16 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
   }
 
   @Override
+  public String getHost() {
+    return this.client.getHostAddress() != null ? this.client.getHostAddress().getHost() : null;
+  }
+
+  @Override
+  public int getPort() {
+    return this.client.getHostAddress() != null ? this.client.getHostAddress().getPort() : 3306;
+  }
+
+  @Override
   public Mono<Void> rollbackTransaction() {
     return this.client.rollbackTransaction();
   }

@@ -13,6 +13,7 @@ import org.mariadb.r2dbc.message.client.ExecutePacket;
 import org.mariadb.r2dbc.message.client.PreparePacket;
 import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
+import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
@@ -28,8 +29,11 @@ import reactor.util.concurrent.Queues;
 public final class ClientImpl extends ClientBase {
   private static final Logger logger = Loggers.getLogger(ClientImpl.class);
 
-  public ClientImpl(Connection connection, MariadbConnectionConfiguration configuration) {
-    super(connection, configuration);
+  private ClientImpl(
+      Connection connection,
+      MariadbConnectionConfiguration configuration,
+      HostAddress hostAddress) {
+    super(connection, configuration, hostAddress);
   }
 
   protected final Queue<ClientMessage> sendingQueue = Queues.<ClientMessage>unbounded().get();
@@ -37,11 +41,14 @@ public final class ClientImpl extends ClientBase {
   public static Mono<Client> connect(
       ConnectionProvider connectionProvider,
       SocketAddress socketAddress,
+      HostAddress hostAddress,
       MariadbConnectionConfiguration configuration) {
 
     TcpClient tcpClient = TcpClient.create(connectionProvider).remoteAddress(() -> socketAddress);
     tcpClient = setSocketOption(configuration, tcpClient);
-    return tcpClient.connect().flatMap(it -> Mono.just(new ClientImpl(it, configuration)));
+    return tcpClient
+        .connect()
+        .flatMap(it -> Mono.just(new ClientImpl(it, configuration, hostAddress)));
   }
 
   public void sendCommandWithoutResult(ClientMessage message) {

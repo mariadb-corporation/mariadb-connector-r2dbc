@@ -236,12 +236,71 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
-  void socketTimeoutTimeout() throws Exception {
+  void socketTimeout() throws Exception {
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder.clone().socketTimeout(Duration.ofSeconds(1)).build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     consume(connection);
     connection.close().block();
+  }
+
+  @Test
+  void socketTimeoutMultiHost() throws Exception {
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .host(
+                "128.2.2.2,"
+                    + TestConfiguration.defaultBuilder
+                        .clone()
+                        .build()
+                        .getHostAddresses()
+                        .get(0)
+                        .getHost())
+            .connectTimeout(Duration.ofMillis(500))
+            .build();
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    consume(connection);
+    connection.close().block();
+  }
+
+  @Test
+  public void localSocket() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("local") != null
+            && "1".equals(System.getenv("local"))
+            && !System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win"));
+    String socket =
+        sharedConn
+            .createStatement("select @@socket")
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+            .blockLast();
+    sharedConn.createStatement("DROP USER IF EXISTS testSocket@'localhost'").execute().blockLast();
+    sharedConn
+        .createStatement("CREATE USER testSocket@'localhost' IDENTIFIED BY 'MySup5%rPassw@ord'")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "GRANT SELECT on *.* to testSocket@'localhost' IDENTIFIED BY 'MySup5%rPassw@ord'")
+        .execute()
+        .blockLast();
+    sharedConn.createStatement("FLUSH PRIVILEGES").execute().blockLast();
+
+    MariadbConnectionConfiguration conf =
+        MariadbConnectionConfiguration.builder()
+            .username("testSocket")
+            .password("MySup5%rPassw@ord")
+            .database(TestConfiguration.database)
+            .socket(socket)
+            .build();
+
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    consume(connection);
+    connection.close().block();
+
+    sharedConn.createStatement("DROP USER testSocket@'localhost'").execute().blockLast();
   }
 
   @Test
@@ -890,7 +949,9 @@ public class ConnectionTest extends BaseConnectionTest {
             && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnection connection = factory.create().block();
     long threadId = connection.getThreadId();
-
+    assertNotNull(connection.getHost());
+    assertEquals(TestConfiguration.defaultBuilder.build().getPort(), connection.getPort());
+    connection.getPort();
     Runnable runnable =
         () -> {
           try {

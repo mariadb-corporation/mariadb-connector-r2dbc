@@ -14,51 +14,59 @@ import org.mariadb.r2dbc.client.ClientImpl;
 import org.mariadb.r2dbc.client.ClientPipelineImpl;
 import org.mariadb.r2dbc.message.flow.AuthenticationFlow;
 import org.mariadb.r2dbc.util.Assert;
+import org.mariadb.r2dbc.util.HostAddress;
 import reactor.core.publisher.Mono;
 import reactor.netty.resources.ConnectionProvider;
 
 public final class MariadbConnectionFactory implements ConnectionFactory {
 
   private final MariadbConnectionConfiguration configuration;
-  private final SocketAddress endpoint;
 
   public MariadbConnectionFactory(MariadbConnectionConfiguration configuration) {
     this.configuration = Assert.requireNonNull(configuration, "configuration must not be null");
-    this.endpoint = createSocketAddress(configuration);
   }
 
   public static MariadbConnectionFactory from(MariadbConnectionConfiguration configuration) {
     return new MariadbConnectionFactory(configuration);
   }
 
-  private static SocketAddress createSocketAddress(MariadbConnectionConfiguration configuration) {
-
+  @Override
+  public Mono<org.mariadb.r2dbc.api.MariadbConnection> create() {
     if (configuration.getSocket() != null) {
-      return new DomainSocketAddress(configuration.getSocket());
+      return connectToHost(new DomainSocketAddress(configuration.getSocket()), null)
+          .cast(org.mariadb.r2dbc.api.MariadbConnection.class);
     } else {
-      return InetSocketAddress.createUnresolved(configuration.getHost(), configuration.getPort());
+      return doCreateConnection(0).cast(org.mariadb.r2dbc.api.MariadbConnection.class);
     }
   }
 
-  @Override
-  public Mono<org.mariadb.r2dbc.api.MariadbConnection> create() {
-    return doCreateConnection().cast(org.mariadb.r2dbc.api.MariadbConnection.class);
+  private Mono<MariadbConnection> doCreateConnection(final int idx) {
+    HostAddress hostAddress = configuration.getHostAddresses().get(idx);
+    return connectToHost(
+            InetSocketAddress.createUnresolved(hostAddress.getHost(), hostAddress.getPort()),
+            hostAddress)
+        .onErrorResume(
+            e -> {
+              if (idx + 1 < configuration.getHostAddresses().size()) {
+                return doCreateConnection(idx + 1);
+              }
+              return Mono.error(e);
+            });
   }
 
-  private Mono<MariadbConnection> doCreateConnection() {
-
+  private Mono<MariadbConnection> connectToHost(SocketAddress endpoint, HostAddress hostAddress) {
     Mono<Client> clientMono;
     if (configuration.allowPipelining()) {
       clientMono =
           ClientPipelineImpl.connect(
-              ConnectionProvider.newConnection(), this.endpoint, configuration);
+              ConnectionProvider.newConnection(), endpoint, hostAddress, configuration);
     } else {
       clientMono =
-          ClientImpl.connect(ConnectionProvider.newConnection(), this.endpoint, configuration);
+          ClientImpl.connect(
+              ConnectionProvider.newConnection(), endpoint, hostAddress, configuration);
     }
-
     return clientMono
-        .delayUntil(client -> AuthenticationFlow.exchange(client, this.configuration))
+        .delayUntil(client -> AuthenticationFlow.exchange(client, this.configuration, hostAddress))
         .cast(Client.class)
         .flatMap(
             client -> {
@@ -86,21 +94,21 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
                     .onErrorResume(throwable -> this.closeWithError(client, throwable));
               }
             })
-        .onErrorMap(this::cannotConnect);
+        .onErrorMap(e -> cannotConnect(e, endpoint));
   }
 
   private Mono<MariadbConnection> closeWithError(Client client, Throwable throwable) {
     return client.close().then(Mono.error(throwable));
   }
 
-  private Throwable cannotConnect(Throwable throwable) {
+  private Throwable cannotConnect(Throwable throwable, SocketAddress endpoint) {
 
     if (throwable instanceof R2dbcException) {
       return throwable;
     }
 
     return new R2dbcNonTransientResourceException(
-        String.format("Cannot connect to %s", this.endpoint), throwable);
+        String.format("Cannot connect to %s", endpoint), throwable);
   }
 
   @Override

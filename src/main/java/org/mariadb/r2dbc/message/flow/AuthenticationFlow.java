@@ -16,6 +16,7 @@ import org.mariadb.r2dbc.message.client.HandshakeResponse;
 import org.mariadb.r2dbc.message.client.SslRequestPacket;
 import org.mariadb.r2dbc.message.server.*;
 import org.mariadb.r2dbc.util.Assert;
+import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 import reactor.core.publisher.*;
 import reactor.util.Logger;
@@ -31,15 +32,19 @@ public final class AuthenticationFlow {
   private AuthMoreDataPacket authMoreDataPacket;
   private Client client;
   private FluxSink<State> sink;
+  private HostAddress hostAddress;
   private long clientCapabilities;
 
-  private AuthenticationFlow(Client client, MariadbConnectionConfiguration configuration) {
+  private AuthenticationFlow(
+      Client client, MariadbConnectionConfiguration configuration, HostAddress hostAddress) {
     this.client = client;
     this.configuration = configuration;
+    this.hostAddress = hostAddress;
   }
 
-  public static Mono<Client> exchange(Client client, MariadbConnectionConfiguration configuration) {
-    AuthenticationFlow flow = new AuthenticationFlow(client, configuration);
+  public static Mono<Client> exchange(
+      Client client, MariadbConnectionConfiguration configuration, HostAddress hostAddress) {
+    AuthenticationFlow flow = new AuthenticationFlow(client, configuration, hostAddress);
     Assert.requireNonNull(client, "client must not be null");
 
     return Flux.<State>create(
@@ -111,7 +116,7 @@ public final class AuthenticationFlow {
         this.configuration.getPassword(),
         this.configuration.getDatabase(),
         configuration.getConnectionAttributes(),
-        configuration.getHost(),
+        this.hostAddress,
         clientCapabilities);
   }
 

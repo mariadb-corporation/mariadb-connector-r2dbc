@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 import org.mariadb.r2dbc.util.Assert;
+import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.SslConfig;
 import reactor.util.annotation.Nullable;
 
@@ -20,7 +21,7 @@ public final class MariadbConnectionConfiguration {
 
   public static final int DEFAULT_PORT = 3306;
   private final String database;
-  private final String host;
+  private final List<HostAddress> hostAddresses;
 
   private final Duration connectTimeout;
   private final Duration socketTimeout;
@@ -79,7 +80,8 @@ public final class MariadbConnectionConfiguration {
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
     this.tcpAbortiveClose = tcpAbortiveClose == null ? Boolean.FALSE : tcpAbortiveClose;
     this.database = database != null && !database.isEmpty() ? database : null;
-    this.host = host;
+
+    this.hostAddresses = HostAddress.parse(host, port);
     this.connectionAttributes = connectionAttributes;
     this.sessionVariables = sessionVariables;
     this.password = password != null && !password.toString().isEmpty() ? password : null;
@@ -307,8 +309,8 @@ public final class MariadbConnectionConfiguration {
   }
 
   @Nullable
-  public String getHost() {
-    return this.host;
+  public List<HostAddress> getHostAddresses() {
+    return this.hostAddresses;
   }
 
   @Nullable
@@ -411,7 +413,7 @@ public final class MariadbConnectionConfiguration {
         + database
         + '\''
         + ", host='"
-        + host
+        + (hostAddresses == null ? null : Arrays.toString(hostAddresses.toArray()))
         + '\''
         + ", connectTimeout="
         + connectTimeout

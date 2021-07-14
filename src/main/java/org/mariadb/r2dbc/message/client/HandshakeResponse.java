@@ -18,6 +18,7 @@ import org.mariadb.r2dbc.message.flow.NativePasswordPluginFlow;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.BufferUtils;
+import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.PidFactory;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 
@@ -28,7 +29,7 @@ public final class HandshakeResponse implements ClientMessage {
   private CharSequence password;
   private String database;
   private Map<String, String> connectionAttributes;
-  private String host;
+  private HostAddress hostAddress;
   private long clientCapabilities;
 
   public HandshakeResponse(
@@ -37,14 +38,14 @@ public final class HandshakeResponse implements ClientMessage {
       CharSequence password,
       String database,
       Map<String, String> connectionAttributes,
-      String host,
+      HostAddress hostAddress,
       long clientCapabilities) {
     this.initialHandshakePacket = initialHandshakePacket;
     this.username = username;
     this.password = password;
     this.database = database;
     this.connectionAttributes = connectionAttributes;
-    this.host = host;
+    this.hostAddress = hostAddress;
     this.clientCapabilities = clientCapabilities;
   }
 
@@ -101,7 +102,9 @@ public final class HandshakeResponse implements ClientMessage {
     buf.writeIntLE((int) (clientCapabilities >> 32)); // Maria extended flag
 
     // to permit SSO
-    buf.writeCharSequence((username != null && !username.isEmpty()) ? username : System.getProperty("user.name"), StandardCharsets.UTF_8);
+    buf.writeCharSequence(
+        (username != null && !username.isEmpty()) ? username : System.getProperty("user.name"),
+        StandardCharsets.UTF_8);
     buf.writeZero(1);
 
     if ((initialHandshakePacket.getCapabilities() & Capabilities.PLUGIN_AUTH_LENENC_CLIENT_DATA)
@@ -128,7 +131,7 @@ public final class HandshakeResponse implements ClientMessage {
 
     if ((initialHandshakePacket.getCapabilities() & Capabilities.CONNECT_ATTRS) != 0) {
       ByteBuf bufAttributes = allocator.buffer(2048);
-      writeConnectAttributes(bufAttributes, connectionAttributes, host);
+      writeConnectAttributes(bufAttributes, connectionAttributes, hostAddress);
       BufferUtils.writeLengthEncode(bufAttributes.writerIndex(), buf);
       buf.writeBytes(bufAttributes, 0, bufAttributes.writerIndex());
       bufAttributes.release();
@@ -143,7 +146,7 @@ public final class HandshakeResponse implements ClientMessage {
   }
 
   private void writeConnectAttributes(
-      ByteBuf buf, Map<String, String> connectionAttributes, String host) {
+      ByteBuf buf, Map<String, String> connectionAttributes, HostAddress hostAddress) {
     BufferUtils.writeLengthEncode("_client_name", buf);
     BufferUtils.writeLengthEncode(MariadbConnectionFactoryProvider.MARIADB_DRIVER, buf);
 
@@ -159,7 +162,7 @@ public final class HandshakeResponse implements ClientMessage {
     }
 
     BufferUtils.writeLengthEncode("_server_host", buf);
-    BufferUtils.writeLengthEncode(host != null ? host : "", buf);
+    BufferUtils.writeLengthEncode(hostAddress != null ? hostAddress.getHost() : "", buf);
 
     BufferUtils.writeLengthEncode("_os", buf);
     BufferUtils.writeLengthEncode(System.getProperty("os.name"), buf);
