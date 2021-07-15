@@ -1,4 +1,18 @@
 # Change Log
+## [1.1.0-beta](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.1.0-beta) (15 Jul 2021)
+[Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.0.2...1.1.0-beta)
+
+Changes:
+* [R2DBC-10] - support 10.6 new feature metadata skip
+* [R2DBC-21] - Failover capabilities for Connector/R2DBC
+* [R2DBC-23] - Restrict authentication plugin list by option  (new option `restrictedAuth`)
+* support SPI 0.9 M2
+  * [R2DBC-32] - Add support for improved bind parameter declarations
+  * [R2DBC-33] - Add Connection.beginTransaction(TransactionDefinition)
+  * [R2DBC-34] - implement NoSuchOptionException
+  * [R2DBC-35] - Refinement of RowMetadata
+  * [R2DBC-36] - Implement statement timeout
+  
 ## [1.0.2](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.0.2) (02 Jul 2021)
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.0.1...1.0.2)
 
