@@ -45,6 +45,7 @@ public final class MariadbConnectionConfiguration {
   private final boolean useServerPrepStmts;
   private final boolean autocommit;
   private final boolean tinyInt1isBit;
+  private final String[] restrictedAuth;
 
   private MariadbConnectionConfiguration(
       @Nullable Duration connectTimeout,
@@ -74,13 +75,14 @@ public final class MariadbConnectionConfiguration {
       boolean autocommit,
       @Nullable Integer prepareCacheSize,
       @Nullable CharSequence[] pamOtherPwd,
-      boolean tinyInt1isBit) {
+      boolean tinyInt1isBit,
+      String restrictedAuth) {
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
     this.socketTimeout = socketTimeout;
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
     this.tcpAbortiveClose = tcpAbortiveClose == null ? Boolean.FALSE : tcpAbortiveClose;
     this.database = database != null && !database.isEmpty() ? database : null;
-
+    this.restrictedAuth = restrictedAuth != null ? restrictedAuth.split(",") : null;
     this.hostAddresses = HostAddress.parse(host, port);
     this.connectionAttributes = connectionAttributes;
     this.sessionVariables = sessionVariables;
@@ -393,6 +395,10 @@ public final class MariadbConnectionConfiguration {
     return tcpAbortiveClose;
   }
 
+  public String[] getRestrictedAuth() {
+    return restrictedAuth;
+  }
+
   @Override
   public String toString() {
     StringBuilder hiddenPwd = new StringBuilder();
@@ -463,6 +469,8 @@ public final class MariadbConnectionConfiguration {
         + tinyInt1isBit
         + ", pamOtherPwd="
         + hiddenPamPwd
+        + ", restrictedAuth="
+        + restrictedAuth
         + '}';
   }
 
@@ -501,6 +509,7 @@ public final class MariadbConnectionConfiguration {
     @Nullable private CharSequence clientSslPassword;
     private SslMode sslMode = SslMode.DISABLE;
     private CharSequence[] pamOtherPwd;
+    private String restrictedAuth;
 
     private Builder() {}
 
@@ -552,7 +561,8 @@ public final class MariadbConnectionConfiguration {
           this.autocommit,
           this.prepareCacheSize,
           this.pamOtherPwd,
-          this.tinyInt1isBit);
+          this.tinyInt1isBit,
+          this.restrictedAuth);
     }
 
     /**
@@ -563,6 +573,11 @@ public final class MariadbConnectionConfiguration {
      */
     public Builder connectTimeout(@Nullable Duration connectTimeout) {
       this.connectTimeout = connectTimeout;
+      return this;
+    }
+
+    public Builder restrictedAuth(@Nullable String restrictedAuth) {
+      this.restrictedAuth = restrictedAuth;
       return this;
     }
 
@@ -897,6 +912,8 @@ public final class MariadbConnectionConfiguration {
           + connectionAttributes
           + ", password="
           + hiddenPwd
+          + ", restrictedAuth="
+          + restrictedAuth
           + ", port="
           + port
           + ", socket="

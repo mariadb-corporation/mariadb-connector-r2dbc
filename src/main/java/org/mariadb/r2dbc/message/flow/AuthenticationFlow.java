@@ -5,6 +5,8 @@ package org.mariadb.r2dbc.message.flow;
 
 import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.r2dbc.spi.R2dbcPermissionDeniedException;
+import java.util.Arrays;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.SslMode;
@@ -198,10 +200,21 @@ public final class AuthenticationFlow {
                   } else if (message instanceof AuthSwitchPacket) {
                     flow.authSwitchPacket = ((AuthSwitchPacket) message);
                     String plugin = flow.authSwitchPacket.getPlugin();
-                    AuthenticationPlugin authPlugin = AuthenticationFlowPluginLoader.get(plugin);
-                    flow.authMoreDataPacket = null;
-                    flow.pluginHandler = authPlugin;
-                    sink.next(AUTH_SWITCH);
+                    if (flow.configuration.getRestrictedAuth() != null
+                        && !Arrays.stream(flow.configuration.getRestrictedAuth())
+                            .anyMatch(s -> plugin.equals(s))) {
+                      sink.error(
+                          new R2dbcPermissionDeniedException(
+                              String.format(
+                                  "Unsupported authentication plugin %s. Authorized plugin: %s",
+                                  plugin,
+                                  Arrays.toString(flow.configuration.getRestrictedAuth()))));
+                    } else {
+                      AuthenticationPlugin authPlugin = AuthenticationFlowPluginLoader.get(plugin);
+                      flow.authMoreDataPacket = null;
+                      flow.pluginHandler = authPlugin;
+                      sink.next(AUTH_SWITCH);
+                    }
                   } else {
                     sink.error(
                         new IllegalStateException(
@@ -246,10 +259,21 @@ public final class AuthenticationFlow {
                   } else if (message instanceof AuthSwitchPacket) {
                     flow.authSwitchPacket = ((AuthSwitchPacket) message);
                     String plugin = flow.authSwitchPacket.getPlugin();
-                    AuthenticationPlugin authPlugin = AuthenticationFlowPluginLoader.get(plugin);
-                    flow.authMoreDataPacket = null;
-                    flow.pluginHandler = authPlugin;
-                    sink.next(AUTH_SWITCH);
+                    if (flow.configuration.getRestrictedAuth() != null
+                        && !Arrays.stream(flow.configuration.getRestrictedAuth())
+                            .anyMatch(s -> plugin.equals(s))) {
+                      sink.error(
+                          new R2dbcPermissionDeniedException(
+                              String.format(
+                                  "Unsupported authentication plugin %s. Authorized plugin: %s",
+                                  plugin,
+                                  Arrays.toString(flow.configuration.getRestrictedAuth()))));
+                    } else {
+                      AuthenticationPlugin authPlugin = AuthenticationFlowPluginLoader.get(plugin);
+                      flow.authMoreDataPacket = null;
+                      flow.pluginHandler = authPlugin;
+                      sink.next(AUTH_SWITCH);
+                    }
                   } else if (message instanceof AuthMoreDataPacket) {
                     flow.authMoreDataPacket = (AuthMoreDataPacket) message;
                     sink.next(AUTH_SWITCH);

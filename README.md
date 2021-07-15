@@ -108,6 +108,7 @@ Basic example:
 | **`pamOtherPwd`** | Permit to provide additional password for PAM authentication with multiple authentication step. If multiple passwords, value must be URL encoded.|*string* | |  
 | **`autocommit`** | Set default autocommit value on connection initialization" |*boolean* | true |
 | **`tinyInt1isBit`** | Convert Bit(1)/TINYINT(1) default to boolean type |*boolean* | true |
+| **`restrictedAuth`** | if set, restrict authentication plugin to secure list. Default provided plugins are mysql_native_password, mysql_clear_password, client_ed25519, dialog, sha256_password and caching_sha2_password |*string* | |
 
 ## Roadmap
 
