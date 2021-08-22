@@ -39,7 +39,10 @@ public final class ClientImpl extends ClientBase {
       SocketAddress socketAddress,
       MariadbConnectionConfiguration configuration) {
 
-    TcpClient tcpClient = TcpClient.create(connectionProvider).remoteAddress(() -> socketAddress);
+    TcpClient tcpClient =
+        TcpClient.create(connectionProvider)
+            .remoteAddress(() -> socketAddress)
+            .runOn(configuration.loopResources());
     tcpClient = setSocketOption(configuration, tcpClient);
     return tcpClient.connect().flatMap(it -> Mono.just(new ClientImpl(it, configuration)));
   }

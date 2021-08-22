@@ -14,6 +14,8 @@ import java.time.Duration;
 import java.util.*;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.SslConfig;
+import reactor.netty.resources.LoopResources;
+import reactor.netty.tcp.TcpResources;
 import reactor.util.annotation.Nullable;
 
 public final class MariadbConnectionConfiguration {
@@ -44,6 +46,7 @@ public final class MariadbConnectionConfiguration {
   private final boolean useServerPrepStmts;
   private final boolean autocommit;
   private final boolean tinyInt1isBit;
+  private final LoopResources loopResources;
 
   private MariadbConnectionConfiguration(
       @Nullable Duration connectTimeout,
@@ -73,7 +76,8 @@ public final class MariadbConnectionConfiguration {
       boolean autocommit,
       @Nullable Integer prepareCacheSize,
       @Nullable CharSequence[] pamOtherPwd,
-      boolean tinyInt1isBit) {
+      boolean tinyInt1isBit,
+      @Nullable LoopResources loopResources) {
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
     this.socketTimeout = socketTimeout;
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
@@ -103,6 +107,7 @@ public final class MariadbConnectionConfiguration {
     this.pamOtherPwd = pamOtherPwd;
     this.autocommit = autocommit;
     this.tinyInt1isBit = tinyInt1isBit;
+    this.loopResources = loopResources != null ? loopResources : TcpResources.get();
   }
 
   static boolean boolValue(Object value) {
@@ -252,6 +257,10 @@ public final class MariadbConnectionConfiguration {
       }
       builder.pamOtherPwd(pairs);
     }
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.LOOP_RESOURCES)) {
+      builder.loopResources(
+          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.LOOP_RESOURCES));
+    }
 
     return builder;
   }
@@ -380,6 +389,10 @@ public final class MariadbConnectionConfiguration {
     return tcpAbortiveClose;
   }
 
+  public LoopResources loopResources() {
+    return loopResources;
+  }
+
   @Override
   public String toString() {
     StringBuilder hiddenPwd = new StringBuilder();
@@ -488,6 +501,7 @@ public final class MariadbConnectionConfiguration {
     @Nullable private CharSequence clientSslPassword;
     private SslMode sslMode = SslMode.DISABLE;
     private CharSequence[] pamOtherPwd;
+    @Nullable private LoopResources loopResources;
 
     private Builder() {}
 
@@ -539,7 +553,8 @@ public final class MariadbConnectionConfiguration {
           this.autocommit,
           this.prepareCacheSize,
           this.pamOtherPwd,
-          this.tinyInt1isBit);
+          this.tinyInt1isBit,
+          this.loopResources);
     }
 
     /**
@@ -834,6 +849,11 @@ public final class MariadbConnectionConfiguration {
 
     public Builder username(String username) {
       this.username = Assert.requireNonNull(username, "username must not be null");
+      return this;
+    }
+
+    public Builder loopResources(LoopResources loopResources) {
+      this.loopResources = Assert.requireNonNull(loopResources, "loopResources must not be null");
       return this;
     }
 
