@@ -22,6 +22,7 @@ import java.util.function.Predicate;
 import org.mariadb.r2dbc.codec.BinaryRowDecoder;
 import org.mariadb.r2dbc.codec.RowDecoder;
 import org.mariadb.r2dbc.codec.TextRowDecoder;
+import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.server.*;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.ServerPrepareResult;

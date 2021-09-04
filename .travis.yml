@@ -37,9 +37,6 @@ jobs:
     - env: srv=mariadb v=10.3 local=1
     - env: srv=mariadb v=10.4 local=1
     - env: srv=mariadb v=10.5 local=1
-    - env: srv=mariadb v=10.5 local=1
-      jdk: openjdk8
-      dist: bionic
     - env: srv=mariadb v=10.6 local=1
     - env: srv=mariadb v=10.5 NO_BACKSLASH_ESCAPES=true
     - env: srv=mariadb v=10.6 BENCH=1

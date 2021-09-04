@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2020-2021 MariaDB Corporation Ab
 
-package org.mariadb.r2dbc.message.flow;
+package org.mariadb.r2dbc.authentication.standard;
 
 import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
@@ -11,9 +11,10 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.SslMode;
+import org.mariadb.r2dbc.message.AuthMoreData;
+import org.mariadb.r2dbc.message.AuthSwitch;
+import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.client.*;
-import org.mariadb.r2dbc.message.server.AuthMoreDataPacket;
-import org.mariadb.r2dbc.message.server.AuthSwitchPacket;
 
 public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
 
@@ -70,21 +71,21 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
 
   public ClientMessage next(
       MariadbConnectionConfiguration configuration,
-      AuthSwitchPacket authSwitchPacket,
-      AuthMoreDataPacket authMoreDataPacket)
+      AuthSwitch authSwitch,
+      AuthMoreData authMoreData)
       throws R2dbcException {
 
-    if (authMoreDataPacket == null) state = State.INIT;
+    if (authMoreData == null) state = State.INIT;
 
     CharSequence password = configuration.getPassword();
     switch (state) {
       case INIT:
-        byte[] fastCryptedPwd = sha256encryptPassword(password, authSwitchPacket.getSeed());
+        byte[] fastCryptedPwd = sha256encryptPassword(password, authSwitch.getSeed());
         state = State.FAST_AUTH_RESULT;
-        return new AuthMoreRawPacket(authSwitchPacket.getSequencer(), fastCryptedPwd);
+        return new AuthMoreRawPacket(authSwitch.getSequencer(), fastCryptedPwd);
 
       case FAST_AUTH_RESULT:
-        byte fastAuthResult = authMoreDataPacket.getBuf().getByte(0);
+        byte fastAuthResult = authMoreData.getBuf().getByte(0);
         switch (fastAuthResult) {
           case 3:
             // success authentication
@@ -94,7 +95,7 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
             if (configuration.getSslConfig().getSslMode() != SslMode.DISABLE) {
               // send clear password
               state = State.SEND_AUTH;
-              return new ClearPasswordPacket(authMoreDataPacket.getSequencer(), password);
+              return new ClearPasswordPacket(authMoreData.getSequencer(), password);
             }
 
             // retrieve public key from configuration or from server
@@ -104,9 +105,9 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
               state = State.SEND_AUTH;
 
               return new Sha256PasswordPacket(
-                  authMoreDataPacket.getSequencer(),
+                  authMoreData.getSequencer(),
                   configuration.getPassword(),
-                  authSwitchPacket.getSeed(),
+                  authSwitch.getSeed(),
                   publicKey);
             }
 
@@ -118,7 +119,7 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
 
             state = State.REQUEST_SERVER_KEY;
             // ask public Key Retrieval
-            return new Sha2PublicKeyRequestPacket(authMoreDataPacket.getSequencer());
+            return new Sha2PublicKeyRequestPacket(authMoreData.getSequencer());
 
           default:
             throw new R2dbcNonTransientResourceException(
@@ -127,12 +128,12 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
         }
 
       case REQUEST_SERVER_KEY:
-        publicKey = readPublicKey(authMoreDataPacket);
+        publicKey = readPublicKey(authMoreData.getBuf());
         state = State.SEND_AUTH;
         return new Sha256PasswordPacket(
-            authMoreDataPacket.getSequencer(),
+            authMoreData.getSequencer(),
             configuration.getPassword(),
-            authSwitchPacket.getSeed(),
+            authSwitch.getSeed(),
             publicKey);
 
       default:

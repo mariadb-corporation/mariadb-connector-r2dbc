@@ -7,8 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.client.Client;
+import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.QueryPacket;
-import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.Assert;
 import reactor.core.publisher.Flux;
 

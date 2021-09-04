@@ -4,8 +4,8 @@
 package org.mariadb.r2dbc.client;
 
 import io.netty.buffer.ByteBuf;
+import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.server.Sequencer;
-import org.mariadb.r2dbc.message.server.ServerMessage;
 
 public interface DecoderStateInterface {
 

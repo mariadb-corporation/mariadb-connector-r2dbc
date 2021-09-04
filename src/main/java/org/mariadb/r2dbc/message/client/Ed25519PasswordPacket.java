@@ -10,20 +10,21 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import org.mariadb.r2dbc.authentication.ed25519.math.GroupElement;
-import org.mariadb.r2dbc.authentication.ed25519.math.ed25519.ScalarOps;
-import org.mariadb.r2dbc.authentication.ed25519.spec.EdDSANamedCurveTable;
-import org.mariadb.r2dbc.authentication.ed25519.spec.EdDSAParameterSpec;
-import org.mariadb.r2dbc.client.Context;
-import org.mariadb.r2dbc.message.server.Sequencer;
+import org.mariadb.r2dbc.authentication.standard.ed25519.math.GroupElement;
+import org.mariadb.r2dbc.authentication.standard.ed25519.math.ed25519.ScalarOps;
+import org.mariadb.r2dbc.authentication.standard.ed25519.spec.EdDSANamedCurveTable;
+import org.mariadb.r2dbc.authentication.standard.ed25519.spec.EdDSAParameterSpec;
+import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.MessageSequence;
 
 public final class Ed25519PasswordPacket implements ClientMessage {
 
-  private Sequencer sequencer;
+  private MessageSequence sequencer;
   private CharSequence password;
   private byte[] seed;
 
-  public Ed25519PasswordPacket(Sequencer sequencer, CharSequence password, byte[] seed) {
+  public Ed25519PasswordPacket(MessageSequence sequencer, CharSequence password, byte[] seed) {
     this.sequencer = sequencer;
     this.password = password;
     this.seed = seed;
@@ -86,7 +87,7 @@ public final class Ed25519PasswordPacket implements ClientMessage {
   }
 
   @Override
-  public Sequencer getSequencer() {
+  public MessageSequence getSequencer() {
     return sequencer;
   }
 }

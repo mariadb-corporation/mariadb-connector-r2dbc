@@ -4,7 +4,7 @@
 package org.mariadb.r2dbc.codec;
 
 import io.netty.buffer.ByteBuf;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
 public interface Codec<T> {

@@ -4,7 +4,8 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 
 public class EofPacket implements ServerMessage {
@@ -49,7 +50,7 @@ public class EofPacket implements ServerMessage {
    * @param sequencer sequencer
    * @param buf current EOF buf
    * @param context current context
-   * @return
+   * @return Eof packet
    */
   public static EofPacket decodeOutputParam(Sequencer sequencer, ByteBuf buf, Context context) {
     buf.skipBytes(1);

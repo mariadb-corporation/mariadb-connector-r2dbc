@@ -6,7 +6,8 @@ package org.mariadb.r2dbc.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
-import org.mariadb.r2dbc.message.client.ClientMessage;
+import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.Context;
 
 public class MariadbPacketEncoder extends MessageToByteEncoder<ClientMessage> {
   private Context context = null;

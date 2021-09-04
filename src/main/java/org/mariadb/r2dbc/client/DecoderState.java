@@ -4,6 +4,7 @@
 package org.mariadb.r2dbc.client;
 
 import io.netty.buffer.ByteBuf;
+import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.server.*;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 import org.mariadb.r2dbc.util.constants.Capabilities;

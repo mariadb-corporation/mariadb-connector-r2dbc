@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2020-2021 MariaDB Corporation Ab
-package org.mariadb.r2dbc.authentication.ed25519.math.ed25519;
+package org.mariadb.r2dbc.authentication.standard.ed25519.math.ed25519;
 
-import org.mariadb.r2dbc.authentication.ed25519.math.Encoding;
-import org.mariadb.r2dbc.authentication.ed25519.math.FieldElement;
+import org.mariadb.r2dbc.authentication.standard.ed25519.math.Encoding;
+import org.mariadb.r2dbc.authentication.standard.ed25519.math.FieldElement;
 
 /**
  * Helper class for encoding/decoding from/to the 32 byte representation.

@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigInteger;
-import java.sql.SQLException;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.*;
@@ -266,7 +265,7 @@ public class ResultsetTest extends BaseConnectionTest {
   }
 
   @Test
-  public void skippingRes() throws SQLException {
+  public void skippingRes() throws Exception {
     BigInteger maxAllowedPacket =
         sharedConn
             .createStatement("select @@max_allowed_packet")

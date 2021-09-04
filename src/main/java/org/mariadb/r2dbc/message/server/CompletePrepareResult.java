@@ -3,6 +3,7 @@
 
 package org.mariadb.r2dbc.message.server;
 
+import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 
 public final class CompletePrepareResult implements ServerMessage {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2020-2021 MariaDB Corporation Ab
 
-package org.mariadb.r2dbc.message.flow;
+package org.mariadb.r2dbc.authentication.standard;
 
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcException;
@@ -16,12 +16,12 @@ import java.util.Base64;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.SslMode;
 import org.mariadb.r2dbc.authentication.AuthenticationPlugin;
+import org.mariadb.r2dbc.message.AuthMoreData;
+import org.mariadb.r2dbc.message.AuthSwitch;
+import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.client.ClearPasswordPacket;
-import org.mariadb.r2dbc.message.client.ClientMessage;
 import org.mariadb.r2dbc.message.client.RsaPublicKeyRequestPacket;
 import org.mariadb.r2dbc.message.client.Sha256PasswordPacket;
-import org.mariadb.r2dbc.message.server.AuthMoreDataPacket;
-import org.mariadb.r2dbc.message.server.AuthSwitchPacket;
 
 public class Sha256PasswordPluginFlow implements AuthenticationPlugin {
 
@@ -77,13 +77,11 @@ public class Sha256PasswordPluginFlow implements AuthenticationPlugin {
   /**
    * Read public Key
    *
-   * @param authMoreDataPacket More data packet
+   * @param buf more data buffer
    * @return public key
    * @throws R2dbcException if server return an Error packet or public key cannot be parsed.
    */
-  public static PublicKey readPublicKey(AuthMoreDataPacket authMoreDataPacket)
-      throws R2dbcException {
-    ByteBuf buf = authMoreDataPacket.getBuf();
+  public static PublicKey readPublicKey(ByteBuf buf) throws R2dbcException {
     byte[] key = new byte[buf.readableBytes()];
     buf.readBytes(key);
     return generatePublicKey(key);
@@ -99,14 +97,14 @@ public class Sha256PasswordPluginFlow implements AuthenticationPlugin {
 
   public ClientMessage next(
       MariadbConnectionConfiguration configuration,
-      AuthSwitchPacket authSwitchPacket,
-      AuthMoreDataPacket authMoreDataPacket)
+      AuthSwitch authSwitch,
+      AuthMoreData authMoreData)
       throws R2dbcException {
 
     if (state == State.INIT) {
       CharSequence password = configuration.getPassword();
       if (password == null || configuration.getSslConfig().getSslMode() != SslMode.DISABLE) {
-        return new ClearPasswordPacket(authSwitchPacket.getSequencer(), password);
+        return new ClearPasswordPacket(authSwitch.getSequencer(), password);
       } else {
         // retrieve public key from configuration or from server
         if (configuration.getRsaPublicKey() != null && !configuration.getRsaPublicKey().isEmpty()) {
@@ -119,20 +117,17 @@ public class Sha256PasswordPluginFlow implements AuthenticationPlugin {
           }
           state = State.REQUEST_SERVER_KEY;
           // ask public Key Retrieval
-          return new RsaPublicKeyRequestPacket(authSwitchPacket.getSequencer());
+          return new RsaPublicKeyRequestPacket(authSwitch.getSequencer());
         }
       }
       return new Sha256PasswordPacket(
-          authSwitchPacket.getSequencer(),
-          configuration.getPassword(),
-          authSwitchPacket.getSeed(),
-          publicKey);
+          authSwitch.getSequencer(), configuration.getPassword(), authSwitch.getSeed(), publicKey);
     } else {
-      publicKey = readPublicKey(authMoreDataPacket);
+      publicKey = readPublicKey(authMoreData.getBuf());
       return new Sha256PasswordPacket(
-          authMoreDataPacket.getSequencer(),
+          authMoreData.getSequencer(),
           configuration.getPassword(),
-          authSwitchPacket.getSeed(),
+          authSwitch.getSeed(),
           publicKey);
     }
   }

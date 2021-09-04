@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2020-2021 MariaDB Corporation Ab
 
-package org.mariadb.r2dbc.message.flow;
+package org.mariadb.r2dbc.authentication.standard;
 
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.authentication.AuthenticationPlugin;
+import org.mariadb.r2dbc.message.AuthMoreData;
+import org.mariadb.r2dbc.message.AuthSwitch;
+import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.client.ClearPasswordPacket;
-import org.mariadb.r2dbc.message.client.ClientMessage;
-import org.mariadb.r2dbc.message.server.AuthMoreDataPacket;
-import org.mariadb.r2dbc.message.server.AuthSwitchPacket;
 
 public final class PamPluginFlow implements AuthenticationPlugin {
 
@@ -26,13 +26,12 @@ public final class PamPluginFlow implements AuthenticationPlugin {
 
   public ClientMessage next(
       MariadbConnectionConfiguration configuration,
-      AuthSwitchPacket authSwitchPacket,
-      AuthMoreDataPacket authMoreDataPacket) {
+      AuthSwitch authSwitch,
+      AuthMoreData authMoreData) {
     while (true) {
       counter++;
       if (counter == 0) {
-        return new ClearPasswordPacket(
-            authSwitchPacket.getSequencer(), configuration.getPassword());
+        return new ClearPasswordPacket(authSwitch.getSequencer(), configuration.getPassword());
       } else {
         if (configuration.getPamOtherPwd() == null) {
           throw new IllegalArgumentException(
@@ -45,7 +44,7 @@ public final class PamPluginFlow implements AuthenticationPlugin {
                   counter, configuration.getPamOtherPwd().length));
         }
         return new ClearPasswordPacket(
-            authSwitchPacket.getSequencer(), configuration.getPamOtherPwd()[counter - 1]);
+            authSwitch.getSequencer(), configuration.getPamOtherPwd()[counter - 1]);
       }
     }
   }

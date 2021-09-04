@@ -23,12 +23,13 @@ import javax.net.ssl.SSLException;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbTransactionDefinition;
-import org.mariadb.r2dbc.message.client.ClientMessage;
+import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.message.client.QuitPacket;
 import org.mariadb.r2dbc.message.client.SslRequestPacket;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
-import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
@@ -370,7 +371,7 @@ public abstract class ClientBase implements Client {
 
   public void setContext(InitialHandshakePacket handshake, long clientCapabilities) {
     this.context =
-        new Context(
+        new ContextImpl(
             handshake.getServerVersion(),
             handshake.getThreadId(),
             handshake.getCapabilities(),

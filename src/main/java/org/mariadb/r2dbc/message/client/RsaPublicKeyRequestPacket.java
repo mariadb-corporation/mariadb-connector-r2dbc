@@ -5,14 +5,15 @@ package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import org.mariadb.r2dbc.client.Context;
-import org.mariadb.r2dbc.message.server.Sequencer;
+import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.MessageSequence;
 
 public final class RsaPublicKeyRequestPacket implements ClientMessage {
 
-  private Sequencer sequencer;
+  private MessageSequence sequencer;
 
-  public RsaPublicKeyRequestPacket(Sequencer sequencer) {
+  public RsaPublicKeyRequestPacket(MessageSequence sequencer) {
     this.sequencer = sequencer;
   }
 
@@ -24,7 +25,7 @@ public final class RsaPublicKeyRequestPacket implements ClientMessage {
   }
 
   @Override
-  public Sequencer getSequencer() {
+  public MessageSequence getSequencer() {
     return sequencer;
   }
 }

@@ -3,6 +3,8 @@
 
 package org.mariadb.r2dbc.message.server;
 
+import org.mariadb.r2dbc.message.ServerMessage;
+
 public class SkipPacket implements ServerMessage {
 
   private final boolean ending;

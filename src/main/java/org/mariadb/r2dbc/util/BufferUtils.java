@@ -6,7 +6,7 @@ package org.mariadb.r2dbc.util;
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 
 public final class BufferUtils {

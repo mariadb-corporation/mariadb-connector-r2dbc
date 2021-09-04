@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2020-2021 MariaDB Corporation Ab
-package org.mariadb.r2dbc.authentication.ed25519.spec;
+package org.mariadb.r2dbc.authentication.standard.ed25519.spec;
 
 import java.util.Hashtable;
 import java.util.Locale;
-import org.mariadb.r2dbc.authentication.ed25519.Utils;
-import org.mariadb.r2dbc.authentication.ed25519.math.Curve;
-import org.mariadb.r2dbc.authentication.ed25519.math.Field;
-import org.mariadb.r2dbc.authentication.ed25519.math.ed25519.Ed25519LittleEndianEncoding;
-import org.mariadb.r2dbc.authentication.ed25519.math.ed25519.ScalarOps;
+import org.mariadb.r2dbc.authentication.standard.ed25519.Utils;
+import org.mariadb.r2dbc.authentication.standard.ed25519.math.Curve;
+import org.mariadb.r2dbc.authentication.standard.ed25519.math.Field;
+import org.mariadb.r2dbc.authentication.standard.ed25519.math.ed25519.Ed25519LittleEndianEncoding;
+import org.mariadb.r2dbc.authentication.standard.ed25519.math.ed25519.ScalarOps;
 
 /**
  * The named EdDSA curves.

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2020-2021 MariaDB Corporation Ab
-package org.mariadb.r2dbc.authentication.ed25519.math;
+package org.mariadb.r2dbc.authentication.standard.ed25519.math;
 
 import java.io.Serializable;
 import java.util.Arrays;
-import org.mariadb.r2dbc.authentication.ed25519.Utils;
+import org.mariadb.r2dbc.authentication.standard.ed25519.Utils;
 
 /**
  * A point $(x,y)$ on an EdDSA curve.

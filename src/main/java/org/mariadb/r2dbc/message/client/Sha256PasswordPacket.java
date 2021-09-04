@@ -11,18 +11,19 @@ import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
 import java.util.Arrays;
 import javax.crypto.Cipher;
-import org.mariadb.r2dbc.client.Context;
-import org.mariadb.r2dbc.message.server.Sequencer;
+import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.MessageSequence;
 
 public final class Sha256PasswordPacket implements ClientMessage {
 
-  private Sequencer sequencer;
+  private MessageSequence sequencer;
   private CharSequence password;
   private byte[] seed;
   private PublicKey publicKey;
 
   public Sha256PasswordPacket(
-      Sequencer sequencer, CharSequence password, byte[] seed, PublicKey publicKey) {
+      MessageSequence sequencer, CharSequence password, byte[] seed, PublicKey publicKey) {
     this.sequencer = sequencer;
     this.password = password;
     byte[] truncatedSeed = new byte[seed.length - 1];
@@ -72,7 +73,7 @@ public final class Sha256PasswordPacket implements ClientMessage {
   }
 
   @Override
-  public Sequencer getSequencer() {
+  public MessageSequence getSequencer() {
     return sequencer;
   }
 }

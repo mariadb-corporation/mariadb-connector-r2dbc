@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2020-2021 MariaDB Corporation Ab
-package org.mariadb.r2dbc.authentication.ed25519.spec;
+package org.mariadb.r2dbc.authentication.standard.ed25519.spec;
 
-import org.mariadb.r2dbc.authentication.ed25519.math.Curve;
-import org.mariadb.r2dbc.authentication.ed25519.math.GroupElement;
-import org.mariadb.r2dbc.authentication.ed25519.math.ed25519.ScalarOps;
+import org.mariadb.r2dbc.authentication.standard.ed25519.math.Curve;
+import org.mariadb.r2dbc.authentication.standard.ed25519.math.GroupElement;
+import org.mariadb.r2dbc.authentication.standard.ed25519.math.ed25519.ScalarOps;
 
 /**
  * EdDSA Curve specification that can also be referred to by name.

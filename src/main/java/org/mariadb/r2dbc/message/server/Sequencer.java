@@ -3,7 +3,9 @@
 
 package org.mariadb.r2dbc.message.server;
 
-public class Sequencer {
+import org.mariadb.r2dbc.message.MessageSequence;
+
+public class Sequencer implements MessageSequence {
   private byte sequenceId;
 
   public Sequencer(byte sequenceId) {

@@ -10,7 +10,8 @@ import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.client.ContextImpl;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 
@@ -186,8 +187,8 @@ class BufferUtilsTest {
   @Test
   void write() {
     Context ctxNoBackSlash =
-        new Context("10.5.5-mariadb", 1, 1, ServerStatus.NO_BACKSLASH_ESCAPES, true, 1);
-    Context ctx = new Context("10.5.5-mariadb", 1, 1, (short) 0, true, 1);
+        new ContextImpl("10.5.5-mariadb", 1, 1, ServerStatus.NO_BACKSLASH_ESCAPES, true, 1);
+    Context ctx = new ContextImpl("10.5.5-mariadb", 1, 1, (short) 0, true, 1);
 
     ByteBuf buf = allocator.buffer(1000);
     buf.writerIndex(0);

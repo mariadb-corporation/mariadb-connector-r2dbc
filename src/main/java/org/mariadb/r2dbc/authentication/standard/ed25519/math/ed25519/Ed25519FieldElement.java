@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2020-2021 MariaDB Corporation Ab
-package org.mariadb.r2dbc.authentication.ed25519.math.ed25519;
+package org.mariadb.r2dbc.authentication.standard.ed25519.math.ed25519;
 
 import java.util.Arrays;
-import org.mariadb.r2dbc.authentication.ed25519.Utils;
-import org.mariadb.r2dbc.authentication.ed25519.math.Field;
-import org.mariadb.r2dbc.authentication.ed25519.math.FieldElement;
+import org.mariadb.r2dbc.authentication.standard.ed25519.Utils;
+import org.mariadb.r2dbc.authentication.standard.ed25519.math.Field;
+import org.mariadb.r2dbc.authentication.standard.ed25519.math.FieldElement;
 
 /**
  * Class to represent a field element of the finite field $p = 2^{255} - 19$ elements.

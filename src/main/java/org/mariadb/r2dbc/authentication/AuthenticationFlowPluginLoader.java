@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2020-2021 MariaDB Corporation Ab
 
-package org.mariadb.r2dbc.message.flow;
+package org.mariadb.r2dbc.authentication;
 
 import java.util.ServiceLoader;
 import org.mariadb.r2dbc.api.MariadbConnection;
-import org.mariadb.r2dbc.authentication.AuthenticationPlugin;
 
 public class AuthenticationFlowPluginLoader {
 

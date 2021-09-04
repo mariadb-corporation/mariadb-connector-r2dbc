@@ -4,8 +4,8 @@
 package org.mariadb.r2dbc;
 
 import io.r2dbc.spi.*;
+import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.server.ErrorPacket;
-import org.mariadb.r2dbc.message.server.ServerMessage;
 import reactor.core.publisher.SynchronousSink;
 
 public final class ExceptionFactory {

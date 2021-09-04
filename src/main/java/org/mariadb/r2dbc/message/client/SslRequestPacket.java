@@ -5,9 +5,10 @@ package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.MessageSequence;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
-import org.mariadb.r2dbc.message.server.Sequencer;
 
 public final class SslRequestPacket implements ClientMessage {
 
@@ -40,7 +41,7 @@ public final class SslRequestPacket implements ClientMessage {
   }
 
   @Override
-  public Sequencer getSequencer() {
+  public MessageSequence getSequencer() {
     return initialHandshakePacket.getSequencer();
   }
 }

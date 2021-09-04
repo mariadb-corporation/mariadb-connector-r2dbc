@@ -4,6 +4,7 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
+import org.mariadb.r2dbc.message.ServerMessage;
 
 public final class RowPacket implements ServerMessage {
 

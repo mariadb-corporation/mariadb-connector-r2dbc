@@ -5,6 +5,7 @@ package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
+import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 
 public final class InitialHandshakePacket implements ServerMessage {

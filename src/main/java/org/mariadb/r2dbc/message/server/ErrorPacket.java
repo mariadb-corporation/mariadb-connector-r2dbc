@@ -8,6 +8,7 @@ import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.Result;
 import java.nio.charset.StandardCharsets;
 import org.mariadb.r2dbc.ExceptionFactory;
+import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.util.Assert;
 import reactor.util.Logger;
 import reactor.util.Loggers;

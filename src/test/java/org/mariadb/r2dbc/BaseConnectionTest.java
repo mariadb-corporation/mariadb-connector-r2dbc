@@ -5,7 +5,6 @@ package org.mariadb.r2dbc;
 
 import io.r2dbc.spi.ValidationDepth;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.Random;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -63,7 +62,7 @@ public class BaseConnectionTest extends BaseTest {
     try {
       proxy = new TcpProxy(hostAddress.getHost(), hostAddress.getPort());
     } catch (IOException i) {
-      throw new SQLException("proxy error", i);
+      throw new Exception("proxy error", i);
     }
     MariadbConnectionConfiguration confProxy =
         TestConfiguration.defaultBuilder

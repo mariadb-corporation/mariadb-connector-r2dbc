@@ -5,12 +5,12 @@ package org.mariadb.r2dbc.client;
 
 import io.r2dbc.spi.TransactionDefinition;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
-import org.mariadb.r2dbc.message.client.ClientMessage;
+import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.ExecutePacket;
 import org.mariadb.r2dbc.message.client.PreparePacket;
 import org.mariadb.r2dbc.message.client.SslRequestPacket;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
-import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.PrepareCache;
 import reactor.core.publisher.Flux;

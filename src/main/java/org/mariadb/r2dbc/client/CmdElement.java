@@ -3,7 +3,7 @@
 
 package org.mariadb.r2dbc.client;
 
-import org.mariadb.r2dbc.message.server.ServerMessage;
+import org.mariadb.r2dbc.message.ServerMessage;
 import reactor.core.publisher.FluxSink;
 
 public class CmdElement {

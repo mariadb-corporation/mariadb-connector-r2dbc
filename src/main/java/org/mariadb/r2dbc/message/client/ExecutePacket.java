@@ -7,10 +7,12 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.r2dbc.spi.Parameter;
 import java.util.Map;
-import org.mariadb.r2dbc.client.Context;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.Codecs;
 import org.mariadb.r2dbc.codec.list.StringCodec;
+import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.MessageSequence;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 
@@ -19,7 +21,7 @@ public final class ExecutePacket implements ClientMessage {
   private final Codec<?>[] codecs;
   private final int statementId;
   private final int parameterCount;
-  private final Sequencer sequencer = new Sequencer((byte) 0xff);
+  private final MessageSequence sequencer = new Sequencer((byte) 0xff);
 
   public ExecutePacket(ServerPrepareResult prepareResult, Map<Integer, Parameter> parameters) {
     // validate parameters
@@ -78,7 +80,7 @@ public final class ExecutePacket implements ClientMessage {
     }
   }
 
-  public Sequencer getSequencer() {
+  public MessageSequence getSequencer() {
     return sequencer;
   }
 

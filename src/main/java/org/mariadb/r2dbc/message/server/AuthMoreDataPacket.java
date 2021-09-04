@@ -4,19 +4,22 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.message.AuthMoreData;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.MessageSequence;
+import org.mariadb.r2dbc.message.ServerMessage;
 
-public class AuthMoreDataPacket implements ServerMessage {
+public class AuthMoreDataPacket implements AuthMoreData, ServerMessage {
 
-  private Sequencer sequencer;
+  private MessageSequence sequencer;
   private ByteBuf buf;
 
-  private AuthMoreDataPacket(Sequencer sequencer, ByteBuf buf) {
+  private AuthMoreDataPacket(MessageSequence sequencer, ByteBuf buf) {
     this.sequencer = sequencer;
     this.buf = buf;
   }
 
-  public static AuthMoreDataPacket decode(Sequencer sequencer, ByteBuf buf, Context context) {
+  public static AuthMoreDataPacket decode(MessageSequence sequencer, ByteBuf buf, Context context) {
     buf.skipBytes(1);
     ByteBuf data = buf.readRetainedSlice(buf.readableBytes());
     return new AuthMoreDataPacket(sequencer, data);
@@ -29,7 +32,7 @@ public class AuthMoreDataPacket implements ServerMessage {
     }
   }
 
-  public Sequencer getSequencer() {
+  public MessageSequence getSequencer() {
     return sequencer;
   }
 

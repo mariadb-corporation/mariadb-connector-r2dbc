@@ -3,7 +3,9 @@
 
 package org.mariadb.r2dbc.client;
 
-public class Context {
+import org.mariadb.r2dbc.message.Context;
+
+public class ContextImpl implements Context {
 
   private final long threadId;
   private final long serverCapabilities;
@@ -11,7 +13,7 @@ public class Context {
   private short serverStatus;
   private ServerVersion version;
 
-  public Context(
+  public ContextImpl(
       String serverVersion,
       long threadId,
       long capabilities,
