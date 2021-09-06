@@ -10,6 +10,7 @@ import io.r2dbc.spi.ConnectionFactoryProvider;
 import io.r2dbc.spi.Option;
 import java.time.Duration;
 import org.mariadb.r2dbc.util.Assert;
+import reactor.netty.resources.LoopResources;
 
 public final class MariadbConnectionFactoryProvider implements ConnectionFactoryProvider {
   public static final String MARIADB_DRIVER = "mariadb";
@@ -33,6 +34,7 @@ public final class MariadbConnectionFactoryProvider implements ConnectionFactory
   public static final Option<Boolean> TCP_KEEP_ALIVE = Option.valueOf("tcpKeepAlive");
   public static final Option<Boolean> TCP_ABORTIVE_CLOSE = Option.valueOf("tcpAbortiveClose");
   public static final Option<String> SESSION_VARIABLES = Option.valueOf("sessionVariables");
+  public static final Option<LoopResources> LOOP_RESOURCES = Option.valueOf("loopResources");
 
   static MariadbConnectionConfiguration createConfiguration(
       ConnectionFactoryOptions connectionFactoryOptions) {

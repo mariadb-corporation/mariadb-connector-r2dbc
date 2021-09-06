@@ -39,7 +39,9 @@ public final class ClientPipelineImpl extends ClientBase {
       SocketAddress socketAddress,
       HostAddress hostAddress,
       MariadbConnectionConfiguration configuration) {
-    TcpClient tcpClient = TcpClient.create(connectionProvider).remoteAddress(() -> socketAddress);
+    TcpClient tcpClient = TcpClient.create(connectionProvider)
+            .remoteAddress(() -> socketAddress)
+            .runOn(configuration.loopResources());
     tcpClient = setSocketOption(configuration, tcpClient);
     return tcpClient
         .connect()
