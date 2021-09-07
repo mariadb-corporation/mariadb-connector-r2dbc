@@ -273,8 +273,10 @@ public final class MariadbConnectionConfiguration {
       builder.pamOtherPwd(pairs);
     }
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.LOOP_RESOURCES)) {
-      builder.loopResources(
-          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.LOOP_RESOURCES));
+      LoopResources loopResources =
+          (LoopResources)
+              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.LOOP_RESOURCES);
+      builder.loopResources(loopResources);
     }
 
     return builder;

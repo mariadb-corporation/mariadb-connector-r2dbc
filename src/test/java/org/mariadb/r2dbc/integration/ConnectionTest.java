@@ -23,6 +23,7 @@ import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.netty.resources.LoopResources;
 import reactor.test.StepVerifier;
 
 public class ConnectionTest extends BaseConnectionTest {
@@ -1032,5 +1033,35 @@ public class ConnectionTest extends BaseConnectionTest {
   @Test
   public void setLockWaitTimeout() {
     sharedConn.setLockWaitTimeout(Duration.ofMillis(1)).block();
+  }
+
+  @Test
+  public void testPools() throws Throwable {
+    boolean hasReactorTcp = false;
+    boolean hasMariaDbThreads = false;
+    Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
+    for (Thread thread : threadSet) {
+      if (thread.getName().contains("reactor-tcp")) hasReactorTcp = true;
+      if (thread.getName().contains("mariadb")) hasMariaDbThreads = true;
+    }
+    assertTrue(hasReactorTcp);
+    assertFalse(hasMariaDbThreads);
+
+    MariadbConnection connection =
+        new MariadbConnectionFactory(
+                TestConfiguration.defaultBuilder
+                    .clone()
+                    .loopResources(LoopResources.create("mariadb"))
+                    .build())
+            .create()
+            .block();
+
+    threadSet = Thread.getAllStackTraces().keySet();
+    for (Thread thread : threadSet) {
+      if (thread.getName().contains("mariadb")) hasMariaDbThreads = true;
+    }
+    assertTrue(hasMariaDbThreads);
+
+    connection.close().block();
   }
 }
