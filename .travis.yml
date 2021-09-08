@@ -40,19 +40,19 @@ jobs:
     - env: srv=mariadb v=10.6 local=1
     - env: srv=mariadb v=10.5 NO_BACKSLASH_ESCAPES=true
     - env: srv=mariadb v=10.6 BENCH=1
-    - if: env(CONNECTOR_TEST_SECRET_KEY)
+    - if: type = push AND fork = false
       env: srv=maxscale
-    - if: env(CONNECTOR_TEST_SECRET_KEY)
+    - if: type = push AND fork = false
       env: srv=mariadb-es v=10.5
-    - if: env(CONNECTOR_TEST_SECRET_KEY)
+    - if: type = push AND fork = false
       env: srv=skysql
-    - if: env(CONNECTOR_TEST_SECRET_KEY)
+    - if: type = push AND fork = false
       env: srv=skysql-ha
-    - if: env(CONNECTOR_TEST_SECRET_KEY)
+    - if: type = push AND fork = false
       env: srv=build v=10.6
-    - if: env(CONNECTOR_TEST_SECRET_KEY)
+    - if: type = push AND fork = false
       env: srv=mysql v=5.7
-    - if: env(CONNECTOR_TEST_SECRET_KEY)
+    - if: type = push AND fork = false
       env: srv=mysql v=8.0
 
 script:
