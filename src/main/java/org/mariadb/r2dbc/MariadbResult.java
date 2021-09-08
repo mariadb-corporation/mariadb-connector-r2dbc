@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -65,10 +66,41 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
 
   @Override
   public Flux<Integer> getRowsUpdated() {
-    Flux<Result.Segment> flux =
-        this.dataRows.takeUntil(ServerMessage::resultSetEnd).handle(this.handler(true));
-    if (filter != null) flux = flux.filter(filter);
-    return flux.cast(OkPacket.class).map(it -> (int) it.value());
+    // Since CLIENT_DEPRECATE_EOF is not set in order to identify output parameter
+    // number of updated row can be identified either by OK_Packet or number of rows in case of
+    // RETURNING
+    final AtomicInteger rowCount = new AtomicInteger(0);
+    return this.dataRows
+        .takeUntil(ServerMessage::resultSetEnd)
+        .handle(
+            (serverMessage, sink) -> {
+              if (serverMessage instanceof ErrorPacket) {
+                sink.error(this.factory.from((ErrorPacket) serverMessage));
+                return;
+              }
+
+              if (serverMessage instanceof OkPacket) {
+                OkPacket okPacket = ((OkPacket) serverMessage);
+                sink.next((int) okPacket.value());
+                sink.complete();
+                return;
+              }
+
+              if (serverMessage instanceof EofPacket) {
+                EofPacket eofPacket = ((EofPacket) serverMessage);
+                if (eofPacket.resultSetEnd()) {
+                  sink.next(rowCount.get());
+                  rowCount.set(0);
+                  sink.complete();
+                }
+                return;
+              }
+
+              if (serverMessage instanceof RowPacket) {
+                rowCount.incrementAndGet();
+                return;
+              }
+            });
   }
 
   public <T> Flux<T> map(BiFunction<Row, RowMetadata, ? extends T> mappingFunction) {

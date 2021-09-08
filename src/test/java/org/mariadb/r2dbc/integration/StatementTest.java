@@ -224,6 +224,22 @@ public class StatementTest extends BaseConnectionTest {
         .verifyComplete();
 
     sharedConn
+        .createStatement("INSERT INTO dupplicate(test) VALUES ('test3'), ('test4') RETURNING *")
+        .execute()
+        .flatMap(r -> r.getRowsUpdated())
+        .as(StepVerifier::create)
+        .expectNext(2)
+        .verifyComplete();
+
+    sharedConn
+        .createStatement("INSERT INTO dupplicate(test) VALUES ('test5') RETURNING *")
+        .execute()
+        .flatMap(r -> r.getRowsUpdated())
+        .as(StepVerifier::create)
+        .expectNext(1)
+        .verifyComplete();
+
+    sharedConn
         .createStatement("INSERT INTO dupplicate(id, test) VALUES (1, 'dupplicate')")
         .execute()
         .flatMap(r -> r.getRowsUpdated())
