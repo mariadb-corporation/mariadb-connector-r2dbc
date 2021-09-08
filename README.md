@@ -109,6 +109,7 @@ Basic example:
 | **`autocommit`** | Set default autocommit value on connection initialization" |*boolean* | true |
 | **`tinyInt1isBit`** | Convert Bit(1)/TINYINT(1) default to boolean type |*boolean* | true |
 | **`restrictedAuth`** | if set, restrict authentication plugin to secure list. Default provided plugins are mysql_native_password, mysql_clear_password, client_ed25519, dialog, sha256_password and caching_sha2_password |*string* | |
+| **`loopResources`** | permits to share netty EventLoopGroup among multiple async libraries/framework |*LoopResources* | |
 
 ## Roadmap
 
