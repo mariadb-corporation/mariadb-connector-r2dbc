@@ -8,6 +8,7 @@ import io.netty.buffer.Unpooled;
 import io.r2dbc.spi.Row;
 import io.r2dbc.spi.RowMetadata;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import org.mariadb.r2dbc.codec.BinaryRowDecoder;
@@ -53,6 +54,7 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
 
   @Override
   public Mono<Integer> getRowsUpdated() {
+    final AtomicInteger rowCount = new AtomicInteger(0);
     Flux<Integer> f =
         this.dataRows.handle(
             (serverMessage, sink) -> {
@@ -60,12 +62,31 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
                 sink.error(this.factory.from((ErrorPacket) serverMessage));
                 return;
               }
-
+              if (serverMessage instanceof RowPacket) {
+                rowCount.incrementAndGet();
+                return;
+              }
+              if (serverMessage instanceof EofPacket) {
+                EofPacket eofPacket = (EofPacket) serverMessage;
+                if (eofPacket.resultSetEnd()) {
+                  sink.next(rowCount.get());
+                  rowCount.set(0);
+                  sink.complete();
+                }
+                return;
+              }
               if (serverMessage instanceof OkPacket) {
-                OkPacket okPacket = (OkPacket) serverMessage;
-                long affectedRows = okPacket.getAffectedRows();
-                sink.next((int) affectedRows);
-                sink.complete();
+                if (rowCount.get() > 0) {
+                  // a results with returning
+                  sink.next(rowCount.get());
+                  rowCount.set(0);
+                  sink.complete();
+                } else {
+                  OkPacket okPacket = (OkPacket) serverMessage;
+                  long affectedRows = okPacket.getAffectedRows();
+                  sink.next((int) affectedRows);
+                  sink.complete();
+                }
               }
             });
     return f.singleOrEmpty();
