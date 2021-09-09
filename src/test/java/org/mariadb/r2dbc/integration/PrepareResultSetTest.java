@@ -548,6 +548,10 @@ public class PrepareResultSetTest extends BaseConnectionTest {
 
   @Test
   void cache() throws Throwable {
+    Assumptions.assumeTrue(
+        isMariaDBServer()
+            && !"maxscale".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnectionConfiguration confPipeline =
         TestConfiguration.defaultBuilder
             .clone()
@@ -577,6 +581,10 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   @Test
   @SuppressWarnings("unchecked")
   void cacheReuse() throws Throwable {
+    Assumptions.assumeTrue(
+        isMariaDBServer()
+            && !"maxscale".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnectionConfiguration confPipeline =
         TestConfiguration.defaultBuilder
             .clone()
