@@ -287,6 +287,7 @@ public final class ColumnDefinitionPacket implements ServerMessage {
       case SET:
       case VARSTRING:
       case STRING:
+      case NULL:
         return isBinary() ? ByteArrayCodec.INSTANCE : StringCodec.INSTANCE;
       case TINYINT:
         // TINYINT(1) are considered as boolean

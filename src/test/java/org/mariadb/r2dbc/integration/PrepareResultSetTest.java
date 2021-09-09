@@ -399,7 +399,14 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         IndexOutOfBoundsException.class,
         () -> stmt.bind(-1, 1),
         "index must be in 0-0 range but value is -1");
-    stmt.bind(0, 1).execute().blockLast();
+    stmt.bind(0, 1).execute().subscribe().dispose();
+    stmt.bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, Long.class)))
+        .as(StepVerifier::create)
+        .expectNextCount(1)
+        .verifyComplete();
+
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bind(2, 1),
@@ -417,7 +424,11 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         () -> stmt.bindNull(2, Integer.class),
         "index must be in 0-0 range but value is 2");
     stmt.bindNull(0, this.getClass());
-    stmt.execute().blockLast();
+    stmt.execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, Long.class)))
+        .as(StepVerifier::create)
+        .expectNextCount(0)
+        .verifyComplete();
     // no parameter
     assertThrows(
         IllegalArgumentException.class,
@@ -544,8 +555,22 @@ public class PrepareResultSetTest extends BaseConnectionTest {
             .prepareCacheSize(3)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(confPipeline).create().block();
-    connection.createStatement("SELECT ?").bind(0, 1).execute().subscribe();
-    connection.createStatement("SELECT ?").bind(0, 1).execute().blockLast();
+    connection
+        .createStatement("SELECT CAST (? AS INTEGER)")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, Long.class)))
+        .as(StepVerifier::create)
+        .expectNext(1L)
+        .verifyComplete();
+    connection
+        .createStatement("SELECT CAST (? AS INTEGER)")
+        .bind(0, 2)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, Long.class)))
+        .as(StepVerifier::create)
+        .expectNext(2L)
+        .verifyComplete();
     connection.close().block();
   }
 
@@ -568,7 +593,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
       for (long i = 0; i < 5; i++) {
 
         connection
-            .createStatement("SELECT " + i + ", ?")
+            .createStatement("SELECT " + i + ", CAST (? AS INTEGER)")
             .bind(0, i)
             .execute()
             .flatMap(r -> r.map((row, metadata) -> row.get(0, Long.class)))
@@ -608,7 +633,14 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         }
 
         if (i % 2 == 0) {
-          connection.createStatement("SELECT 1, ?").bind(0, i).execute().blockLast();
+          connection
+              .createStatement("SELECT 1, CAST (? AS INTEGER)")
+              .bind(0, i)
+              .execute()
+              .flatMap(r -> r.map((row, metadata) -> row.get(1, Long.class)))
+              .as(StepVerifier::create)
+              .expectNext(i)
+              .verifyComplete();
         }
       }
 

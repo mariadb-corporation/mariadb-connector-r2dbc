@@ -5,6 +5,7 @@ package org.mariadb.r2dbc;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.Row;
 import io.r2dbc.spi.RowMetadata;
 import java.nio.charset.StandardCharsets;
@@ -64,6 +65,7 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
               }
               if (serverMessage instanceof RowPacket) {
                 rowCount.incrementAndGet();
+                ((RowPacket) serverMessage).release();
                 return;
               }
               if (serverMessage instanceof EofPacket) {
@@ -136,13 +138,16 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
               }
 
               if (serverMessage instanceof RowPacket) {
-                ByteBuf buf = ((RowPacket) serverMessage).getRaw();
+                RowPacket row = ((RowPacket) serverMessage);
                 try {
-                  sink.next(f.apply(new MariadbRow(metadataList, decoder, buf), rowMetadata));
+                  sink.next(
+                      f.apply(new MariadbRow(metadataList, decoder, row.getRaw()), rowMetadata));
                 } catch (IllegalArgumentException i) {
                   sink.error(this.factory.createException(i.getMessage(), "HY000", -1));
+                } catch (R2dbcException i) {
+                  sink.error(i);
                 } finally {
-                  buf.release();
+                  row.release();
                 }
                 return;
               }

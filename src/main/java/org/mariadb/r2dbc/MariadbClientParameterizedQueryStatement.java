@@ -12,6 +12,7 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.Codecs;
 import org.mariadb.r2dbc.codec.Parameter;
 import org.mariadb.r2dbc.message.client.QueryWithParametersPacket;
+import org.mariadb.r2dbc.message.server.RowPacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.ClientPrepareResult;
@@ -153,18 +154,20 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
       this.batchingParameters = null;
       this.parameters = null;
 
-      return fluxMsg
-          .windowUntil(it -> it.resultSetEnd())
-          .map(
-              dataRow ->
-                  new MariadbResult(
-                      true,
-                      null,
-                      dataRow,
-                      ExceptionFactory.INSTANCE,
-                      generatedColumns,
-                      client.getVersion().supportReturning(),
-                      client.getConf()));
+      Flux<org.mariadb.r2dbc.api.MariadbResult> flux =
+          fluxMsg
+              .windowUntil(it -> it.resultSetEnd())
+              .map(
+                  dataRow ->
+                      new MariadbResult(
+                          true,
+                          null,
+                          dataRow,
+                          ExceptionFactory.INSTANCE,
+                          generatedColumns,
+                          client.getVersion().supportReturning(),
+                          client.getConf()));
+      return flux.doOnDiscard(RowPacket.class, RowPacket::release);
     }
   }
 
@@ -210,12 +213,14 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
                         generatedColumns,
                         client.getVersion().supportReturning(),
                         client.getConf()));
-    return response.concatWith(
-        Flux.create(
-            sink -> {
-              sink.complete();
-              parameters = new Parameter<?>[prepareResult.getParamCount()];
-            }));
+    return response
+        .concatWith(
+            Flux.create(
+                sink -> {
+                  sink.complete();
+                  parameters = new Parameter<?>[prepareResult.getParamCount()];
+                }))
+        .doOnDiscard(RowPacket.class, RowPacket::release);
   }
 
   @Override
