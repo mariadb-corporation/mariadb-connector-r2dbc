@@ -268,6 +268,7 @@ public final class ColumnDefinitionPacket
       case SET:
       case STRING:
       case VARSTRING:
+      case NULL:
         return MariadbType.VARCHAR;
       case TEXT:
         return MariadbType.CLOB;

@@ -163,7 +163,6 @@
       <version>${logback.version}</version>
       <scope>test</scope>
     </dependency>
-
   </dependencies>
 
   <build>
@@ -261,7 +260,7 @@
         <configuration>
           <systemPropertyVariables>
             <io.netty.leakDetectionLevel>paranoid</io.netty.leakDetectionLevel>
-<!--            <io.netty.leakDetection.targetRecords>1</io.netty.leakDetection.targetRecords>-->
+            <io.netty.leakDetection.targetRecords>1</io.netty.leakDetection.targetRecords>
           </systemPropertyVariables>
             <argLine>
               --add-reads org.mariadb.r2dbc=org.slf4j

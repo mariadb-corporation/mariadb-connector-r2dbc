@@ -17,4 +17,8 @@ public final class RowPacket implements ServerMessage {
   public ByteBuf getRaw() {
     return raw;
   }
+
+  public void release() {
+    raw.release();
+  }
 }

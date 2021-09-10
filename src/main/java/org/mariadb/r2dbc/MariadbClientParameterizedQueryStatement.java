@@ -12,6 +12,7 @@ import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.QueryWithParametersPacket;
+import org.mariadb.r2dbc.message.server.RowPacket;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.ClientPrepareResult;
 import org.mariadb.r2dbc.util.MariadbType;
@@ -146,18 +147,20 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
       this.batchingParameters = null;
       this.parameters = null;
 
-      return fluxMsg
-          .windowUntil(it -> it.resultSetEnd())
-          .map(
-              dataRow ->
-                  new MariadbResult(
-                      true,
-                      null,
-                      dataRow,
-                      ExceptionFactory.INSTANCE,
-                      generatedColumns,
-                      client.getVersion().supportReturning(),
-                      client.getConf()));
+      Flux<org.mariadb.r2dbc.api.MariadbResult> flux =
+          fluxMsg
+              .windowUntil(it -> it.resultSetEnd())
+              .map(
+                  dataRow ->
+                      new MariadbResult(
+                          true,
+                          null,
+                          dataRow,
+                          ExceptionFactory.INSTANCE,
+                          generatedColumns,
+                          client.getVersion().supportReturning(),
+                          client.getConf()));
+      return flux.doOnDiscard(RowPacket.class, RowPacket::release);
     }
   }
 
@@ -203,7 +206,8 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
             sink -> {
               sink.complete();
               parameters = null;
-            }));
+            }))
+            .doOnDiscard(RowPacket.class, RowPacket::release);
   }
 
   @Override
