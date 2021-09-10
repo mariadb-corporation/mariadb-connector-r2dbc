@@ -123,7 +123,7 @@ To file an issue or follow the development, see [JIRA](https://jira.mariadb.org/
 
 
 [travis-image]:https://travis-ci.com/mariadb-corporation/mariadb-connector-r2dbc.svg?branch=master
-[travis-url]:https://travis-ci.com/mariadb-corporation/mariadb-connector-r2dbc
+[travis-url]:https://app.travis-ci.com/github/mariadb-corporation/mariadb-connector-r2dbc
 [maven-image]:https://maven-badges.herokuapp.com/maven-central/org.mariadb/r2dbc-mariadb/badge.svg
 [maven-url]:https://maven-badges.herokuapp.com/maven-central/org.mariadb/r2dbc-mariadb
 [license-image]:https://img.shields.io/badge/License-Apache%202.0-blue.svg
