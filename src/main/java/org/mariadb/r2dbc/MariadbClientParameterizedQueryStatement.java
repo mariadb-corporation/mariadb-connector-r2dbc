@@ -201,13 +201,14 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
                         generatedColumns,
                         client.getVersion().supportReturning(),
                         client.getConf()));
-    return response.concatWith(
-        Flux.create(
-            sink -> {
-              sink.complete();
-              parameters = null;
-            }))
-            .doOnDiscard(RowPacket.class, RowPacket::release);
+    return response
+        .concatWith(
+            Flux.create(
+                sink -> {
+                  sink.complete();
+                  parameters = null;
+                }))
+        .doOnDiscard(RowPacket.class, RowPacket::release);
   }
 
   @Override
