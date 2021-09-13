@@ -6,6 +6,7 @@ package org.mariadb.r2dbc;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.message.client.QueryPacket;
+import org.mariadb.r2dbc.message.server.RowPacket;
 import org.mariadb.r2dbc.message.server.ServerMessage;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.ClientPrepareResult;
@@ -110,17 +111,19 @@ final class MariadbSimpleQueryStatement implements MariadbStatement {
     }
 
     Flux<ServerMessage> response = this.client.sendCommand(new QueryPacket(sql));
-    return response
-        .windowUntil(it -> it.resultSetEnd())
-        .map(
-            dataRow ->
-                new MariadbResult(
-                    true,
-                    null,
-                    dataRow,
-                    factory,
-                    generatedColumns,
-                    client.getVersion().supportReturning(),
-                    client.getConf()));
+    Flux<org.mariadb.r2dbc.api.MariadbResult> flux =
+        response
+            .windowUntil(it -> it.resultSetEnd())
+            .map(
+                dataRow ->
+                    new MariadbResult(
+                        true,
+                        null,
+                        dataRow,
+                        factory,
+                        generatedColumns,
+                        client.getVersion().supportReturning(),
+                        client.getConf()));
+    return flux.doOnDiscard(RowPacket.class, RowPacket::release);
   }
 }

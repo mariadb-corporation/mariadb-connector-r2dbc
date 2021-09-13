@@ -11,7 +11,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.mariadb</groupId>
   <artifactId>r2dbc-mariadb</artifactId>
-  <version>1.0.2</version>
+  <version>1.0.3</version>
   <packaging>jar</packaging>
   <url>https://github.com/mariadb-corporation/mariadb-connector-r2dbc</url>
 
@@ -155,7 +155,6 @@
       <version>${logback.version}</version>
       <scope>test</scope>
     </dependency>
-
   </dependencies>
 
   <build>
@@ -229,7 +228,7 @@
         <configuration>
           <systemPropertyVariables>
             <io.netty.leakDetectionLevel>paranoid</io.netty.leakDetectionLevel>
-<!--            <io.netty.leakDetection.targetRecords>1</io.netty.leakDetection.targetRecords>-->
+            <io.netty.leakDetection.targetRecords>1</io.netty.leakDetection.targetRecords>
           </systemPropertyVariables>
         </configuration>
       </plugin>
