@@ -1,4 +1,12 @@
 # Change Log
+
+## [1.0.3](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.0.3) (13 Sept 2021)
+[Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.0.2...1.0.3)
+
+Corrections:
+* [R2DBC-40] netty buffer leaks when not consuming results
+* [R2DBC-39] MariadbResult.getRowsUpdated() fails with ClassCastException for RETURNING command
+
 ## [1.1.0-beta](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.1.0-beta) (15 Jul 2021)
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.0.2...1.1.0-beta)
 
