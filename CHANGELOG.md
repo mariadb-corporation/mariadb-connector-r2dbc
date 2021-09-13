@@ -1,5 +1,16 @@
 # Change Log
 
+## [1.1.1-rc](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.1.1) (13 Sept 2021)
+[Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.1.0...1.1.1)
+
+Changes:
+* [R2DBC-37] Full java 9 JPMS module
+* [R2DBC-38] Permit sharing channels with option loopResources
+
+Corrections:
+* [R2DBC-40] netty buffer leaks when not consuming results
+* [R2DBC-39] MariadbResult.getRowsUpdated() fails with ClassCastException for RETURNING command
+
 ## [1.0.3](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.0.3) (13 Sept 2021)
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.0.2...1.0.3)
 
