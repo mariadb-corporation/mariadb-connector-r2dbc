@@ -3,9 +3,7 @@
 
 package org.mariadb.r2dbc.integration;
 
-import io.r2dbc.spi.*;
 import java.net.URL;
-import java.util.*;
 import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
@@ -24,9 +22,9 @@ public class TransactionTest extends BaseConnectionTest {
         .createStatement(
             "CREATE TABLE `users` (\n"
                 + " `id` int(11) NOT NULL AUTO_INCREMENT,\n"
-                + " `first_name` varchar(255) COLLATE utf16_slovak_ci NOT NULL,\n"
-                + " `last_name` varchar(255) COLLATE utf16_slovak_ci NOT NULL,\n"
-                + " `email` varchar(255) COLLATE utf16_slovak_ci NOT NULL,\n"
+                + " `first_name` varchar(255) NOT NULL,\n"
+                + " `last_name` varchar(255) NOT NULL,\n"
+                + " `email` varchar(255) NOT NULL,\n"
                 + " PRIMARY KEY (`id`)\n"
                 + ")")
         .execute()

@@ -248,7 +248,8 @@ public class StatementTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcDataIntegrityViolationException
-                    && throwable.getMessage().contains("Duplicate entry '1' for key"))
+                    && (throwable.getMessage().contains("Duplicate entry '1' for key") ||
+                        throwable.getMessage().contains("Duplicate key in container")))
         .verify();
   }
 

@@ -19,6 +19,7 @@ import reactor.test.StepVerifier;
 public class MediumIntParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
     sharedConn
         .createStatement("CREATE TABLE MediumIntTable (t1 MEDIUMINT, t2 MEDIUMINT ZEROFILL)")
         .execute()
@@ -40,8 +41,8 @@ public class MediumIntParseTest extends BaseConnectionTest {
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE MediumIntTable").execute().blockLast();
-    sharedConn.createStatement("DROP TABLE MediumIntUnsignedTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS MediumIntTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS MediumIntUnsignedTable").execute().blockLast();
   }
 
   @Test
