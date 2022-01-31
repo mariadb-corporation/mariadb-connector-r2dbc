@@ -67,6 +67,8 @@ public class RowMetadataTest extends BaseConnectionTest {
                           Arrays.asList("t1Alias", "t2", "t3", "t4", "t5", "t6");
                       assertEquals(expected.size(), metadata.getColumnNames().size());
                       assertTrue(metadata.contains("t1Alias"));
+                      assertTrue(metadata.contains("T1ALIAS"));
+                      assertTrue(metadata.contains("t1alias"));
                       assertFalse(metadata.contains("t1Aliass"));
 
                       assertArrayEquals(expected.toArray(), metadata.getColumnNames().toArray());

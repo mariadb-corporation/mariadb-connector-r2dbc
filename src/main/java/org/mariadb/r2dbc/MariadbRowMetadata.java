@@ -81,6 +81,6 @@ final class MariadbRowMetadata implements RowMetadata {
     if (this.columnNames == null) {
       this.columnNames = getColumnNames(this.metadataList);
     }
-    return this.columnNames.contains(columnName);
+    return this.columnNames.stream().anyMatch(columnName::equalsIgnoreCase);
   }
 }
