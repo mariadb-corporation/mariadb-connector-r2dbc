@@ -485,7 +485,6 @@ public class StatementTest extends BaseConnectionTest {
         .bind(0, "b")
         .add()
         .bind(0, "c")
-        .add()
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get("id", String.class)))
         .as(StepVerifier::create)

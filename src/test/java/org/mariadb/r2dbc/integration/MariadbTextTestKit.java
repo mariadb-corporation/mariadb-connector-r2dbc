@@ -10,6 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Arrays;
 import javax.sql.DataSource;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.jdbc.MariaDbDataSource;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
@@ -45,6 +46,15 @@ public class MariadbTextTestKit implements TestKit<String> {
 
   @Override
   public ConnectionFactory getConnectionFactory() {
+    // error crashing maxscale 6.1.x
+    try (java.sql.Connection con = jdbcDatasource.getConnection()) {
+      Assumptions.assumeTrue(
+          !con.getMetaData().getDatabaseProductVersion().contains("maxScale-6.1.")
+              && !"skysql-ha".equals(System.getenv("srv")));
+    } catch (SQLException e) {
+      // eat
+    }
+
     try {
       MariadbConnectionConfiguration confMulti =
           TestConfiguration.defaultBuilder.clone().allowMultiQueries(true).build();

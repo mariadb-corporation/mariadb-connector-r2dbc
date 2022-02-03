@@ -27,8 +27,13 @@ public class ConnectionMetadataTest extends BaseConnectionTest {
     String version = System.getenv("v");
     if (type != null && System.getenv("TRAVIS") != null) {
       if ("mariadb".equals(type) || "mysql".equals(type)) {
-        assertTrue(meta.getDatabaseVersion().contains(version));
-        assertEquals(type.toLowerCase(), meta.getDatabaseProductName().toLowerCase());
+        assertTrue(
+            meta.getDatabaseVersion().contains(version),
+            "Error " + meta.getDatabaseVersion() + " doesn't contains " + version);
+        assertEquals(
+            type.toLowerCase(),
+            meta.getDatabaseProductName().toLowerCase(),
+            "Error comparing " + type + " with " + meta.getDatabaseProductName());
       }
     }
   }

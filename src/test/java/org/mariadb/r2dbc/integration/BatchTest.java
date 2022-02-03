@@ -4,6 +4,7 @@
 package org.mariadb.r2dbc.integration;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
@@ -50,6 +51,10 @@ public class BatchTest extends BaseConnectionTest {
 
   @Test
   void multiQueriesBatch() throws Exception {
+    // error crashing maxscale 6.1.x
+    Assumptions.assumeTrue(
+        !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
+            && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnectionConfiguration confMulti =
         TestConfiguration.defaultBuilder.clone().allowMultiQueries(true).build();
     MariadbConnection multiConn = new MariadbConnectionFactory(confMulti).create().block();
@@ -87,6 +92,11 @@ public class BatchTest extends BaseConnectionTest {
 
   @Test
   void noMultiQueriesBatch() throws Exception {
+    // error crashing maxscale 6.1.x
+    Assumptions.assumeTrue(
+        !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
+            && !"skysql-ha".equals(System.getenv("srv")));
+
     MariadbConnectionConfiguration confMulti =
         TestConfiguration.defaultBuilder.clone().allowMultiQueries(false).build();
     MariadbConnection multiConn = new MariadbConnectionFactory(confMulti).create().block();

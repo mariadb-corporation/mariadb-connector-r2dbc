@@ -665,10 +665,6 @@ public class ConnectionTest extends BaseConnectionTest {
     try {
       IsolationLevel defaultValue = IsolationLevel.REPEATABLE_READ;
 
-      if ("skysql".equals(System.getenv("srv")) || "skysql-ha".equals(System.getenv("srv"))) {
-        defaultValue = IsolationLevel.READ_COMMITTED;
-      }
-
       Assertions.assertEquals(defaultValue, connection.getTransactionIsolationLevel());
       connection.setTransactionIsolationLevel(IsolationLevel.READ_UNCOMMITTED).block();
       Assertions.assertEquals(
@@ -910,6 +906,11 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   public void errorOnConnection() throws Throwable {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv")));
+
     BigInteger maxConn =
         sharedConn
             .createStatement("select @@max_connections")

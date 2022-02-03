@@ -204,7 +204,10 @@ public class TlsTest extends BaseConnectionTest {
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
-    String trustProtocol = minVersion(8, 0, 0) ? "TLSv1.2" : "TLSv1.1";
+    String trustProtocol =
+        (isMariaDBServer() && minVersion(10, 3, 0)) || (!isMariaDBServer() && minVersion(8, 0, 0))
+            ? "TLSv1.2"
+            : "TLSv1.1";
     Assumptions.assumeTrue(haveSsl(sharedConn));
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder

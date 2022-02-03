@@ -4,43 +4,50 @@
 package org.mariadb.r2dbc.integration.authentication;
 
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.BaseConnectionTest;
-import org.mariadb.r2dbc.MariadbConnectionConfiguration;
-import org.mariadb.r2dbc.MariadbConnectionFactory;
-import org.mariadb.r2dbc.TestConfiguration;
+import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import reactor.core.publisher.Flux;
 
 public class Ed25519PluginTest extends BaseConnectionTest {
+  static AtomicBoolean ed25519PluginEnabled = new AtomicBoolean(true);
 
   @BeforeAll
   public static void before2() {
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     if (meta.isMariaDBServer() && meta.minVersion(10, 2, 0)) {
-      sharedConn
-          .createStatement("INSTALL SONAME 'auth_ed25519'")
-          .execute()
-          .map(res -> res.getRowsUpdated())
-          .onErrorReturn(Flux.empty())
-          .blockLast();
+      sharedConn.createStatement("INSTALL SONAME 'auth_ed25519'").execute().blockLast();
       if (meta.minVersion(10, 4, 0)) {
         sharedConn
             .createStatement(
                 "CREATE USER verificationEd25519AuthPlugin IDENTIFIED "
                     + "VIA ed25519 USING PASSWORD('MySup8%rPassw@ord')")
             .execute()
+            .flatMap(it -> it.getRowsUpdated())
+            .onErrorResume(
+                e -> {
+                  ed25519PluginEnabled.set(false);
+                  return Flux.just(1);
+                })
             .blockLast();
+
       } else {
         sharedConn
             .createStatement(
                 "CREATE USER verificationEd25519AuthPlugin IDENTIFIED "
                     + "VIA ed25519 USING '6aW9C7ENlasUfymtfMvMZZtnkCVlcb1ssxOLJ0kj/AA'")
             .execute()
+            .flatMap(it -> it.getRowsUpdated())
+            .onErrorResume(
+                e -> {
+                  ed25519PluginEnabled.set(false);
+                  return Flux.just(1);
+                })
             .blockLast();
       }
       sharedConn
@@ -49,6 +56,12 @@ public class Ed25519PluginTest extends BaseConnectionTest {
                   "GRANT SELECT on `%s`.* to verificationEd25519AuthPlugin",
                   TestConfiguration.database))
           .execute()
+          .flatMap(it -> it.getRowsUpdated())
+          .onErrorResume(
+              e -> {
+                ed25519PluginEnabled.set(false);
+                return Flux.just(1);
+              })
           .blockLast();
       sharedConn.createStatement("FLUSH PRIVILEGES").execute().blockLast();
     }
@@ -67,7 +80,9 @@ public class Ed25519PluginTest extends BaseConnectionTest {
   @Test
   public void verificationEd25519AuthPlugin() throws Throwable {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+        ed25519PluginEnabled.get()
+            && !"maxscale".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     Assumptions.assumeTrue(meta.isMariaDBServer() && meta.minVersion(10, 2, 0));
 
@@ -84,7 +99,9 @@ public class Ed25519PluginTest extends BaseConnectionTest {
   @Test
   public void verificationEd25519AuthPluginRestricted() throws Throwable {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+        ed25519PluginEnabled.get()
+            && !"maxscale".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     Assumptions.assumeTrue(meta.isMariaDBServer() && meta.minVersion(10, 2, 0));
 
@@ -94,6 +111,8 @@ public class Ed25519PluginTest extends BaseConnectionTest {
             .username("verificationEd25519AuthPlugin")
             .password("MySup8%rPassw@ord")
             .restrictedAuth("mysql_native_password")
+            .sslMode(
+                SslMode.from("1".equals(System.getenv("TEST_REQUIRE_TLS")) ? "trust" : "disabled"))
             .build();
     assertThrows(
         R2dbcPermissionDeniedException.class,

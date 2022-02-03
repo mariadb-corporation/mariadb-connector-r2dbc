@@ -39,11 +39,17 @@ public class PamPluginTest extends BaseConnectionTest {
         .blockLast();
     sharedConn.createStatement("FLUSH PRIVILEGES").execute().blockLast();
 
+    int testPort = TestConfiguration.port;
+    if (System.getenv("TEST_PAM_PORT") != null) {
+      testPort = Integer.parseInt(System.getenv("TEST_PAM_PORT"));
+    }
+
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
             .username(System.getenv("TEST_PAM_USER"))
             .password(System.getenv("TEST_PAM_PWD"))
+            .port(testPort)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();

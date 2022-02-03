@@ -110,7 +110,10 @@ public class PrepareResultSetTest extends BaseConnectionTest {
 
   @Test
   void validateParam() {
-
+    // disabling with maxscale due to MXS-3956
+    // to be re-enable when > 6.1.1
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     Assertions.assertThrows(
         Exception.class,
         () ->
@@ -419,6 +422,12 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         IllegalArgumentException.class,
         () -> stmt.bindNull(0, this.getClass()),
         "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest");
+
+    // error crashing maxscale 6.1.x
+    Assumptions.assumeTrue(
+        !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
+            && !"skysql-ha".equals(System.getenv("srv")));
+
     stmt.bindNull(0, String.class);
     stmt.execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, Long.class)))
