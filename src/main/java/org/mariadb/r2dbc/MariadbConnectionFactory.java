@@ -138,7 +138,7 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
       }
     }
 
-    return new MariadbSimpleQueryStatement(client, sql.toString()).execute().last().then();
+    return client.executeSimpleCommand(sql.toString()).last().then();
   }
 
   private Mono<IsolationLevel> getIsolationLevel(Client client) {
@@ -150,8 +150,8 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
       sql = "SELECT @@transaction_isolation";
     }
 
-    return new MariadbSimpleQueryStatement(client, sql)
-        .execute()
+    return client
+        .executeSimpleCommand(sql)
         .flatMap(
             it ->
                 it.map(

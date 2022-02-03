@@ -253,10 +253,8 @@ public enum DecoderState implements DecoderStateInterface {
     @Override
     public ServerMessage decode(
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
-      PrepareResultPacket packet =
-          PrepareResultPacket.decode(sequencer, body, decoder.getContext(), false);
-      decoder.setPrepare(packet);
-      if (packet.getNumParams() == 0 && packet.getNumColumns() == 0) {
+      decoder.setPrepare(PrepareResultPacket.decode(sequencer, body, decoder.getContext(), false));
+      if (decoder.getPrepare().getNumParams() == 0 && decoder.getPrepare().getNumColumns() == 0) {
         ServerPrepareResult serverPrepareResult = decoder.endPrepare();
         return new CompletePrepareResult(serverPrepareResult, false);
       }
@@ -266,12 +264,15 @@ public enum DecoderState implements DecoderStateInterface {
     @Override
     public DecoderState next(MariadbPacketDecoder decoder) {
       if (decoder.getPrepare().getNumParams() == 0) {
-        // if next, then columns > 0
+        if (decoder.getPrepare().getNumColumns() == 0) {
+          decoder.setPrepare(null);
+          return QUERY_RESPONSE;
+        }
         decoder.setStateCounter(decoder.getPrepare().getNumColumns());
         return PREPARE_COLUMN;
       }
       // skip param and EOF
-      decoder.setStateCounter(decoder.getPrepare().getNumParams() + 1);
+      decoder.setStateCounter(decoder.getPrepare().getNumParams());
       return PREPARE_PARAMETER;
     }
   },
@@ -309,7 +310,7 @@ public enum DecoderState implements DecoderStateInterface {
         return PREPARE_COLUMN;
       }
       // skip param and EOF
-      decoder.setStateCounter(decoder.getPrepare().getNumParams() + 1);
+      decoder.setStateCounter(decoder.getPrepare().getNumParams());
       return PREPARE_PARAMETER;
     }
   },
@@ -320,25 +321,39 @@ public enum DecoderState implements DecoderStateInterface {
     public ServerMessage decode(
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
       decoder.decrementStateCounter();
-      if (decoder.getStateCounter() == 0 && decoder.getPrepare().getNumColumns() == 0) {
-        // end parameter without columns
-        boolean ending = !decoder.getPrepare().isContinueOnEnd();
+      return SkipPacket.decode(false);
+    }
+
+    @Override
+    public DecoderState next(MariadbPacketDecoder decoder) {
+      if (decoder.getStateCounter() == 0) {
+        return PREPARE_PARAMETER_EOF;
+      }
+      return this;
+    }
+  },
+
+  PREPARE_PARAMETER_EOF {
+
+    @Override
+    public ServerMessage decode(
+        ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
+      boolean continueOnEnd = decoder.getPrepare().isContinueOnEnd();
+      if (decoder.getPrepare().getNumColumns() == 0) {
         ServerPrepareResult serverPrepareResult = decoder.endPrepare();
-        return new CompletePrepareResult(serverPrepareResult, ending);
+        return new CompletePrepareResult(serverPrepareResult, continueOnEnd);
       }
       return SkipPacket.decode(false);
     }
 
     @Override
     public DecoderState next(MariadbPacketDecoder decoder) {
-      if (decoder.getStateCounter() <= 0) {
-        if (decoder.getPrepare() == null) {
-          return QUERY_RESPONSE;
-        }
+      if (decoder.getPrepare().getNumColumns() > 0) {
         decoder.setStateCounter(decoder.getPrepare().getNumColumns());
         return PREPARE_COLUMN;
       }
-      return PREPARE_PARAMETER;
+      decoder.setPrepare(null);
+      return QUERY_RESPONSE;
     }
   },
 
@@ -372,9 +387,9 @@ public enum DecoderState implements DecoderStateInterface {
     @Override
     public ServerMessage decode(
         ByteBuf body, Sequencer sequencer, MariadbPacketDecoder decoder, CmdElement element) {
-      boolean ending = !decoder.getPrepare().isContinueOnEnd();
+      boolean continueOnEnd = decoder.getPrepare().isContinueOnEnd();
       ServerPrepareResult prepareResult = decoder.endPrepare();
-      return new CompletePrepareResult(prepareResult, ending);
+      return new CompletePrepareResult(prepareResult, continueOnEnd);
     }
 
     @Override

@@ -14,6 +14,7 @@ public final class Codecs {
         BigDecimalCodec.INSTANCE,
         BigIntegerCodec.INSTANCE,
         BooleanCodec.INSTANCE,
+        ByteBufferCodec.INSTANCE,
         BlobCodec.INSTANCE,
         ByteArrayCodec.INSTANCE,
         ByteCodec.INSTANCE,
@@ -55,10 +56,10 @@ public final class Codecs {
     CODEC_LIST.put(DataType.DECIMAL, BigDecimalCodec.INSTANCE);
     CODEC_LIST.put(DataType.ENUM, StringCodec.INSTANCE);
     CODEC_LIST.put(DataType.SET, StringCodec.INSTANCE);
-    CODEC_LIST.put(DataType.TINYBLOB, ByteArrayCodec.INSTANCE);
-    CODEC_LIST.put(DataType.MEDIUMBLOB, ByteArrayCodec.INSTANCE);
-    CODEC_LIST.put(DataType.LONGBLOB, BlobCodec.INSTANCE);
-    CODEC_LIST.put(DataType.BLOB, ByteArrayCodec.INSTANCE);
+    CODEC_LIST.put(DataType.TINYBLOB, ByteBufferCodec.INSTANCE);
+    CODEC_LIST.put(DataType.MEDIUMBLOB, ByteBufferCodec.INSTANCE);
+    CODEC_LIST.put(DataType.LONGBLOB, ByteBufferCodec.INSTANCE);
+    CODEC_LIST.put(DataType.BLOB, ByteBufferCodec.INSTANCE);
     CODEC_LIST.put(DataType.VARSTRING, StringCodec.INSTANCE);
     CODEC_LIST.put(DataType.STRING, StringCodec.INSTANCE);
     CODEC_LIST.put(DataType.GEOMETRY, ByteArrayCodec.INSTANCE);

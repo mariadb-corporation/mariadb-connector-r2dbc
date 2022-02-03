@@ -6,6 +6,7 @@ package org.mariadb.r2dbc.integration;
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import io.r2dbc.spi.Statement;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -22,10 +23,9 @@ public class StatementTest extends BaseConnectionTest {
   void bindOnStatementWithoutParameter() {
     Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (1,2)");
     try {
-      stmt = stmt.add(); // mean nothing there
-      stmt.bind(0, 1);
+      stmt.bind(1, 1);
       Assertions.fail("must have thrown exception");
-    } catch (UnsupportedOperationException e) {
+    } catch (IndexOutOfBoundsException e) {
       Assertions.assertTrue(
           e.getMessage()
               .contains(
@@ -35,7 +35,7 @@ public class StatementTest extends BaseConnectionTest {
     try {
       stmt.bind("name", 1);
       Assertions.fail("must have thrown exception");
-    } catch (UnsupportedOperationException e) {
+    } catch (IndexOutOfBoundsException e) {
       Assertions.assertTrue(
           e.getMessage()
               .contains(
@@ -44,7 +44,7 @@ public class StatementTest extends BaseConnectionTest {
     try {
       stmt.bindNull(0, String.class);
       Assertions.fail("must have thrown exception");
-    } catch (UnsupportedOperationException e) {
+    } catch (IndexOutOfBoundsException e) {
       Assertions.assertTrue(
           e.getMessage()
               .contains(
@@ -53,7 +53,7 @@ public class StatementTest extends BaseConnectionTest {
     try {
       stmt.bindNull("name", String.class);
       Assertions.fail("must have thrown exception");
-    } catch (UnsupportedOperationException e) {
+    } catch (IndexOutOfBoundsException e) {
       Assertions.assertTrue(
           e.getMessage()
               .contains(
@@ -66,11 +66,11 @@ public class StatementTest extends BaseConnectionTest {
     Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (:1,:2)");
 
     assertThrows(
-        IllegalArgumentException.class,
+        NoSuchElementException.class,
         () -> stmt.bind("bla", "nok"),
         "No parameter with name 'bla' found (possible values [1, 2])");
     assertThrows(
-        IllegalArgumentException.class,
+        NoSuchElementException.class,
         () -> stmt.bindNull("bla", String.class),
         "No parameter with name 'bla' found (possible values [1, 2])");
     stmt.bind("1", "ok").bindNull("2", String.class);
@@ -118,7 +118,7 @@ public class StatementTest extends BaseConnectionTest {
     try {
       stmt.bind("other", 1);
       Assertions.fail("must have thrown exception");
-    } catch (IllegalArgumentException e) {
+    } catch (NoSuchElementException e) {
       Assertions.assertTrue(
           e.getMessage()
               .contains("No parameter with name 'other' found (possible values [name1, name2])"));
@@ -126,7 +126,7 @@ public class StatementTest extends BaseConnectionTest {
     try {
       stmt.bindNull("other", String.class);
       Assertions.fail("must have thrown exception");
-    } catch (IllegalArgumentException e) {
+    } catch (NoSuchElementException e) {
       Assertions.assertTrue(
           e.getMessage()
               .contains("No parameter with name 'other' found (possible values [name1, name2])"));
@@ -166,7 +166,7 @@ public class StatementTest extends BaseConnectionTest {
 
     try {
       stmt.execute();
-    } catch (IllegalArgumentException e) {
+    } catch (IllegalStateException e) {
       Assertions.assertTrue(e.getMessage().contains("Parameter at position 0 is not set"));
     }
   }
@@ -175,11 +175,12 @@ public class StatementTest extends BaseConnectionTest {
   void statementToString() {
     String st = sharedConn.createStatement("SELECT 1").toString();
     Assertions.assertTrue(
-        st.contains("MariadbSimpleQueryStatement{") && st.contains("sql='SELECT 1'"));
+        st.contains("MariadbClientParameterizedQueryStatement{") && st.contains("sql='SELECT 1'"),
+        st);
     String st2 = sharedConn.createStatement("SELECT ?").toString();
     Assertions.assertTrue(
-        st2.contains("MariadbClientParameterizedQueryStatement{")
-            && st2.contains("sql='SELECT ?'"));
+        st2.contains("MariadbClientParameterizedQueryStatement{") && st2.contains("sql='SELECT ?'"),
+        st2);
   }
 
   @Test
@@ -248,8 +249,8 @@ public class StatementTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcDataIntegrityViolationException
-                    && (throwable.getMessage().contains("Duplicate entry '1' for key") ||
-                        throwable.getMessage().contains("Duplicate key in container")))
+                    && (throwable.getMessage().contains("Duplicate entry '1' for key")
+                        || throwable.getMessage().contains("Duplicate key in container")))
         .verify();
   }
 
@@ -541,12 +542,24 @@ public class StatementTest extends BaseConnectionTest {
         .bind(0, "c")
         .add()
         .bind(0, "d")
-        .add()
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get("id", String.class)))
         .as(StepVerifier::create)
         .expectNext("7", "8")
         .verifyComplete();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            sharedConn
+                .createStatement("INSERT INTO prepareReturning(test) VALUES (?)")
+                .returnGeneratedValues()
+                .bind(0, "c")
+                .add()
+                .bind(0, "d")
+                .add()
+                .execute(),
+        "add() cannot be used if not bindings where set");
   }
 
   @Test
@@ -577,12 +590,10 @@ public class StatementTest extends BaseConnectionTest {
         .expectNext(Optional.of("2"), Optional.empty())
         .verifyComplete();
 
-    stmt.bindNull(0, this.getClass())
-        .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
-        .as(StepVerifier::create)
-        .expectNext(Optional.of("2"), Optional.empty())
-        .verifyComplete();
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.bindNull(0, this.getClass()),
+        "No encoder for class org.mariadb.r2dbc.integration.StatementTest");
   }
 
   @Test

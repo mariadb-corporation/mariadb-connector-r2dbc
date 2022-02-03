@@ -12,7 +12,7 @@ import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 public class MariadbOutSegment extends MariadbReadable
     implements Result.OutSegment, OutParameters, MariadbDataSegment {
 
-  MariadbOutSegment(RowDecoder decoder, List<ColumnDefinitionPacket> metadataList) {
+  public MariadbOutSegment(RowDecoder decoder, List<ColumnDefinitionPacket> metadataList) {
     super(decoder, metadataList);
   }
 

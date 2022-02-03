@@ -5,8 +5,8 @@ package org.mariadb.r2dbc.integration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigInteger;
+import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.*;
@@ -40,39 +40,34 @@ public class ResultsetTest extends BaseConnectionTest {
         .createStatement(
             "create procedure multiResultSets() BEGIN  SELECT 'a', 'b'; SELECT 'c', 'd', 'e'; END")
         .execute()
-        .subscribe();
+        .blockLast();
     final AtomicBoolean first = new AtomicBoolean(true);
     sharedConn
         .createStatement("call multiResultSets()")
         .execute()
-        .subscribe(
-            res -> {
-              if (first.get()) {
-                first.set(false);
-                res.map(
-                        (row, metadata) -> {
-                          Assertions.assertEquals(row.get(0), "a");
-                          Assertions.assertEquals(row.get(1), "b");
-                          Assertions.assertEquals(row.get("a"), "a");
-                          Assertions.assertEquals(row.get("b"), "b");
-                          assertThrows(
-                              IllegalArgumentException.class,
-                              () -> row.get("unknown"),
-                              "Column name 'unknown' does not exist in column names [a, b]");
-                          return "true";
-                        })
-                    .subscribe();
-              } else {
-                res.map(
-                        (row, metadata) -> {
-                          Assertions.assertEquals(row.get(0), "c");
-                          Assertions.assertEquals(row.get(1), "d");
-                          Assertions.assertEquals(row.get(2), "e");
-                          return "true";
-                        })
-                    .subscribe();
-              }
-            });
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      if (first.get()) {
+                        first.set(false);
+                        Assertions.assertEquals(row.get(0), "a");
+                        Assertions.assertEquals(row.get(1), "b");
+                        Assertions.assertEquals(row.get("a"), "a");
+                        Assertions.assertEquals(row.get("b"), "b");
+                        assertThrows(
+                            NoSuchElementException.class,
+                            () -> row.get("unknown"),
+                            "Column name 'unknown' does not exist in column names [a, b]");
+                        return "true";
+                      } else {
+                        Assertions.assertEquals(row.get(0), "c");
+                        Assertions.assertEquals(row.get(1), "d");
+                        Assertions.assertEquals(row.get(2), "e");
+                        return "true";
+                      }
+                    }))
+        .blockLast();
   }
 
   private String stLen(int len) {
@@ -222,7 +217,7 @@ public class ResultsetTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
+                throwable instanceof IndexOutOfBoundsException
                     && throwable.getMessage().equals("Column index 5 not in range [0-2]"))
         .verify();
   }
@@ -247,7 +242,7 @@ public class ResultsetTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcTransientResourceException
+                throwable instanceof IndexOutOfBoundsException
                     && throwable.getMessage().equals("Column index -5 must be positive"))
         .verify();
   }

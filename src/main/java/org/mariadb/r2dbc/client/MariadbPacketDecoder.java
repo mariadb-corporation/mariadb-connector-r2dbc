@@ -133,7 +133,8 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
 
   public void setPrepare(PrepareResultPacket prepare) {
     this.prepare = prepare;
-    this.prepareColumns = new ColumnDefinitionPacket[prepare.getNumColumns()];
+    this.prepareColumns =
+        (prepare == null) ? null : new ColumnDefinitionPacket[prepare.getNumColumns()];
   }
 
   public ColumnDefinitionPacket[] getPrepareColumns() {
@@ -157,7 +158,6 @@ public class MariadbPacketDecoder extends ByteToMessageDecoder {
         prepareResult = cached;
       }
     }
-    this.prepare = null;
     return prepareResult;
   }
 

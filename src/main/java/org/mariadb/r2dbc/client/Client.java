@@ -24,6 +24,8 @@ public interface Client {
 
   void sendCommandWithoutResult(ClientMessage requests);
 
+  Flux<org.mariadb.r2dbc.api.MariadbResult> executeSimpleCommand(String sql);
+
   Flux<ServerMessage> sendCommand(ClientMessage requests);
 
   Flux<ServerMessage> sendCommand(ClientMessage requests, DecoderState initialState);
@@ -37,11 +39,15 @@ public interface Client {
 
   boolean isAutoCommit();
 
+  boolean isInTransaction();
+
   boolean noBackslashEscapes();
 
   ServerVersion getVersion();
 
   boolean isConnected();
+
+  boolean isCloseRequested();
 
   void setContext(InitialHandshakePacket packet, long clientCapabilities);
 

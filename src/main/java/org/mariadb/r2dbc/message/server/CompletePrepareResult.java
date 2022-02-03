@@ -18,7 +18,7 @@ public final class CompletePrepareResult implements ServerMessage {
 
   @Override
   public boolean ending() {
-    return continueOnEnd;
+    return !continueOnEnd;
   }
 
   public ServerPrepareResult getPrepare() {

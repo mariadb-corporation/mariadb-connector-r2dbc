@@ -11,7 +11,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.mariadb</groupId>
   <artifactId>r2dbc-mariadb</artifactId>
-  <version>1.1.1-rc</version>
+  <version>1.1.2-SNAPSHOT</version>
   <packaging>jar</packaging>
   <url>https://github.com/mariadb-corporation/mariadb-connector-r2dbc</url>
 
@@ -26,9 +26,9 @@
     <logback.version>1.2.3</logback.version>
     <netty.version>4.1.65.Final</netty.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <r2dbc-spi.version>0.9.0.M2</r2dbc-spi.version>
+    <r2dbc-spi.version>0.9.0.RELEASE</r2dbc-spi.version>
     <reactor.version>2020.0.9</reactor.version>
-    <mariadb-jdbc.version>3.0.1-beta</mariadb-jdbc.version>
+    <mariadb-jdbc.version>3.0.3</mariadb-jdbc.version>
     <uberjar.name>benchmarks</uberjar.name>
   </properties>
 
@@ -112,6 +112,18 @@
       <version>${r2dbc-spi.version}</version>
     </dependency>
     <dependency>
+      <groupId>io.r2dbc</groupId>
+      <artifactId>r2dbc-spi-test</artifactId>
+      <version>${r2dbc-spi.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mariadb.jdbc</groupId>
+      <artifactId>mariadb-java-client</artifactId>
+      <version>${mariadb-jdbc.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>io.projectreactor</groupId>
       <artifactId>reactor-core</artifactId>
     </dependency>
@@ -142,16 +154,6 @@
       <artifactId>reactor-test</artifactId>
       <scope>test</scope>
     </dependency>
-<!--    <dependency>-->
-<!--      <groupId>org.junit.jupiter</groupId>-->
-<!--      <artifactId>junit-jupiter-api</artifactId>-->
-<!--      <scope>test</scope>-->
-<!--    </dependency>-->
-<!--    <dependency>-->
-<!--      <groupId>org.junit.jupiter</groupId>-->
-<!--      <artifactId>junit-jupiter-params</artifactId>-->
-<!--      <scope>test</scope>-->
-<!--    </dependency>-->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
@@ -386,11 +388,6 @@
           <groupId>org.openjdk.jmh</groupId>
           <artifactId>jmh-generator-annprocess</artifactId>
           <version>${jmh.version}</version>
-        </dependency>
-        <dependency>
-          <groupId>org.mariadb.jdbc</groupId>
-          <artifactId>mariadb-java-client</artifactId>
-          <version>${mariadb-jdbc.version}</version>
         </dependency>
         <dependency>
           <groupId>ch.qos.logback</groupId>

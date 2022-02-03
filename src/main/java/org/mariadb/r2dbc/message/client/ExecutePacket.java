@@ -7,9 +7,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.r2dbc.spi.Parameter;
 import java.util.Map;
-import org.mariadb.r2dbc.codec.Codec;
-import org.mariadb.r2dbc.codec.Codecs;
-import org.mariadb.r2dbc.codec.list.StringCodec;
+import org.mariadb.r2dbc.codec.ParameterWithCodec;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.MessageSequence;
@@ -17,13 +15,13 @@ import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 
 public final class ExecutePacket implements ClientMessage {
-  private final Parameter[] parameters;
-  private final Codec<?>[] codecs;
+  private final ParameterWithCodec[] parameters;
   private final int statementId;
   private final int parameterCount;
   private final MessageSequence sequencer = new Sequencer((byte) 0xff);
 
-  public ExecutePacket(ServerPrepareResult prepareResult, Map<Integer, Parameter> parameters) {
+  public ExecutePacket(
+      ServerPrepareResult prepareResult, Map<Integer, ParameterWithCodec> parameters) {
     // validate parameters
     if (prepareResult != null) {
       this.statementId = prepareResult.getStatementId();
@@ -41,42 +39,14 @@ public final class ExecutePacket implements ClientMessage {
       this.parameterCount = parameterCount;
     }
 
-    this.codecs = new Codec<?>[parameterCount];
-    this.parameters = new Parameter[parameterCount];
+    this.parameters = new ParameterWithCodec[parameterCount];
 
     for (int i = 0; i < this.parameterCount; i++) {
-
-      Parameter p = parameters.get(i);
+      ParameterWithCodec p = parameters.get(i);
       if (p == null) {
         throw new IllegalArgumentException(String.format("Parameter at position %s is not set", i));
       }
       this.parameters[i] = p;
-      if (p instanceof Parameter.In) {
-        if (p.getValue() == null) {
-          if (p.getType() != null) {
-            try {
-              codecs[i] = Codecs.codecByClass(p.getType().getJavaType(), i);
-            } catch (IllegalArgumentException e) {
-              codecs[i] = StringCodec.INSTANCE;
-            }
-          } else {
-            codecs[i] = StringCodec.INSTANCE;
-          }
-        } else {
-          codecs[i] = Codecs.codecByClass(p.getValue().getClass(), i);
-        }
-      } else {
-        // out parameter
-        if (p.getType() != null) {
-          try {
-            codecs[i] = Codecs.codecByClass(p.getType().getJavaType(), i);
-          } catch (IllegalArgumentException e) {
-            codecs[i] = StringCodec.INSTANCE;
-          }
-        } else {
-          codecs[i] = StringCodec.INSTANCE;
-        }
-      }
     }
   }
 
@@ -107,7 +77,7 @@ public final class ExecutePacket implements ClientMessage {
       buf.writeByte(0x01); // Send Parameter type flag
       // Store types of parameters in first in first package that is sent to the server.
       for (int i = 0; i < parameterCount; i++) {
-        buf.writeShortLE(codecs[i].getBinaryEncodeType().get());
+        buf.writeShortLE(parameters[i].getCodec().getBinaryEncodeType().get());
       }
     }
 
@@ -115,7 +85,7 @@ public final class ExecutePacket implements ClientMessage {
     for (int i = 0; i < parameterCount; i++) {
       Parameter p = parameters[i];
       if (p.getValue() != null) {
-        codecs[i].encodeBinary(buf, context, p.getValue());
+        parameters[i].getCodec().encodeBinary(buf, context, p.getValue());
       }
     }
     return buf;

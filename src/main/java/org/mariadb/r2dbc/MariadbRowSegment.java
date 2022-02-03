@@ -15,7 +15,7 @@ public class MariadbRowSegment extends MariadbReadable
     implements Result.RowSegment, Row, MariadbDataSegment {
   private MariadbRowMetadata meta = null;
 
-  MariadbRowSegment(RowDecoder decoder, List<ColumnDefinitionPacket> metadataList) {
+  public MariadbRowSegment(RowDecoder decoder, List<ColumnDefinitionPacket> metadataList) {
     super(decoder, metadataList);
   }
 

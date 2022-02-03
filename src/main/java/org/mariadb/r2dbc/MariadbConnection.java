@@ -64,6 +64,9 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
   @Override
   public Mono<Void> createSavepoint(String name) {
     Assert.requireNonNull(name, "name must not be null");
+    if (isAutoCommit()) {
+      return this.client.beginTransaction().then(this.client.createSavepoint(name));
+    }
     return this.client.createSavepoint(name);
   }
 
@@ -73,14 +76,11 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
     if (sql.trim().isEmpty()) {
       throw new IllegalArgumentException("Statement cannot be empty.");
     }
-    if (MariadbSimpleQueryStatement.supports(sql, this.client)) {
-      return new MariadbSimpleQueryStatement(this.client, sql);
-    } else {
-      if (this.configuration.useServerPrepStmts() || sql.contains("call")) {
-        return new MariadbServerParameterizedQueryStatement(this.client, sql, this.configuration);
-      }
-      return new MariadbClientParameterizedQueryStatement(this.client, sql, this.configuration);
+
+    if (this.configuration.useServerPrepStmts() || sql.contains("call")) {
+      return new MariadbServerParameterizedQueryStatement(this.client, sql, this.configuration);
     }
+    return new MariadbClientParameterizedQueryStatement(this.client, sql, this.configuration);
   }
 
   @Override
@@ -95,7 +95,7 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
 
   @Override
   public boolean isAutoCommit() {
-    return this.client.isAutoCommit();
+    return this.client.isAutoCommit() && !this.client.isInTransaction();
   }
 
   @Override
@@ -195,6 +195,9 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
 
   @Override
   public Mono<Boolean> validate(ValidationDepth depth) {
+    if (this.client.isCloseRequested()) {
+      return Mono.just(false);
+    }
     if (depth == ValidationDepth.LOCAL) {
       return Mono.just(this.client.isConnected());
     }

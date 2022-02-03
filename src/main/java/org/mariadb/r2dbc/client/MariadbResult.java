@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2020-2021 MariaDB Corporation Ab
 
-package org.mariadb.r2dbc;
+package org.mariadb.r2dbc.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -21,6 +21,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.codec.BinaryRowDecoder;
 import org.mariadb.r2dbc.codec.RowDecoder;
 import org.mariadb.r2dbc.codec.TextRowDecoder;
@@ -33,7 +34,7 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.SynchronousSink;
 
-final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
+public final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
 
   private final Flux<ServerMessage> dataRows;
   private final ExceptionFactory factory;
@@ -47,7 +48,7 @@ final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult {
 
   private volatile MariadbDataSegment segment;
 
-  MariadbResult(
+  public MariadbResult(
       boolean text,
       AtomicReference<ServerPrepareResult> prepareResult,
       Flux<ServerMessage> dataRows,

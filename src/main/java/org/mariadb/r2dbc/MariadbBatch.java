@@ -10,6 +10,7 @@ import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.util.Assert;
+import org.mariadb.r2dbc.util.ClientPrepareResult;
 import reactor.core.publisher.Flux;
 
 /** Basic implementation for batch. //TODO implement bulk */
@@ -28,9 +29,12 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
   public MariadbBatch add(String sql) {
     Assert.requireNonNull(sql, "sql must not be null");
 
-    if (!MariadbSimpleQueryStatement.supports(sql, this.client)) {
-      throw new IllegalArgumentException(
-          String.format("Statement with parameters cannot be batched (sql:'%s')", sql));
+    // ensure commands doesn't have parameters
+    if (sql.contains("?") || sql.contains(":")) {
+      if (ClientPrepareResult.hasParameter(sql, client.noBackslashEscapes())) {
+        throw new IllegalArgumentException(
+            String.format("Statement with parameters cannot be batched (sql:'%s')", sql));
+      }
     }
 
     this.statements.add(sql);
@@ -40,8 +44,7 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
   @Override
   public Flux<MariadbResult> execute() {
     if (configuration.allowMultiQueries()) {
-      return new MariadbSimpleQueryStatement(this.client, String.join(";", this.statements))
-          .execute();
+      return this.client.executeSimpleCommand(String.join(";", this.statements));
     } else {
 
       Flux<Flux<ServerMessage>> fluxMsg =
@@ -60,7 +63,7 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
           .windowUntil(it -> it.resultSetEnd())
           .map(
               dataRow ->
-                  new org.mariadb.r2dbc.MariadbResult(
+                  new org.mariadb.r2dbc.client.MariadbResult(
                       true,
                       null,
                       dataRow,

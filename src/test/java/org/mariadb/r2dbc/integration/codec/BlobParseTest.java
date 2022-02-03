@@ -82,8 +82,9 @@ public class BlobParseTest extends BaseConnectionTest {
                       row.get(1);
                       return row.get(0);
                     }))
-        .cast(Blob.class)
-        .flatMap(Blob::stream)
+        //        .cast(Blob.class)
+        //        .flatMap(Blob::stream)
+        .cast(ByteBuffer.class)
         .as(StepVerifier::create)
         .consumeNextWith(consumer)
         .consumeNextWith(consumer)
@@ -522,7 +523,7 @@ public class BlobParseTest extends BaseConnectionTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
         .as(StepVerifier::create)
-        .expectNextMatches(c -> c.equals(Blob.class))
+        .expectNextMatches(c -> c.equals(ByteBuffer.class))
         .verifyComplete();
     connection
         .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")

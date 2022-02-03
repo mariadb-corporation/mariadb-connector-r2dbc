@@ -5,6 +5,7 @@ import io.r2dbc.spi.R2dbcType;
 import io.r2dbc.spi.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -29,7 +30,7 @@ public enum MariadbType implements Type {
   BIT("BIT", BitSet.class, BitSetCodec.INSTANCE),
   BOOLEAN(R2dbcType.BOOLEAN.getName(), Boolean.class, BooleanCodec.INSTANCE),
   BYTES("BYTES", byte[].class, ByteArrayCodec.INSTANCE),
-  BLOB(R2dbcType.BLOB.getName(), Blob.class, BlobCodec.INSTANCE),
+  BLOB(R2dbcType.BLOB.getName(), ByteBuffer.class, ByteBufferCodec.INSTANCE),
   VARCHAR(R2dbcType.VARCHAR.getName(), String.class, StringCodec.INSTANCE),
   CLOB(R2dbcType.CLOB.getName(), String.class, StringCodec.INSTANCE),
   BINARY(R2dbcType.BINARY.getName(), Blob.class, BlobCodec.INSTANCE),

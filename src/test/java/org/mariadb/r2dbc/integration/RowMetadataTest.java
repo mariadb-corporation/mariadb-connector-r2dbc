@@ -8,10 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import io.r2dbc.spi.ColumnMetadata;
 import io.r2dbc.spi.Nullability;
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -73,11 +70,11 @@ public class RowMetadataTest extends BaseConnectionTest {
 
                       assertArrayEquals(expected.toArray(), metadata.getColumnNames().toArray());
                       this.assertThrows(
-                          IllegalArgumentException.class,
+                          IndexOutOfBoundsException.class,
                           () -> metadata.getColumnMetadata(-1),
                           "Column index -1 is not in permit range[0,5]");
                       this.assertThrows(
-                          IllegalArgumentException.class,
+                          IndexOutOfBoundsException.class,
                           () -> metadata.getColumnMetadata(6),
                           "Column index 6 is not in permit range[0,5]");
                       ColumnMetadata colMeta = metadata.getColumnMetadata(0);
@@ -112,7 +109,7 @@ public class RowMetadataTest extends BaseConnectionTest {
                       assertEquals("t2", colMeta.getName());
 
                       this.assertThrows(
-                          IllegalArgumentException.class,
+                          NoSuchElementException.class,
                           () -> metadata.getColumnMetadata("wrongName"),
                           "Column name 'wrongName' does not exist in column names [t1Alias, t2, t3, t4, t5, t6]");
 

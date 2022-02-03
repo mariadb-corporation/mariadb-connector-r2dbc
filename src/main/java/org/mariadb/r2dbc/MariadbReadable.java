@@ -2,10 +2,7 @@ package org.mariadb.r2dbc;
 
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Readable;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import org.mariadb.r2dbc.codec.RowDecoder;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.util.Assert;
@@ -35,10 +32,10 @@ public class MariadbReadable implements Readable {
 
   private ColumnDefinitionPacket getColumnsDef(int index) {
     if (index < 0) {
-      throw new IllegalArgumentException(String.format("Column index %d must be positive", index));
+      throw new IndexOutOfBoundsException(String.format("Column index %d must be positive", index));
     }
     if (index >= this.metadataList.size()) {
-      throw new IllegalArgumentException(
+      throw new IndexOutOfBoundsException(
           String.format(
               "Column index %d not in range [0-%s]", index, this.metadataList.size() - 1));
     }
@@ -57,7 +54,7 @@ public class MariadbReadable implements Readable {
     for (ColumnDefinitionPacket columnDef : this.metadataList) {
       columnNames.add(columnDef.getName());
     }
-    throw new IllegalArgumentException(
+    throw new NoSuchElementException(
         String.format(
             "Column name '%s' does not exist in column names %s",
             name, Collections.unmodifiableCollection(columnNames)));

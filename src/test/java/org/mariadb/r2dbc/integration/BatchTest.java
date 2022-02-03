@@ -160,7 +160,7 @@ public class BatchTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     assertThrows(
-        IllegalArgumentException.class,
+        IllegalStateException.class,
         () ->
             conn.createStatement("INSERT INTO basicBatch2 VALUES (?, ?)")
                 .bind(0, 1)

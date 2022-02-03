@@ -20,7 +20,7 @@ final class MariadbRowMetadata implements RowMetadata {
   @Override
   public ColumnDefinitionPacket getColumnMetadata(int index) {
     if (index < 0 || index >= this.metadataList.size()) {
-      throw new IllegalArgumentException(
+      throw new IndexOutOfBoundsException(
           String.format(
               "Column index %d is not in permit range[0,%s]", index, this.metadataList.size() - 1));
     }
@@ -39,7 +39,7 @@ final class MariadbRowMetadata implements RowMetadata {
         return i;
       }
     }
-    throw new IllegalArgumentException(
+    throw new NoSuchElementException(
         String.format(
             "Column name '%s' does not exist in column names %s", name, getColumnNames()));
   }

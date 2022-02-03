@@ -10,9 +10,7 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
-import io.r2dbc.spi.R2dbcTransientResourceException;
-import io.r2dbc.spi.TransactionDefinition;
+import io.r2dbc.spi.*;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -30,6 +28,7 @@ import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.message.client.QuitPacket;
 import org.mariadb.r2dbc.message.client.SslRequestPacket;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
+import org.mariadb.r2dbc.message.server.RowPacket;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
@@ -51,6 +50,7 @@ public abstract class ClientBase implements Client {
   protected final HostAddress hostAddress;
   protected final Queue<CmdElement> responseReceivers = Queues.<CmdElement>unbounded().get();
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
+  private volatile boolean closeRequested = false;
   private final MariadbPacketDecoder mariadbPacketDecoder;
   private final MariadbPacketEncoder mariadbPacketEncoder = new MariadbPacketEncoder();
   protected volatile Context context;
@@ -132,6 +132,7 @@ public abstract class ClientBase implements Client {
 
   @Override
   public Mono<Void> close() {
+    closeRequested = true;
     return Mono.defer(
         () -> {
           if (this.isClosed.compareAndSet(false, true)) {
@@ -241,6 +242,24 @@ public abstract class ClientBase implements Client {
     } finally {
       lock.unlock();
     }
+  }
+
+  public Flux<org.mariadb.r2dbc.api.MariadbResult> executeSimpleCommand(String sql) {
+    Flux<ServerMessage> response = this.sendCommand(new QueryPacket(sql));
+    Flux<org.mariadb.r2dbc.api.MariadbResult> flux =
+        response
+            .windowUntil(it -> it.resultSetEnd())
+            .map(
+                dataRow ->
+                    new MariadbResult(
+                        true,
+                        null,
+                        dataRow,
+                        ExceptionFactory.withSql(sql),
+                        null,
+                        getVersion().supportReturning(),
+                        getConf()));
+    return flux.doOnDiscard(RowPacket.class, RowPacket::release);
   }
 
   /**
@@ -393,6 +412,11 @@ public abstract class ClientBase implements Client {
   }
 
   @Override
+  public boolean isInTransaction() {
+    return (this.context.getServerStatus() & ServerStatus.IN_TRANSACTION) > 0;
+  }
+
+  @Override
   public boolean noBackslashEscapes() {
     return (this.context.getServerStatus() & ServerStatus.NO_BACKSLASH_ESCAPES) > 0;
   }
@@ -408,6 +432,11 @@ public abstract class ClientBase implements Client {
       return false;
     }
     return this.connection.channel().isOpen();
+  }
+
+  @Override
+  public boolean isCloseRequested() {
+    return this.closeRequested;
   }
 
   private void closedServlet() {

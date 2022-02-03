@@ -5,11 +5,8 @@ package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.r2dbc.spi.Parameter;
 import java.nio.charset.StandardCharsets;
-import org.mariadb.r2dbc.codec.Codec;
-import org.mariadb.r2dbc.codec.Codecs;
-import org.mariadb.r2dbc.codec.list.StringCodec;
+import org.mariadb.r2dbc.codec.ParameterWithCodec;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.MessageSequence;
@@ -20,28 +17,16 @@ import org.mariadb.r2dbc.util.ClientPrepareResult;
 public final class QueryWithParametersPacket implements ClientMessage {
 
   private final ClientPrepareResult prepareResult;
-  private final Parameter[] parameters;
-  private final Codec<?>[] codecs;
+  private final ParameterWithCodec[] parameters;
   private final String[] generatedColumns;
   private final MessageSequence sequencer = new Sequencer((byte) 0xff);
 
   public QueryWithParametersPacket(
-      ClientPrepareResult prepareResult, Parameter[] parameters, String[] generatedColumns) {
+      ClientPrepareResult prepareResult,
+      ParameterWithCodec[] parameters,
+      String[] generatedColumns) {
     this.prepareResult = prepareResult;
-
     this.parameters = parameters;
-    this.codecs = new Codec<?>[parameters.length];
-
-    for (int i = 0; i < parameters.length; i++) {
-      Parameter p = parameters[i];
-      if (p instanceof Parameter.In) {
-        if (p.getValue() == null) {
-          codecs[i] = StringCodec.INSTANCE;
-        } else {
-          codecs[i] = Codecs.codecByClass(p.getValue().getClass(), i);
-        }
-      }
-    }
     this.generatedColumns = generatedColumns;
   }
 
@@ -69,7 +54,7 @@ public final class QueryWithParametersPacket implements ClientMessage {
         if (parameters[i].getValue() == null) {
           out.writeBytes("null".getBytes(StandardCharsets.US_ASCII));
         } else {
-          codecs[i].encodeText(out, context, parameters[i].getValue());
+          parameters[i].getCodec().encodeText(out, context, parameters[i].getValue());
         }
         out.writeBytes(prepareResult.getQueryParts().get(i + 1));
       }
