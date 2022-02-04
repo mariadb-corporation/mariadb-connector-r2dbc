@@ -189,7 +189,10 @@ public class BigIntegerParseTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && throwable.getMessage().equals("byte overflow"))
+                    && throwable.getMessage().equals("byte overflow")
+                    && ((R2dbcNonTransientResourceException) throwable)
+                        .getSql()
+                        .equals("SELECT t1 FROM BigIntTable WHERE 1 = ? LIMIT 3"))
         .verify();
     connection
         .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ? LIMIT 3")

@@ -199,7 +199,8 @@ public final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult 
           }
 
           ByteBuf buf = getLongTextEncoded(okPacket.getLastInsertId());
-          segment = new MariadbRowSegment(new TextRowDecoder(tmpCol, this.conf), tmpCol);
+          segment =
+              new MariadbRowSegment(new TextRowDecoder(tmpCol, this.conf, this.factory), tmpCol);
           segment.updateRaw(buf);
           sink.next(segment);
         } else sink.next(okPacket);
@@ -209,8 +210,8 @@ public final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult 
       if (serverMessage instanceof EofPacket) {
         RowDecoder decoder =
             text
-                ? new TextRowDecoder(columns, this.conf)
-                : new BinaryRowDecoder(columns, this.conf);
+                ? new TextRowDecoder(columns, this.conf, this.factory)
+                : new BinaryRowDecoder(columns, this.conf, this.factory);
         boolean outputParameter =
             (((EofPacket) serverMessage).getServerStatus() & ServerStatus.PS_OUT_PARAMETERS) > 0;
         segment =

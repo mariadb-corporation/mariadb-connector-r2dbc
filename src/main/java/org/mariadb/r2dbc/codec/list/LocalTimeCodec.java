@@ -4,13 +4,13 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -29,7 +29,8 @@ public class LocalTimeCodec implements Codec<LocalTime> {
           DataType.TEXT,
           DataType.STRING);
 
-  public static int[] parseTime(ByteBuf buf, int length, ColumnDefinitionPacket column) {
+  public static int[] parseTime(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, ExceptionFactory factory) {
     int initialPos = buf.readerIndex();
     int[] parts = new int[5];
     int idx = 1;
@@ -52,7 +53,7 @@ public class LocalTimeCodec implements Codec<LocalTime> {
       if (b < '0' || b > '9') {
         buf.readerIndex(initialPos);
         String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-        throw new R2dbcNonTransientResourceException(
+        throw factory.createParsingException(
             String.format("%s value '%s' cannot be decoded as Time", column.getDataType(), val));
       }
       partLength++;
@@ -62,7 +63,7 @@ public class LocalTimeCodec implements Codec<LocalTime> {
     if (idx < 2) {
       buf.readerIndex(initialPos);
       String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
-      throw new R2dbcNonTransientResourceException(
+      throw factory.createParsingException(
           String.format("%s value '%s' cannot be decoded as Time", column.getDataType(), val));
     }
 
@@ -86,7 +87,11 @@ public class LocalTimeCodec implements Codec<LocalTime> {
 
   @Override
   public LocalTime decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalTime> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends LocalTime> type,
+      ExceptionFactory factory) {
 
     int[] parts;
     switch (column.getDataType()) {
@@ -99,7 +104,7 @@ public class LocalTimeCodec implements Codec<LocalTime> {
         return LocalTime.of(parts[3], parts[4], parts[5], parts[6]);
 
       case TIME:
-        parts = parseTime(buf, length, column);
+        parts = parseTime(buf, length, column, factory);
         parts[1] = parts[1] % 24;
         if (parts[0] == 1) {
           // negative
@@ -120,7 +125,7 @@ public class LocalTimeCodec implements Codec<LocalTime> {
             return LocalTime.parse(val);
           }
         } catch (DateTimeParseException e) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format(
                   "value '%s' (%s) cannot be decoded as LocalTime", val, column.getDataType()));
         }
@@ -129,7 +134,11 @@ public class LocalTimeCodec implements Codec<LocalTime> {
 
   @Override
   public LocalTime decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalTime> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends LocalTime> type,
+      ExceptionFactory factory) {
 
     int hour = 0;
     int minutes = 0;
@@ -183,7 +192,7 @@ public class LocalTimeCodec implements Codec<LocalTime> {
             return LocalTime.parse(val);
           }
         } catch (DateTimeParseException e) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format(
                   "value '%s' (%s) cannot be decoded as LocalTime", val, column.getDataType()));
         }
@@ -191,7 +200,7 @@ public class LocalTimeCodec implements Codec<LocalTime> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value) {
+  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     LocalTime val = (LocalTime) value;
     StringBuilder dateString = new StringBuilder(15);
     dateString
@@ -218,7 +227,7 @@ public class LocalTimeCodec implements Codec<LocalTime> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object val) {
+  public void encodeBinary(ByteBuf buf, Context context, Object val, ExceptionFactory factory) {
     LocalTime value = (LocalTime) val;
     int nano = value.getNano();
     if (nano > 0) {

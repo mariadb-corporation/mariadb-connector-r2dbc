@@ -84,7 +84,10 @@ public class DateParameterTest extends BaseConnectionTest {
           .expectErrorMatches(
               throwable ->
                   throwable instanceof R2dbcBadGrammarException
-                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
+                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007")
+                      && ((R2dbcBadGrammarException) throwable)
+                          .getSql()
+                          .equals("INSERT INTO DateParam VALUES (?,?,?)"))
           .verify();
     }
   }

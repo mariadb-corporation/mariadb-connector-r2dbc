@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -63,7 +64,11 @@ public class StringCodec implements Codec<String> {
 
   @Override
   public String decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends String> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends String> type,
+      ExceptionFactory factory) {
     if (column.getDataType() == DataType.BIT) {
 
       byte[] bytes = new byte[length];
@@ -89,7 +94,11 @@ public class StringCodec implements Codec<String> {
 
   @Override
   public String decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends String> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends String> type,
+      ExceptionFactory factory) {
     String rawValue;
     switch (column.getDataType()) {
       case BIT:
@@ -249,12 +258,12 @@ public class StringCodec implements Codec<String> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value) {
+  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     BufferUtils.write(buf, ((String) value), true, context);
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     byte[] b = ((String) value).getBytes(StandardCharsets.UTF_8);
     BufferUtils.writeLengthEncode(b.length, buf);
     buf.writeBytes(b);

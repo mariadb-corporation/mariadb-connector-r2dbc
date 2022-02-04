@@ -25,11 +25,19 @@ public final class ExceptionFactory {
     return createException(error.message(), error.sqlState(), error.errorCode(), sql);
   }
 
+  public R2dbcException createParsingException(String message) {
+    return new R2dbcNonTransientResourceException(message, "H1000", 9000, this.sql);
+  }
+
+  public R2dbcException createParsingException(String message, Throwable cause) {
+    return new R2dbcNonTransientResourceException(message, "H1000", 9000, this.sql, cause);
+  }
+
   public static R2dbcException createException(
       String message, String sqlState, int errorCode, String sql) {
 
     if ("70100".equals(sqlState) || errorCode == 3024) { // ER_QUERY_INTERRUPTED
-      return new R2dbcTimeoutException(message, sqlState, errorCode);
+      return new R2dbcTimeoutException(message, sqlState, errorCode, sql);
     }
 
     String sqlClass = sqlState.substring(0, 2);
@@ -44,17 +52,18 @@ public final class ExceptionFactory {
         return new R2dbcBadGrammarException(message, sqlState, errorCode, sql);
       case "25":
       case "28":
-        return new R2dbcPermissionDeniedException(message, sqlState, errorCode);
+        return new R2dbcPermissionDeniedException(message, sqlState, errorCode, sql);
       case "21":
       case "23":
-        return new R2dbcDataIntegrityViolationException(message, sqlState, errorCode);
+        return new R2dbcDataIntegrityViolationException(message, sqlState, errorCode, sql);
+      case "H1":
       case "08":
-        return new R2dbcNonTransientResourceException(message, sqlState, errorCode);
+        return new R2dbcNonTransientResourceException(message, sqlState, errorCode, sql);
       case "40":
-        return new R2dbcRollbackException(message, sqlState, errorCode);
+        return new R2dbcRollbackException(message, sqlState, errorCode, sql);
     }
 
-    return new R2dbcTransientResourceException(message, sqlState, errorCode);
+    return new R2dbcTransientResourceException(message, sqlState, errorCode, sql);
   }
 
   public R2dbcException createException(String message, String sqlState, int errorCode) {

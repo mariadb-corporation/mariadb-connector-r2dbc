@@ -7,6 +7,7 @@ import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -35,7 +36,11 @@ public class DurationCodec implements Codec<Duration> {
 
   @Override
   public Duration decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Duration> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Duration> type,
+      ExceptionFactory factory) {
 
     int[] parts;
     switch (column.getDataType()) {
@@ -54,7 +59,7 @@ public class DurationCodec implements Codec<Duration> {
 
       default:
         // TIME, VARCHAR, VARSTRING, STRING:
-        parts = LocalTimeCodec.parseTime(buf, length, column);
+        parts = LocalTimeCodec.parseTime(buf, length, column, factory);
         Duration d =
             Duration.ZERO
                 .plusHours(parts[1])
@@ -68,7 +73,11 @@ public class DurationCodec implements Codec<Duration> {
 
   @Override
   public Duration decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Duration> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Duration> type,
+      ExceptionFactory factory) {
 
     long days = 0;
     int hours = 0;
@@ -124,7 +133,7 @@ public class DurationCodec implements Codec<Duration> {
 
       default:
         // VARCHAR, VARSTRING, STRING:
-        int[] parts = LocalTimeCodec.parseTime(buf, length, column);
+        int[] parts = LocalTimeCodec.parseTime(buf, length, column, factory);
         Duration d =
             Duration.ZERO
                 .plusHours(parts[1])
@@ -137,7 +146,7 @@ public class DurationCodec implements Codec<Duration> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value) {
+  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     Duration val = (Duration) value;
     long s = val.getSeconds();
     boolean negate = false;
@@ -170,7 +179,7 @@ public class DurationCodec implements Codec<Duration> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object val) {
+  public void encodeBinary(ByteBuf buf, Context context, Object val, ExceptionFactory factory) {
     Duration value = (Duration) val;
     long microSecond = value.getNano() / 1000;
     long s = Math.abs(value.getSeconds());

@@ -5,6 +5,7 @@ package org.mariadb.r2dbc.codec;
 
 import io.netty.buffer.ByteBuf;
 import java.util.List;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
@@ -15,8 +16,10 @@ public class BinaryRowDecoder extends RowDecoder {
   private byte[] nullBitmap;
 
   public BinaryRowDecoder(
-      List<ColumnDefinitionPacket> columns, MariadbConnectionConfiguration conf) {
-    super(conf);
+      List<ColumnDefinitionPacket> columns,
+      MariadbConnectionConfiguration conf,
+      ExceptionFactory factory) {
+    super(conf, factory);
     this.columns = columns;
     this.columnNumber = columns.size();
     nullBitmap = new byte[(columnNumber + 9) / 8];
@@ -40,12 +43,12 @@ public class BinaryRowDecoder extends RowDecoder {
     // type generic, return "natural" java type
     if (Object.class == type) {
       Codec<T> defaultCodec = ((Codec<T>) column.getType().getDefaultCodec());
-      return defaultCodec.decodeBinary(buf, length, column, type);
+      return defaultCodec.decodeBinary(buf, length, column, type, factory);
     }
 
     for (Codec<?> codec : Codecs.LIST) {
       if (codec.canDecode(column, type)) {
-        return ((Codec<T>) codec).decodeBinary(buf, length, column, type);
+        return ((Codec<T>) codec).decodeBinary(buf, length, column, type, factory);
       }
     }
 

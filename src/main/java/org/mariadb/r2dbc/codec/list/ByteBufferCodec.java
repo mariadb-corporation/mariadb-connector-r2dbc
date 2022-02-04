@@ -4,10 +4,10 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -36,24 +36,33 @@ public class ByteBufferCodec implements Codec<ByteBuffer> {
 
   @Override
   public ByteBuffer decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends ByteBuffer> type) {
-    return decode(buf, length, column);
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends ByteBuffer> type,
+      ExceptionFactory factory) {
+    return decode(buf, length, column, factory);
   }
 
   @Override
   public ByteBuffer decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends ByteBuffer> type) {
-    return decode(buf, length, column);
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends ByteBuffer> type,
+      ExceptionFactory factory) {
+    return decode(buf, length, column, factory);
   }
 
-  private static ByteBuffer decode(ByteBuf buf, int length, ColumnDefinitionPacket column) {
+  private static ByteBuffer decode(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, ExceptionFactory factory) {
     switch (column.getDataType()) {
       case STRING:
       case TEXT:
       case VARSTRING:
         if (!column.isBinary()) {
           buf.skipBytes(length);
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format(
                   "Data type %s (not binary) cannot be decoded as Blob", column.getDataType()));
         }
@@ -74,7 +83,7 @@ public class ByteBufferCodec implements Codec<ByteBuffer> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value) {
+  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     buf.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
 
     ByteBuffer tempVal = ((ByteBuffer) value);
@@ -90,7 +99,7 @@ public class ByteBufferCodec implements Codec<ByteBuffer> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     buf.writeByte(0xfe);
     int initialPos = buf.writerIndex();
     buf.writerIndex(buf.writerIndex() + 8); // reserve length encoded length bytes

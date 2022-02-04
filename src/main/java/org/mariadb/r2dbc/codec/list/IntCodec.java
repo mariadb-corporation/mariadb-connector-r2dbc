@@ -4,12 +4,12 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -49,7 +49,11 @@ public class IntCodec implements Codec<Integer> {
 
   @Override
   public Integer decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Integer> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Integer> type,
+      ExceptionFactory factory) {
     long result;
     switch (column.getDataType()) {
       case TINYINT:
@@ -63,7 +67,7 @@ public class IntCodec implements Codec<Integer> {
       case BIGINT:
         result = LongCodec.parse(buf, length);
         if (result < 0 & !column.isSigned()) {
-          throw new R2dbcNonTransientResourceException("integer overflow");
+          throw factory.createParsingException("integer overflow");
         }
         break;
 
@@ -82,13 +86,13 @@ public class IntCodec implements Codec<Integer> {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValueExact();
           break;
         } catch (NumberFormatException | ArithmeticException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as Integer", str));
         }
     }
 
     if ((int) result != result) {
-      throw new R2dbcNonTransientResourceException("integer overflow");
+      throw factory.createParsingException("integer overflow");
     }
 
     return (int) result;
@@ -96,7 +100,11 @@ public class IntCodec implements Codec<Integer> {
 
   @Override
   public Integer decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Integer> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Integer> type,
+      ExceptionFactory factory) {
 
     long result;
     switch (column.getDataType()) {
@@ -131,7 +139,7 @@ public class IntCodec implements Codec<Integer> {
           try {
             return val.intValueExact();
           } catch (ArithmeticException ae) {
-            throw new R2dbcNonTransientResourceException("integer overflow");
+            throw factory.createParsingException("integer overflow");
           }
         }
 
@@ -157,25 +165,25 @@ public class IntCodec implements Codec<Integer> {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValueExact();
           break;
         } catch (NumberFormatException | ArithmeticException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as Integer", str));
         }
     }
 
     if ((int) result != result || (result < 0 && !column.isSigned())) {
-      throw new R2dbcNonTransientResourceException("integer overflow");
+      throw factory.createParsingException("integer overflow");
     }
 
     return (int) result;
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value) {
+  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     BufferUtils.writeAscii(buf, Integer.toString((int) value));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     buf.writeIntLE((int) value);
   }
 

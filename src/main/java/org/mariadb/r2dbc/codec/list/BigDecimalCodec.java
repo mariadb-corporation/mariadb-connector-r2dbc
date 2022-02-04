@@ -4,11 +4,11 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -47,7 +47,11 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
 
   @Override
   public BigDecimal decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BigDecimal> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends BigDecimal> type,
+      ExceptionFactory factory) {
     switch (column.getDataType()) {
       case TINYINT:
       case SMALLINT:
@@ -75,7 +79,7 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
         try {
           return new BigDecimal(str);
         } catch (NumberFormatException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as BigDecimal", str));
         }
     }
@@ -83,7 +87,11 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
 
   @Override
   public BigDecimal decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BigDecimal> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends BigDecimal> type,
+      ExceptionFactory factory) {
 
     switch (column.getDataType()) {
       case TINYINT:
@@ -146,19 +154,19 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
         try {
           return new BigDecimal(str);
         } catch (NumberFormatException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as BigDecimal", str));
         }
     }
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value) {
+  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     BufferUtils.writeAscii(buf, ((BigDecimal) value).toPlainString());
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     String asciiFormat = ((BigDecimal) value).toPlainString();
     BufferUtils.writeLengthEncode(asciiFormat.length(), buf);
     BufferUtils.writeAscii(buf, asciiFormat);

@@ -5,11 +5,11 @@ package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -37,14 +37,22 @@ public class StreamCodec implements Codec<InputStream> {
 
   @Override
   public InputStream decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends InputStream> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends InputStream> type,
+      ExceptionFactory factory) {
     // STRING, VARCHAR, VARSTRING, BLOB, TINYBLOB, MEDIUMBLOB, LONGBLOB:
     return new ByteBufInputStream(buf.readRetainedSlice(length), true);
   }
 
   @Override
   public InputStream decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends InputStream> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends InputStream> type,
+      ExceptionFactory factory) {
     return new ByteBufInputStream(buf.readRetainedSlice(length), true);
   }
 
@@ -53,7 +61,7 @@ public class StreamCodec implements Codec<InputStream> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object is) {
+  public void encodeText(ByteBuf buf, Context context, Object is, ExceptionFactory factory) {
     try {
       buf.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
       byte[] array = new byte[4096];
@@ -63,12 +71,12 @@ public class StreamCodec implements Codec<InputStream> {
       }
       buf.writeByte('\'');
     } catch (IOException ioe) {
-      throw new R2dbcNonTransientResourceException("Failed to read InputStream", ioe);
+      throw factory.createParsingException("Failed to read InputStream", ioe);
     }
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
 
     // reserve place for length
     buf.writeByte(0xfe);
@@ -82,7 +90,7 @@ public class StreamCodec implements Codec<InputStream> {
         buf.writeBytes(array, 0, len);
       }
     } catch (IOException ioe) {
-      throw new R2dbcNonTransientResourceException("Failed to read InputStream", ioe);
+      throw factory.createParsingException("Failed to read InputStream", ioe);
     }
 
     // Write length

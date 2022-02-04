@@ -7,6 +7,7 @@ import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Clob;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -32,20 +33,28 @@ public class ClobCodec implements Codec<Clob> {
 
   @Override
   public Clob decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Clob> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Clob> type,
+      ExceptionFactory factory) {
     String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
     return Clob.from(Mono.just(rawValue));
   }
 
   @Override
   public Clob decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Clob> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Clob> type,
+      ExceptionFactory factory) {
     String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
     return Clob.from(Mono.just(rawValue));
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value) {
+  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     buf.writeByte('\'');
     Flux.from(((Clob) value).stream())
         .handle(
@@ -58,7 +67,7 @@ public class ClobCodec implements Codec<Clob> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     buf.writeByte(0xfe);
     int initialPos = buf.writerIndex();
     buf.writerIndex(buf.writerIndex() + 8); // reserve length encoded length bytes

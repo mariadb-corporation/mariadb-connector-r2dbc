@@ -4,11 +4,11 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -46,7 +46,11 @@ public class DoubleCodec implements Codec<Double> {
 
   @Override
   public Double decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Double> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Double> type,
+      ExceptionFactory factory) {
     switch (column.getDataType()) {
       case TINYINT:
       case SMALLINT:
@@ -66,7 +70,7 @@ public class DoubleCodec implements Codec<Double> {
         try {
           return Double.valueOf(str2);
         } catch (NumberFormatException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as Double", str2));
         }
     }
@@ -74,7 +78,11 @@ public class DoubleCodec implements Codec<Double> {
 
   @Override
   public Double decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Double> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Double> type,
+      ExceptionFactory factory) {
     switch (column.getDataType()) {
       case DOUBLE:
         return buf.readDoubleLE();
@@ -130,19 +138,19 @@ public class DoubleCodec implements Codec<Double> {
         try {
           return Double.valueOf(str2);
         } catch (NumberFormatException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as Double", str2));
         }
     }
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value) {
+  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     BufferUtils.writeAscii(buf, value.toString());
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     buf.writeDoubleLE((double) value);
   }
 

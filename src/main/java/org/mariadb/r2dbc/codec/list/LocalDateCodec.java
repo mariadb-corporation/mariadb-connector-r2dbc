@@ -4,12 +4,12 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -61,7 +61,11 @@ public class LocalDateCodec implements Codec<LocalDate> {
 
   @Override
   public LocalDate decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalDate> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends LocalDate> type,
+      ExceptionFactory factory) {
 
     int[] parts;
     switch (column.getDataType()) {
@@ -95,7 +99,7 @@ public class LocalDateCodec implements Codec<LocalDate> {
         String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         String[] stDatePart = val.split("-| ");
         if (stDatePart.length < 3) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format(
                   "value '%s' (%s) cannot be decoded as Date", val, column.getDataType()));
         }
@@ -106,7 +110,7 @@ public class LocalDateCodec implements Codec<LocalDate> {
           int dayOfMonth = Integer.valueOf(stDatePart[2]);
           return LocalDate.of(year, month, dayOfMonth);
         } catch (NumberFormatException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format(
                   "value '%s' (%s) cannot be decoded as Date", val, column.getDataType()));
         }
@@ -117,7 +121,11 @@ public class LocalDateCodec implements Codec<LocalDate> {
 
   @Override
   public LocalDate decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalDate> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends LocalDate> type,
+      ExceptionFactory factory) {
 
     int year = 0;
     int month = 1;
@@ -165,7 +173,7 @@ public class LocalDateCodec implements Codec<LocalDate> {
         String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         String[] stDatePart = val.split("-| ");
         if (stDatePart.length < 3) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format(
                   "value '%s' (%s) cannot be decoded as Date", val, column.getDataType()));
         }
@@ -176,7 +184,7 @@ public class LocalDateCodec implements Codec<LocalDate> {
           dayOfMonth = Integer.valueOf(stDatePart[2]);
           return LocalDate.of(year, month, dayOfMonth);
         } catch (NumberFormatException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format(
                   "value '%s' (%s) cannot be decoded as Date", val, column.getDataType()));
         }
@@ -184,7 +192,7 @@ public class LocalDateCodec implements Codec<LocalDate> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value) {
+  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     buf.writeByte('\'');
     buf.writeCharSequence(
         ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE), StandardCharsets.US_ASCII);
@@ -192,7 +200,7 @@ public class LocalDateCodec implements Codec<LocalDate> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object val) {
+  public void encodeBinary(ByteBuf buf, Context context, Object val, ExceptionFactory factory) {
     LocalDate value = (LocalDate) val;
     buf.writeByte(7); // length
     buf.writeShortLE((short) value.get(ChronoField.YEAR));

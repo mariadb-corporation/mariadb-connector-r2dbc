@@ -179,19 +179,21 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
       this.add();
       final List<Map<Integer, ParameterWithCodec>> batchParams = new ArrayList<>();
       batchParams.addAll(batchingParameters);
-
+      ExceptionFactory factory = ExceptionFactory.withSql(sql);
       Flux<ServerMessage> fluxMsg =
           prepareIfNotDone(sql)
               .flatMapMany(
                   prepResult -> {
                     Flux<ServerMessage> flux =
-                        this.client.sendCommand(new ExecutePacket(prepResult, batchParams.get(0)));
+                        this.client.sendCommand(
+                            new ExecutePacket(prepResult, batchParams.get(0), factory));
                     int index = 1;
                     while (index < batchParams.size()) {
                       flux =
                           flux.concatWith(
                               this.client.sendCommand(
-                                  new ExecutePacket(prepResult, batchParams.get(index++))));
+                                  new ExecutePacket(
+                                      prepResult, batchParams.get(index++), factory)));
                     }
                     flux =
                         flux.concatWith(
@@ -312,7 +314,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
       Map<Integer, ParameterWithCodec> parameters,
       String[] generatedColumns) {
     return this.client
-        .sendCommand(new PreparePacket(sql), new ExecutePacket(null, parameters))
+        .sendCommand(new PreparePacket(sql), new ExecutePacket(null, parameters, factory))
         .windowUntil(it -> it.resultSetEnd())
         .map(
             dataRow ->
@@ -350,7 +352,7 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
       Map<Integer, ParameterWithCodec> parameters,
       String[] generatedColumns) {
     return this.client
-        .sendCommand(new ExecutePacket(prepareResult.get(), parameters))
+        .sendCommand(new ExecutePacket(prepareResult.get(), parameters, factory))
         .windowUntil(it -> it.resultSetEnd())
         .map(
             dataRow ->

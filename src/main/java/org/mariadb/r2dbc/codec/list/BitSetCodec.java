@@ -6,6 +6,7 @@ package org.mariadb.r2dbc.codec.list;
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -42,13 +43,21 @@ public class BitSetCodec implements Codec<BitSet> {
 
   @Override
   public BitSet decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BitSet> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends BitSet> type,
+      ExceptionFactory factory) {
     return parseBit(buf, length);
   }
 
   @Override
   public BitSet decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BitSet> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends BitSet> type,
+      ExceptionFactory factory) {
     return parseBit(buf, length);
   }
 
@@ -57,7 +66,7 @@ public class BitSetCodec implements Codec<BitSet> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value) {
+  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     byte[] bytes = ((BitSet) value).toByteArray();
     revertOrder(bytes);
 
@@ -70,7 +79,7 @@ public class BitSetCodec implements Codec<BitSet> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     byte[] bytes = ((BitSet) value).toByteArray();
     revertOrder(bytes);
     BufferUtils.writeLengthEncode(bytes.length, buf);

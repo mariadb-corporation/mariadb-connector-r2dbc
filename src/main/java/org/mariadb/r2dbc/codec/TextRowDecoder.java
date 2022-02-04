@@ -4,13 +4,17 @@
 package org.mariadb.r2dbc.codec;
 
 import java.util.List;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
 public class TextRowDecoder extends RowDecoder {
 
-  public TextRowDecoder(List<ColumnDefinitionPacket> columns, MariadbConnectionConfiguration conf) {
-    super(conf);
+  public TextRowDecoder(
+      List<ColumnDefinitionPacket> columns,
+      MariadbConnectionConfiguration conf,
+      ExceptionFactory factory) {
+    super(conf, factory);
   }
 
   @SuppressWarnings("unchecked")
@@ -29,12 +33,12 @@ public class TextRowDecoder extends RowDecoder {
     // type generic, return "natural" java type
     if (Object.class == type || type == null) {
       Codec<T> defaultCodec = ((Codec<T>) column.getType().getDefaultCodec());
-      return defaultCodec.decodeText(buf, length, column, type);
+      return defaultCodec.decodeText(buf, length, column, type, factory);
     }
 
     for (Codec<?> codec : Codecs.LIST) {
       if (codec.canDecode(column, type)) {
-        return ((Codec<T>) codec).decodeText(buf, length, column, type);
+        return ((Codec<T>) codec).decodeText(buf, length, column, type, factory);
       }
     }
 

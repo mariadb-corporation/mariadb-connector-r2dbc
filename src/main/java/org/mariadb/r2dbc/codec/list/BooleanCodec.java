@@ -7,6 +7,7 @@ import io.netty.buffer.ByteBuf;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -44,7 +45,11 @@ public class BooleanCodec implements Codec<Boolean> {
 
   @Override
   public Boolean decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Boolean> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Boolean> type,
+      ExceptionFactory factory) {
     switch (column.getDataType()) {
       case BIT:
         return ByteCodec.parseBit(buf, length) != 0;
@@ -75,7 +80,11 @@ public class BooleanCodec implements Codec<Boolean> {
 
   @Override
   public Boolean decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Boolean> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Boolean> type,
+      ExceptionFactory factory) {
 
     switch (column.getDataType()) {
       case BIT:
@@ -113,12 +122,12 @@ public class BooleanCodec implements Codec<Boolean> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value) {
+  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     BufferUtils.writeAscii(buf, ((boolean) value) ? "1" : "0");
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     buf.writeByte(((Boolean) value) ? 1 : 0);
   }
 

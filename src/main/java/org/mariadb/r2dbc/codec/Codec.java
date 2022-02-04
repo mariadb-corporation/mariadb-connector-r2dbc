@@ -4,6 +4,7 @@
 package org.mariadb.r2dbc.codec;
 
 import io.netty.buffer.ByteBuf;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
@@ -13,14 +14,23 @@ public interface Codec<T> {
 
   boolean canEncode(Class<?> value);
 
-  T decodeText(ByteBuf buffer, int length, ColumnDefinitionPacket column, Class<? extends T> type);
+  T decodeText(
+      ByteBuf buffer,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends T> type,
+      ExceptionFactory factory);
 
-  void encodeText(ByteBuf buf, Context context, Object value);
+  void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory);
 
   T decodeBinary(
-      ByteBuf buffer, int length, ColumnDefinitionPacket column, Class<? extends T> type);
+      ByteBuf buffer,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends T> type,
+      ExceptionFactory factory);
 
-  void encodeBinary(ByteBuf buf, Context context, Object value);
+  void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory);
 
   DataType getBinaryEncodeType();
 }

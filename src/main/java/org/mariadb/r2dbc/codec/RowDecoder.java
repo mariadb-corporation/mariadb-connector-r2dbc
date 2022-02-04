@@ -5,8 +5,10 @@ package org.mariadb.r2dbc.codec;
 
 import io.netty.buffer.ByteBuf;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.Assert;
 
 public abstract class RowDecoder {
   protected static final int NULL_LENGTH = -1;
@@ -15,9 +17,12 @@ public abstract class RowDecoder {
   protected int length;
   protected int index;
   protected MariadbConnectionConfiguration conf;
+  protected ExceptionFactory factory;
 
-  public RowDecoder(MariadbConnectionConfiguration conf) {
+  public RowDecoder(MariadbConnectionConfiguration conf, ExceptionFactory factory) {
+    Assert.requireNonNull(factory, "missing factory parameter");
     this.conf = conf;
+    this.factory = factory;
   }
 
   public void resetRow(ByteBuf buf) {

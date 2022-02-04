@@ -4,12 +4,12 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -66,7 +66,11 @@ public class ByteCodec implements Codec<Byte> {
 
   @Override
   public Byte decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Byte> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Byte> type,
+      ExceptionFactory factory) {
 
     long result;
     switch (column.getDataType()) {
@@ -100,7 +104,7 @@ public class ByteCodec implements Codec<Byte> {
         try {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).byteValueExact();
         } catch (NumberFormatException | ArithmeticException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format(
                   "value '%s' (%s) cannot be decoded as Byte", str, column.getDataType()));
         }
@@ -108,7 +112,7 @@ public class ByteCodec implements Codec<Byte> {
     }
 
     if ((byte) result != result || (result < 0 && !column.isSigned())) {
-      throw new R2dbcNonTransientResourceException("byte overflow");
+      throw factory.createParsingException("byte overflow");
     }
 
     return (byte) result;
@@ -116,7 +120,11 @@ public class ByteCodec implements Codec<Byte> {
 
   @Override
   public Byte decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Byte> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Byte> type,
+      ExceptionFactory factory) {
 
     long result;
     switch (column.getDataType()) {
@@ -161,7 +169,7 @@ public class ByteCodec implements Codec<Byte> {
         float f = buf.readFloatLE();
         result = (long) f;
         if ((byte) result != result || (result < 0 && !column.isSigned())) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format("value '%s' (%s) cannot be decoded as Byte", f, column.getDataType()));
         }
         break;
@@ -170,7 +178,7 @@ public class ByteCodec implements Codec<Byte> {
         double d = buf.readDoubleLE();
         result = (long) d;
         if ((byte) result != result || (result < 0 && !column.isSigned())) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format("value '%s' (%s) cannot be decoded as Byte", d, column.getDataType()));
         }
         break;
@@ -185,7 +193,7 @@ public class ByteCodec implements Codec<Byte> {
         try {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).byteValueExact();
         } catch (NumberFormatException | ArithmeticException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format(
                   "value '%s' (%s) cannot be decoded as Byte", str, column.getDataType()));
         }
@@ -200,19 +208,19 @@ public class ByteCodec implements Codec<Byte> {
     }
 
     if ((byte) result != result || (result < 0 && !column.isSigned())) {
-      throw new R2dbcNonTransientResourceException("byte overflow");
+      throw factory.createParsingException("byte overflow");
     }
 
     return (byte) result;
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value) {
+  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     BufferUtils.writeAscii(buf, Integer.toString((byte) value));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value) {
+  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     buf.writeByte((byte) value);
   }
 

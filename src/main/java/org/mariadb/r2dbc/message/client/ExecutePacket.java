@@ -7,6 +7,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.r2dbc.spi.Parameter;
 import java.util.Map;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.ParameterWithCodec;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
@@ -19,9 +20,13 @@ public final class ExecutePacket implements ClientMessage {
   private final int statementId;
   private final int parameterCount;
   private final MessageSequence sequencer = new Sequencer((byte) 0xff);
+  private final ExceptionFactory factory;
 
   public ExecutePacket(
-      ServerPrepareResult prepareResult, Map<Integer, ParameterWithCodec> parameters) {
+      ServerPrepareResult prepareResult,
+      Map<Integer, ParameterWithCodec> parameters,
+      ExceptionFactory factory) {
+    this.factory = factory;
     // validate parameters
     if (prepareResult != null) {
       this.statementId = prepareResult.getStatementId();
@@ -75,7 +80,7 @@ public final class ExecutePacket implements ClientMessage {
       buf.writeBytes(nullBitsBuffer);
 
       buf.writeByte(0x01); // Send Parameter type flag
-      // Store types of parameters in first in first package that is sent to the server.
+      // Store types of parameters in first package that is sent to the server.
       for (int i = 0; i < parameterCount; i++) {
         buf.writeShortLE(parameters[i].getCodec().getBinaryEncodeType().get());
       }
@@ -85,7 +90,7 @@ public final class ExecutePacket implements ClientMessage {
     for (int i = 0; i < parameterCount; i++) {
       Parameter p = parameters[i];
       if (p.getValue() != null) {
-        parameters[i].getCodec().encodeBinary(buf, context, p.getValue());
+        parameters[i].getCodec().encodeBinary(buf, context, p.getValue(), factory);
       }
     }
     return buf;

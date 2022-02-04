@@ -4,7 +4,6 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
 import java.time.LocalDateTime;
@@ -12,6 +11,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -94,7 +94,11 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
 
   @Override
   public LocalDateTime decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalDateTime> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends LocalDateTime> type,
+      ExceptionFactory factory) {
 
     int[] parts;
     switch (column.getDataType()) {
@@ -111,7 +115,7 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
             .plusNanos(parts[6]);
 
       case TIME:
-        parts = LocalTimeCodec.parseTime(buf, length, column);
+        parts = LocalTimeCodec.parseTime(buf, length, column, factory);
         return LocalDateTime.of(1970, 1, 1, parts[1] % 24, parts[2], parts[3]).plusNanos(parts[4]);
 
       default:
@@ -123,7 +127,7 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
           return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
               .plusNanos(parts[6]);
         } catch (DateTimeException dte) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format(
                   "value '%s' (%s) cannot be decoded as LocalDateTime", val, column.getDataType()));
         }
@@ -132,7 +136,11 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
 
   @Override
   public LocalDateTime decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalDateTime> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends LocalDateTime> type,
+      ExceptionFactory factory) {
 
     int year = 1970;
     int month = 1;
@@ -185,7 +193,7 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
           return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
               .plusNanos(parts[6]);
         } catch (DateTimeException dte) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format(
                   "value '%s' (%s) cannot be decoded as LocalDateTime", val, column.getDataType()));
         }
@@ -196,7 +204,7 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value) {
+  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
     LocalDateTime val = (LocalDateTime) value;
     buf.writeByte('\'');
     buf.writeCharSequence(
@@ -206,7 +214,7 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object val) {
+  public void encodeBinary(ByteBuf buf, Context context, Object val, ExceptionFactory factory) {
     LocalDateTime value = (LocalDateTime) val;
     int nano = value.getNano();
     if (nano > 0) {

@@ -6,6 +6,7 @@ package org.mariadb.r2dbc.message.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.ParameterWithCodec;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
@@ -20,14 +21,17 @@ public final class QueryWithParametersPacket implements ClientMessage {
   private final ParameterWithCodec[] parameters;
   private final String[] generatedColumns;
   private final MessageSequence sequencer = new Sequencer((byte) 0xff);
+  private final ExceptionFactory factory;
 
   public QueryWithParametersPacket(
       ClientPrepareResult prepareResult,
       ParameterWithCodec[] parameters,
-      String[] generatedColumns) {
+      String[] generatedColumns,
+      ExceptionFactory factory) {
     this.prepareResult = prepareResult;
     this.parameters = parameters;
     this.generatedColumns = generatedColumns;
+    this.factory = factory;
   }
 
   @Override
@@ -54,7 +58,7 @@ public final class QueryWithParametersPacket implements ClientMessage {
         if (parameters[i].getValue() == null) {
           out.writeBytes("null".getBytes(StandardCharsets.US_ASCII));
         } else {
-          parameters[i].getCodec().encodeText(out, context, parameters[i].getValue());
+          parameters[i].getCodec().encodeText(out, context, parameters[i].getValue(), factory);
         }
         out.writeBytes(prepareResult.getQueryParts().get(i + 1));
       }

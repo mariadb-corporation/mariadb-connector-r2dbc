@@ -152,7 +152,7 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
     } else {
       // add current set of parameters. see https://github.com/r2dbc/r2dbc-spi/issues/229
       add();
-
+      ExceptionFactory factory = ExceptionFactory.withSql(sql);
       String[] generatedCols =
           generatedColumns != null && client.getVersion().supportReturning()
               ? generatedColumns
@@ -160,14 +160,17 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
       Flux<ServerMessage> fluxMsg =
           this.client.sendCommand(
               new QueryWithParametersPacket(
-                  prepareResult, this.batchingParameters.get(0), generatedCols));
+                  prepareResult, this.batchingParameters.get(0), generatedCols, factory));
       int index = 1;
       while (index < this.batchingParameters.size()) {
         fluxMsg =
             fluxMsg.concatWith(
                 this.client.sendCommand(
                     new QueryWithParametersPacket(
-                        prepareResult, this.batchingParameters.get(index++), generatedCols)));
+                        prepareResult,
+                        this.batchingParameters.get(index++),
+                        generatedCols,
+                        factory)));
       }
       this.batchingParameters = null;
       this.parameters = null;
@@ -214,7 +217,8 @@ final class MariadbClientParameterizedQueryStatement implements MariadbStatement
                     parameters,
                     generatedColumns != null && client.getVersion().supportReturning()
                         ? generatedColumns
-                        : null))
+                        : null,
+                    factory))
             .windowUntil(it -> it.resultSetEnd())
             .map(
                 dataRow ->

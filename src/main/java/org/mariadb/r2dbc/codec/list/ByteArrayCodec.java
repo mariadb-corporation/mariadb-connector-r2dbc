@@ -5,6 +5,7 @@ package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
@@ -36,7 +37,11 @@ public class ByteArrayCodec implements Codec<byte[]> {
 
   @Override
   public byte[] decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends byte[]> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends byte[]> type,
+      ExceptionFactory factory) {
 
     byte[] arr = new byte[length];
     buf.readBytes(arr);
@@ -45,7 +50,11 @@ public class ByteArrayCodec implements Codec<byte[]> {
 
   @Override
   public byte[] decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends byte[]> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends byte[]> type,
+      ExceptionFactory factory) {
     byte[] arr = new byte[length];
     buf.readBytes(arr);
     return arr;
@@ -56,7 +65,7 @@ public class ByteArrayCodec implements Codec<byte[]> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object val) {
+  public void encodeText(ByteBuf buf, Context context, Object val, ExceptionFactory factory) {
     byte[] value = (byte[]) val;
     buf.writeBytes(BINARY_PREFIX);
     BufferUtils.writeEscaped(buf, value, 0, value.length, context);
@@ -64,7 +73,7 @@ public class ByteArrayCodec implements Codec<byte[]> {
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object val) {
+  public void encodeBinary(ByteBuf buf, Context context, Object val, ExceptionFactory factory) {
     byte[] value = (byte[]) val;
     BufferUtils.writeLengthEncode(value.length, buf);
     buf.writeBytes(value);
