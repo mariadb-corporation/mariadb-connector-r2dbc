@@ -21,13 +21,13 @@
   <properties>
     <java.version>1.8</java.version>
     <jsr305.version>3.0.2</jsr305.version>
-    <junit.version>5.7.2</junit.version>
-    <jmh.version>1.33</jmh.version>
-    <logback.version>1.2.3</logback.version>
-    <netty.version>4.1.65.Final</netty.version>
+    <junit.version>5.8.2</junit.version>
+    <jmh.version>1.34</jmh.version>
+    <logback.version>1.2.10</logback.version>
+    <netty.version>4.1.73.Final</netty.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <r2dbc-spi.version>0.9.0.RELEASE</r2dbc-spi.version>
-    <reactor.version>2020.0.9</reactor.version>
+    <reactor.version>2020.0.15</reactor.version>
     <mariadb-jdbc.version>3.0.3</mariadb-jdbc.version>
     <uberjar.name>benchmarks</uberjar.name>
   </properties>
@@ -264,19 +264,7 @@
             <io.netty.leakDetectionLevel>paranoid</io.netty.leakDetectionLevel>
             <io.netty.leakDetection.targetRecords>1</io.netty.leakDetection.targetRecords>
           </systemPropertyVariables>
-            <argLine>
-              --add-reads org.mariadb.r2dbc=org.slf4j
-              --add-reads org.mariadb.r2dbc=ch.qos.logback.classic
-              --add-opens org.mariadb.r2dbc/org.mariadb.r2dbc.integration=ALL-UNNAMED
-              --add-opens org.mariadb.r2dbc/org.mariadb.r2dbc.integration.authentication=ALL-UNNAMED
-              --add-opens org.mariadb.r2dbc/org.mariadb.r2dbc.integration.codec=ALL-UNNAMED
-              --add-opens org.mariadb.r2dbc/org.mariadb.r2dbc.integration.parameter=ALL-UNNAMED
-              --add-opens org.mariadb.r2dbc/org.mariadb.r2dbc.tools=ALL-UNNAMED
-              --add-opens org.mariadb.r2dbc/org.mariadb.r2dbc.unit=ALL-UNNAMED
-              --add-opens org.mariadb.r2dbc/org.mariadb.r2dbc.unit.client=ALL-UNNAMED
-              --add-opens org.mariadb.r2dbc/org.mariadb.r2dbc.unit.util=ALL-UNNAMED
-              --add-reads org.mariadb.r2dbc=ALL-UNNAMED
-            </argLine>
+          <argLine>@{argLine}</argLine>
         </configuration>
       </plugin>
       <plugin>
@@ -352,7 +340,7 @@
           <plugin>
             <groupId>org.jacoco</groupId>
             <artifactId>jacoco-maven-plugin</artifactId>
-            <version>0.8.5</version>
+            <version>0.8.7</version>
             <configuration>
               <excludes>
                 <exclude>**/ed25519/**/*.class</exclude>
@@ -403,6 +391,7 @@
             <artifactId>maven-surefire-plugin</artifactId>
             <version>3.0.0-M5</version>
             <configuration>
+              <argLine>@{argLine}</argLine>
               <systemPropertyVariables>
                 <io.netty.leakDetectionLevel>DISABLED</io.netty.leakDetectionLevel>
               </systemPropertyVariables>
@@ -411,7 +400,7 @@
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>build-helper-maven-plugin</artifactId>
-            <version>3.0.0</version>
+            <version>3.3.0</version>
             <executions>
               <execution>
                 <id>add-source</id>
@@ -444,7 +433,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-shade-plugin</artifactId>
-            <version>3.2.1</version>
+            <version>3.2.4</version>
             <executions>
               <execution>
                 <phase>package</phase>
