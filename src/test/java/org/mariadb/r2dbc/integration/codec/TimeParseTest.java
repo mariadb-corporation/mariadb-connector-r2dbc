@@ -68,7 +68,7 @@ public class TimeParseTest extends BaseConnectionTest {
         .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ?")
         .bind(0, 1)
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalTime.class))))
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
         .expectNext(
             Optional.of(LocalTime.parse("18:00:00.012340")),
@@ -81,7 +81,7 @@ public class TimeParseTest extends BaseConnectionTest {
         .createStatement("SELECT t2 FROM TimeParseTest WHERE 1 = ?")
         .bind(0, 1)
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalTime.class))))
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
         .expectNext(
             Optional.of(LocalTime.parse("13:58:57.987660")),
