@@ -6,6 +6,8 @@ package org.mariadb.r2dbc.integration;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
@@ -135,7 +137,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
 
   @Test
   void parameterLengthEncoded() {
-    Assumptions.assumeTrue(maxAllowedPacket() >= 16 * 1024 * 1024);
+    Assumptions.assumeTrue(maxAllowedPacket() >= 17 * 1024 * 1024);
     char[] arr1024 = new char[1024];
     for (int i = 0; i < arr1024.length; i++) {
       arr1024[i] = (char) ('a' + (i % 10));
@@ -144,16 +146,24 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     for (int i = 0; i < arr.length; i++) {
       arr[i] = (char) ('a' + (i % 10));
     }
-
+    char[] arr2 = new char[17_000_000];
+    for (int i = 0; i < arr2.length; i++) {
+      arr2[i] = (char) ('a' + (i % 10));
+    }
     String arr1024St = String.valueOf(arr1024);
     String arrSt = String.valueOf(arr);
+    String arrSt2 = String.valueOf(arr2);
 
     sharedConnPrepare
         .createStatement("INSERT INTO parameterLengthEncoded VALUES (?, ?)")
         .bind(0, arr1024St)
         .bind(1, arrSt)
+            .add()
+            .bind(0, arr1024St)
+            .bind(1, arrSt2)
         .execute()
         .blockLast();
+    AtomicBoolean first = new AtomicBoolean(true);
     sharedConnPrepare
         .createStatement("SELECT * FROM parameterLengthEncoded WHERE 1 = ?")
         .bind(0, 1)
@@ -163,27 +173,40 @@ public class PrepareResultSetTest extends BaseConnectionTest {
                 r.map(
                     (row, metadata) -> {
                       String t0 = row.get(0, String.class);
-                      String t1 = row.get(1, String.class);
+                      if (first.get()) {
+                        String t1 = row.get(1, String.class);
+                        Assertions.assertEquals(arrSt, t1);
+                        first.set(false);
+                      } else {
+                        String t1 = row.get(1, String.class);
+                        Assertions.assertEquals(arrSt2, t1);
+                      }
                       Assertions.assertEquals(arr1024St, t0);
-                      Assertions.assertEquals(arrSt, t1);
                       return t0;
                     }))
         .as(StepVerifier::create)
         .expectNext(String.valueOf(arr1024))
         .verifyComplete();
+    first.set(true);
     sharedConnPrepare
-        .createStatement("SELECT * FROM parameterLengthEncoded /* ? */")
+        .createStatement("SELECT * FROM parameterLengthEncoded /* ? */ ")
         .execute()
         .flatMap(
             r ->
-                r.map(
-                    (row, metadata) -> {
-                      String t0 = row.get(0, String.class);
-                      String t1 = row.get(1, String.class);
-                      Assertions.assertEquals(arr1024St, t0);
-                      Assertions.assertEquals(arrSt, t1);
-                      return t0;
-                    }))
+                    r.map(
+                            (row, metadata) -> {
+                              String t0 = row.get(0, String.class);
+                              if (first.get()) {
+                                String t1 = row.get(1, String.class);
+                                Assertions.assertEquals(arrSt, t1);
+                                first.set(false);
+                              } else {
+                                String t1 = row.get(1, String.class);
+                                Assertions.assertEquals(arrSt2, t1);
+                              }
+                              Assertions.assertEquals(arr1024St, t0);
+                              return t0;
+                            }))
         .as(StepVerifier::create)
         .expectNext(String.valueOf(arr1024))
         .verifyComplete();
@@ -225,7 +248,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         sharedConnPrepare.createStatement("INSERT INTO missingParameter(t1, t2) VALUES (?, ?)");
 
     assertThrows(
-        IllegalArgumentException.class,
+            IllegalStateException.class,
         () -> stmt.bind(1, "test").execute().blockLast(),
         "Parameter at position 0 is not set");
     assertThrows(
@@ -233,7 +256,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         NoSuchElementException.class,
         () -> stmt.bind("test", null),
-        "No parameter with name 'test' found (possible values [])");
+        "No parameter with name 'test' found");
     stmt.bindNull(0, null).bind(1, "test").execute().blockLast();
 
     stmt.bind(1, "test");
@@ -507,7 +530,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         NoSuchElementException.class,
         () -> stmt.bindNull("fff", String.class),
-        "No parameter with name 'fff' found (possible values [])");
+        "No parameter with name 'fff' found (possible values [null])");
   }
 
   @Test

@@ -19,10 +19,6 @@ public class AuthenticationFlowPluginLoader {
     ServiceLoader<AuthenticationPlugin> loader =
         ServiceLoader.load(AuthenticationPlugin.class, MariadbConnection.class.getClassLoader());
 
-    if (type == null || type.isEmpty()) {
-      return null;
-    }
-
     for (AuthenticationPlugin implClass : loader) {
       if (type.equals(implClass.type())) {
         return implClass.create();

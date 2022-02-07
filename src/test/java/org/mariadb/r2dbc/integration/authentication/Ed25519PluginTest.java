@@ -185,12 +185,12 @@ public class Ed25519PluginTest extends BaseConnectionTest {
             .clone()
             .username("mysqltest1")
             .password("!Passw0rd3")
-            .restrictedAuth("mysql_native_password,dialog")
+            .restrictedAuth("mysql_native_password,dialog,mysql_clear_password")
             .build();
     assertThrows(
         R2dbcPermissionDeniedException.class,
         () -> new MariadbConnectionFactory(conf).create().block(),
-        "Unsupported authentication plugin client_ed25519. Authorized plugin: [mysql_native_password, dialog]");
+        "Unsupported authentication plugin client_ed25519. Authorized plugin: [mysql_native_password, dialog, mysql_clear_password]");
 
     MariadbConnectionConfiguration conf2 =
         TestConfiguration.defaultBuilder
@@ -201,6 +201,6 @@ public class Ed25519PluginTest extends BaseConnectionTest {
     assertThrows(
         R2dbcPermissionDeniedException.class,
         () -> new MariadbConnectionFactory(conf2).create().block(),
-        "Unsupported authentication plugin dialog. Authorized plugin: [mysql_native_password, ed25519]");
+        "Unsupported authentication plugin");
   }
 }

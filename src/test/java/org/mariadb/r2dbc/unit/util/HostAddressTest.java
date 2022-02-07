@@ -14,6 +14,11 @@ public class HostAddressTest {
     Assertions.assertEquals(2, addresses.size());
     Assertions.assertEquals(new HostAddress("host1", 3303), addresses.get(0));
     Assertions.assertEquals(new HostAddress("host2", 3305), addresses.get(1));
+
+    List<HostAddress> addresses2 = HostAddress.parse(null, 3303);
+    Assertions.assertEquals(1, addresses2.size());
+    Assertions.assertEquals(new HostAddress("localhost", 3303), addresses2.get(0));
+    Assertions.assertNotEquals(addresses.hashCode(), addresses2.hashCode());
   }
 
   @Test

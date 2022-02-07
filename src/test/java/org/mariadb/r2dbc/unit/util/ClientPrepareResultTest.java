@@ -86,6 +86,23 @@ public class ClientPrepareResultTest {
   }
 
   @Test
+  public void stringReturningParsing() throws Exception {
+    checkParsing(
+            "select * from t \t RETURNINGa()",
+            0,
+            0,
+            true,
+            false,
+            false,
+            new String[] {
+                    "select * from t \t RETURNINGa()"
+            },
+            new String[] {
+                    "select * from t \t RETURNINGa()"
+            });
+  }
+
+  @Test
   public void testRewritableWithConstantParameter() throws Exception {
     checkParsing(
         "INSERT INTO TABLE_INSERT(col1,col2,col3,col4, col5) VALUES (9, ?, 5, ?, 8) ON DUPLICATE KEY UPDATE col2=col2+10",

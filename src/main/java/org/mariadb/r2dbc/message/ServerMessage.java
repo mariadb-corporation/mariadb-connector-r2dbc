@@ -4,9 +4,6 @@
 package org.mariadb.r2dbc.message;
 
 public interface ServerMessage {
-  default MessageSequence getSequencer() {
-    return null;
-  }
 
   default boolean ending() {
     return false;

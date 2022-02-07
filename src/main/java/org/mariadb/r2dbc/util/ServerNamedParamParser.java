@@ -111,9 +111,17 @@ public class ServerNamedParamParser implements PrepareResult {
           }
           break;
 
+        case '?':
+          if (state == LexState.Normal) {
+            sb.append(queryString, lastParameterPosition, i).append("?");
+            lastParameterPosition = i + 1;
+            paramNameList.add(null);
+          }
+          break;
+
         case ':':
           if (state == LexState.Normal) {
-            sb.append(queryString.substring(lastParameterPosition, i)).append("?");
+            sb.append(queryString, lastParameterPosition, i).append("?");
             String placeholderName = "";
             while (++i < queryLength
                 && (car = query[i]) != ' '
@@ -149,7 +157,7 @@ public class ServerNamedParamParser implements PrepareResult {
     if (lastParameterPosition == 0) {
       sb.append(queryString);
     } else {
-      sb.append(queryString.substring(lastParameterPosition, queryLength));
+      sb.append(queryString, lastParameterPosition, queryLength);
     }
 
     return new ServerNamedParamParser(sb.toString(), paramNameList);

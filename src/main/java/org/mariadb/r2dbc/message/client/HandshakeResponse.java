@@ -20,7 +20,6 @@ import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.HostAddress;
-import org.mariadb.r2dbc.util.PidFactory;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 
 public final class HandshakeResponse implements ClientMessage {
@@ -167,13 +166,6 @@ public final class HandshakeResponse implements ClientMessage {
 
     BufferUtils.writeLengthEncode("_os", buf);
     BufferUtils.writeLengthEncode(System.getProperty("os.name"), buf);
-
-    final Supplier<String> pidRequest = PidFactory.getInstance();
-    String pid = pidRequest.get();
-    if (pid != null) {
-      BufferUtils.writeLengthEncode("_pid", buf);
-      BufferUtils.writeLengthEncode(pid, buf);
-    }
 
     BufferUtils.writeLengthEncode("_thread", buf);
     BufferUtils.writeLengthEncode(Long.toString(Thread.currentThread().getId()), buf);

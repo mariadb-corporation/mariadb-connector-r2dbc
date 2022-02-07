@@ -173,7 +173,6 @@ public final class InitialHandshakePacket implements ServerMessage {
     return authenticationPluginType;
   }
 
-  @Override
   public Sequencer getSequencer() {
     return sequencer;
   }
