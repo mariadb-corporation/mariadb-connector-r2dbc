@@ -140,11 +140,11 @@ public class ConnectionTest extends BaseConnectionTest {
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
-//    disableLog();
+    //    disableLog();
     MariadbConnection connection = createProxyCon();
     proxy.stop();
     connection.close().block();
-//    reInitLog();
+    //    reInitLog();
   }
 
   @Test
@@ -153,7 +153,7 @@ public class ConnectionTest extends BaseConnectionTest {
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
-//    disableLog();
+    //    disableLog();
     MariadbConnection connection = createProxyCon();
     new Timer()
         .schedule(
@@ -189,7 +189,7 @@ public class ConnectionTest extends BaseConnectionTest {
                 .as(StepVerifier::create)
                 .expectNext(Boolean.FALSE)
                 .verifyComplete();
-//            reInitLog();
+            //            reInitLog();
           }
         });
   }
@@ -514,7 +514,8 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void multiThreading() throws Throwable {
-    Assumptions.assumeTrue (!"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(
+        !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
 
     AtomicInteger completed = new AtomicInteger(0);
     ThreadPoolExecutor scheduler =

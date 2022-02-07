@@ -88,18 +88,14 @@ public class ClientPrepareResultTest {
   @Test
   public void stringReturningParsing() throws Exception {
     checkParsing(
-            "select * from t \t RETURNINGa()",
-            0,
-            0,
-            true,
-            false,
-            false,
-            new String[] {
-                    "select * from t \t RETURNINGa()"
-            },
-            new String[] {
-                    "select * from t \t RETURNINGa()"
-            });
+        "select * from t \t RETURNINGa()",
+        0,
+        0,
+        true,
+        false,
+        false,
+        new String[] {"select * from t \t RETURNINGa()"},
+        new String[] {"select * from t \t RETURNINGa()"});
   }
 
   @Test

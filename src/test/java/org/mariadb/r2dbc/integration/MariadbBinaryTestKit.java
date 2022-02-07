@@ -1,32 +1,16 @@
 package org.mariadb.r2dbc.integration;
 
-import io.r2dbc.spi.Blob;
-import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.ConnectionFactory;
-import io.r2dbc.spi.Statement;
 import io.r2dbc.spi.test.TestKit;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.NoSuchElementException;
 import javax.sql.DataSource;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.Test;
 import org.mariadb.jdbc.MariaDbDataSource;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.support.AbstractLobCreatingPreparedStatementCallback;
-import org.springframework.jdbc.support.lob.DefaultLobHandler;
-import org.springframework.jdbc.support.lob.LobCreator;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 public class MariadbBinaryTestKit implements TestKit<String> {
   private static DataSource jdbcDatasource;
@@ -106,137 +90,5 @@ public class MariadbBinaryTestKit implements TestKit<String> {
   @Override
   public String clobType() {
     return "TEXT";
-  }
-
-  @Test
-  public void blobSelect() {
-    getJdbcOperations()
-        .execute(
-            expand(TestStatement.INSERT_BLOB_VALUE_PLACEHOLDER, "?"),
-            new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
-
-              @Override
-              protected void setValues(PreparedStatement ps, LobCreator lobCreator)
-                  throws SQLException {
-                lobCreator.setBlobAsBytes(ps, 1, "test-value".getBytes(StandardCharsets.UTF_8));
-              }
-            });
-
-    // BLOB as ByteBuffer
-    Flux.usingWhen(
-            getConnectionFactory().create(),
-            connection ->
-                Flux.from(
-                        connection
-                            .createStatement(expand(TestStatement.SELECT_BLOB_VALUE))
-                            .execute())
-                    .flatMap(result -> result.map((row, rowMetadata) -> extractColumn(row)))
-                    .cast(ByteBuffer.class)
-                    .map(
-                        buffer -> {
-                          byte[] bytes = new byte[buffer.remaining()];
-                          buffer.get(bytes);
-                          return bytes;
-                        }),
-            Connection::close)
-        .as(StepVerifier::create)
-        .expectNextMatches(
-            actual -> {
-              ByteBuffer expected = ByteBuffer.wrap("test-value".getBytes(StandardCharsets.UTF_8));
-              return Arrays.equals(expected.array(), actual);
-            })
-        .verifyComplete();
-
-    // BLOB as Blob
-    Flux.usingWhen(
-            getConnectionFactory().create(),
-            connection ->
-                Flux.from(
-                        connection
-                            .createStatement(expand(TestStatement.SELECT_BLOB_VALUE))
-                            .execute())
-                    .flatMap(
-                        result ->
-                            Flux.usingWhen(
-                                result.map((row, rowMetadata) -> extractColumn(row, Blob.class)),
-                                blob -> Flux.from(blob.stream()).reduce(ByteBuffer::put),
-                                Blob::discard)),
-            Connection::close)
-        .as(StepVerifier::create)
-        .expectNextMatches(
-            actual -> {
-              ByteBuffer expected = ByteBuffer.wrap("test-value".getBytes(StandardCharsets.UTF_8));
-              return actual.compareTo(expected) == 0;
-            })
-        .verifyComplete();
-  }
-
-  @Test
-  public void compoundStatement() {
-    getJdbcOperations().execute(expand(TestStatement.INSERT_VALUE100));
-    try {
-      MariadbConnectionConfiguration confMulti =
-          TestConfiguration.defaultBuilder.clone().allowMultiQueries(true).build();
-
-      Flux.usingWhen(
-              new MariadbConnectionFactory(confMulti).create(),
-              connection ->
-                  Flux.from(
-                          connection
-                              .createStatement(expand(TestStatement.SELECT_VALUE_BATCH))
-                              .execute())
-                      .flatMap(this::extractColumns),
-              Connection::close)
-          .as(StepVerifier::create)
-          .expectNext(TestKit.collectionOf(100))
-          .as("test_value from first select")
-          .expectNext(TestKit.collectionOf(100))
-          .as("test_value from second select")
-          .verifyComplete();
-    } catch (CloneNotSupportedException e) {
-      // eat
-    }
-  }
-
-  @Test
-  public void bindFails() {
-    ((StepVerifier.FirstStep)
-            Flux.usingWhen(
-                    this.getConnectionFactory().create(),
-                    (connection) -> {
-                      Statement statement =
-                          connection.createStatement(
-                              this.expand(
-                                  TestKit.TestStatement.INSERT_VALUE_PLACEHOLDER,
-                                  this.getPlaceholder(0)));
-                      Assertions.assertThrows(
-                          IllegalArgumentException.class,
-                          () -> {
-                            statement.bind(0, (Object) null);
-                          },
-                          "bind(0, null) should fail");
-                      Assertions.assertThrows(
-                          IllegalArgumentException.class,
-                          () -> {
-                            TestKit.bind(statement, this.getIdentifier(0), (Object) null);
-                          },
-                          "bind(identifier, null) should fail");
-                      Assertions.assertThrows(
-                          IllegalArgumentException.class,
-                          () -> {
-                            TestKit.bind(statement, this.getIdentifier(0), Class.class);
-                          },
-                          "bind(identifier, Class.class) should fail");
-                      Assertions.assertThrows(
-                          NoSuchElementException.class,
-                          () -> {
-                            statement.bind("unknown-placeholder", "");
-                          },
-                          "bind(unknown-placeholder, \"\") should fail");
-                      return Mono.empty();
-                    },
-                    Connection::close)
-                .as(StepVerifier::create))
-        .verifyComplete();
   }
 }

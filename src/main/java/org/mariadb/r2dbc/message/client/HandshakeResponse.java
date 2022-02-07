@@ -10,7 +10,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Properties;
-import java.util.function.Supplier;
 import org.mariadb.r2dbc.MariadbConnectionFactoryProvider;
 import org.mariadb.r2dbc.authentication.addon.ClearPasswordPluginFlow;
 import org.mariadb.r2dbc.authentication.standard.NativePasswordPluginFlow;

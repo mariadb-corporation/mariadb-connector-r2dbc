@@ -106,12 +106,12 @@ public final class MariadbConnectionConfiguration {
     this.rsaPublicKey = rsaPublicKey;
     this.cachingRsaPublicKey = cachingRsaPublicKey;
     this.allowPublicKeyRetrieval = allowPublicKeyRetrieval;
-    this.useServerPrepStmts = useServerPrepStmts;
     this.prepareCacheSize = (prepareCacheSize == null) ? 250 : prepareCacheSize.intValue();
     this.pamOtherPwd = pamOtherPwd;
     this.autocommit = autocommit;
     this.tinyInt1isBit = tinyInt1isBit;
     this.loopResources = loopResources != null ? loopResources : TcpResources.get();
+    this.useServerPrepStmts = this.allowMultiQueries ? false : useServerPrepStmts;
   }
 
   static boolean boolValue(Object value) {

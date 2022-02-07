@@ -104,7 +104,7 @@ public class ConfigurationTest extends BaseTest {
     Assertions.assertTrue(factory.toString().contains("serverSslCert=" + serverSslCert));
     Assertions.assertTrue(factory.toString().contains("clientSslCert=" + clientSslCert));
     Assertions.assertTrue(factory.toString().contains("allowPipelining=true"));
-    Assertions.assertTrue(factory.toString().contains("useServerPrepStmts=true"));
+    Assertions.assertTrue(factory.toString().contains("useServerPrepStmts=false"));
     Assertions.assertTrue(factory.toString().contains("prepareCacheSize=2560"));
     Assertions.assertTrue(factory.toString().contains("sslMode=TRUST"));
     Assertions.assertTrue(factory.toString().contains("connectionAttributes={test=2, h=4}"));
