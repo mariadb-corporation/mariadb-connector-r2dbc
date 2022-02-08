@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 package org.mariadb.r2dbc.authentication.standard.ed25519.math.ed25519;
 
 import org.mariadb.r2dbc.authentication.standard.ed25519.math.Encoding;
