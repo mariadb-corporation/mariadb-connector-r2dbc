@@ -171,56 +171,60 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
               : " RETURNING " + String.join(", ", generatedColumns);
       prepareResult.set(client.getPrepareCache().get(sql));
     }
+    ExceptionFactory factory = ExceptionFactory.withSql(sql);
 
     if (batchingParameters == null) {
       validateParameters();
-      return executeSingleQuery(sql, this.generatedColumns);
+      return executeSingleQuery(sql, this.generatedColumns, factory);
     } else {
       this.add();
       final List<Map<Integer, ParameterWithCodec>> batchParams = new ArrayList<>();
       batchParams.addAll(batchingParameters);
-      ExceptionFactory factory = ExceptionFactory.withSql(sql);
-      Flux<ServerMessage> fluxMsg =
-          prepareIfNotDone(sql)
-              .flatMapMany(
-                  prepResult -> {
-                    Flux<ServerMessage> flux =
-                        this.client.sendCommand(
-                            new ExecutePacket(prepResult, batchParams.get(0), factory));
-                    int index = 1;
-                    while (index < batchParams.size()) {
-                      flux =
-                          flux.concatWith(
-                              this.client.sendCommand(
-                                  new ExecutePacket(
-                                      prepResult, batchParams.get(index++), factory)));
-                    }
+      return executeBatchPipeline(sql, batchParams, factory);
+    }
+  }
+
+  private Flux<org.mariadb.r2dbc.api.MariadbResult> executeBatchPipeline(
+      String sql, List<Map<Integer, ParameterWithCodec>> batchParams, ExceptionFactory factory) {
+    Flux<ServerMessage> fluxMsg =
+        prepareIfNotDone(sql)
+            .flatMapMany(
+                prepResult -> {
+                  Flux<ServerMessage> flux =
+                      this.client.sendCommand(
+                          new ExecutePacket(prepResult, batchParams.get(0), factory));
+                  int index = 1;
+                  while (index < batchParams.size()) {
                     flux =
                         flux.concatWith(
-                            Flux.create(
-                                sink -> {
-                                  prepResult.decrementUse(client);
-                                  sink.complete();
-                                }));
-                    return flux;
-                  });
+                            this.client.sendCommand(
+                                new ExecutePacket(prepResult, batchParams.get(index++), factory)));
+                  }
+                  flux =
+                      flux.concatWith(
+                          Flux.create(
+                              sink -> {
+                                prepResult.decrementUse(client);
+                                sink.complete();
+                              }));
+                  return flux;
+                });
 
-      this.batchingParameters = null;
-      this.parameters = null;
+    this.batchingParameters = null;
+    this.parameters = null;
 
-      return fluxMsg
-          .windowUntil(it -> it.resultSetEnd())
-          .map(
-              dataRow ->
-                  new MariadbResult(
-                      false,
-                      prepareResult,
-                      dataRow,
-                      ExceptionFactory.INSTANCE,
-                      null,
-                      client.getVersion().supportReturning(),
-                      client.getConf()));
-    }
+    return fluxMsg
+        .windowUntil(it -> it.resultSetEnd())
+        .map(
+            dataRow ->
+                new MariadbResult(
+                    false,
+                    prepareResult,
+                    dataRow,
+                    ExceptionFactory.INSTANCE,
+                    null,
+                    client.getVersion().supportReturning(),
+                    client.getConf()));
   }
 
   private Mono<ServerPrepareResult> prepareIfNotDone(String sql) {
@@ -242,14 +246,12 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
       throw new IllegalArgumentException(
           "returnGeneratedValues can have only one column before MariaDB 10.5.1");
     }
-    //    prepareResult.validateAddingReturning();
     this.generatedColumns = columns;
     return this;
   }
 
   private Flux<org.mariadb.r2dbc.api.MariadbResult> executeSingleQuery(
-      String sql, String[] generatedColumns) {
-    ExceptionFactory factory = ExceptionFactory.withSql(sql);
+      String sql, String[] generatedColumns, ExceptionFactory factory) {
 
     if (prepareResult.get() == null && client.getPrepareCache() != null) {
       prepareResult.set(client.getPrepareCache().get(sql));

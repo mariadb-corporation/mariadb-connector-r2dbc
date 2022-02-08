@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.r2dbc.spi.IsolationLevel;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -187,8 +188,18 @@ class BufferUtilsTest {
   @Test
   void write() {
     Context ctxNoBackSlash =
-        new ContextImpl("10.5.5-mariadb", 1, 1, ServerStatus.NO_BACKSLASH_ESCAPES, true, 1);
-    Context ctx = new ContextImpl("10.5.5-mariadb", 1, 1, (short) 0, true, 1);
+        new ContextImpl(
+            "10.5.5-mariadb",
+            1,
+            1,
+            ServerStatus.NO_BACKSLASH_ESCAPES,
+            true,
+            1,
+            "testr2",
+            IsolationLevel.REPEATABLE_READ);
+    Context ctx =
+        new ContextImpl(
+            "10.5.5-mariadb", 1, 1, (short) 0, true, 1, "testr2", IsolationLevel.REPEATABLE_READ);
 
     ByteBuf buf = allocator.buffer(1000);
     buf.writerIndex(0);

@@ -15,6 +15,7 @@ import org.mariadb.r2dbc.client.ClientPipelineImpl;
 import org.mariadb.r2dbc.message.flow.AuthenticationFlow;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.HostAddress;
+import org.mariadb.r2dbc.util.constants.Capabilities;
 import reactor.core.publisher.Mono;
 import reactor.netty.resources.ConnectionProvider;
 
@@ -69,31 +70,17 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
         .delayUntil(client -> AuthenticationFlow.exchange(client, this.configuration, hostAddress))
         .cast(Client.class)
         .flatMap(
-            client -> {
-              Mono<Void> waiting = Mono.empty();
-              // only execute SET command if needed :
-              // - autocommit default value differ than option
-              // - session variable set
-              if ((configuration.getSessionVariables() != null
-                      && configuration.getSessionVariables().size() > 0)
-                  || client.isAutoCommit() != configuration.autocommit()) {
-                waiting = setSessionVariables(client);
-              }
-
-              if (configuration.getIsolationLevel() == null) {
-                Mono<IsolationLevel> isolationLevelMono = waiting.then(getIsolationLevel(client));
-                return isolationLevelMono
-                    .map(it -> new MariadbConnection(client, it, configuration))
-                    .onErrorResume(throwable -> this.closeWithError(client, throwable));
-              } else {
-                return waiting
+            client ->
+                setSessionVariables(client)
                     .then(
                         Mono.just(
                             new MariadbConnection(
-                                client, configuration.getIsolationLevel(), configuration)))
-                    .onErrorResume(throwable -> this.closeWithError(client, throwable));
-              }
-            })
+                                client,
+                                configuration.getIsolationLevel() == null
+                                    ? IsolationLevel.REPEATABLE_READ
+                                    : configuration.getIsolationLevel(),
+                                configuration)))
+                    .onErrorResume(throwable -> this.closeWithError(client, throwable)))
         .onErrorMap(e -> cannotConnect(e, endpoint));
   }
 
@@ -122,8 +109,35 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
   }
 
   private Mono<Void> setSessionVariables(Client client) {
+
+    // set default autocommit value
     StringBuilder sql =
         new StringBuilder("SET autocommit=" + (configuration.autocommit() ? "1" : "0"));
+
+    // set default transaction isolation
+    String txIsolation =
+        (!client.getVersion().isMariaDBServer()
+                && (client.getVersion().versionGreaterOrEqual(8, 0, 3)
+                    || (client.getVersion().getMajorVersion() < 8
+                        && client.getVersion().versionGreaterOrEqual(5, 7, 20))))
+            ? "transaction_isolation"
+            : "tx_isolation";
+    sql.append(",")
+        .append(txIsolation)
+        .append("='")
+        .append(
+            configuration.getIsolationLevel() == null
+                ? "REPEATABLE-READ"
+                : configuration.getIsolationLevel().asSql().replace(" ", "-"))
+        .append("'");
+
+    // set session tracking
+    if ((client.getContext().getClientCapabilities() & Capabilities.CLIENT_SESSION_TRACK) > 0) {
+      sql.append(",session_track_schema=1");
+      sql.append(",session_track_system_variables='autocommit,").append(txIsolation).append("'");
+    }
+
+    // set session variables if defined
     if (configuration.getSessionVariables() != null
         && configuration.getSessionVariables().size() > 0) {
       Map<String, String> sessionVariable = configuration.getSessionVariables();
@@ -139,40 +153,5 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
     }
 
     return client.executeSimpleCommand(sql.toString()).last().then();
-  }
-
-  private Mono<IsolationLevel> getIsolationLevel(Client client) {
-    String sql = "SELECT @@tx_isolation";
-    if (!client.getVersion().isMariaDBServer()
-        && (client.getVersion().versionGreaterOrEqual(8, 0, 3)
-            || (client.getVersion().getMajorVersion() < 8
-                && client.getVersion().versionGreaterOrEqual(5, 7, 20)))) {
-      sql = "SELECT @@transaction_isolation";
-    }
-
-    return client
-        .executeSimpleCommand(sql)
-        .flatMap(
-            it ->
-                it.map(
-                    (row, rowMetadata) -> {
-                      String level = row.get(0, String.class);
-
-                      switch (level) {
-                        case "REPEATABLE-READ":
-                          return IsolationLevel.REPEATABLE_READ;
-
-                        case "READ-UNCOMMITTED":
-                          return IsolationLevel.READ_UNCOMMITTED;
-
-                        case "SERIALIZABLE":
-                          return IsolationLevel.SERIALIZABLE;
-
-                        default:
-                          return IsolationLevel.READ_COMMITTED;
-                      }
-                    }))
-        .defaultIfEmpty(IsolationLevel.READ_COMMITTED)
-        .last();
   }
 }

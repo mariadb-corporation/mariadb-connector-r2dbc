@@ -6,6 +6,7 @@ package org.mariadb.r2dbc.client;
 import io.r2dbc.spi.TransactionDefinition;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.ExecutePacket;
 import org.mariadb.r2dbc.message.client.PreparePacket;
@@ -50,6 +51,8 @@ public interface Client {
   boolean isCloseRequested();
 
   void setContext(InitialHandshakePacket packet, long clientCapabilities);
+
+  Context getContext();
 
   void sendNext();
 

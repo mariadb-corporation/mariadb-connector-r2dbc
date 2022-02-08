@@ -14,9 +14,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbResult;
@@ -29,6 +27,17 @@ import reactor.test.StepVerifier;
 public class ConnectionTest extends BaseConnectionTest {
   private Level initialReactorLvl;
   private Level initialLvl;
+
+  @BeforeAll
+  public static void before2() {
+    dropAll();
+    sharedConn.createStatement("CREATE DATABASE test_r2dbc").execute().blockLast();
+  }
+
+  @AfterAll
+  public static void dropAll() {
+    sharedConn.createStatement("DROP DATABASE test_r2dbc").execute().blockLast();
+  }
 
   @Test
   void localValidation() {
@@ -667,15 +676,32 @@ public class ConnectionTest extends BaseConnectionTest {
         new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create().block();
     try {
       IsolationLevel defaultValue = IsolationLevel.REPEATABLE_READ;
-
       Assertions.assertEquals(defaultValue, connection.getTransactionIsolationLevel());
       connection.setTransactionIsolationLevel(IsolationLevel.READ_UNCOMMITTED).block();
+      connection.createStatement("BEGIN").execute().blockLast();
       Assertions.assertEquals(
           IsolationLevel.READ_UNCOMMITTED, connection.getTransactionIsolationLevel());
       connection.setTransactionIsolationLevel(defaultValue).block();
     } finally {
       connection.close().block();
     }
+  }
+
+  @Test
+  void getDatabase() {
+    MariadbConnection connection =
+        new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create().block();
+    assertEquals(TestConfiguration.database, connection.getDatabase());
+    connection.setDatabase("test_r2dbc").block();
+    assertEquals("test_r2dbc", connection.getDatabase());
+    String db =
+        connection
+            .createStatement("SELECT DATABASE()")
+            .execute()
+            .flatMap(it -> it.map((row, rowMetadata) -> row.get(0, String.class)))
+            .blockFirst();
+    assertEquals("test_r2dbc", db);
+    connection.close().block();
   }
 
   @Test
@@ -829,11 +855,11 @@ public class ConnectionTest extends BaseConnectionTest {
                   "MariadbConnection{client=Client{isClosed=false, "
                       + "context=ConnectionContext{"));
       if (!"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv"))) {
-
         Assertions.assertTrue(
             connection
                 .toString()
-                .contains(", isolationLevel=IsolationLevel{sql='REPEATABLE READ'}}"));
+                .contains(", isolationLevel=IsolationLevel{sql='REPEATABLE READ'}}"),
+            connection.toString());
       }
     } finally {
       connection.close().block();
@@ -886,7 +912,7 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
-  public void initialIsolationLevel() {
+  public void initialIsolationLevel() throws CloneNotSupportedException {
     Assumptions.assumeTrue(
         !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     for (IsolationLevel level : levels) {
@@ -896,7 +922,22 @@ public class ConnectionTest extends BaseConnectionTest {
           .blockLast();
       MariadbConnection connection =
           new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create().block();
+      assertEquals(IsolationLevel.REPEATABLE_READ, connection.getTransactionIsolationLevel());
+      connection.close().block();
+
+      connection =
+          new MariadbConnectionFactory(
+                  TestConfiguration.defaultBuilder.clone().isolationLevel(level).build())
+              .create()
+              .block();
       assertEquals(level, connection.getTransactionIsolationLevel());
+      String iso =
+          connection
+              .createStatement("SELECT @@TX_ISOLATION")
+              .execute()
+              .flatMap(it -> it.map((row, rowMetadata) -> row.get(0, String.class)))
+              .blockFirst();
+      assertEquals(level, IsolationLevel.valueOf(iso.replace("-", " ")));
       connection.close().block();
     }
 

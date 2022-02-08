@@ -102,15 +102,11 @@ public final class AuthenticationFlow {
       capabilities |= Capabilities.MULTI_STATEMENTS;
     }
 
-    // EOF is needed in order to detect output parameters
-    //    if ((serverCapabilities & Capabilities.CLIENT_DEPRECATE_EOF) != 0) {
-    //      capabilities |= Capabilities.CLIENT_DEPRECATE_EOF;
-    //    }
-
     if (configuration.getDatabase() != null) {
       capabilities |= Capabilities.CONNECT_WITH_DB;
     }
-    return capabilities;
+
+    return capabilities & serverCapabilities;
   }
 
   private HandshakeResponse createHandshakeResponse(long clientCapabilities) {

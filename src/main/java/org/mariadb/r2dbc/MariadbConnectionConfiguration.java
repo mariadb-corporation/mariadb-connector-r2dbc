@@ -75,6 +75,7 @@ public final class MariadbConnectionConfiguration {
       @Nullable String cachingRsaPublicKey,
       boolean allowPublicKeyRetrieval,
       boolean useServerPrepStmts,
+      IsolationLevel isolationLevel,
       boolean autocommit,
       @Nullable Integer prepareCacheSize,
       @Nullable CharSequence[] pamOtherPwd,
@@ -86,6 +87,7 @@ public final class MariadbConnectionConfiguration {
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
     this.tcpAbortiveClose = tcpAbortiveClose == null ? Boolean.FALSE : tcpAbortiveClose;
     this.database = database != null && !database.isEmpty() ? database : null;
+    this.isolationLevel = isolationLevel;
     this.restrictedAuth = restrictedAuth != null ? restrictedAuth.split(",") : null;
     this.hostAddresses = HostAddress.parse(host, port);
     this.connectionAttributes = connectionAttributes;
@@ -199,6 +201,15 @@ public final class MariadbConnectionConfiguration {
               connectionFactoryOptions.getValue(
                   MariadbConnectionFactoryProvider.USE_SERVER_PREPARE)));
     }
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.USE_SERVER_PREPARE)) {
+      builder.isolationLevel(
+          IsolationLevel.valueOf(
+              ((String)
+                      connectionFactoryOptions.getValue(
+                          MariadbConnectionFactoryProvider.ISOLATION_LEVEL))
+                  .replace("-", " ")));
+    }
+
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.AUTO_COMMIT)) {
       builder.autocommit(
           boolValue(
@@ -514,6 +525,7 @@ public final class MariadbConnectionConfiguration {
     private boolean allowMultiQueries = false;
     private boolean allowPipelining = true;
     private boolean useServerPrepStmts = false;
+    private IsolationLevel isolationLevel = null;
     private boolean autocommit = true;
     private boolean tinyInt1isBit = true;
     @Nullable Integer prepareCacheSize;
@@ -574,6 +586,7 @@ public final class MariadbConnectionConfiguration {
           this.cachingRsaPublicKey,
           this.allowPublicKeyRetrieval,
           this.useServerPrepStmts,
+          this.isolationLevel,
           this.autocommit,
           this.prepareCacheSize,
           this.pamOtherPwd,
@@ -810,6 +823,17 @@ public final class MariadbConnectionConfiguration {
     }
 
     /**
+     * Permit to set default isolation level
+     *
+     * @param isolationLevel transaction isolation level
+     * @return this {@link Builder}
+     */
+    public Builder isolationLevel(IsolationLevel isolationLevel) {
+      this.isolationLevel = isolationLevel;
+      return this;
+    }
+
+    /**
      * Permit to indicate default autocommit value. Default value True.
      *
      * @param autocommit use autocommit
@@ -947,6 +971,8 @@ public final class MariadbConnectionConfiguration {
           + ", useServerPrepStmts="
           + useServerPrepStmts
           + ", prepareCacheSize="
+          + isolationLevel
+          + ", isolationLevel="
           + prepareCacheSize
           + ", tlsProtocol="
           + tlsProtocol

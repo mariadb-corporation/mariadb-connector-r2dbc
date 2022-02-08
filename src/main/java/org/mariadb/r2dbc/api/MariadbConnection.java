@@ -33,6 +33,10 @@ public interface MariadbConnection extends Connection {
   @Override
   MariadbConnectionMetadata getMetadata();
 
+  String getDatabase();
+
+  Mono<Void> setDatabase(String database);
+
   @Override
   IsolationLevel getTransactionIsolationLevel();
 

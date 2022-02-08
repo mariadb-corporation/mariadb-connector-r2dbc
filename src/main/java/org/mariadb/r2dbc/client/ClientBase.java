@@ -56,6 +56,11 @@ public abstract class ClientBase implements Client {
   protected volatile Context context;
   private final PrepareCache prepareCache;
 
+  @Override
+  public Context getContext() {
+    return context;
+  }
+
   protected ClientBase(
       Connection connection,
       MariadbConnectionConfiguration configuration,
@@ -382,10 +387,7 @@ public abstract class ClientBase implements Client {
 
   @Override
   public Flux<ServerMessage> receive(DecoderState initialState) {
-    return Flux.create(
-        sink -> {
-          this.responseReceivers.add(new CmdElement(sink, initialState));
-        });
+    return Flux.create(sink -> this.responseReceivers.add(new CmdElement(sink, initialState)));
   }
 
   public void setContext(InitialHandshakePacket handshake, long clientCapabilities) {
@@ -396,7 +398,9 @@ public abstract class ClientBase implements Client {
             handshake.getCapabilities(),
             handshake.getServerStatus(),
             handshake.isMariaDBServer(),
-            clientCapabilities);
+            clientCapabilities,
+            configuration.getDatabase(),
+            configuration.getIsolationLevel());
     mariadbPacketDecoder.setContext(context);
     mariadbPacketEncoder.setContext(context);
   }

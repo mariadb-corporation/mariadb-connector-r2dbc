@@ -4,6 +4,7 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
+import io.r2dbc.spi.IsolationLevel;
 import io.r2dbc.spi.Result;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.ServerMessage;
@@ -58,13 +59,35 @@ public class OkPacket implements ServerMessage, Result.UpdateCount {
               String variable = BufferUtils.readLengthEncodedString(sessionVariableBuf);
               String value = BufferUtils.readLengthEncodedString(sessionVariableBuf);
               logger.debug("System variable change :  {} = {}", variable, value);
+
+              switch (variable) {
+                case "transaction_isolation":
+                case "tx_isolation":
+                  switch (value) {
+                    case "REPEATABLE-READ":
+                      context.setIsolationLevel(IsolationLevel.REPEATABLE_READ);
+                      break;
+
+                    case "READ-UNCOMMITTED":
+                      context.setIsolationLevel(IsolationLevel.READ_UNCOMMITTED);
+                      break;
+
+                    case "SERIALIZABLE":
+                      context.setIsolationLevel(IsolationLevel.SERIALIZABLE);
+                      break;
+
+                    default:
+                      context.setIsolationLevel(IsolationLevel.READ_COMMITTED);
+                      break;
+                  }
+              }
               break;
 
             case StateChange.SESSION_TRACK_SCHEMA:
               ByteBuf sessionSchemaBuf = BufferUtils.readLengthEncodedBuffer(stateInfo);
-              String database = BufferUtils.readLengthEncodedString(sessionSchemaBuf);
-              // context.setDatabase(database);
-              logger.debug("Database change : now is '{}'", database);
+              String schema = BufferUtils.readLengthEncodedString(sessionSchemaBuf);
+              context.setDatabase(schema);
+              logger.debug("Schema change : now is '{}'", schema);
               break;
           }
         }
