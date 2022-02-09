@@ -61,6 +61,18 @@ public class ConfigurationTest extends BaseTest {
                 "r2dbc:mariadb://root%40%C3%A5:p%40ssword@localhost:3305/%D1" + "%88db");
     Assertions.assertTrue(factory.toString().contains("username='root@å'"));
     Assertions.assertTrue(factory.toString().contains("database='шdb'"));
+    Assertions.assertTrue(factory.toString().contains("isolationLevel=null"));
+  }
+
+  @Test
+  void isolationLevel() {
+    MariadbConnectionFactory factory =
+            (MariadbConnectionFactory)
+                    ConnectionFactories.get(
+                            "r2dbc:mariadb://root:password@localhost:3305/db?isolationLevel=REPEATABLE-READ");
+    Assertions.assertTrue(factory.toString().contains("username='root'"));
+    Assertions.assertTrue(factory.toString().contains("database='db'"));
+    Assertions.assertTrue(factory.toString().contains("isolationLevel=IsolationLevel{sql='REPEATABLE READ'}"));
   }
 
   @Test

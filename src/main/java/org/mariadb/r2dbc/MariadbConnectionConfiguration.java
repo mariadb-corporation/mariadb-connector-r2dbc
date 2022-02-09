@@ -201,13 +201,10 @@ public final class MariadbConnectionConfiguration {
               connectionFactoryOptions.getValue(
                   MariadbConnectionFactoryProvider.USE_SERVER_PREPARE)));
     }
-    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.USE_SERVER_PREPARE)) {
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.ISOLATION_LEVEL)) {
+      String isolationLvl = (String) connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.ISOLATION_LEVEL);
       builder.isolationLevel(
-          IsolationLevel.valueOf(
-              ((String)
-                      connectionFactoryOptions.getValue(
-                          MariadbConnectionFactoryProvider.ISOLATION_LEVEL))
-                  .replace("-", " ")));
+              isolationLvl == null ? null : IsolationLevel.valueOf(isolationLvl.replace("-", " ")));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.AUTO_COMMIT)) {
