@@ -43,6 +43,10 @@ public interface MariadbConnection extends Connection {
   @Override
   boolean isAutoCommit();
 
+  boolean isInTransaction();
+
+  boolean isInReadOnlyTransaction();
+
   @Override
   Mono<Void> releaseSavepoint(String name);
 

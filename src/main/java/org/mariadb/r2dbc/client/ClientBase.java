@@ -270,6 +270,7 @@ public abstract class ClientBase implements Client {
   /**
    * Specific implementation, to avoid executing START TRANSACTION if already in transaction
    *
+   * @param definition transaction definition
    * @return publisher
    */
   public Mono<Void> beginTransaction(TransactionDefinition definition) {

@@ -67,12 +67,25 @@ public class ConfigurationTest extends BaseTest {
   @Test
   void isolationLevel() {
     MariadbConnectionFactory factory =
-            (MariadbConnectionFactory)
-                    ConnectionFactories.get(
-                            "r2dbc:mariadb://root:password@localhost:3305/db?isolationLevel=REPEATABLE-READ");
+        (MariadbConnectionFactory)
+            ConnectionFactories.get(
+                "r2dbc:mariadb://root:password@localhost:3305/db?isolationLevel=REPEATABLE-READ");
     Assertions.assertTrue(factory.toString().contains("username='root'"));
     Assertions.assertTrue(factory.toString().contains("database='db'"));
-    Assertions.assertTrue(factory.toString().contains("isolationLevel=IsolationLevel{sql='REPEATABLE READ'}"));
+    Assertions.assertTrue(
+        factory.toString().contains("isolationLevel=IsolationLevel{sql='REPEATABLE READ'}"));
+  }
+
+  @Test
+  void haMode() {
+    MariadbConnectionFactory factory =
+        (MariadbConnectionFactory)
+            ConnectionFactories.get(
+                "r2dbc:mariadb:failover://root:password@localhost:3305/db?isolationLevel=REPEATABLE-READ");
+    Assertions.assertTrue(factory.toString().contains("username='root'"));
+    Assertions.assertTrue(factory.toString().contains("database='db'"));
+    Assertions.assertTrue(
+        factory.toString().contains("isolationLevel=IsolationLevel{sql='REPEATABLE READ'}"));
   }
 
   @Test

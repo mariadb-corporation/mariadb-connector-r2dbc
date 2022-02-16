@@ -445,8 +445,15 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void multipleBeginWithIsolation() throws Exception {
-    for (MariadbTransactionDefinition transactionDefinition :
-        MariadbTransactionDefinition.values()) {
+    MariadbTransactionDefinition[] transactionDefinitions = {
+      MariadbTransactionDefinition.READ_ONLY,
+      MariadbTransactionDefinition.READ_WRITE,
+      MariadbTransactionDefinition.EMPTY,
+      MariadbTransactionDefinition.WITH_CONSISTENT_SNAPSHOT_READ_ONLY,
+      MariadbTransactionDefinition.WITH_CONSISTENT_SNAPSHOT_READ_WRITE
+    };
+
+    for (MariadbTransactionDefinition transactionDefinition : transactionDefinitions) {
       MariadbConnection connection = factory.create().block();
       multipleBeginWithIsolation(connection, transactionDefinition);
       connection.close().block();
@@ -466,6 +473,33 @@ public class ConnectionTest extends BaseConnectionTest {
     con.beginTransaction(transactionDefinition).subscribe();
     con.beginTransaction(transactionDefinition).block();
     con.beginTransaction(transactionDefinition).block();
+  }
+
+  @Test
+  void beginTransactionWithIsolation() throws Exception {
+    TransactionDefinition transactionDefinition =
+        MariadbTransactionDefinition.READ_ONLY.isolationLevel(IsolationLevel.READ_COMMITTED);
+    TransactionDefinition transactionDefinition2 =
+        MariadbTransactionDefinition.READ_ONLY.isolationLevel(IsolationLevel.REPEATABLE_READ);
+    assertFalse(sharedConn.isInTransaction());
+
+    sharedConn.beginTransaction(transactionDefinition).block();
+    assertEquals(IsolationLevel.READ_COMMITTED, sharedConn.getTransactionIsolationLevel());
+    assertTrue(sharedConn.isInTransaction());
+    assertTrue(sharedConn.isInReadOnlyTransaction());
+    sharedConn.beginTransaction(transactionDefinition).block();
+    sharedConn
+        .beginTransaction(transactionDefinition2)
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcPermissionDeniedException
+                    && throwable
+                        .getMessage()
+                        .equals(
+                            "Transaction characteristics can't be changed while a transaction is in progress"))
+        .verify();
+    sharedConn.rollbackTransaction();
   }
 
   @Test

@@ -15,22 +15,25 @@ import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.constants.Capabilities;
+import org.mariadb.r2dbc.util.constants.ServerStatus;
 import reactor.core.publisher.Mono;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
-final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection {
+public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection {
 
   private final Logger logger = Loggers.getLogger(this.getClass());
   private final Client client;
   private final MariadbConnectionConfiguration configuration;
+  private volatile IsolationLevel sessionIsolationLevel;
   private volatile IsolationLevel isolationLevel;
   private volatile String database;
 
-  MariadbConnection(
+  public MariadbConnection(
       Client client, IsolationLevel isolationLevel, MariadbConnectionConfiguration configuration) {
     this.client = Assert.requireNonNull(client, "client must not be null");
-    this.isolationLevel = Assert.requireNonNull(isolationLevel, "isolationLevel must not be null");
+    this.sessionIsolationLevel =
+        Assert.requireNonNull(isolationLevel, "isolationLevel must not be null");
     this.configuration = Assert.requireNonNull(configuration, "configuration must not be null");
     this.database = configuration.getDatabase();
   }
@@ -42,7 +45,22 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
 
   @Override
   public Mono<Void> beginTransaction(TransactionDefinition definition) {
-    return this.client.beginTransaction(definition);
+    Mono<Void> request = Mono.empty();
+
+    // set isolation level for next transaction if set
+    IsolationLevel isoLevel = definition.getAttribute(TransactionDefinition.ISOLATION_LEVEL);
+    if (isoLevel != null && !isoLevel.equals(getTransactionIsolationLevel())) {
+      String sql = String.format("SET TRANSACTION ISOLATION LEVEL %s", isoLevel.asSql());
+      ExceptionFactory exceptionFactory = ExceptionFactory.withSql(sql);
+      request =
+          client
+              .sendCommand(new QueryPacket(sql))
+              .handle(exceptionFactory::handleErrorResponse)
+              .then()
+              .doOnSuccess(ignore -> this.isolationLevel = isoLevel);
+    }
+
+    return request.then(this.client.beginTransaction(definition));
   }
 
   @Override
@@ -52,7 +70,7 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
 
   @Override
   public Mono<Void> commitTransaction() {
-    return this.client.commitTransaction();
+    return this.client.commitTransaction().then().doOnSuccess(i -> this.isolationLevel = null);
   }
 
   @Override
@@ -89,10 +107,11 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
 
   @Override
   public IsolationLevel getTransactionIsolationLevel() {
+    if (isolationLevel != null) return isolationLevel;
     if ((client.getContext().getClientCapabilities() | Capabilities.CLIENT_SESSION_TRACK) > 0
         && client.getContext().getIsolationLevel() != null)
       return client.getContext().getIsolationLevel();
-    return this.isolationLevel;
+    return this.sessionIsolationLevel;
   }
 
   @Override
@@ -112,6 +131,16 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
   }
 
   @Override
+  public boolean isInTransaction() {
+    return (this.client.getContext().getServerStatus() & ServerStatus.IN_TRANSACTION) > 0;
+  }
+
+  @Override
+  public boolean isInReadOnlyTransaction() {
+    return (this.client.getContext().getServerStatus() & ServerStatus.STATUS_IN_TRANS_READONLY) > 0;
+  }
+
+  @Override
   public String getHost() {
     return this.client.getHostAddress() != null ? this.client.getHostAddress().getHost() : null;
   }
@@ -123,7 +152,7 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
 
   @Override
   public Mono<Void> rollbackTransaction() {
-    return this.client.rollbackTransaction();
+    return this.client.rollbackTransaction().then().doOnSuccess(i -> this.isolationLevel = null);
   }
 
   @Override
@@ -134,7 +163,10 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
 
   @Override
   public Mono<Void> setAutoCommit(boolean autoCommit) {
-    return client.setAutoCommit(autoCommit);
+    return client
+        .setAutoCommit(autoCommit)
+        .then()
+        .doOnSuccess(i -> this.isolationLevel = autoCommit ? null : this.isolationLevel);
   }
 
   @Override
@@ -193,7 +225,7 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
         .sendCommand(new QueryPacket(sql))
         .handle(exceptionFactory::handleErrorResponse)
         .then()
-        .doOnSuccess(ignore -> this.isolationLevel = newIsolation);
+        .doOnSuccess(ignore -> this.sessionIsolationLevel = newIsolation);
   }
 
   @Override
@@ -203,7 +235,7 @@ final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection
         + ", isolationLevel="
         + ((client.getContext().getClientCapabilities() | Capabilities.CLIENT_SESSION_TRACK) > 0
             ? client.getContext().getIsolationLevel()
-            : isolationLevel)
+            : sessionIsolationLevel)
         + '}';
   }
 
