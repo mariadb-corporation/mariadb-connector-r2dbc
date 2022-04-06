@@ -9,7 +9,7 @@ import org.mariadb.r2dbc.util.ServerPrepareResult;
 public final class CompletePrepareResult implements ServerMessage {
 
   private final ServerPrepareResult prepare;
-  private boolean continueOnEnd;
+  private final boolean continueOnEnd;
 
   public CompletePrepareResult(final ServerPrepareResult prepare, boolean continueOnEnd) {
     this.prepare = prepare;

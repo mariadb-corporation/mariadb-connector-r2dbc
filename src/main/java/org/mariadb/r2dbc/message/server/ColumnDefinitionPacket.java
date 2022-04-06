@@ -65,7 +65,7 @@ public final class ColumnDefinitionPacket
   private final DataType dataType;
   private final byte decimals;
   private final int flags;
-  private boolean ending;
+  private final boolean ending;
   private final MariadbConnectionConfiguration conf;
 
   private ColumnDefinitionPacket(

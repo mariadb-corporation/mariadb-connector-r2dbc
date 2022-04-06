@@ -651,7 +651,7 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   protected class ExecuteQueries implements Runnable {
-    private AtomicInteger i;
+    private final AtomicInteger i;
 
     public ExecuteQueries(AtomicInteger i) {
       this.i = i;
@@ -679,8 +679,8 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   protected class ExecuteQueriesOnSameConnection implements Runnable {
-    private AtomicInteger i;
-    private MariadbConnection connection;
+    private final AtomicInteger i;
+    private final MariadbConnection connection;
 
     public ExecuteQueriesOnSameConnection(AtomicInteger i, MariadbConnection connection) {
       this.i = i;
@@ -965,9 +965,18 @@ public class ConnectionTest extends BaseConnectionTest {
               .create()
               .block();
       assertEquals(level, connection.getTransactionIsolationLevel());
+      String sql = "SELECT @@tx_isolation";
+
+      if (!isMariaDBServer()) {
+        if ((minVersion(8, 0, 3))
+            || (sharedConn.getMetadata().getMajorVersion() < 8 && minVersion(5, 7, 20))) {
+          sql = "SELECT @@transaction_isolation";
+        }
+      }
+
       String iso =
           connection
-              .createStatement("SELECT @@TX_ISOLATION")
+              .createStatement(sql)
               .execute()
               .flatMap(it -> it.map((row, rowMetadata) -> row.get(0, String.class)))
               .blockFirst();

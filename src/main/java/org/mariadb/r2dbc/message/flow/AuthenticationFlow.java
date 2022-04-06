@@ -29,14 +29,14 @@ import reactor.util.Loggers;
 public final class AuthenticationFlow {
   private static final Logger logger = Loggers.getLogger(AuthenticationFlow.class);
 
-  private MariadbConnectionConfiguration configuration;
+  private final MariadbConnectionConfiguration configuration;
   private InitialHandshakePacket initialHandshakePacket;
   private AuthenticationPlugin pluginHandler;
   private AuthSwitchPacket authSwitchPacket;
   private AuthMoreDataPacket authMoreDataPacket;
-  private Client client;
+  private final Client client;
   private FluxSink<State> sink;
-  private HostAddress hostAddress;
+  private final HostAddress hostAddress;
   private long clientCapabilities;
 
   private AuthenticationFlow(

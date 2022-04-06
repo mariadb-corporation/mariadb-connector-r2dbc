@@ -4,6 +4,7 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -14,6 +15,7 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 
 public class LocalDateCodec implements Codec<LocalDate> {
 
@@ -192,21 +194,34 @@ public class LocalDateCodec implements Codec<LocalDate> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
-    buf.writeByte('\'');
-    buf.writeCharSequence(
-        ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE), StandardCharsets.US_ASCII);
-    buf.writeByte('\'');
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> {
+          ByteBuf buf = allocator.buffer();
+          buf.writeByte('\'');
+          buf.writeCharSequence(
+              ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE),
+              StandardCharsets.US_ASCII);
+          buf.writeByte('\'');
+          return buf;
+        });
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object val, ExceptionFactory factory) {
-    LocalDate value = (LocalDate) val;
-    buf.writeByte(7); // length
-    buf.writeShortLE((short) value.get(ChronoField.YEAR));
-    buf.writeByte(value.get(ChronoField.MONTH_OF_YEAR));
-    buf.writeByte(value.get(ChronoField.DAY_OF_MONTH));
-    buf.writeBytes(new byte[] {0, 0, 0});
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> {
+          LocalDate val = (LocalDate) value;
+          ByteBuf buf = allocator.buffer(8, 8);
+          buf.writeByte(7); // length
+          buf.writeShortLE((short) val.get(ChronoField.YEAR));
+          buf.writeByte(val.get(ChronoField.MONTH_OF_YEAR));
+          buf.writeByte(val.get(ChronoField.DAY_OF_MONTH));
+          buf.writeBytes(new byte[] {0, 0, 0});
+          return buf;
+        });
   }
 
   public DataType getBinaryEncodeType() {

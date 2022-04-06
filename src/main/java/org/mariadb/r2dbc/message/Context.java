@@ -3,6 +3,7 @@
 
 package org.mariadb.r2dbc.message;
 
+import io.netty.buffer.ByteBufAllocator;
 import io.r2dbc.spi.IsolationLevel;
 import org.mariadb.r2dbc.client.ServerVersion;
 
@@ -27,4 +28,6 @@ public interface Context {
   void setDatabase(String database);
 
   ServerVersion getVersion();
+
+  ByteBufAllocator getByteBufAllocator();
 }

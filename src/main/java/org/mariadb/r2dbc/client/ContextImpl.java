@@ -3,6 +3,7 @@
 
 package org.mariadb.r2dbc.client;
 
+import io.netty.buffer.ByteBufAllocator;
 import io.r2dbc.spi.IsolationLevel;
 import org.mariadb.r2dbc.message.Context;
 
@@ -12,8 +13,8 @@ public class ContextImpl implements Context {
   private final long serverCapabilities;
   private final long clientCapabilities;
   private short serverStatus;
-  private ServerVersion version;
-
+  private final ServerVersion version;
+  private final ByteBufAllocator byteBufAllocator;
   private IsolationLevel isolationLevel;
   private String database;
 
@@ -25,6 +26,7 @@ public class ContextImpl implements Context {
       boolean mariaDBServer,
       long clientCapabilities,
       String database,
+      ByteBufAllocator byteBufAllocator,
       IsolationLevel isolationLevel) {
 
     this.threadId = threadId;
@@ -34,6 +36,7 @@ public class ContextImpl implements Context {
     this.version = new ServerVersion(serverVersion, mariaDBServer);
     this.isolationLevel = isolationLevel == null ? IsolationLevel.REPEATABLE_READ : isolationLevel;
     this.database = database;
+    this.byteBufAllocator = byteBufAllocator;
   }
 
   public long getThreadId() {
@@ -74,6 +77,10 @@ public class ContextImpl implements Context {
 
   public ServerVersion getVersion() {
     return version;
+  }
+
+  public ByteBufAllocator getByteBufAllocator() {
+    return byteBufAllocator;
   }
 
   @Override

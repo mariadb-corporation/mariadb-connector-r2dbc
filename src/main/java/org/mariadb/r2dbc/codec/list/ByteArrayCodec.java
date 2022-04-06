@@ -4,17 +4,17 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class ByteArrayCodec implements Codec<byte[]> {
-
-  public static final byte[] BINARY_PREFIX = {'_', 'b', 'i', 'n', 'a', 'r', 'y', ' ', '\''};
 
   public static final ByteArrayCodec INSTANCE = new ByteArrayCodec();
 
@@ -65,18 +65,18 @@ public class ByteArrayCodec implements Codec<byte[]> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object val, ExceptionFactory factory) {
-    byte[] value = (byte[]) val;
-    buf.writeBytes(BINARY_PREFIX);
-    BufferUtils.writeEscaped(buf, value, 0, value.length, context);
-    buf.writeByte('\'');
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        () ->
+            BufferUtils.encodeEscapedBytes(
+                allocator, BufferUtils.BINARY_PREFIX, (byte[]) value, context));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object val, ExceptionFactory factory) {
-    byte[] value = (byte[]) val;
-    BufferUtils.writeLengthEncode(value.length, buf);
-    buf.writeBytes(value);
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(() -> BufferUtils.encodeLengthBytes(allocator, (byte[]) value));
   }
 
   public DataType getBinaryEncodeType() {

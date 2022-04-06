@@ -11,7 +11,7 @@ import org.mariadb.r2dbc.message.ServerMessage;
 
 public class AuthMoreDataPacket implements AuthMoreData, ServerMessage {
 
-  private MessageSequence sequencer;
+  private final MessageSequence sequencer;
   private ByteBuf buf;
 
   private AuthMoreDataPacket(MessageSequence sequencer, ByteBuf buf) {

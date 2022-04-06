@@ -28,7 +28,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class StringParameterTest extends BaseConnectionTest {
-  private static MariadbConnectionMetadata meta = sharedConn.getMetadata();
+  private static final MariadbConnectionMetadata meta = sharedConn.getMetadata();
 
   @BeforeAll
   public static void before2() {
@@ -64,7 +64,7 @@ public class StringParameterTest extends BaseConnectionTest {
         .createStatement("INSERT INTO StringParam VALUES (?,?,?)")
         .bindNull(0, BigInteger.class)
         .bindNull(1, BigInteger.class)
-        .bindNull(2, null)
+        .bindNull(2, Short.class)
         .execute()
         .blockLast();
     validate(Optional.empty(), Optional.empty(), Optional.empty());

@@ -28,7 +28,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class BlobParameterTest extends BaseConnectionTest {
-  private static MariadbConnectionMetadata meta = sharedConn.getMetadata();
+  private static final MariadbConnectionMetadata meta = sharedConn.getMetadata();
 
   @BeforeAll
   public static void before2() {

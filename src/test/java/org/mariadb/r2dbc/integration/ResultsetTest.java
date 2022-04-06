@@ -16,7 +16,7 @@ import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.test.StepVerifier;
 
 public class ResultsetTest extends BaseConnectionTest {
-  private static String vals = "azertyuiopqsdfghjklmwxcvbn";
+  private static final String vals = "azertyuiopqsdfghjklmwxcvbn";
 
   @BeforeAll
   public static void before2() {

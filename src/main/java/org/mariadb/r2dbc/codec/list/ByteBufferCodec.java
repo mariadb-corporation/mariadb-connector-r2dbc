@@ -4,14 +4,17 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.CompositeByteBuf;
+import io.netty.buffer.Unpooled;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class ByteBufferCodec implements Codec<ByteBuffer> {
@@ -83,32 +86,37 @@ public class ByteBufferCodec implements Codec<ByteBuffer> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
-    buf.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
-
-    ByteBuffer tempVal = ((ByteBuffer) value);
-    if (tempVal.hasArray()) {
-      BufferUtils.writeEscaped(
-          buf, tempVal.array(), tempVal.arrayOffset(), tempVal.remaining(), context);
-    } else {
-      byte[] intermediaryBuf = new byte[tempVal.remaining()];
-      tempVal.get(intermediaryBuf);
-      BufferUtils.writeEscaped(buf, intermediaryBuf, 0, intermediaryBuf.length, context);
-    }
-    buf.writeByte((byte) '\'');
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> {
+          ByteBuffer val = (ByteBuffer) value;
+          ByteBuf byteBuf = allocator.buffer();
+          if (val.hasArray()) {
+            BufferUtils.escapedBytes(byteBuf, val.array(), val.remaining(), context);
+          } else {
+            byte[] arr = new byte[val.remaining()];
+            val.get(arr);
+            BufferUtils.escapedBytes(byteBuf, arr, arr.length, context);
+          }
+          byteBuf.writeByte('\'');
+          return byteBuf;
+        });
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
-    buf.writeByte(0xfe);
-    int initialPos = buf.writerIndex();
-    buf.writerIndex(buf.writerIndex() + 8); // reserve length encoded length bytes
-    ByteBuffer tempVal = ((ByteBuffer) value);
-    buf.writeBytes(tempVal);
-    int endPos = buf.writerIndex();
-    buf.writerIndex(initialPos);
-    buf.writeLongLE(endPos - (initialPos + 8));
-    buf.writerIndex(endPos);
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> {
+          ByteBuffer val = (ByteBuffer) value;
+          CompositeByteBuf compositeByteBuf = allocator.compositeBuffer();
+          ByteBuf buf = Unpooled.wrappedBuffer(val);
+          compositeByteBuf.addComponent(
+              true, Unpooled.wrappedBuffer(BufferUtils.encodeLength(val.remaining())));
+          compositeByteBuf.addComponent(true, buf);
+          return compositeByteBuf;
+        });
   }
 
   public DataType getBinaryEncodeType() {

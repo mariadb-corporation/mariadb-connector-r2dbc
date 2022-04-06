@@ -3,128 +3,60 @@
 
 package org.mariadb.r2dbc;
 
-import io.r2dbc.spi.Parameter;
-import io.r2dbc.spi.Parameters;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.client.DecoderState;
-import org.mariadb.r2dbc.client.MariadbResult;
-import org.mariadb.r2dbc.codec.Codecs;
-import org.mariadb.r2dbc.codec.ParameterWithCodec;
-import org.mariadb.r2dbc.codec.list.StringCodec;
+import org.mariadb.r2dbc.message.Protocol;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.ExecutePacket;
 import org.mariadb.r2dbc.message.client.PreparePacket;
+import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.message.server.CompletePrepareResult;
 import org.mariadb.r2dbc.message.server.ErrorPacket;
 import org.mariadb.r2dbc.util.Assert;
-import org.mariadb.r2dbc.util.MariadbType;
+import org.mariadb.r2dbc.util.Binding;
 import org.mariadb.r2dbc.util.ServerNamedParamParser;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.annotation.Nullable;
+import reactor.core.publisher.Sinks;
 
-final class MariadbServerParameterizedQueryStatement implements MariadbStatement {
+final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatement
+    implements MariadbStatement {
 
-  private final Client client;
-  private final String initialSql;
-  private final MariadbConnectionConfiguration configuration;
   private ServerNamedParamParser paramParser;
-  private Map<Integer, ParameterWithCodec> parameters;
-  private List<Map<Integer, ParameterWithCodec>> batchingParameters;
-  private String[] generatedColumns;
-  private AtomicReference<ServerPrepareResult> prepareResult;
+  private final AtomicReference<ServerPrepareResult> prepareResult;
 
   MariadbServerParameterizedQueryStatement(
       Client client, String sql, MariadbConnectionConfiguration configuration) {
-    this.client = client;
-    this.configuration = configuration;
-    this.initialSql = Assert.requireNonNull(sql, "sql must not be null");
-    this.parameters = null;
+    super(client, sql, configuration, Protocol.BINARY);
+    this.expectedSize = UNKNOWN_SIZE;
     this.paramParser = null;
     this.prepareResult = new AtomicReference<>(client.getPrepareCache().get(sql));
   }
 
   @Override
-  public MariadbServerParameterizedQueryStatement add() {
-    Assert.requireNonNull(this.parameters, "add() cannot be used if not bindings where set");
-    validateParameters();
-    if (batchingParameters == null) batchingParameters = new ArrayList<>();
-    batchingParameters.add(parameters);
-    parameters = null;
-    return this;
-  }
-
-  @Override
-  public MariadbServerParameterizedQueryStatement bind(
-      @Nullable String identifier, @Nullable Object value) {
-    Assert.requireNonNull(identifier, "identifier cannot be null");
-    return bind(getColumn(identifier), value);
-  }
-
-  @SuppressWarnings({"rawtypes", "unchecked"})
-  @Override
-  public MariadbServerParameterizedQueryStatement bind(int index, @Nullable Object value) {
-    if (index < 0) {
-      throw new IndexOutOfBoundsException(
-          String.format("wrong index value %d, index must be positive", index));
+  protected int getExpectedSize() {
+    if (expectedSize == UNKNOWN_SIZE) {
+      expectedSize =
+          (prepareResult.get() != null)
+              ? prepareResult.get().getNumParams()
+              : (((paramParser != null)
+                  ? paramParser.getParamCount()
+                  : ServerNamedParamParser.parameterParts(
+                          initialSql, this.client.noBackslashEscapes())
+                      .getParamCount()));
     }
-    if (prepareResult.get() != null && index >= prepareResult.get().getNumParams()) {
-      throw new IndexOutOfBoundsException(
-          String.format(
-              "index must be in 0-%d range but value is %d",
-              prepareResult.get().getNumParams() - 1, index));
-    }
-    Assert.requireNonNull(value, "value cannot be null or use bindNull");
-
-    if (parameters == null) parameters = new HashMap<>();
-    Parameter paramValue = (value instanceof Parameter) ? (Parameter) value : Parameters.in(value);
-    parameters.put(
-        index,
-        new ParameterWithCodec(
-            paramValue,
-            paramValue.getValue() != null
-                ? Codecs.codecByClass(paramValue.getValue().getClass(), index)
-                : StringCodec.INSTANCE));
-    return this;
+    return expectedSize;
   }
 
-  @Override
-  public MariadbServerParameterizedQueryStatement bindNull(
-      @Nullable String identifier, @Nullable Class<?> type) {
-    Assert.requireNonNull(identifier, "identifier cannot be null");
-    return bindNull(getColumn(identifier), type);
-  }
-
-  @Override
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  public MariadbServerParameterizedQueryStatement bindNull(
-      int index, @Nullable Class<?> classType) {
-    if (index < 0) {
-      throw new IndexOutOfBoundsException(
-          String.format("wrong index value %d, index must be positive", index));
-    }
-
-    if (prepareResult.get() != null && index >= prepareResult.get().getNumParams()) {
-      throw new IndexOutOfBoundsException(
-          String.format(
-              "index must be in 0-%d range but value is %d",
-              prepareResult.get().getNumParams() - 1, index));
-    }
-
-    if (parameters == null) parameters = new HashMap<>();
-    parameters.put(
-        index,
-        new ParameterWithCodec(
-            (classType == null) ? Parameters.in(MariadbType.VARCHAR) : Parameters.in(classType),
-            Codecs.codecByClass((classType == null ? String.class : classType), index)));
-    return this;
-  }
-
-  private int getColumn(String name) {
+  protected int getColumnIndex(String name) {
+    Assert.requireNonNull(name, "identifier cannot be null");
     if (paramParser == null) {
       paramParser =
           ServerNamedParamParser.parameterParts(initialSql, this.client.noBackslashEscapes());
@@ -136,106 +68,6 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
         String.format(
             "No parameter with name '%s' found (possible values %s)",
             name, this.paramParser.getParamNameList().toString()));
-  }
-
-  private void validateParameters() {
-    int paramNumber =
-        (prepareResult.get() != null)
-            ? prepareResult.get().getNumParams()
-            : (((paramParser != null)
-                ? paramParser.getParamCount()
-                : ServerNamedParamParser.parameterParts(
-                        initialSql, this.client.noBackslashEscapes())
-                    .getParamCount()));
-    if (parameters == null) {
-      if (paramNumber > 0) {
-        throw new IllegalStateException("No parameter have been set");
-      }
-    } else {
-      // valid parameters
-      for (int i = 0; i < paramNumber; i++) {
-        if (parameters.get(i) == null) {
-          throw new IllegalStateException(String.format("Parameter at position %s is not set", i));
-        }
-      }
-    }
-  }
-
-  @Override
-  public Flux<org.mariadb.r2dbc.api.MariadbResult> execute() {
-    String sql = paramParser == null ? this.initialSql : paramParser.getRealSql();
-    if (client.getVersion().supportReturning() && generatedColumns != null) {
-      sql +=
-          generatedColumns.length == 0
-              ? " RETURNING *"
-              : " RETURNING " + String.join(", ", generatedColumns);
-      prepareResult.set(client.getPrepareCache().get(sql));
-    }
-    ExceptionFactory factory = ExceptionFactory.withSql(sql);
-
-    if (batchingParameters == null) {
-      validateParameters();
-      return executeSingleQuery(sql, this.generatedColumns, factory);
-    } else {
-      this.add();
-      final List<Map<Integer, ParameterWithCodec>> batchParams = new ArrayList<>();
-      batchParams.addAll(batchingParameters);
-      return executeBatchPipeline(sql, batchParams, factory);
-    }
-  }
-
-  private Flux<org.mariadb.r2dbc.api.MariadbResult> executeBatchPipeline(
-      String sql, List<Map<Integer, ParameterWithCodec>> batchParams, ExceptionFactory factory) {
-    Flux<ServerMessage> fluxMsg =
-        prepareIfNotDone(sql)
-            .flatMapMany(
-                prepResult -> {
-                  Flux<ServerMessage> flux =
-                      this.client.sendCommand(
-                          new ExecutePacket(prepResult, batchParams.get(0), factory));
-                  int index = 1;
-                  while (index < batchParams.size()) {
-                    flux =
-                        flux.concatWith(
-                            this.client.sendCommand(
-                                new ExecutePacket(prepResult, batchParams.get(index++), factory)));
-                  }
-                  flux =
-                      flux.concatWith(
-                          Flux.create(
-                              sink -> {
-                                prepResult.decrementUse(client);
-                                sink.complete();
-                              }));
-                  return flux;
-                });
-
-    this.batchingParameters = null;
-    this.parameters = null;
-
-    return fluxMsg
-        .windowUntil(it -> it.resultSetEnd())
-        .map(
-            dataRow ->
-                new MariadbResult(
-                    false,
-                    prepareResult,
-                    dataRow,
-                    ExceptionFactory.INSTANCE,
-                    null,
-                    client.getVersion().supportReturning(),
-                    client.getConf()));
-  }
-
-  private Mono<ServerPrepareResult> prepareIfNotDone(String sql) {
-    // prepare command, if not already done
-    if (prepareResult.get() == null) {
-      prepareResult.set(client.getPrepareCache().get(sql));
-      if (prepareResult.get() == null) {
-        return sendPrepare(sql, ExceptionFactory.withSql(sql));
-      }
-    }
-    return Mono.just(prepareResult.get());
   }
 
   @Override
@@ -250,122 +82,165 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
     return this;
   }
 
-  private Flux<org.mariadb.r2dbc.api.MariadbResult> executeSingleQuery(
-      String sql, String[] generatedColumns, ExceptionFactory factory) {
+  @Override
+  public Flux<org.mariadb.r2dbc.api.MariadbResult> execute() {
+    String realSql = paramParser == null ? this.initialSql : paramParser.getRealSql();
+    String sql;
+    if (this.generatedColumns == null || !client.getVersion().supportReturning()) {
+      sql = realSql;
+    } else {
+      sql = augment(realSql, this.generatedColumns);
+    }
+    ExceptionFactory factory = ExceptionFactory.withSql(sql);
 
     if (prepareResult.get() == null && client.getPrepareCache() != null) {
       prepareResult.set(client.getPrepareCache().get(sql));
     }
-
-    if (prepareResult.get() != null) {
-      validateParameters();
-
-      ServerPrepareResult res;
-      if (this.client.getPrepareCache() != null
-          && (res = this.client.getPrepareCache().get(sql)) != null
-          && !res.equals(prepareResult.get())) {
-        prepareResult.get().decrementUse(client);
-        prepareResult.set(res);
+    if (this.getExpectedSize() != 0) {
+      if (this.bindings.size() == 0) {
+        throw new IllegalStateException("No parameters have been set");
       }
 
-      if (prepareResult.get().incrementUse()) {
-        return sendExecuteCmd(factory, parameters, generatedColumns)
-            .concatWith(
-                Flux.create(
-                    sink -> {
-                      prepareResult.get().decrementUse(client);
-                      sink.complete();
-                      parameters = null;
-                    }));
-      } else {
-        // prepare is closing
-        prepareResult.set(null);
-      }
-    }
-    if (this.parameters == null) this.parameters = new HashMap<>();
+      this.bindings.forEach(b -> b.validate(this.getExpectedSize()));
+      return Flux.defer(
+          () -> {
+            if (this.bindings.size() == 1) {
+              // single query
+              Binding binding = this.bindings.pollFirst();
 
-    Flux<org.mariadb.r2dbc.api.MariadbResult> flux;
-    if (configuration.allowPipelining()
-        && client.getVersion().isMariaDBServer()
-        && client.getVersion().versionGreaterOrEqual(10, 2, 0)) {
-      flux = sendPrepareAndExecute(sql, factory, parameters, generatedColumns);
-    } else {
-      flux =
-          sendPrepare(sql, factory)
-              .flatMapMany(
-                  prepareResult1 -> {
-                    prepareResult.set(prepareResult1);
-                    return sendExecuteCmd(factory, parameters, generatedColumns);
-                  });
-    }
-    return flux.concatWith(
-        Flux.create(
-            sink -> {
-              prepareResult.set(client.getPrepareCache().get(sql));
               if (prepareResult.get() != null) {
-                prepareResult.get().decrementUse(client);
-              }
-              sink.complete();
-              parameters = null;
-            }));
-  }
+                ServerPrepareResult res;
+                if (this.client.getPrepareCache() != null
+                    && (res = this.client.getPrepareCache().get(sql)) != null
+                    && !res.equals(prepareResult.get())) {
+                  prepareResult.get().decrementUse(client);
+                  prepareResult.set(res);
+                }
 
-  private Flux<org.mariadb.r2dbc.api.MariadbResult> sendPrepareAndExecute(
-      String sql,
-      ExceptionFactory factory,
-      Map<Integer, ParameterWithCodec> parameters,
-      String[] generatedColumns) {
-    return this.client
-        .sendCommand(new PreparePacket(sql), new ExecutePacket(null, parameters, factory))
-        .windowUntil(it -> it.resultSetEnd())
-        .map(
-            dataRow ->
-                new MariadbResult(
-                    false,
-                    this.prepareResult,
-                    dataRow,
-                    factory,
-                    generatedColumns,
-                    client.getVersion().supportReturning(),
-                    client.getConf()));
+                if (prepareResult.get().incrementUse()) {
+                  Flux<ServerMessage> messages =
+                      bindingParameterResults(binding, getExpectedSize())
+                          .flatMapMany(
+                              values ->
+                                  this.client.sendCommand(
+                                      new ExecutePacket(prepareResult.get(), values)))
+                          .doFinally(s -> prepareResult.get().decrementUse(client));
+                  return toResult(
+                      Protocol.BINARY, client, messages, factory, prepareResult, generatedColumns);
+                } else {
+                  // prepare is closing
+                  prepareResult.set(null);
+                }
+              }
+              Flux<ServerMessage> messages;
+              if (configuration.allowPipelining()
+                  && client.getVersion().isMariaDBServer()
+                  && client.getVersion().versionGreaterOrEqual(10, 2, 0)) {
+                messages =
+                    bindingParameterResults(binding, getExpectedSize())
+                        .flatMapMany(
+                            values ->
+                                this.client.sendCommand(
+                                    new PreparePacket(sql), new ExecutePacket(null, values)));
+              } else {
+                messages =
+                    sendPrepare(sql, factory)
+                        .flatMapMany(
+                            prepareResult1 -> {
+                              prepareResult.set(prepareResult1);
+                              return bindingParameterResults(binding, getExpectedSize())
+                                  .flatMapMany(
+                                      values ->
+                                          this.client.sendCommand(
+                                              new ExecutePacket(prepareResult1, values)));
+                            });
+              }
+              return toResult(
+                      Protocol.BINARY, client, messages, factory, prepareResult, generatedColumns)
+                  .doFinally(
+                      s -> {
+                        if (prepareResult.get() != null) {
+                          prepareResult.get().decrementUse(client);
+                        }
+                      });
+            }
+            // batch
+            Iterator<Binding> iterator = this.bindings.iterator();
+            Sinks.Many<Binding> bindingSink = Sinks.many().unicast().onBackpressureBuffer();
+            AtomicBoolean canceled = new AtomicBoolean();
+            return prepareIfNotDone(sql, factory)
+                .thenMany(
+                    bindingSink
+                        .asFlux()
+                        .map(
+                            binding -> {
+                              Flux<ServerMessage> messages =
+                                  bindingParameterResults(binding, getExpectedSize())
+                                      .flatMapMany(
+                                          values ->
+                                              this.client.sendCommand(
+                                                  new ExecutePacket(prepareResult.get(), values)))
+                                      .doOnComplete(
+                                          () -> tryNextBinding(iterator, bindingSink, canceled));
+                              ;
+                              return toResult(
+                                  Protocol.BINARY,
+                                  this.client,
+                                  messages,
+                                  factory,
+                                  prepareResult,
+                                  generatedColumns);
+                            })
+                        .doOnSubscribe(
+                            it ->
+                                bindingSink.emitNext(
+                                    iterator.next(), Sinks.EmitFailureHandler.FAIL_FAST))
+                        .doOnComplete(() -> this.bindings.clear())
+                        .doFinally(
+                            s -> {
+                              if (prepareResult.get() != null) {
+                                prepareResult.get().decrementUse(client);
+                              }
+                            })
+                        .doOnCancel(() -> clearBindings(iterator, canceled))
+                        .doOnError(e -> clearBindings(iterator, canceled)))
+                .flatMap(mariadbResultFlux -> mariadbResultFlux);
+          });
+    } else {
+      Flux<ServerMessage> messages = this.client.sendCommand(new QueryPacket(sql));
+      return toResult(Protocol.TEXT, client, messages, factory, null, generatedColumns);
+    }
   }
 
   private Mono<ServerPrepareResult> sendPrepare(String sql, ExceptionFactory factory) {
-    Flux<ServerPrepareResult> f =
-        this.client
-            .sendCommand(new PreparePacket(sql), DecoderState.PREPARE_RESPONSE, sql)
-            .handle(
-                (it, sink) -> {
-                  if (it instanceof ErrorPacket) {
-                    sink.error(factory.from((ErrorPacket) it));
-                    return;
-                  }
-                  if (it instanceof CompletePrepareResult) {
-                    prepareResult.set(((CompletePrepareResult) it).getPrepare());
-                    sink.next(prepareResult.get());
-                  }
-                  if (it.ending()) sink.complete();
-                });
-    return f.singleOrEmpty();
+    return this.client
+        .sendCommand(new PreparePacket(sql), DecoderState.PREPARE_RESPONSE, sql)
+        .handle(
+            (it, sink) -> {
+              if (it instanceof ErrorPacket) {
+                sink.error(factory.from((ErrorPacket) it));
+                return;
+              }
+              if (it instanceof CompletePrepareResult) {
+                prepareResult.set(((CompletePrepareResult) it).getPrepare());
+                sink.next(prepareResult.get());
+              }
+              if (it.ending()) sink.complete();
+            })
+        .cast(ServerPrepareResult.class)
+        .singleOrEmpty();
   }
 
-  private Flux<org.mariadb.r2dbc.api.MariadbResult> sendExecuteCmd(
-      ExceptionFactory factory,
-      Map<Integer, ParameterWithCodec> parameters,
-      String[] generatedColumns) {
-    return this.client
-        .sendCommand(new ExecutePacket(prepareResult.get(), parameters, factory))
-        .windowUntil(it -> it.resultSetEnd())
-        .map(
-            dataRow ->
-                new MariadbResult(
-                    false,
-                    prepareResult,
-                    dataRow,
-                    factory,
-                    generatedColumns,
-                    client.getVersion().supportReturning(),
-                    client.getConf()));
+  private Mono<ServerPrepareResult> prepareIfNotDone(String sql, ExceptionFactory factory) {
+    // prepare command, if not already done
+    if (prepareResult.get() == null) {
+      prepareResult.set(client.getPrepareCache().get(sql));
+      if (prepareResult.get() == null) {
+        return sendPrepare(sql, factory);
+      }
+    }
+    prepareResult.get().incrementUse();
+    return Mono.just(prepareResult.get());
   }
 
   @Override
@@ -378,10 +253,8 @@ final class MariadbServerParameterizedQueryStatement implements MariadbStatement
         + '\''
         + ", configuration="
         + configuration
-        + ", parameters="
-        + parameters
-        + ", batchingParameters="
-        + batchingParameters
+        + ", bindings="
+        + bindings
         + ", generatedColumns="
         + (generatedColumns != null ? Arrays.toString(generatedColumns) : null)
         + ", prepareResult="

@@ -19,7 +19,7 @@ import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.test.StepVerifier;
 
 public class PrepareResultSetTest extends BaseConnectionTest {
-  private static List<String> stringList =
+  private static final List<String> stringList =
       Arrays.asList(
           "456",
           "789000002",
@@ -131,12 +131,13 @@ public class PrepareResultSetTest extends BaseConnectionTest {
                 .execute()
                 .flatMap(r -> r.getRowsUpdated())
                 .blockLast(),
-        "No parameter have been set");
+        "No parameters have been set");
   }
 
   @Test
   void parameterLengthEncoded() {
     Assumptions.assumeTrue(maxAllowedPacket() >= 17 * 1024 * 1024);
+    Assumptions.assumeTrue(runLongTest());
     char[] arr1024 = new char[1024];
     for (int i = 0; i < arr1024.length; i++) {
       arr1024[i] = (char) ('a' + (i % 10));
@@ -415,7 +416,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bind(-1, 1),
-        "index must be in 0-0 range but value is -1");
+        "wrong index value -1, index must be positive");
     stmt.bind(0, 1).execute().subscribe().dispose();
     stmt.bind(0, 1)
         .execute()
@@ -427,7 +428,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bind(2, 1),
-        "index must be in 0-0 range but value is 2");
+        "Binding index 2 when only 1 parameters are expected");
     assertThrows(
         IllegalArgumentException.class,
         () -> stmt.bind(0, this).execute().blockLast(),
@@ -435,11 +436,11 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bindNull(-1, Integer.class),
-        "index must be in 0-0 range but value is -1");
+        "wrong index value -1, index must be positive");
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bindNull(2, Integer.class),
-        "index must be in 0-0 range but value is 2");
+        "Cannot bind parameter 2, statement has 1 parameters");
     assertThrows(
         IllegalArgumentException.class,
         () -> stmt.bindNull(0, this.getClass()),
@@ -460,7 +461,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IllegalStateException.class,
         () -> stmt.execute().blockLast(),
-        "No parameter have been set");
+        "No parameters have been set");
     Assertions.assertThrows(IllegalArgumentException.class, () -> stmt.add());
   }
 
@@ -543,7 +544,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bind(2, 1),
-        "index must be in 0-0 range but value is 2");
+        "Binding index 2 when only 1 parameters are expected");
     assertThrows(
         IllegalArgumentException.class,
         () -> stmt.bind(0, this).execute().blockLast(),
@@ -555,19 +556,19 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bindNull(2, Integer.class),
-        "index must be in 0-0 range but value is 2");
+        "Cannot bind parameter 2, statement has 1 parameters");
     assertThrows(
         IllegalArgumentException.class,
         () -> stmt.bindNull(0, this.getClass()),
         "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest (parameter at index 0)");
     stmt.bindNull(0, String.class);
-
+    stmt.bind(0, 1);
     stmt.execute().blockLast();
     // no parameter
     assertThrows(
         IllegalStateException.class,
         () -> stmt.execute().blockLast(),
-        "No parameter have been set");
+        "No parameters have been set");
   }
 
   private List<String> prepareInfo(MariadbConnection connection) {
@@ -702,7 +703,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
       if (!"maxscale".equals(System.getenv("srv"))
           && !"skysql-ha".equals(System.getenv("srv"))
           && (isMariaDBServer() || !minVersion(8, 0, 0))) {
-        Assertions.assertEquals("6", endingStatus.get(1), endingStatus.get(1));
+        Assertions.assertEquals("5", endingStatus.get(1), endingStatus.get(1));
       }
 
     } finally {

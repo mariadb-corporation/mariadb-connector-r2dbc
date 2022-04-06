@@ -14,8 +14,8 @@ public final class PrepareResultPacket implements ServerMessage {
   private final int numColumns;
   private final int numParams;
   private final boolean eofDeprecated;
-  private Sequencer sequencer;
-  private boolean continueOnEnd;
+  private final Sequencer sequencer;
+  private final boolean continueOnEnd;
 
   private PrepareResultPacket(
       final Sequencer sequencer,

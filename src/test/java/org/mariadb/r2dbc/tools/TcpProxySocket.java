@@ -15,7 +15,7 @@ public class TcpProxySocket implements Runnable {
 
   private final String host;
   private final int remoteport;
-  private int localport;
+  private final int localport;
   private boolean stop = false;
   private Socket client = null;
   private Socket server = null;

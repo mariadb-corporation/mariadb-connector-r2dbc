@@ -11,7 +11,7 @@ import org.mariadb.r2dbc.message.MessageSequence;
 
 public final class Sha2PublicKeyRequestPacket implements ClientMessage {
 
-  private MessageSequence sequencer;
+  private final MessageSequence sequencer;
 
   public Sha2PublicKeyRequestPacket(MessageSequence sequencer) {
     this.sequencer = sequencer;

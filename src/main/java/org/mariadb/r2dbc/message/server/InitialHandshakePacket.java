@@ -12,15 +12,15 @@ public final class InitialHandshakePacket implements ServerMessage {
 
   private static final String MARIADB_RPL_HACK_PREFIX = "5.5.5-";
 
-  private Sequencer sequencer;
-  private String serverVersion;
-  private long threadId;
-  private byte[] seed;
-  private long capabilities;
-  private short defaultCollation;
-  private short serverStatus;
-  private boolean mariaDBServer;
-  private String authenticationPluginType;
+  private final Sequencer sequencer;
+  private final String serverVersion;
+  private final long threadId;
+  private final byte[] seed;
+  private final long capabilities;
+  private final short defaultCollation;
+  private final short serverStatus;
+  private final boolean mariaDBServer;
+  private final String authenticationPluginType;
   private int majorVersion;
   private int minorVersion;
   private int patchVersion;

@@ -48,6 +48,7 @@ public class MariadbPacketEncoder extends MessageToByteEncoder<ClientMessage> {
 
     } finally {
       if (buf != null) buf.release();
+      msg.releaseEncodedBinds();
     }
   }
 

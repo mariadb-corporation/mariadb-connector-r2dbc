@@ -11,7 +11,7 @@ import org.mariadb.r2dbc.message.MessageSequence;
 
 public final class RsaPublicKeyRequestPacket implements ClientMessage {
 
-  private MessageSequence sequencer;
+  private final MessageSequence sequencer;
 
   public RsaPublicKeyRequestPacket(MessageSequence sequencer) {
     this.sequencer = sequencer;

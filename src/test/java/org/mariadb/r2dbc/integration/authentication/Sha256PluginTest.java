@@ -19,7 +19,8 @@ public class Sha256PluginTest extends BaseConnectionTest {
 
   private static String rsaPublicKey;
   private static String cachingRsaPublicKey;
-  private static boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+  private static final boolean isWindows =
+      System.getProperty("os.name").toLowerCase().contains("win");
 
   private static boolean validPath(String path) {
     if (path == null) return false;

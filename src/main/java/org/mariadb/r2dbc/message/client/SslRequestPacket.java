@@ -12,8 +12,8 @@ import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
 
 public final class SslRequestPacket implements ClientMessage {
 
-  private InitialHandshakePacket initialHandshakePacket;
-  private long clientCapabilities;
+  private final InitialHandshakePacket initialHandshakePacket;
+  private final long clientCapabilities;
 
   public SslRequestPacket(InitialHandshakePacket initialHandshakePacket, long clientCapabilities) {
     this.initialHandshakePacket = initialHandshakePacket;

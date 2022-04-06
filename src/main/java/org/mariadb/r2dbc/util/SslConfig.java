@@ -27,7 +27,7 @@ public class SslConfig {
 
   public static final SslConfig DISABLE_INSTANCE = new SslConfig(SslMode.DISABLE);
 
-  private SslMode sslMode;
+  private final SslMode sslMode;
   private String serverSslCert;
   private String clientSslCert;
   private String clientSslKey;
@@ -152,7 +152,7 @@ public class SslConfig {
             Certificate[] certs = session.getPeerCertificates();
             X509Certificate cert = (X509Certificate) certs[0];
 
-            hostnameVerifier.verify(host, cert, threadId);
+            DefaultHostnameVerifier.verify(host, cert, threadId);
           }
         } catch (SSLException ex) {
           result.completeExceptionally(

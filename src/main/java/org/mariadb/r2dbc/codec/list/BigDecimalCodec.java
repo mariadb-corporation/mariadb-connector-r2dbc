@@ -4,6 +4,7 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -13,6 +14,7 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class BigDecimalCodec implements Codec<BigDecimal> {
@@ -161,15 +163,17 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
-    BufferUtils.writeAscii(buf, ((BigDecimal) value).toPlainString());
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> BufferUtils.encodeAscii(allocator, ((BigDecimal) value).toPlainString()));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
-    String asciiFormat = ((BigDecimal) value).toPlainString();
-    BufferUtils.writeLengthEncode(asciiFormat.length(), buf);
-    BufferUtils.writeAscii(buf, asciiFormat);
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> BufferUtils.encodeLengthAscii(allocator, ((BigDecimal) value).toPlainString()));
   }
 
   public DataType getBinaryEncodeType() {

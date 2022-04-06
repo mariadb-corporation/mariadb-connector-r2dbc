@@ -12,9 +12,9 @@ public class ClientPrepareResult implements PrepareResult {
   private final List<byte[]> queryParts;
   private final List<String> paramNameList;
   private final int paramCount;
-  private boolean isQueryMultipleRewritable;
-  private boolean isReturning;
-  private boolean supportAddingReturning;
+  private final boolean isQueryMultipleRewritable;
+  private final boolean isReturning;
+  private final boolean supportAddingReturning;
 
   private ClientPrepareResult(
       List<byte[]> queryParts,

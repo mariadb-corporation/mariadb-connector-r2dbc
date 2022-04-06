@@ -22,43 +22,23 @@ public class StatementTest extends BaseConnectionTest {
   @Test
   void bindOnStatementWithoutParameter() {
     Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (1,2)");
-    try {
-      stmt.bind(1, 1);
-      Assertions.fail("must have thrown exception");
-    } catch (IndexOutOfBoundsException e) {
-      Assertions.assertTrue(
-          e.getMessage()
-              .contains(
-                  "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'"));
-    }
+    assertThrowsContains(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bind(1, 1),
+        "Binding index 1 when only 0 parameters are expected");
 
-    try {
-      stmt.bind("name", 1);
-      Assertions.fail("must have thrown exception");
-    } catch (IndexOutOfBoundsException e) {
-      Assertions.assertTrue(
-          e.getMessage()
-              .contains(
-                  "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'"));
-    }
-    try {
-      stmt.bindNull(0, String.class);
-      Assertions.fail("must have thrown exception");
-    } catch (IndexOutOfBoundsException e) {
-      Assertions.assertTrue(
-          e.getMessage()
-              .contains(
-                  "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'"));
-    }
-    try {
-      stmt.bindNull("name", String.class);
-      Assertions.fail("must have thrown exception");
-    } catch (IndexOutOfBoundsException e) {
-      Assertions.assertTrue(
-          e.getMessage()
-              .contains(
-                  "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'"));
-    }
+    assertThrowsContains(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bind("name", 1),
+        "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'");
+    assertThrowsContains(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bindNull(0, String.class),
+        "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'");
+    assertThrowsContains(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bindNull("name", String.class),
+        "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'");
   }
 
   @Test
@@ -79,31 +59,18 @@ public class StatementTest extends BaseConnectionTest {
   @Test
   void bindOnPreparedStatementWrongParameter() {
     Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (?, ?)");
-    try {
-      stmt.bind(-1, 1);
-      Assertions.fail("must have thrown exception");
-    } catch (IndexOutOfBoundsException e) {
-      Assertions.assertTrue(e.getMessage().contains("index must be in 0-1 range but value is -1"));
-    }
-    try {
-      stmt.bind(2, 1);
-      Assertions.fail("must have thrown exception");
-    } catch (IndexOutOfBoundsException e) {
-      Assertions.assertTrue(e.getMessage().contains("index must be in 0-1 range but value is 2"));
-    }
-
-    try {
-      stmt.bindNull(-1, String.class);
-      Assertions.fail("must have thrown exception");
-    } catch (IndexOutOfBoundsException e) {
-      Assertions.assertTrue(e.getMessage().contains("index must be in 0-1 range but value is -1"));
-    }
-    try {
-      stmt.bindNull(2, String.class);
-      Assertions.fail("must have thrown exception");
-    } catch (IndexOutOfBoundsException e) {
-      Assertions.assertTrue(e.getMessage().contains("index must be in 0-1 range but value is 2"));
-    }
+    assertThrowsContains(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bind(-1, 1),
+        "wrong index value -1, index must be positive");
+    assertThrowsContains(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bindNull(-1, String.class),
+        "wrong index value -1, index must be positive");
+    assertThrowsContains(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bindNull(2, String.class),
+        "Cannot bind parameter 2, statement has 2 parameters");
   }
 
   @Test
@@ -548,7 +515,7 @@ public class StatementTest extends BaseConnectionTest {
         .verifyComplete();
 
     assertThrows(
-        IllegalArgumentException.class,
+        IllegalStateException.class,
         () ->
             sharedConn
                 .createStatement("INSERT INTO prepareReturning(test) VALUES (?)")
@@ -558,7 +525,7 @@ public class StatementTest extends BaseConnectionTest {
                 .bind(0, "d")
                 .add()
                 .execute(),
-        "add() cannot be used if not bindings where set");
+        "Parameter at position 0 is not set");
   }
 
   @Test

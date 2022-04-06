@@ -13,7 +13,7 @@ public class TcpProxy {
   private static final Logger logger = LoggerFactory.getLogger(TcpProxy.class);
 
   private final String host;
-  private TcpProxySocket socket;
+  private final TcpProxySocket socket;
 
   /**
    * Initialise proxy.

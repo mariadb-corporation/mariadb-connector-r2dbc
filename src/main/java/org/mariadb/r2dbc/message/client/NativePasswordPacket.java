@@ -14,9 +14,9 @@ import org.mariadb.r2dbc.message.MessageSequence;
 
 public final class NativePasswordPacket implements ClientMessage {
 
-  private MessageSequence sequencer;
-  private CharSequence password;
-  private byte[] seed;
+  private final MessageSequence sequencer;
+  private final CharSequence password;
+  private final byte[] seed;
 
   public NativePasswordPacket(MessageSequence sequencer, CharSequence password, byte[] seed) {
     this.sequencer = sequencer;

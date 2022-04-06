@@ -47,7 +47,7 @@ public class SimpleFactory {
 
   @FunctionalInterface
   public interface ClientConnection<T, U, V, W, R> {
-    public R apply(T t, U u, V v, W w);
+    R apply(T t, U u, V v, W w);
   }
 
   public static Mono<MariadbConnection> connectToHost(

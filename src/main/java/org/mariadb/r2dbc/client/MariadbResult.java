@@ -43,7 +43,7 @@ public final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult 
   private final boolean supportReturning;
   private final boolean text;
   private final MariadbConnectionConfiguration conf;
-  private AtomicReference<ServerPrepareResult> prepareResult;
+  private final AtomicReference<ServerPrepareResult> prepareResult;
   private Predicate<Segment> filter;
 
   private volatile MariadbDataSegment segment;
@@ -185,7 +185,7 @@ public final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult 
         OkPacket okPacket = ((OkPacket) serverMessage);
         // This is for server that doesn't permit RETURNING: rely on OK_packet LastInsertId
         // to retrieve the last generated ID.
-        if (generatedColumns != null && !supportReturning && serverMessage instanceof OkPacket) {
+        if (generatedColumns != null && !supportReturning) {
           String colName = generatedColumns.length > 0 ? generatedColumns[0] : "ID";
           List<ColumnDefinitionPacket> tmpCol =
               Collections.singletonList(ColumnDefinitionPacket.fromGeneratedId(colName, conf));

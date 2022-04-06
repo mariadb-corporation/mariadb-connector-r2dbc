@@ -4,6 +4,7 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -14,6 +15,7 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class LongCodec implements Codec<Long> {
@@ -104,7 +106,7 @@ public class LongCodec implements Codec<Long> {
             return val.longValueExact();
           } catch (ArithmeticException ae) {
             throw factory.createParsingException(
-                String.format("value '%s' cannot be decoded as Long", val.toString()));
+                String.format("value '%s' cannot be decoded as Long", val));
           }
         }
 
@@ -153,7 +155,7 @@ public class LongCodec implements Codec<Long> {
             return val.longValueExact();
           } catch (ArithmeticException ae) {
             throw factory.createParsingException(
-                String.format("value '%s' cannot be decoded as Long", val.toString()));
+                String.format("value '%s' cannot be decoded as Long", val));
           }
         }
 
@@ -209,13 +211,20 @@ public class LongCodec implements Codec<Long> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
-    BufferUtils.writeAscii(buf, String.valueOf((long) value));
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(() -> BufferUtils.encodeAscii(allocator, String.valueOf(value)));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
-    buf.writeLongLE((long) value);
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> {
+          ByteBuf buf = allocator.buffer(8, 8);
+          buf.writeLongLE((Long) value);
+          return buf;
+        });
   }
 
   public DataType getBinaryEncodeType() {

@@ -11,9 +11,9 @@ import org.mariadb.r2dbc.message.ServerMessage;
 
 public class AuthSwitchPacket implements AuthSwitch, ServerMessage {
 
-  private Sequencer sequencer;
-  private String plugin;
-  private byte[] seed;
+  private final Sequencer sequencer;
+  private final String plugin;
+  private final byte[] seed;
 
   public AuthSwitchPacket(Sequencer sequencer, String plugin, byte[] seed) {
     this.sequencer = sequencer;

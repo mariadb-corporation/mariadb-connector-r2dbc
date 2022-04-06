@@ -12,7 +12,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class TransactionTest extends BaseConnectionTest {
-  private static String insertCmd =
+  private static final String insertCmd =
       "INSERT INTO `users` (`first_name`, `last_name`, `email`) VALUES ('MariaDB', 'Row', 'mariadb@test.com')";
 
   @BeforeAll

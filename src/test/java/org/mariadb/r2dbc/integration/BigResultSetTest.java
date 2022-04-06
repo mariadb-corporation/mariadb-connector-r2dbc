@@ -39,9 +39,7 @@ public class BigResultSetTest extends BaseConnectionTest {
 
   @Test
   void BigResultSet() {
-    Assumptions.assumeTrue(
-        System.getenv("RUN_LONG_TEST") == null
-            || !Boolean.parseBoolean(System.getenv("RUN_LONG_TEST")));
+    Assumptions.assumeTrue(runLongTest());
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     // sequence table requirement
     Assumptions.assumeTrue(meta.isMariaDBServer() && minVersion(10, 1, 0));
@@ -57,7 +55,7 @@ public class BigResultSetTest extends BaseConnectionTest {
 
   @Test
   void multipleFluxSubscription() {
-    Assumptions.assumeTrue(Boolean.parseBoolean(System.getProperty("RUN_LONG_TEST", "true")));
+    Assumptions.assumeTrue(runLongTest());
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     // sequence table requirement
     Assumptions.assumeTrue(meta.isMariaDBServer() && minVersion(10, 1, 0));
@@ -81,17 +79,13 @@ public class BigResultSetTest extends BaseConnectionTest {
 
   @Test
   void multiPacketRow() {
-    Assumptions.assumeTrue(
-        checkMaxAllowedPacketMore20m(sharedConn)
-            && Boolean.parseBoolean(System.getProperty("RUN_LONG_TEST", "true")));
+    Assumptions.assumeTrue(checkMaxAllowedPacketMore20m(sharedConn) && runLongTest());
     multiPacketRow(sharedConn);
   }
 
   @Test
   void multiPacketRowPrepare() {
-    Assumptions.assumeTrue(
-        checkMaxAllowedPacketMore20m(sharedConn)
-            && Boolean.parseBoolean(System.getProperty("RUN_LONG_TEST", "true")));
+    Assumptions.assumeTrue(checkMaxAllowedPacketMore20m(sharedConn) && runLongTest());
     multiPacketRow(sharedConnPrepare);
   }
 

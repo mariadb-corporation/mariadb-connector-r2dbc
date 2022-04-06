@@ -17,10 +17,10 @@ import org.mariadb.r2dbc.message.MessageSequence;
 
 public final class Sha256PasswordPacket implements ClientMessage {
 
-  private MessageSequence sequencer;
-  private CharSequence password;
-  private byte[] seed;
-  private PublicKey publicKey;
+  private final MessageSequence sequencer;
+  private final CharSequence password;
+  private final byte[] seed;
+  private final PublicKey publicKey;
 
   public Sha256PasswordPacket(
       MessageSequence sequencer, CharSequence password, byte[] seed, PublicKey publicKey) {

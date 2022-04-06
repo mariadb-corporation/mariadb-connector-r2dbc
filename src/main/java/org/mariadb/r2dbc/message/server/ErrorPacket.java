@@ -18,7 +18,7 @@ public final class ErrorPacket implements ServerMessage, Result.Message {
   private final short errorCode;
   private final String message;
   private final String sqlState;
-  private Sequencer sequencer;
+  private final Sequencer sequencer;
   private final boolean ending;
 
   private ErrorPacket(

@@ -5,58 +5,24 @@ package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.r2dbc.spi.Parameter;
-import java.util.Map;
-import org.mariadb.r2dbc.ExceptionFactory;
-import org.mariadb.r2dbc.codec.ParameterWithCodec;
+import java.util.List;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.MessageSequence;
 import org.mariadb.r2dbc.message.server.Sequencer;
+import org.mariadb.r2dbc.util.BindEncodedValue;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 
 public final class ExecutePacket implements ClientMessage {
-  private final ParameterWithCodec[] parameters;
+  private final List<BindEncodedValue> bindValues;
   private final int statementId;
   private final int parameterCount;
   private final MessageSequence sequencer = new Sequencer((byte) 0xff);
-  private final ExceptionFactory factory;
 
-  public ExecutePacket(
-      ServerPrepareResult prepareResult,
-      Map<Integer, ParameterWithCodec> parameters,
-      ExceptionFactory factory) {
-    this.factory = factory;
-    // validate parameters
-    if (prepareResult != null) {
-      this.statementId = prepareResult.getStatementId();
-      parameterCount = prepareResult.getNumParams();
-    } else {
-      this.statementId = -1;
-
-      int parameterCount = 0;
-      if (parameters != null) {
-        Integer[] keys = parameters.keySet().toArray(new Integer[0]);
-        for (Integer i : keys) {
-          if (i + 1 > parameterCount) parameterCount = i + 1;
-        }
-      }
-      this.parameterCount = parameterCount;
-    }
-
-    this.parameters = new ParameterWithCodec[parameterCount];
-
-    for (int i = 0; i < this.parameterCount; i++) {
-      ParameterWithCodec p = parameters.get(i);
-      if (p == null) {
-        throw new IllegalArgumentException(String.format("Parameter at position %s is not set", i));
-      }
-      this.parameters[i] = p;
-    }
-  }
-
-  public MessageSequence getSequencer() {
-    return sequencer;
+  public ExecutePacket(ServerPrepareResult prepareResult, List<BindEncodedValue> bindValues) {
+    this.bindValues = bindValues;
+    this.statementId = prepareResult == null ? -1 : prepareResult.getStatementId();
+    this.parameterCount = prepareResult == null ? bindValues.size() : prepareResult.getNumParams();
   }
 
   @Override
@@ -73,7 +39,7 @@ public final class ExecutePacket implements ClientMessage {
 
       byte[] nullBitsBuffer = new byte[nullCount];
       for (int i = 0; i < parameterCount; i++) {
-        if (parameters[i].getValue() == null) {
+        if (bindValues.get(i).getValue() == null) {
           nullBitsBuffer[i / 8] |= (1 << (i % 8));
         }
       }
@@ -82,17 +48,29 @@ public final class ExecutePacket implements ClientMessage {
       buf.writeByte(0x01); // Send Parameter type flag
       // Store types of parameters in first package that is sent to the server.
       for (int i = 0; i < parameterCount; i++) {
-        buf.writeShortLE(parameters[i].getCodec().getBinaryEncodeType().get());
+        buf.writeShortLE(bindValues.get(i).getCodec().getBinaryEncodeType().get());
       }
     }
 
-    // TODO avoid to send long data here.
     for (int i = 0; i < parameterCount; i++) {
-      Parameter p = parameters[i];
-      if (p.getValue() != null) {
-        parameters[i].getCodec().encodeBinary(buf, context, p.getValue(), factory);
+      ByteBuf param = bindValues.get(i).getValue();
+      if (param != null) {
+        buf.writeBytes(param);
       }
     }
+
     return buf;
+  }
+
+  public MessageSequence getSequencer() {
+    return sequencer;
+  }
+
+  @Override
+  public void releaseEncodedBinds() {
+    bindValues.forEach(
+        b -> {
+          if (b.getValue() != null) b.getValue().release();
+        });
   }
 }

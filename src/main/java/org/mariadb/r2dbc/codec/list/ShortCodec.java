@@ -4,6 +4,7 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -13,6 +14,7 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class ShortCodec implements Codec<Short> {
@@ -161,13 +163,21 @@ public class ShortCodec implements Codec<Short> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
-    BufferUtils.writeAscii(buf, Integer.toString((short) value));
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> BufferUtils.encodeAscii(allocator, Integer.toString((Short) value)));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
-    buf.writeShortLE((short) value);
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> {
+          ByteBuf buf = allocator.buffer(2, 2);
+          buf.writeShortLE((Short) value);
+          return buf;
+        });
   }
 
   public DataType getBinaryEncodeType() {

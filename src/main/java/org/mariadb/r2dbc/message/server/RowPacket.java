@@ -8,7 +8,7 @@ import org.mariadb.r2dbc.message.ServerMessage;
 
 public final class RowPacket implements ServerMessage {
 
-  private ByteBuf raw;
+  private final ByteBuf raw;
 
   public RowPacket(ByteBuf raw) {
     this.raw = raw.retain();

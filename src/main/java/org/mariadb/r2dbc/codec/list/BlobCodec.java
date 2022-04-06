@@ -4,15 +4,17 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import io.r2dbc.spi.Blob;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -95,50 +97,37 @@ public class BlobCodec implements Codec<Blob> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
-    buf.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
-    Flux.from(((Blob) value).stream())
-        .handle(
-            (tempVal, sync) -> {
-              if (tempVal.hasArray()) {
-                BufferUtils.writeEscaped(
-                    buf, tempVal.array(), tempVal.arrayOffset(), tempVal.remaining(), context);
-              } else {
-                byte[] intermediaryBuf = new byte[tempVal.remaining()];
-                tempVal.get(intermediaryBuf);
-                BufferUtils.writeEscaped(buf, intermediaryBuf, 0, intermediaryBuf.length, context);
-              }
-              sync.next(buf);
-            })
-        .doOnComplete(
-            () -> {
-              buf.writeByte((byte) '\'');
-            })
-        .subscribe();
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        Flux.from(((Blob) value).stream())
+            .reduce(
+                allocator.compositeBuffer(),
+                (a, b) -> a.addComponent(true, Unpooled.wrappedBuffer(b)))
+            .map(
+                b -> {
+                  ByteBuf returnedBuf = BufferUtils.encodeEscapedBuffer(allocator, b, context);
+                  b.release();
+                  return returnedBuf;
+                })
+            .doOnSubscribe(e -> ((Blob) value).discard()));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
-    Blob b = (Blob) value;
-    buf.writeByte(0xfe);
-    int initialPos = buf.writerIndex();
-    buf.writerIndex(buf.writerIndex() + 8); // reserve length encoded length bytes
-
-    Flux.from(b.stream())
-        .handle(
-            (tempVal, sync) -> {
-              buf.writeBytes(tempVal);
-              sync.next(buf);
-            })
-        .doOnComplete(
-            () -> {
-              // Write length
-              int endPos = buf.writerIndex();
-              buf.writerIndex(initialPos);
-              buf.writeLongLE(endPos - (initialPos + 8));
-              buf.writerIndex(endPos);
-            })
-        .subscribe();
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(
+        Flux.from(((Blob) value).stream())
+            .reduce(
+                allocator.compositeBuffer(),
+                (a, b) -> a.addComponent(true, Unpooled.wrappedBuffer(b)))
+            .map(
+                c ->
+                    c.addComponent(
+                        true,
+                        0,
+                        Unpooled.wrappedBuffer(BufferUtils.encodeLength(c.readableBytes()))))
+            .doOnSubscribe(e -> ((Blob) value).discard()));
   }
 
   private class MariaDbBlob implements Blob {

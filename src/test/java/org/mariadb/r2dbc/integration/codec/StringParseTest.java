@@ -39,12 +39,23 @@ public class StringParseTest extends BaseConnectionTest {
             "INSERT INTO StringTable VALUES ('some🌟', 'some🌟'),('1', '1'),('0', '0'), (null, null)")
         .execute()
         .blockLast();
+    sharedConn
+        .createStatement(
+            "CREATE TABLE StringBinary (t1 varbinary(256), t2 varbinary(1024)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "INSERT INTO StringBinary VALUES ('some🌟', 'some🌟'),('1', '1'),('0', '0'), (null, null)")
+        .execute()
+        .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
   }
 
   @AfterAll
   public static void afterAll2() {
     sharedConn.createStatement("DROP TABLE IF EXISTS StringTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS StringBinary").execute().blockLast();
     sharedConn.createStatement("DROP TABLE IF EXISTS durationValue").execute().blockLast();
     sharedConn.createStatement("DROP TABLE IF EXISTS localTimeValue").execute().blockLast();
     sharedConn.createStatement("DROP TABLE IF EXISTS localDateValue").execute().blockLast();
@@ -92,6 +103,43 @@ public class StringParseTest extends BaseConnectionTest {
         .verifyComplete();
     connection
         .createStatement("SELECT t2 FROM StringTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("some🌟"), Optional.of("1"), Optional.of("0"), Optional.empty())
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Object.class))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("some🌟"), Optional.of("1"), Optional.of("0"), Optional.empty())
+        .verifyComplete();
+  }
+
+  @Test
+  void defaultValueBinary() {
+    defaultValueBinary(sharedConn);
+  }
+
+  @Test
+  void defaultValuePrepareBinary() {
+    defaultValueBinary(sharedConnPrepare);
+  }
+
+  private void defaultValueBinary(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM StringBinary WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("some🌟"), Optional.of("1"), Optional.of("0"), Optional.empty())
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t2 FROM StringBinary WHERE 1 = ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))

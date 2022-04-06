@@ -16,7 +16,7 @@ import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 public class MariadbTextTestKit implements TestKit<String> {
-  private static DataSource jdbcDatasource;
+  private static final DataSource jdbcDatasource;
 
   static {
     String connString =

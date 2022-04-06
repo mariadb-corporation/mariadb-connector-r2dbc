@@ -113,7 +113,7 @@ public final class MariadbConnectionConfiguration {
     this.autocommit = autocommit;
     this.tinyInt1isBit = tinyInt1isBit;
     this.loopResources = loopResources != null ? loopResources : TcpResources.get();
-    this.useServerPrepStmts = this.allowMultiQueries ? false : useServerPrepStmts;
+    this.useServerPrepStmts = !this.allowMultiQueries && useServerPrepStmts;
   }
 
   static boolean boolValue(Object value) {

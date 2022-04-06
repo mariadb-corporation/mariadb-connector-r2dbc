@@ -196,20 +196,30 @@ class BufferUtilsTest {
             true,
             1,
             "testr2",
+            null,
             IsolationLevel.REPEATABLE_READ);
     Context ctx =
         new ContextImpl(
-            "10.5.5-mariadb", 1, 1, (short) 0, true, 1, "testr2", IsolationLevel.REPEATABLE_READ);
+            "10.5.5-mariadb",
+            1,
+            1,
+            (short) 0,
+            true,
+            1,
+            "testr2",
+            null,
+            IsolationLevel.REPEATABLE_READ);
 
     ByteBuf buf = allocator.buffer(1000);
     buf.writerIndex(0);
-    BufferUtils.write(buf, "A'\"\0\\€'\"\0\\", false, ctxNoBackSlash);
+    byte[] val = "A'\"\0\\€'\"\0\\".getBytes(StandardCharsets.UTF_8);
+    BufferUtils.escapedBytes(buf, val, val.length, ctxNoBackSlash);
     byte[] res = new byte[buf.writerIndex()];
     buf.getBytes(0, res);
     assertArrayEquals("A''\"\0\\€''\"\0\\".getBytes(StandardCharsets.UTF_8), res);
 
     buf.writerIndex(0);
-    BufferUtils.write(buf, "A'\"\0\\€'\"\0\\", false, ctx);
+    BufferUtils.escapedBytes(buf, val, val.length, ctx);
     res = new byte[buf.writerIndex()];
     buf.getBytes(0, res);
     assertArrayEquals("A\\'\\\"\\\0\\\\€\\'\\\"\\\0\\\\".getBytes(StandardCharsets.UTF_8), res);
@@ -222,28 +232,28 @@ class BufferUtilsTest {
     final byte[] utf8Wrong4bytes2 = new byte[] {-16, (byte) -97, (byte) -103};
 
     buf.writerIndex(0);
-    BufferUtils.write(buf, new String(utf8Wrong2bytes, StandardCharsets.UTF_8), false, ctx);
+    BufferUtils.escapedBytes(buf, utf8Wrong2bytes, utf8Wrong2bytes.length, ctx);
     res = new byte[buf.writerIndex()];
     buf.getBytes(0, res);
-    assertArrayEquals(new byte[] {8, -17, -65, -67, 111, 111}, res);
+    assertArrayEquals(utf8Wrong2bytes, res);
 
     buf.writerIndex(0);
-    BufferUtils.write(buf, new String(utf8Wrong3bytes, StandardCharsets.UTF_8), false, ctx);
+    BufferUtils.escapedBytes(buf, utf8Wrong3bytes, utf8Wrong3bytes.length, ctx);
     res = new byte[buf.writerIndex()];
     buf.getBytes(0, res);
-    assertArrayEquals(new byte[] {7, 10, -17, -65, -67, 111, 111}, res);
+    assertArrayEquals(utf8Wrong3bytes, res);
 
     buf.writerIndex(0);
-    BufferUtils.write(buf, new String(utf8Wrong4bytes, StandardCharsets.UTF_8), false, ctx);
+    BufferUtils.escapedBytes(buf, utf8Wrong4bytes, utf8Wrong4bytes.length, ctx);
     res = new byte[buf.writerIndex()];
     buf.getBytes(0, res);
-    assertArrayEquals(new byte[] {16, 32, 10, -17, -65, -67, 111, 111}, res);
+    assertArrayEquals(utf8Wrong4bytes, res);
 
     buf.writerIndex(0);
-    BufferUtils.write(buf, new String(utf8Wrong4bytes2, StandardCharsets.UTF_8), false, ctx);
+    BufferUtils.escapedBytes(buf, utf8Wrong4bytes2, utf8Wrong4bytes2.length, ctx);
     res = new byte[buf.writerIndex()];
     buf.getBytes(0, res);
-    assertArrayEquals(new byte[] {-17, -65, -67}, res);
+    assertArrayEquals(utf8Wrong4bytes2, res);
   }
 
   @Test

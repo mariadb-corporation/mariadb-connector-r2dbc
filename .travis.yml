@@ -12,7 +12,7 @@ addons:
 
 before_install:
   - git clone https://github.com/mariadb-corporation/connector-test-machine.git
-env: packet=40 local=0 clear_text_plugin=0
+env: packet=40 local=0 clear_text_plugin=0 RUN_LONG_TEST=true
 install:
   - |-
     case $TRAVIS_OS_NAME in

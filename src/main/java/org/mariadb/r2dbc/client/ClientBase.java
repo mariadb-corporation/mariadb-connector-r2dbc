@@ -3,6 +3,7 @@
 
 package org.mariadb.r2dbc.client;
 
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.logging.LogLevel;
@@ -55,6 +56,7 @@ public abstract class ClientBase implements Client {
   private final MariadbPacketEncoder mariadbPacketEncoder = new MariadbPacketEncoder();
   protected volatile Context context;
   private final PrepareCache prepareCache;
+  private final ByteBufAllocator byteBufAllocator;
 
   @Override
   public Context getContext() {
@@ -90,6 +92,7 @@ public abstract class ClientBase implements Client {
         .doOnComplete(this::closedServlet)
         .then()
         .subscribe();
+    this.byteBufAllocator = connection.outbound().alloc();
   }
 
   public static TcpClient setSocketOption(
@@ -401,6 +404,7 @@ public abstract class ClientBase implements Client {
             handshake.isMariaDBServer(),
             clientCapabilities,
             configuration.getDatabase(),
+            byteBufAllocator,
             configuration.getIsolationLevel());
     mariadbPacketDecoder.setContext(context);
     mariadbPacketEncoder.setContext(context);

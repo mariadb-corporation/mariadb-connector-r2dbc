@@ -4,6 +4,7 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.EnumSet;
@@ -12,6 +13,7 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 
 public class DurationCodec implements Codec<Duration> {
 
@@ -146,70 +148,83 @@ public class DurationCodec implements Codec<Duration> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
-    Duration val = (Duration) value;
-    long s = val.getSeconds();
-    boolean negate = false;
-    if (s < 0) {
-      negate = true;
-      s = -s;
-    }
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> {
+          Duration val = (Duration) value;
+          long s = val.getSeconds();
+          boolean negate = false;
+          if (s < 0) {
+            negate = true;
+            s = -s;
+          }
+          ByteBuf buf = allocator.buffer();
+          long microSecond = val.getNano() / 1000;
+          buf.writeByte('\'');
+          String durationStr;
+          if (microSecond != 0) {
+            if (negate) {
+              s = s - 1;
+              durationStr =
+                  String.format(
+                      "-%d:%02d:%02d.%06d",
+                      s / 3600, (s % 3600) / 60, (s % 60), 1000000 - microSecond);
 
-    long microSecond = val.getNano() / 1000;
-    buf.writeByte('\'');
-    if (microSecond != 0) {
-      if (negate) {
-        s = s - 1;
-        buf.writeCharSequence(
-            String.format(
-                "-%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), 1000000 - microSecond),
-            StandardCharsets.US_ASCII);
-
-      } else {
-        buf.writeCharSequence(
-            String.format("%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), microSecond),
-            StandardCharsets.US_ASCII);
-      }
-    } else {
-      String format = negate ? "-%d:%02d:%02d" : "%d:%02d:%02d";
-      buf.writeCharSequence(
-          String.format(format, s / 3600, (s % 3600) / 60, (s % 60)), StandardCharsets.US_ASCII);
-    }
-    buf.writeByte('\'');
+            } else {
+              durationStr =
+                  String.format(
+                      "%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), microSecond);
+            }
+          } else {
+            durationStr =
+                String.format(
+                    negate ? "-%d:%02d:%02d" : "%d:%02d:%02d", s / 3600, (s % 3600) / 60, (s % 60));
+          }
+          buf.writeCharSequence(durationStr, StandardCharsets.US_ASCII);
+          buf.writeByte('\'');
+          return buf;
+        });
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object val, ExceptionFactory factory) {
-    Duration value = (Duration) val;
-    long microSecond = value.getNano() / 1000;
-    long s = Math.abs(value.getSeconds());
-    if (microSecond > 0) {
-      if (value.isNegative()) {
-        s = s - 1;
-        buf.writeByte((byte) 12);
-        buf.writeByte((byte) (value.isNegative() ? 1 : 0));
-        buf.writeIntLE((int) (s / (24 * 3600)));
-        buf.writeByte((int) (s % (24 * 3600)) / 3600);
-        buf.writeByte((int) (s % 3600) / 60);
-        buf.writeByte((int) (s % 60));
-        buf.writeIntLE((int) (1000000 - microSecond));
-      } else {
-        buf.writeByte((byte) 12);
-        buf.writeByte((byte) (value.isNegative() ? 1 : 0));
-        buf.writeIntLE((int) (s / (24 * 3600)));
-        buf.writeByte((int) (s % (24 * 3600)) / 3600);
-        buf.writeByte((int) (s % 3600) / 60);
-        buf.writeByte((int) (s % 60));
-        buf.writeIntLE((int) microSecond);
-      }
-    } else {
-      buf.writeByte((byte) 8);
-      buf.writeByte((byte) (value.isNegative() ? 1 : 0));
-      buf.writeIntLE((int) (s / (24 * 3600)));
-      buf.writeByte((int) (s % (24 * 3600)) / 3600);
-      buf.writeByte((int) (s % 3600) / 60);
-      buf.writeByte((int) (s % 60));
-    }
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> {
+          Duration val = (Duration) value;
+          ByteBuf buf = allocator.buffer();
+          long microSecond = val.getNano() / 1000;
+          long s = Math.abs(val.getSeconds());
+          if (microSecond > 0) {
+            if (val.isNegative()) {
+              s = s - 1;
+              buf.writeByte((byte) 12);
+              buf.writeByte((byte) (val.isNegative() ? 1 : 0));
+              buf.writeIntLE((int) (s / (24 * 3600)));
+              buf.writeByte((int) (s % (24 * 3600)) / 3600);
+              buf.writeByte((int) (s % 3600) / 60);
+              buf.writeByte((int) (s % 60));
+              buf.writeIntLE((int) (1000000 - microSecond));
+            } else {
+              buf.writeByte((byte) 12);
+              buf.writeByte((byte) (val.isNegative() ? 1 : 0));
+              buf.writeIntLE((int) (s / (24 * 3600)));
+              buf.writeByte((int) (s % (24 * 3600)) / 3600);
+              buf.writeByte((int) (s % 3600) / 60);
+              buf.writeByte((int) (s % 60));
+              buf.writeIntLE((int) microSecond);
+            }
+          } else {
+            buf.writeByte((byte) 8);
+            buf.writeByte((byte) (val.isNegative() ? 1 : 0));
+            buf.writeIntLE((int) (s / (24 * 3600)));
+            buf.writeByte((int) (s % (24 * 3600)) / 3600);
+            buf.writeByte((int) (s % 3600) / 60);
+            buf.writeByte((int) (s % 60));
+          }
+          return buf;
+        });
   }
 
   public DataType getBinaryEncodeType() {

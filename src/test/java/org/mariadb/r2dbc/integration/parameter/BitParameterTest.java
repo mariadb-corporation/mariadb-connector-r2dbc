@@ -83,11 +83,8 @@ public class BitParameterTest extends BaseConnectionTest {
 
     Assertions.assertTrue(
         stmt.toString()
-                .contains(
-                    "parameters=[ParameterWithCodec{param=In{Inferred: java.lang.Boolean}, codec=BooleanCodec}, ParameterWithCodec{param=In{Inferred: java.lang.Boolean}, codec=BooleanCodec}, ParameterWithCodec{param=In{Inferred: java.lang.Boolean}, codec=BooleanCodec}]")
-            || stmt.toString()
-                .contains(
-                    "parameters={0=ParameterWithCodec{param=In{Inferred: java.lang.Boolean}, codec=BooleanCodec}, 1=ParameterWithCodec{param=In{Inferred: java.lang.Boolean}, codec=BooleanCodec}, 2=ParameterWithCodec{param=In{Inferred: java.lang.Boolean}, codec=BooleanCodec}}"),
+            .contains(
+                "bindings=[Binding{binds={0=BindValue{codec=BooleanCodec}, 1=BindValue{codec=BooleanCodec}, 2=BindValue{codec=BooleanCodec}}}]"),
         stmt.toString());
     stmt.execute().blockLast();
     validate(
@@ -234,13 +231,29 @@ public class BitParameterTest extends BaseConnectionTest {
     connection
         .createStatement("INSERT INTO ByteParam VALUES (?,?,?)")
         .bind(0, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 15}))))
-        .bind(1, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127}))))
+        .bind(1, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 1, 2}))))
         .bind(2, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {0}))))
         .execute()
         .blockLast();
+
     validate(
         Optional.of(BitSet.valueOf(new byte[] {(byte) 15})),
-        Optional.of(BitSet.valueOf(new byte[] {(byte) 127, 0, (byte) 1})),
+        Optional.of(BitSet.valueOf(new byte[] {(byte) 2, (byte) 1})),
+        Optional.of(BitSet.valueOf(new byte[] {(byte) 0})));
+
+    sharedConn.createStatement("TRUNCATE TABLE ByteParam").execute().blockLast();
+
+    connection
+        .createStatement("INSERT INTO ByteParam VALUES (?,?,?)")
+        .bind(0, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 15}))))
+        .bind(1, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 1, 2}))))
+        .bind(2, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {0}))))
+        .execute()
+        .blockLast();
+
+    validate(
+        Optional.of(BitSet.valueOf(new byte[] {(byte) 15})),
+        Optional.of(BitSet.valueOf(new byte[] {(byte) 2, (byte) 1})),
         Optional.of(BitSet.valueOf(new byte[] {(byte) 0})));
   }
 

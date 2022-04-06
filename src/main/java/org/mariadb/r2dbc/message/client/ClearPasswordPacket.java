@@ -12,8 +12,8 @@ import org.mariadb.r2dbc.message.MessageSequence;
 
 public final class ClearPasswordPacket implements ClientMessage {
 
-  private CharSequence password;
-  private MessageSequence sequencer;
+  private final CharSequence password;
+  private final MessageSequence sequencer;
 
   public ClearPasswordPacket(MessageSequence sequencer, CharSequence password) {
     this.sequencer = sequencer;

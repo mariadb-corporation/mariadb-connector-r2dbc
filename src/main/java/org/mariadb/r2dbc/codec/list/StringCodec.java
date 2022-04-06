@@ -4,6 +4,7 @@
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -14,6 +15,7 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class StringCodec implements Codec<String> {
@@ -258,15 +260,21 @@ public class StringCodec implements Codec<String> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
-    BufferUtils.write(buf, ((String) value), true, context);
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        () ->
+            BufferUtils.encodeEscapedBytes(
+                allocator,
+                BufferUtils.STRING_PREFIX,
+                ((String) value).getBytes(StandardCharsets.UTF_8),
+                context));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Object value, ExceptionFactory factory) {
-    byte[] b = ((String) value).getBytes(StandardCharsets.UTF_8);
-    BufferUtils.writeLengthEncode(b.length, buf);
-    buf.writeBytes(b);
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(() -> BufferUtils.encodeLengthUtf8(allocator, (String) value));
   }
 
   public DataType getBinaryEncodeType() {

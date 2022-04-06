@@ -11,8 +11,8 @@ import org.mariadb.r2dbc.util.constants.Capabilities;
 
 public class ColumnCountPacket implements ServerMessage {
 
-  private int columnCount;
-  private boolean metaFollows;
+  private final int columnCount;
+  private final boolean metaFollows;
 
   public ColumnCountPacket(int columnCount, boolean metaFollows) {
     this.columnCount = columnCount;

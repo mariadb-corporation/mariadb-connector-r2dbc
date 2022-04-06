@@ -23,13 +23,13 @@ import org.mariadb.r2dbc.util.constants.Capabilities;
 
 public final class HandshakeResponse implements ClientMessage {
 
-  private InitialHandshakePacket initialHandshakePacket;
-  private String username;
-  private CharSequence password;
-  private String database;
-  private Map<String, String> connectionAttributes;
-  private HostAddress hostAddress;
-  private long clientCapabilities;
+  private final InitialHandshakePacket initialHandshakePacket;
+  private final String username;
+  private final CharSequence password;
+  private final String database;
+  private final Map<String, String> connectionAttributes;
+  private final HostAddress hostAddress;
+  private final long clientCapabilities;
 
   public HandshakeResponse(
       InitialHandshakePacket initialHandshakePacket,
@@ -108,7 +108,7 @@ public final class HandshakeResponse implements ClientMessage {
 
     if ((initialHandshakePacket.getCapabilities() & Capabilities.PLUGIN_AUTH_LENENC_CLIENT_DATA)
         != 0) {
-      BufferUtils.writeLengthEncode(authData.length, buf);
+      buf.writeBytes(BufferUtils.encodeLength(authData.length));
       buf.writeBytes(authData);
     } else if ((initialHandshakePacket.getCapabilities() & Capabilities.SECURE_CONNECTION) != 0) {
       buf.writeByte((byte) authData.length);
@@ -131,7 +131,7 @@ public final class HandshakeResponse implements ClientMessage {
     if ((initialHandshakePacket.getCapabilities() & Capabilities.CONNECT_ATTRS) != 0) {
       ByteBuf bufAttributes = allocator.buffer(2048);
       writeConnectAttributes(bufAttributes, connectionAttributes, hostAddress);
-      BufferUtils.writeLengthEncode(bufAttributes.writerIndex(), buf);
+      buf.writeBytes(BufferUtils.encodeLength(bufAttributes.writerIndex()));
       buf.writeBytes(bufAttributes, 0, bufAttributes.writerIndex());
       bufAttributes.release();
     }

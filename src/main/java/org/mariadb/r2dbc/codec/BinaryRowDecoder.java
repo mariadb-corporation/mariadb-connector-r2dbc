@@ -11,9 +11,9 @@ import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
 public class BinaryRowDecoder extends RowDecoder {
 
-  private int columnNumber;
-  private List<ColumnDefinitionPacket> columns;
-  private byte[] nullBitmap;
+  private final int columnNumber;
+  private final List<ColumnDefinitionPacket> columns;
+  private final byte[] nullBitmap;
 
   public BinaryRowDecoder(
       List<ColumnDefinitionPacket> columns,

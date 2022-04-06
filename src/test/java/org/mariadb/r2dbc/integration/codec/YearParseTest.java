@@ -19,7 +19,7 @@ import org.mariadb.r2dbc.util.MariadbType;
 import reactor.test.StepVerifier;
 
 public class YearParseTest extends BaseConnectionTest {
-  private static MariadbConnectionMetadata meta = sharedConn.getMetadata();
+  private static final MariadbConnectionMetadata meta = sharedConn.getMetadata();
 
   @BeforeAll
   public static void before2() {

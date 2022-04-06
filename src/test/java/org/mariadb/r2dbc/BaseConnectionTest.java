@@ -8,8 +8,9 @@ import java.io.IOException;
 import java.util.Random;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.extension.*;
+import org.junit.jupiter.api.function.Executable;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.tools.TcpProxy;
@@ -21,7 +22,7 @@ public class BaseConnectionTest extends BaseTest {
   public static MariadbConnection sharedConn;
   public static MariadbConnection sharedConnPrepare;
   public static TcpProxy proxy;
-  private static Random rand = new Random();
+  private static final Random rand = new Random();
   public static final Boolean backslashEscape =
       System.getenv("NO_BACKSLASH_ESCAPES") != null
           ? Boolean.valueOf(System.getenv("NO_BACKSLASH_ESCAPES"))
@@ -98,6 +99,20 @@ public class BaseConnectionTest extends BaseTest {
   public static void afterEAll() {
     sharedConn.close().block();
     sharedConnPrepare.close().block();
+  }
+
+  public static boolean runLongTest() {
+    String runLongTest = System.getenv("RUN_LONG_TEST");
+    if (runLongTest != null) {
+      return Boolean.parseBoolean(runLongTest);
+    }
+    return false;
+  }
+
+  public static void assertThrowsContains(
+      Class<? extends Exception> expectedType, Executable executable, String expected) {
+    Exception e = Assertions.assertThrows(expectedType, executable);
+    Assertions.assertTrue(e.getMessage().contains(expected), "real message:" + e.getMessage());
   }
 
   public static boolean isMariaDBServer() {

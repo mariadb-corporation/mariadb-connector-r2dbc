@@ -11,8 +11,8 @@ import org.mariadb.r2dbc.message.MessageSequence;
 
 public final class AuthMoreRawPacket implements ClientMessage {
 
-  private byte[] raw;
-  private MessageSequence sequencer;
+  private final byte[] raw;
+  private final MessageSequence sequencer;
 
   public AuthMoreRawPacket(MessageSequence sequencer, byte[] raw) {
     this.sequencer = sequencer;

@@ -12,5 +12,7 @@ public interface ClientMessage {
     return new Sequencer((byte) 0xff);
   }
 
+  default void releaseEncodedBinds() {}
+
   ByteBuf encode(Context context, ByteBufAllocator byteBufAllocator);
 }

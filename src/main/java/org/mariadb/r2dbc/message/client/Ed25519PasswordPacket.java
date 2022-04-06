@@ -20,9 +20,9 @@ import org.mariadb.r2dbc.message.MessageSequence;
 
 public final class Ed25519PasswordPacket implements ClientMessage {
 
-  private MessageSequence sequencer;
-  private CharSequence password;
-  private byte[] seed;
+  private final MessageSequence sequencer;
+  private final CharSequence password;
+  private final byte[] seed;
 
   public Ed25519PasswordPacket(MessageSequence sequencer, CharSequence password, byte[] seed) {
     this.sequencer = sequencer;
