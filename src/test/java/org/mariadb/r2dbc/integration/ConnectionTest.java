@@ -521,6 +521,7 @@ public class ConnectionTest extends BaseConnectionTest {
     con.setAutoCommit(true).subscribe();
     con.setAutoCommit(true).block();
     con.setAutoCommit(false).block();
+    con.setAutoCommit(true).block();
   }
 
   @Test
@@ -756,6 +757,7 @@ public class ConnectionTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .verifyComplete();
     sharedConn.createStatement("DROP TABLE IF EXISTS rollbackTable").execute().blockLast();
+    sharedConn.setAutoCommit(true).block();
   }
 
   @Test
