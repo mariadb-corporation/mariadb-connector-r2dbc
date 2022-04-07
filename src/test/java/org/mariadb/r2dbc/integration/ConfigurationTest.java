@@ -151,6 +151,14 @@ public class ConfigurationTest extends BaseTest {
   }
 
   @Test
+  void checkDecoded() {
+    ConnectionFactoryOptions options = ConnectionFactoryOptions.parse("r2dbc:mariadb://ro%3Aot:pw%3Ad@localhost:3306/db");
+    MariadbConnectionConfiguration conf = MariadbConnectionConfiguration.fromOptions(options).build();
+    Assertions.assertEquals("ro:ot", conf.getUsername());
+    Assertions.assertEquals("pw:d", conf.getPassword().toString());
+  }
+
+  @Test
   void factory() {
 
     final ConnectionFactoryOptions option1s = ConnectionFactoryOptions.builder().build();
