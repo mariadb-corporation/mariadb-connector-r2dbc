@@ -173,6 +173,7 @@ public class TransactionTest extends BaseConnectionTest {
         .blockLast();
     checkInserted(conn, 2);
     conn.rollbackTransaction().block();
+    conn.setAutoCommit(true).block();
     conn.close();
   }
 
@@ -189,6 +190,7 @@ public class TransactionTest extends BaseConnectionTest {
     conn.rollbackTransactionToSavepoint("mySavePoint").block();
     checkInserted(conn, 1);
     conn.rollbackTransaction().block();
+    conn.setAutoCommit(true).block();
     conn.close();
   }
 
@@ -206,6 +208,7 @@ public class TransactionTest extends BaseConnectionTest {
         .blockLast();
     checkInserted(conn, 1);
     conn.rollbackTransaction().block();
+    conn.setAutoCommit(true).block();
     conn.close();
   }
 

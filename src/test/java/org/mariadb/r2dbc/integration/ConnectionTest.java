@@ -441,6 +441,7 @@ public class ConnectionTest extends BaseConnectionTest {
     con.beginTransaction().subscribe();
     con.beginTransaction().block();
     con.beginTransaction().block();
+    con.rollbackTransaction().block();
   }
 
   @Test
@@ -473,6 +474,7 @@ public class ConnectionTest extends BaseConnectionTest {
     con.beginTransaction(transactionDefinition).subscribe();
     con.beginTransaction(transactionDefinition).block();
     con.beginTransaction(transactionDefinition).block();
+    con.rollbackTransaction().block();
   }
 
   @Test
@@ -499,7 +501,7 @@ public class ConnectionTest extends BaseConnectionTest {
                         .equals(
                             "Transaction characteristics can't be changed while a transaction is in progress"))
         .verify();
-    sharedConn.rollbackTransaction();
+    sharedConn.rollbackTransaction().block();
   }
 
   @Test
