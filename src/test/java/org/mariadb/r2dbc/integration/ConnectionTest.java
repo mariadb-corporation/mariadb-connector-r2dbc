@@ -175,7 +175,7 @@ public class ConnectionTest extends BaseConnectionTest {
             200);
 
     assertTimeout(
-        Duration.ofSeconds(2),
+        Duration.ofSeconds(5),
         () -> {
           try {
             connection
