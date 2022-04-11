@@ -269,7 +269,7 @@ public final class ColumnDefinitionPacket
       case STRING:
       case VARSTRING:
       case NULL:
-        return MariadbType.VARCHAR;
+        return isBinary() ? MariadbType.BYTES : MariadbType.VARCHAR;
       case TEXT:
         return MariadbType.CLOB;
       case OLDDECIMAL:

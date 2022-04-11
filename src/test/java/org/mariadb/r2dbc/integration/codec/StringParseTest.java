@@ -17,6 +17,7 @@ import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
@@ -136,7 +137,21 @@ public class StringParseTest extends BaseConnectionTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of("some🌟"), Optional.of("1"), Optional.of("0"), Optional.empty())
+        .consumeNextWith(
+            c -> {
+              Assertions.assertTrue(c.get() instanceof byte[]);
+              Assertions.assertArrayEquals(
+                  "some🌟".getBytes(StandardCharsets.UTF_8), (byte[]) c.get());
+            })
+        .consumeNextWith(
+            c ->
+                Assertions.assertArrayEquals(
+                    "1".getBytes(StandardCharsets.UTF_8), (byte[]) c.get()))
+        .consumeNextWith(
+            c ->
+                Assertions.assertArrayEquals(
+                    "0".getBytes(StandardCharsets.UTF_8), (byte[]) c.get()))
+        .expectNext(Optional.empty())
         .verifyComplete();
     connection
         .createStatement("SELECT t2 FROM StringBinary WHERE 1 = ?")
@@ -144,7 +159,21 @@ public class StringParseTest extends BaseConnectionTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of("some🌟"), Optional.of("1"), Optional.of("0"), Optional.empty())
+        .consumeNextWith(
+            c -> {
+              Assertions.assertTrue(c.get() instanceof byte[]);
+              Assertions.assertArrayEquals(
+                  "some🌟".getBytes(StandardCharsets.UTF_8), (byte[]) c.get());
+            })
+        .consumeNextWith(
+            c -> {
+              Assertions.assertArrayEquals("1".getBytes(StandardCharsets.UTF_8), (byte[]) c.get());
+            })
+        .consumeNextWith(
+            c -> {
+              Assertions.assertArrayEquals("0".getBytes(StandardCharsets.UTF_8), (byte[]) c.get());
+            })
+        .expectNext(Optional.empty())
         .verifyComplete();
     connection
         .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?")
