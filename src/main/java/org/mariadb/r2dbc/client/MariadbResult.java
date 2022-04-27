@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
@@ -153,6 +154,7 @@ public final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult 
 
   private BiConsumer<? super ServerMessage, SynchronousSink<Segment>> handler(boolean throwError) {
     final List<ColumnDefinitionPacket> columns = new ArrayList<>();
+    final AtomicBoolean metaFollows = new AtomicBoolean(true);
     return (serverMessage, sink) -> {
       if (serverMessage instanceof ErrorPacket) {
         if (throwError) {
@@ -170,7 +172,8 @@ public final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult 
       }
 
       if (serverMessage instanceof ColumnCountPacket) {
-        if (!((ColumnCountPacket) serverMessage).isMetaFollows()) {
+        metaFollows.set(((ColumnCountPacket) serverMessage).isMetaFollows());
+        if (!metaFollows.get()) {
           columns.addAll(Arrays.asList(this.prepareResult.get().getColumns()));
         }
         return;
@@ -214,6 +217,10 @@ public final class MariadbResult implements org.mariadb.r2dbc.api.MariadbResult 
                 : new BinaryRowDecoder(columns, this.conf, this.factory);
         boolean outputParameter =
             (((EofPacket) serverMessage).getServerStatus() & ServerStatus.PS_OUT_PARAMETERS) > 0;
+        // in case metadata follows and prepared statement, update meta
+        if (prepareResult != null && prepareResult.get() != null && metaFollows.get()) {
+          prepareResult.get().setColumns(columns.toArray(new ColumnDefinitionPacket[0]));
+        }
         segment =
             outputParameter
                 ? new MariadbOutSegment(decoder, columns)

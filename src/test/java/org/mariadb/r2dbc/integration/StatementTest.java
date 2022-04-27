@@ -6,6 +6,8 @@ package org.mariadb.r2dbc.integration;
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import io.r2dbc.spi.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import org.junit.jupiter.api.Assertions;
@@ -15,6 +17,9 @@ import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.api.MariadbStatement;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 public class StatementTest extends BaseConnectionTest {
@@ -173,6 +178,38 @@ public class StatementTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNextCount(200)
         .verifyComplete();
+  }
+
+  @Test
+  void metadataNotSkipped() {
+    String sql;
+
+    StringBuilder sb = new StringBuilder("select ?");
+    for (int i = 1; i < 1000; i++) {
+      sb.append(",?");
+    }
+    sql = sb.toString();
+    int[] rnds = randParams();
+    io.r2dbc.spi.Statement statement = sharedConnPrepare.createStatement(sql);
+    for (int j = 0; j < 2; j++) {
+      for (int i = 0; i < 1000; i++) {
+        statement.bind(i, rnds[i]);
+      }
+
+      Integer val =
+          Flux.from(statement.execute())
+              .flatMap(it -> it.map((row, rowMetadata) -> row.get(0, Integer.class)))
+              .blockLast();
+      if (rnds[0] != val) throw new IllegalStateException("ERROR");
+    }
+  }
+
+  private static int[] randParams() {
+    int[] rnds = new int[1000];
+    for (int i = 0; i < 1000; i++) {
+      rnds[i] = (int) (Math.random() * 1000);
+    }
+    return rnds;
   }
 
   @Test
