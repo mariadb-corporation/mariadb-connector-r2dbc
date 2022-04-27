@@ -3,6 +3,7 @@
 
 package org.mariadb.r2dbc.client;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
@@ -12,11 +13,14 @@ import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import io.r2dbc.spi.*;
+import java.net.SocketAddress;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
 import org.mariadb.r2dbc.ExceptionFactory;
@@ -25,38 +29,41 @@ import org.mariadb.r2dbc.MariadbTransactionDefinition;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.ServerMessage;
-import org.mariadb.r2dbc.message.client.QueryPacket;
-import org.mariadb.r2dbc.message.client.QuitPacket;
-import org.mariadb.r2dbc.message.client.SslRequestPacket;
+import org.mariadb.r2dbc.message.client.*;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
 import org.mariadb.r2dbc.message.server.RowPacket;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
-import reactor.core.publisher.Mono;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscription;
+import reactor.core.CoreSubscriber;
+import reactor.core.publisher.*;
 import reactor.netty.Connection;
+import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 import reactor.util.concurrent.Queues;
 
-public abstract class ClientBase implements Client {
+public class ClientBase implements Client {
 
   private static final Logger logger = Loggers.getLogger(ClientBase.class);
-  protected final ReentrantLock lock = new ReentrantLock();
   private final MariadbConnectionConfiguration configuration;
-  protected final Connection connection;
-  protected final HostAddress hostAddress;
-  protected final Queue<CmdElement> responseReceivers = Queues.<CmdElement>unbounded().get();
+  private final ServerMessageSubscriber messageSubscriber;
+  private final Sinks.Many<Publisher<ClientMessage>> requestSink =
+      Sinks.many().unicast().onBackpressureBuffer();
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
-  private volatile boolean closeRequested = false;
-  private final MariadbPacketDecoder mariadbPacketDecoder;
-  private final MariadbPacketEncoder mariadbPacketEncoder = new MariadbPacketEncoder();
-  protected volatile Context context;
+  private final ServerMsgDecoder decoder;
   private final PrepareCache prepareCache;
   private final ByteBufAllocator byteBufAllocator;
+
+  private volatile boolean closeRequested = false;
+
+  protected final ReentrantLock lock;
+  protected final Connection connection;
+  protected final HostAddress hostAddress;
+  protected volatile Context context;
 
   @Override
   public Context getContext() {
@@ -66,18 +73,20 @@ public abstract class ClientBase implements Client {
   protected ClientBase(
       Connection connection,
       MariadbConnectionConfiguration configuration,
-      HostAddress hostAddress) {
+      HostAddress hostAddress,
+      ReentrantLock lock) {
     this.connection = connection;
     this.configuration = configuration;
     this.hostAddress = hostAddress;
+    this.lock = lock;
     this.prepareCache =
         new PrepareCache(
             this.configuration.useServerPrepStmts() ? this.configuration.getPrepareCacheSize() : 0,
             this);
-    this.mariadbPacketDecoder = new MariadbPacketDecoder(responseReceivers, this);
-
-    connection.addHandler(mariadbPacketDecoder);
-    connection.addHandler(mariadbPacketEncoder);
+    this.decoder = new ServerMsgDecoder(this);
+    this.byteBufAllocator = connection.outbound().alloc();
+    this.messageSubscriber = new ServerMessageSubscriber(this.lock, this.isClosed);
+    connection.addHandler(new MariadbFrameDecoder());
 
     if (logger.isTraceEnabled()) {
       connection.addHandlerFirst(
@@ -89,10 +98,38 @@ public abstract class ClientBase implements Client {
         .inbound()
         .receive()
         .doOnError(this::handleConnectionError)
-        .doOnComplete(this::closedServlet)
-        .then()
-        .subscribe();
-    this.byteBufAllocator = connection.outbound().alloc();
+        .doOnComplete(this::handleConnectionEnd)
+        .subscribe(messageSubscriber);
+
+    Mono<Void> request =
+        this.requestSink
+            .asFlux()
+            .concatMap(Function.identity())
+            .cast(ClientMessage.class)
+            .map(
+                clientMessage ->
+                    MariadbPacketEncoder.encodeFlux(
+                        clientMessage, this.context, this.byteBufAllocator))
+            .flatMap(b -> connection.outbound().send(Mono.just(b)), 1)
+            .then();
+
+    request.doAfterTerminate(this::handleConnectionEnd).subscribe();
+  }
+
+  public static Mono<Client> connect(
+      ConnectionProvider connectionProvider,
+      SocketAddress socketAddress,
+      HostAddress hostAddress,
+      MariadbConnectionConfiguration configuration,
+      ReentrantLock lock) {
+    TcpClient tcpClient =
+        TcpClient.create(connectionProvider)
+            .remoteAddress(() -> socketAddress)
+            .runOn(configuration.loopResources());
+    tcpClient = setSocketOption(configuration, tcpClient);
+    return tcpClient
+        .connect()
+        .flatMap(it -> Mono.just(new ClientBase(it, configuration, hostAddress, lock)));
   }
 
   public static TcpClient setSocketOption(
@@ -121,21 +158,33 @@ public abstract class ClientBase implements Client {
     return tcpClient;
   }
 
+  private void sendClientMsgs(Publisher<ClientMessage> it) {
+    this.requestSink.emitNext(it, Sinks.EmitFailureHandler.FAIL_FAST);
+  }
+
   private void handleConnectionError(Throwable throwable) {
-    R2dbcNonTransientResourceException err;
-    if (this.isClosed.compareAndSet(false, true)) {
-      err =
-          new R2dbcNonTransientResourceException("Connection unexpected error", "08000", throwable);
+    if (closeChannelIfNeeded()) {
       logger.error("Connection unexpected error", throwable);
+      messageSubscriber.endExchanges(new R2dbcNonTransientResourceException("Connection unexpected error", "08000", throwable));
+    } else {
+      logger.error("Connection error", throwable);
+      messageSubscriber.endExchanges(new R2dbcNonTransientResourceException("Connection error", "08000", throwable));
+    }
+  }
+
+  private void handleConnectionEnd() {
+    messageSubscriber.endExchanges(new R2dbcNonTransientResourceException("Connection " + (closeChannelIfNeeded() ? "unexpectedly " : "") + "closed", "08000"));
+  }
+
+  private boolean closeChannelIfNeeded() {
+    if (this.isClosed.compareAndSet(false, true)) {
       Channel channel = this.connection.channel();
       if (!channel.isOpen()) {
         this.connection.dispose();
       }
-    } else {
-      err = new R2dbcNonTransientResourceException("Connection error", "08000", throwable);
-      logger.error("Connection error", throwable);
+      return true;
     }
-    clearWaitingListWithError(err);
+    return false;
   }
 
   @Override
@@ -162,10 +211,6 @@ public abstract class ClientBase implements Client {
         });
   }
 
-  public Flux<ServerMessage> sendCommand(ClientMessage message) {
-    return sendCommand(message, DecoderState.QUERY_RESPONSE);
-  }
-
   @Override
   public Mono<Void> sendSslRequest(
       SslRequestPacket sslRequest, MariadbConnectionConfiguration configuration) {
@@ -186,7 +231,7 @@ public abstract class ClientBase implements Client {
 
       sslHandler.handshakeFuture().addListener(listener);
       // send SSL request in clear
-      connection.channel().writeAndFlush(sslRequest);
+      this.sendClientMsgs(Mono.just(sslRequest));
 
       // add SSL handler
       connection.addHandlerFirst(sslHandler);
@@ -198,15 +243,7 @@ public abstract class ClientBase implements Client {
     }
   }
 
-  public Flux<ServerMessage> sendCommand(ClientMessage message, DecoderState initialState) {
-    return sendCommand(message, initialState, null);
-  }
-
-  public abstract Flux<ServerMessage> sendCommand(
-      ClientMessage message, DecoderState initialState, String sql);
-
   private Flux<ServerMessage> execute(Consumer<FluxSink<ServerMessage>> s) {
-    AtomicBoolean atomicBoolean = new AtomicBoolean();
     return Flux.create(
         sink -> {
           if (!isConnected()) {
@@ -215,22 +252,14 @@ public abstract class ClientBase implements Client {
                     "Connection is close. Cannot send anything"));
             return;
           }
-          if (atomicBoolean.compareAndSet(false, true)) {
-            try {
-              lock.lock();
-              s.accept(sink);
-            } finally {
-              lock.unlock();
-            }
+          try {
+            lock.lock();
+            s.accept(sink);
+          } finally {
+            lock.unlock();
           }
         });
   }
-
-  abstract void begin(FluxSink<ServerMessage> sink, String sql);
-
-  abstract void executeWhenTransaction(FluxSink<ServerMessage> sink, String cmd);
-
-  abstract void executeAutoCommit(FluxSink<ServerMessage> sink, boolean autoCommit);
 
   public long getThreadId() {
     return context.getThreadId();
@@ -244,7 +273,7 @@ public abstract class ClientBase implements Client {
   public Mono<Void> beginTransaction() {
     try {
       lock.lock();
-      return execute(sink -> begin(sink, "BEGIN"))
+      return execute(sink -> this.messageSubscriber.begin(sink, "BEGIN", this::sendClientMsgs))
           .handle(ExceptionFactory.withSql("BEGIN")::handleErrorResponse)
           .then();
     } finally {
@@ -292,7 +321,7 @@ public abstract class ClientBase implements Client {
     String sql = sb.toString();
     try {
       lock.lock();
-      return execute(sink -> begin(sink, sql))
+      return execute(sink -> this.messageSubscriber.begin(sink, sql, this::sendClientMsgs))
           .handle(ExceptionFactory.withSql(sql)::handleErrorResponse)
           .then();
     } finally {
@@ -308,7 +337,10 @@ public abstract class ClientBase implements Client {
   public Mono<Void> commitTransaction() {
     try {
       lock.lock();
-      return execute(sink -> executeWhenTransaction(sink, "COMMIT"))
+      return execute(
+              sink ->
+                  this.messageSubscriber.executeWhenTransaction(
+                      sink, "COMMIT", this::sendClientMsgs))
           .handle(ExceptionFactory.withSql("COMMIT")::handleErrorResponse)
           .then();
     } finally {
@@ -324,7 +356,10 @@ public abstract class ClientBase implements Client {
   public Mono<Void> rollbackTransaction() {
     try {
       lock.lock();
-      return execute(sink -> executeWhenTransaction(sink, "ROLLBACK"))
+      return execute(
+              sink ->
+                  this.messageSubscriber.executeWhenTransaction(
+                      sink, "ROLLBACK", this::sendClientMsgs))
           .handle(ExceptionFactory.withSql("ROLLBACK")::handleErrorResponse)
           .then();
     } finally {
@@ -341,7 +376,9 @@ public abstract class ClientBase implements Client {
     try {
       lock.lock();
       String cmd = String.format("ROLLBACK TO SAVEPOINT `%s`", name.replace("`", "``"));
-      return execute(sink -> executeWhenTransaction(sink, cmd))
+      return execute(
+              sink ->
+                  this.messageSubscriber.executeWhenTransaction(sink, cmd, this::sendClientMsgs))
           .handle(ExceptionFactory.withSql(cmd)::handleErrorResponse)
           .then();
     } finally {
@@ -381,7 +418,9 @@ public abstract class ClientBase implements Client {
   public Mono<Void> setAutoCommit(boolean autoCommit) {
     try {
       lock.lock();
-      return execute(sink -> executeAutoCommit(sink, autoCommit))
+      return execute(
+              sink ->
+                  this.messageSubscriber.executeAutoCommit(sink, autoCommit, this::sendClientMsgs))
           .handle(ExceptionFactory.withSql(null)::handleErrorResponse)
           .then();
     } finally {
@@ -391,7 +430,7 @@ public abstract class ClientBase implements Client {
 
   @Override
   public Flux<ServerMessage> receive(DecoderState initialState) {
-    return Flux.create(sink -> this.responseReceivers.add(new CmdElement(sink, initialState)));
+    return messageSubscriber.receive(initialState);
   }
 
   public void setContext(InitialHandshakePacket handshake, long clientCapabilities) {
@@ -406,8 +445,7 @@ public abstract class ClientBase implements Client {
             configuration.getDatabase(),
             byteBufAllocator,
             configuration.getIsolationLevel());
-    mariadbPacketDecoder.setContext(context);
-    mariadbPacketEncoder.setContext(context);
+    decoder.setContext(context);
   }
 
   /**
@@ -448,26 +486,291 @@ public abstract class ClientBase implements Client {
     return this.closeRequested;
   }
 
-  private void closedServlet() {
-    if (this.isClosed.compareAndSet(false, true)) {
-      Channel channel = this.connection.channel();
-      if (!channel.isOpen()) {
-        this.connection.dispose();
-      }
-      clearWaitingListWithError(
-          ExceptionFactory.INSTANCE.createException("Connection unexpectedly closed", "08000", -1));
+  protected class ServerMessageSubscriber implements CoreSubscriber<ByteBuf> {
+    private Subscription upstream;
+    private AtomicBoolean close;
+    protected final Queue<Exchange> exchangeQueue =
+        Queues.<Exchange>get(Queues.SMALL_BUFFER_SIZE).get();
+    private final Queue<ServerMessage> receiverQueue =
+        Queues.<ServerMessage>get(Queues.SMALL_BUFFER_SIZE).get();
+    private final AtomicLong receiverDemands = new AtomicLong(0);
+    private final ReentrantLock lock;
 
-    } else {
-      clearWaitingListWithError(new R2dbcNonTransientResourceException("Connection closed"));
+    public ServerMessageSubscriber(ReentrantLock lock, AtomicBoolean close) {
+      this.lock = lock;
+      this.close = close;
+    }
+
+    @Override
+    public void onSubscribe(Subscription subscription) {
+      this.upstream = subscription;
+    }
+
+    public void onError(Throwable t) {}
+
+    public void onComplete() {}
+
+    @Override
+    public void onNext(ByteBuf message) {
+      if (this.close.get()) {
+        message.release();
+        Operators.onNextDropped(message, currentContext());
+        return;
+      }
+
+      this.receiverDemands.decrementAndGet();
+      Exchange exchange = this.exchangeQueue.peek();
+      ServerMessage srvMsg = decoder.decode(message, exchange);
+
+      if (this.receiverQueue.isEmpty() && exchange != null && exchange.hasDemand()) {
+        // nothing buffered => directly emit message
+        if (srvMsg.ending()) this.exchangeQueue.poll();
+        exchange.emit(srvMsg);
+        return;
+      }
+
+      // queue message
+      if (!this.receiverQueue.offer(srvMsg)) {
+        message.release();
+        Operators.onNextDropped(message, currentContext());
+        onError(
+            new R2dbcNonTransientResourceException("unexpected : server message queue is full"));
+        return;
+      }
+
+      tryDrainQueue();
+    }
+
+    public void onRequest(Exchange exchange, long n) {
+      exchange.incrementDemand(n);
+      requestQueueFilling();
+      tryDrainQueue();
+    }
+
+    private void requestQueueFilling() {
+      if (this.receiverQueue.isEmpty()
+          && this.receiverDemands.compareAndSet(0, Queues.SMALL_BUFFER_SIZE)) {
+        this.upstream.request(Queues.SMALL_BUFFER_SIZE);
+      }
+    }
+
+    private void tryDrainQueue() {
+      Exchange exchange;
+      ServerMessage srvMsg;
+      while (!this.receiverQueue.isEmpty()) {
+        if (!lock.tryLock()) return;
+        try {
+          while (!this.receiverQueue.isEmpty()) {
+            if ((exchange = this.exchangeQueue.peek()) == null || !exchange.hasDemand()) return;
+            if ((srvMsg = this.receiverQueue.poll()) == null) return;
+            if (srvMsg.ending()) this.exchangeQueue.poll();
+            exchange.emit(srvMsg);
+          }
+        } finally {
+          lock.unlock();
+        }
+
+        if ((exchange = this.exchangeQueue.peek()) == null || exchange.hasDemand()) {
+          requestQueueFilling();
+        }
+      }
+    }
+
+    public void endExchanges(Throwable exception) {
+      Exchange exchange;
+      while ((exchange = this.exchangeQueue.poll()) != null) {
+        exchange.getSink().error(exception);
+      }
+    }
+
+    public Flux<ServerMessage> receive(DecoderState initialState) {
+      return Flux.create(
+          sink -> {
+            try {
+              lock.lock();
+              Exchange exchange = new Exchange(sink, initialState);
+              sink.onRequest(value -> onRequest(exchange, value));
+              if (!this.exchangeQueue.offer(exchange)) {
+                sink.error(
+                    new R2dbcTransientResourceException(
+                        "Request queue limit reached during handshake"));
+              }
+            } catch (Throwable t) {
+              t.printStackTrace();
+              throw t;
+            } finally {
+              lock.unlock();
+            }
+          });
+    }
+
+    public Flux<ServerMessage> sendCommand(
+        PreparePacket preparePacket,
+        ExecutePacket executePacket,
+        Consumer<Publisher<ClientMessage>> sender) {
+
+      return Flux.create(
+          sink -> {
+            if (!isConnected()) {
+              sink.error(
+                  new R2dbcNonTransientResourceException(
+                      "Connection is close. Cannot send anything"));
+              return;
+            }
+            try {
+              lock.lock();
+              Exchange exchange =
+                  new Exchange(
+                      sink, DecoderState.PREPARE_AND_EXECUTE_RESPONSE, preparePacket.getSql());
+              if (this.exchangeQueue.offer(exchange)) {
+                sink.onRequest(value -> onRequest(exchange, value));
+                decoder.addPrepare(preparePacket.getSql());
+                sender.accept(Flux.just(preparePacket, executePacket));
+              } else {
+                sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
+                return;
+              }
+            } catch (Throwable t) {
+              t.printStackTrace();
+              sink.error(t);
+            } finally {
+              lock.unlock();
+            }
+          });
+    }
+
+    public Flux<ServerMessage> sendCommand(
+        ClientMessage message,
+        DecoderState initialState,
+        String sql,
+        Consumer<Publisher<ClientMessage>> sender) {
+      return Flux.create(
+          sink -> {
+            if (!isConnected()) {
+              sink.error(
+                  new R2dbcNonTransientResourceException(
+                      "Connection is close. Cannot send anything"));
+              return;
+            }
+            try {
+              lock.lock();
+              if (message instanceof PreparePacket) {
+                decoder.addPrepare(((PreparePacket) message).getSql());
+              }
+
+              Exchange exchange = new Exchange(sink, initialState, sql);
+              if (this.exchangeQueue.offer(exchange)) {
+                sink.onRequest(value -> onRequest(exchange, value));
+                sender.accept(Mono.just(message));
+              } else {
+                sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
+              }
+            } catch (Throwable t) {
+              t.printStackTrace();
+              sink.error(t);
+            } finally {
+              lock.unlock();
+            }
+          });
+    }
+
+    protected void begin(
+        FluxSink<ServerMessage> sink, String sql, Consumer<Publisher<ClientMessage>> sender) {
+      if (!exchangeQueue.isEmpty()
+          || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
+        Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
+        if (this.exchangeQueue.offer(exchange)) {
+          sender.accept(Mono.just(new QueryPacket(sql)));
+          sink.onRequest(value -> onRequest(exchange, value));
+        } else {
+          sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
+        }
+      } else {
+        logger.debug("Skipping start transaction because already in transaction");
+        sink.complete();
+      }
+    }
+
+    private void executeAutoCommit(
+        FluxSink<ServerMessage> sink,
+        boolean autoCommit,
+        Consumer<Publisher<ClientMessage>> sender) {
+      String sql = "SET autocommit=" + (autoCommit ? '1' : '0');
+      if (this.exchangeQueue.isEmpty() || autoCommit != isAutoCommit()) {
+
+        try {
+          lock.lock();
+          Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
+          if (this.exchangeQueue.offer(exchange)) {
+            sink.onRequest(value -> onRequest(exchange, value));
+            sender.accept(Mono.just(new QueryPacket(sql)));
+          } else {
+            sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
+          }
+        } catch (Throwable t) {
+          t.printStackTrace();
+          throw t;
+        } finally {
+          lock.unlock();
+        }
+
+      } else {
+        logger.debug("Skipping autocommit since already in that state");
+        sink.complete();
+      }
+    }
+
+    private void executeWhenTransaction(
+        FluxSink<ServerMessage> sink, String cmd, Consumer<Publisher<ClientMessage>> sender) {
+      if (!exchangeQueue.isEmpty()
+          || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) > 0) {
+        try {
+          lock.lock();
+          Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, cmd);
+          if (this.exchangeQueue.offer(exchange)) {
+            sink.onRequest(value -> onRequest(exchange, value));
+            sender.accept(Mono.just(new QueryPacket(cmd)));
+          } else {
+            sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
+          }
+        } catch (Throwable t) {
+          t.printStackTrace();
+          throw t;
+        } finally {
+          lock.unlock();
+        }
+      } else {
+        logger.debug(String.format("Skipping '%s' because no active transaction", cmd));
+        sink.complete();
+      }
     }
   }
 
-  private void clearWaitingListWithError(Throwable exception) {
-    mariadbPacketDecoder.connectionError(exception);
-    CmdElement response;
-    while ((response = this.responseReceivers.poll()) != null) {
-      response.getSink().error(exception);
+  public void sendCommandWithoutResult(ClientMessage message) {
+    try {
+      lock.lock();
+      sendClientMsgs(Mono.just(message));
+    } finally {
+      lock.unlock();
     }
+  }
+
+  public Flux<ServerMessage> sendCommand(ClientMessage message) {
+    return this.messageSubscriber.sendCommand(
+        message, DecoderState.QUERY_RESPONSE, null, this::sendClientMsgs);
+  }
+
+  public Flux<ServerMessage> sendCommand(ClientMessage message, DecoderState initialState) {
+    return this.messageSubscriber.sendCommand(message, initialState, null, this::sendClientMsgs);
+  }
+
+  public Flux<ServerMessage> sendCommand(
+      ClientMessage message, DecoderState initialState, String sql) {
+    return this.messageSubscriber.sendCommand(message, initialState, sql, this::sendClientMsgs);
+  }
+
+  public Flux<ServerMessage> sendCommand(PreparePacket preparePacket, ExecutePacket executePacket) {
+    return this.messageSubscriber.sendCommand(preparePacket, executePacket, this::sendClientMsgs);
   }
 
   public MariadbConnectionConfiguration getConf() {
@@ -477,8 +780,6 @@ public abstract class ClientBase implements Client {
   public HostAddress getHostAddress() {
     return hostAddress;
   }
-
-  public abstract void sendNext();
 
   public PrepareCache getPrepareCache() {
     return prepareCache;

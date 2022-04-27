@@ -76,7 +76,7 @@ public final class HandshakeResponse implements ClientMessage {
             initialHandshakePacket.getMajorServerVersion(),
             initialHandshakePacket.getMinorServerVersion());
 
-    ByteBuf buf = allocator.ioBuffer(4096);
+    ByteBuf buf = allocator.buffer(4096);
 
     final byte[] authData;
     String authenticationPluginType = initialHandshakePacket.getAuthenticationPluginType();

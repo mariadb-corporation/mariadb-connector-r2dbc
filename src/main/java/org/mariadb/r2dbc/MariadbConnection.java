@@ -7,6 +7,7 @@ import io.r2dbc.spi.IsolationLevel;
 import io.r2dbc.spi.TransactionDefinition;
 import io.r2dbc.spi.ValidationDepth;
 import java.time.Duration;
+import java.util.function.Function;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.message.client.ChangeSchemaPacket;
@@ -254,10 +255,10 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
             sink.success(false);
             return;
           }
-
           this.client
               .sendCommand(new PingPacket())
               .windowUntil(it -> it.ending())
+              .flatMap(Function.identity())
               .subscribe(
                   msg -> sink.success(true),
                   err -> {

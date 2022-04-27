@@ -59,7 +59,7 @@ public final class AuthenticationFlow {
         .doOnNext(
             state -> {
               if (State.COMPLETED == state) {
-                if (flow.authMoreDataPacket != null) flow.authMoreDataPacket.deallocate();
+                if (flow.authMoreDataPacket != null) flow.authMoreDataPacket.release();
                 flow.sink.complete();
               } else {
                 if (logger.isTraceEnabled()) {

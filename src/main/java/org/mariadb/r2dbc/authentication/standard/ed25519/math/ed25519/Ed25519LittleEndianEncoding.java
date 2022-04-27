@@ -35,9 +35,9 @@ public class Ed25519LittleEndianEncoding extends Encoding {
    *   <li>Convert the field element to the 32 byte representation.
    * </ol>
    *
-   * <p>The idea for the modulo $p$ reduction algorithm is as follows:
+   * The idea for the modulo $p$ reduction algorithm is as follows:
    *
-   * <h2>Assumption:</h2>
+   * <p>Assumption:
    *
    * <ul>
    *   <li>$p = 2^{255} - 19$
@@ -49,7 +49,7 @@ public class Ed25519LittleEndianEncoding extends Encoding {
    *
    * <p>Then $q = [2^{-255} * (h + 19 * 2^{-25} * h_9 + 1/2)]$ where $[x] = floor(x)$.
    *
-   * <h2>Proof:</h2>
+   * <p>Proof:
    *
    * <p>We begin with some very raw estimation for the bounds of some expressions:
    *
@@ -58,13 +58,9 @@ public class Ed25519LittleEndianEncoding extends Encoding {
    * 2^{230} * h_9| = |h_0 + \dots + 2^{204} * h_8| \lt 2^{204} * 2^{30} = 2^{234}. \\ \Rightarrow
    * -1/4 \le b := 19 * 2^{-255} * (h - 2^{230} * h_9) \lt 1/4 \end{equation} $$
    *
-   * <p>Therefore $0 \lt 1/2 - a - b \lt 1$.
-   *
-   * <p>Set $x := r + 19 * 2^{-255} * r + 1/2 - a - b$. Then:
-   *
-   * <p>$$ 0 \le x \lt 255 - 20 + 19 + 1 = 2^{255} \\ \Rightarrow 0 \le 2^{-255} * x \lt 1. $$
-   *
-   * <p>Since $q$ is an integer we have
+   * <p>Therefore $0 \lt 1/2 - a - b \lt 1$. Set $x := r + 19 * 2^{-255} * r + 1/2 - a - b$. Then:
+   * $$ 0 \le x \lt 255 - 20 + 19 + 1 = 2^{255} \\ \Rightarrow 0 \le 2^{-255} * x \lt 1. $$ Since
+   * $q$ is an integer we have
    *
    * <p>$$ [q + 2^{-255} * x] = q \quad (1) $$
    *

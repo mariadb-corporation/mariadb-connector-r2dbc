@@ -3,22 +3,24 @@
 
 package org.mariadb.r2dbc.client;
 
+import java.util.concurrent.atomic.AtomicLong;
 import org.mariadb.r2dbc.message.ServerMessage;
 import reactor.core.publisher.FluxSink;
 
-public class CmdElement {
+public class Exchange {
 
   private final FluxSink<ServerMessage> sink;
   private final DecoderState initialState;
   private final String sql;
+  private final AtomicLong demand = new AtomicLong();
 
-  public CmdElement(FluxSink<ServerMessage> sink, DecoderState initialState) {
+  public Exchange(FluxSink<ServerMessage> sink, DecoderState initialState) {
     this.sink = sink;
     this.initialState = initialState;
     this.sql = null;
   }
 
-  public CmdElement(FluxSink<ServerMessage> sink, DecoderState initialState, String sql) {
+  public Exchange(FluxSink<ServerMessage> sink, DecoderState initialState, String sql) {
     this.sink = sink;
     this.initialState = initialState;
     this.sql = sql;
@@ -34,5 +36,24 @@ public class CmdElement {
 
   public String getSql() {
     return sql;
+  }
+
+  public boolean hasDemand() {
+    return demand.get() > 0;
+  }
+
+  public void emit(ServerMessage srvMsg) {
+    demand.decrementAndGet();
+    if (this.sink.isCancelled()) {
+      return;
+    }
+    this.sink.next(srvMsg);
+    if (srvMsg.ending()) {
+      this.sink.complete();
+    }
+  }
+
+  public void incrementDemand(long n) {
+    demand.addAndGet(n);
   }
 }

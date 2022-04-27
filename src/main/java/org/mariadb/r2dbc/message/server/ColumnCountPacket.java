@@ -21,11 +21,11 @@ public class ColumnCountPacket implements ServerMessage {
 
   public static ColumnCountPacket decode(Sequencer sequencer, ByteBuf buf, Context context) {
     long columnCount = BufferUtils.readLengthEncodedInt(buf);
+    boolean metaFollow = true;
     if ((context.getServerCapabilities() & Capabilities.MARIADB_CLIENT_CACHE_METADATA) > 0) {
-      int metaFollow = buf.readByte();
-      return new ColumnCountPacket((int) columnCount, metaFollow == 1);
+      metaFollow = buf.readByte() == 1;
     }
-    return new ColumnCountPacket((int) columnCount, true);
+    return new ColumnCountPacket((int) columnCount, metaFollow);
   }
 
   public int getColumnCount() {

@@ -6,6 +6,7 @@ package org.mariadb.r2dbc;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.mariadb.r2dbc.client.Client;
+import org.mariadb.r2dbc.client.DecoderState;
 import org.mariadb.r2dbc.message.Protocol;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.QueryPacket;
@@ -112,8 +113,12 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
                         bindingSink.emitNext(iterator.next(), Sinks.EmitFailureHandler.FAIL_FAST));
           });
     } else {
-      Flux<ServerMessage> messages = this.client.sendCommand(new QueryPacket(sql));
-      return toResult(Protocol.TEXT, client, messages, factory, null, generatedColumns);
+      return Flux.defer(
+          () -> {
+            Flux<ServerMessage> messages =
+                this.client.sendCommand(new QueryPacket(sql), DecoderState.QUERY_RESPONSE, sql);
+            return toResult(Protocol.TEXT, client, messages, factory, null, generatedColumns);
+          });
     }
   }
 

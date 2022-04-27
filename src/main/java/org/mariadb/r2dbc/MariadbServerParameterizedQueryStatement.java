@@ -123,7 +123,9 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
                           .flatMapMany(
                               values ->
                                   this.client.sendCommand(
-                                      new ExecutePacket(prepareResult.get(), values)))
+                                      new ExecutePacket(prepareResult.get(), values),
+                                      DecoderState.QUERY_RESPONSE,
+                                      sql))
                           .doFinally(s -> prepareResult.get().decrementUse(client));
                   return toResult(
                       Protocol.BINARY, client, messages, factory, prepareResult, generatedColumns);
@@ -152,7 +154,9 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
                                   .flatMapMany(
                                       values ->
                                           this.client.sendCommand(
-                                              new ExecutePacket(prepareResult1, values)));
+                                              new ExecutePacket(prepareResult1, values),
+                                              DecoderState.QUERY_RESPONSE,
+                                              sql));
                             });
               }
               return toResult(
@@ -207,8 +211,12 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
                 .flatMap(mariadbResultFlux -> mariadbResultFlux);
           });
     } else {
-      Flux<ServerMessage> messages = this.client.sendCommand(new QueryPacket(sql));
-      return toResult(Protocol.TEXT, client, messages, factory, null, generatedColumns);
+      return Flux.defer(
+          () -> {
+            Flux<ServerMessage> messages =
+                this.client.sendCommand(new QueryPacket(sql), DecoderState.QUERY_RESPONSE, sql);
+            return toResult(Protocol.TEXT, client, messages, factory, null, generatedColumns);
+          });
     }
   }
 

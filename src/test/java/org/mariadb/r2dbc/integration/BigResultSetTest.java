@@ -55,7 +55,6 @@ public class BigResultSetTest extends BaseConnectionTest {
 
   @Test
   void multipleFluxSubscription() {
-    Assumptions.assumeTrue(runLongTest());
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     // sequence table requirement
     Assumptions.assumeTrue(meta.isMariaDBServer() && minVersion(10, 1, 0));
@@ -67,10 +66,7 @@ public class BigResultSetTest extends BaseConnectionTest {
     AtomicInteger total = new AtomicInteger();
 
     for (int i = 0; i < 10; i++) {
-      flux1.subscribe(
-          s -> {
-            total.incrementAndGet();
-          });
+      flux1.subscribe(s -> total.incrementAndGet());
     }
 
     flux1.blockLast();

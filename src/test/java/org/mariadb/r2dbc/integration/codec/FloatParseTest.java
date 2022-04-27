@@ -20,6 +20,7 @@ import reactor.test.StepVerifier;
 public class FloatParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
     sharedConn.createStatement("CREATE TABLE FloatTable (t1 FLOAT)").execute().blockLast();
     sharedConn
         .createStatement("INSERT INTO FloatTable VALUES (0.1),(1),(922.92233), (null)")

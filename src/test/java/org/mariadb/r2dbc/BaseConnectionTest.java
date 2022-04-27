@@ -78,7 +78,7 @@ public class BaseConnectionTest extends BaseTest {
   public void afterEach1() {
     int i = rand.nextInt();
     sharedConn
-        .createStatement("SELECT " + i)
+        .createStatement("SELECT " + i + ", 'a'")
         .execute()
         .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
         .as(StepVerifier::create)
@@ -87,7 +87,7 @@ public class BaseConnectionTest extends BaseTest {
 
     int j = rand.nextInt();
     sharedConnPrepare
-        .createStatement("SELECT " + j)
+        .createStatement("SELECT " + j + ", 'b'")
         .execute()
         .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
         .as(StepVerifier::create)

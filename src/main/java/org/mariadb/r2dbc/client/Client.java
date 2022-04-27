@@ -54,8 +54,6 @@ public interface Client {
 
   Context getContext();
 
-  void sendNext();
-
   MariadbConnectionConfiguration getConf();
 
   PrepareCache getPrepareCache();

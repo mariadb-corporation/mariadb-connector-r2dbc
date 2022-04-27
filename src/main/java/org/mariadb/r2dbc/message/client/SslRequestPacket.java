@@ -29,7 +29,7 @@ public final class SslRequestPacket implements ClientMessage {
             initialHandshakePacket.getMajorServerVersion(),
             initialHandshakePacket.getMinorServerVersion());
 
-    ByteBuf buf = allocator.ioBuffer(32);
+    ByteBuf buf = allocator.buffer(32, 32);
 
     buf.writeIntLE((int) clientCapabilities);
     buf.writeIntLE(1024 * 1024 * 1024);

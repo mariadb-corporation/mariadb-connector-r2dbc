@@ -12,4 +12,6 @@ public interface ServerMessage {
   default boolean resultSetEnd() {
     return false;
   }
+
+  default void release() {}
 }

@@ -21,11 +21,12 @@ public class AuthMoreDataPacket implements AuthMoreData, ServerMessage {
 
   public static AuthMoreDataPacket decode(MessageSequence sequencer, ByteBuf buf, Context context) {
     buf.skipBytes(1);
+    buf.retain();
     ByteBuf data = buf.readRetainedSlice(buf.readableBytes());
     return new AuthMoreDataPacket(sequencer, data);
   }
 
-  public void deallocate() {
+  public void release() {
     if (buf != null) {
       buf.release();
       buf = null;

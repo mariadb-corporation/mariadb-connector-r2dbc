@@ -8,11 +8,11 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 import org.mariadb.r2dbc.MariadbConnection;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.client.Client;
-import org.mariadb.r2dbc.client.ClientImpl;
-import org.mariadb.r2dbc.client.ClientPipelineImpl;
+import org.mariadb.r2dbc.client.ClientBase;
 import org.mariadb.r2dbc.message.flow.AuthenticationFlow;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.constants.Capabilities;
@@ -23,47 +23,38 @@ public class SimpleFactory {
 
   public static Mono<org.mariadb.r2dbc.api.MariadbConnection> create(
       MariadbConnectionConfiguration configuration) {
+    ReentrantLock lock = new ReentrantLock();
     return ((configuration.getSocket() != null)
-            ? connectToHost(configuration, new DomainSocketAddress(configuration.getSocket()), null)
-            : doCreateConnection(configuration, 0))
+            ? connectToHost(
+                configuration, new DomainSocketAddress(configuration.getSocket()), null, lock)
+            : doCreateConnection(configuration, 0, lock))
         .cast(org.mariadb.r2dbc.api.MariadbConnection.class);
   }
 
   private static Mono<MariadbConnection> doCreateConnection(
-      final MariadbConnectionConfiguration configuration, final int idx) {
+      final MariadbConnectionConfiguration configuration, final int idx, ReentrantLock lock) {
     HostAddress hostAddress = configuration.getHostAddresses().get(idx);
     return connectToHost(
             configuration,
             InetSocketAddress.createUnresolved(hostAddress.getHost(), hostAddress.getPort()),
-            hostAddress)
+            hostAddress,
+            lock)
         .onErrorResume(
             e -> {
               if (idx + 1 < configuration.getHostAddresses().size()) {
-                return doCreateConnection(configuration, idx + 1);
+                return doCreateConnection(configuration, idx + 1, lock);
               }
               return Mono.error(e);
             });
   }
 
-  @FunctionalInterface
-  public interface ClientConnection<T, U, V, W, R> {
-    R apply(T t, U u, V v, W w);
-  }
-
   public static Mono<MariadbConnection> connectToHost(
       final MariadbConnectionConfiguration configuration,
       SocketAddress endpoint,
-      HostAddress hostAddress) {
-    ClientConnection<
-            ConnectionProvider,
-            SocketAddress,
-            HostAddress,
-            MariadbConnectionConfiguration,
-            Mono<Client>>
-        clientMono =
-            (configuration.allowPipelining()) ? ClientPipelineImpl::connect : ClientImpl::connect;
-    return clientMono
-        .apply(ConnectionProvider.newConnection(), endpoint, hostAddress, configuration)
+      HostAddress hostAddress,
+      ReentrantLock lock) {
+    return ClientBase.connect(
+            ConnectionProvider.newConnection(), endpoint, hostAddress, configuration, lock)
         .delayUntil(client -> AuthenticationFlow.exchange(client, configuration, hostAddress))
         .cast(Client.class)
         .flatMap(
