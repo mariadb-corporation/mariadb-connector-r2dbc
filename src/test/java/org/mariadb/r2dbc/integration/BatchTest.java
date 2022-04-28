@@ -12,7 +12,12 @@ import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbBatch;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbResult;
+import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class BatchTest extends BaseConnectionTest {
 
@@ -57,7 +62,14 @@ public class BatchTest extends BaseConnectionTest {
             && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnectionConfiguration confMulti =
         TestConfiguration.defaultBuilder.clone().allowMultiQueries(true).build();
-    MariadbConnection multiConn = new MariadbConnectionFactory(confMulti).create().block();
+    batchTest(confMulti);
+    MariadbConnectionConfiguration confNoMulti =
+        TestConfiguration.defaultBuilder.clone().allowMultiQueries(false).build();
+    batchTest(confNoMulti);
+  }
+
+  private void batchTest(MariadbConnectionConfiguration conf) throws Exception {
+    MariadbConnection multiConn = new MariadbConnectionFactory(conf).create().block();
     multiConn
         .createStatement("CREATE TEMPORARY TABLE multiBatch (id int, test varchar(10))")
         .execute()
@@ -91,45 +103,38 @@ public class BatchTest extends BaseConnectionTest {
   }
 
   @Test
-  void noMultiQueriesBatch() throws Exception {
+  void cancelBatch() throws Exception {
     // error crashing maxscale 6.1.x
     Assumptions.assumeTrue(
-        !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
-            && !"skysql-ha".equals(System.getenv("srv")));
-
-    MariadbConnectionConfiguration confMulti =
-        TestConfiguration.defaultBuilder.clone().allowMultiQueries(false).build();
-    MariadbConnection multiConn = new MariadbConnectionFactory(confMulti).create().block();
+            !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
+                    && !"skysql-ha".equals(System.getenv("srv")));
+    MariadbConnectionConfiguration confNoMulti =
+            TestConfiguration.defaultBuilder.clone().allowMultiQueries(false).build();
+    MariadbConnection multiConn = new MariadbConnectionFactory(confNoMulti).create().block();
     multiConn
-        .createStatement("CREATE TEMPORARY TABLE multiBatch (id int, test varchar(10))")
-        .execute()
-        .blockLast();
+            .createStatement("CREATE TEMPORARY TABLE multiBatch (id int, test varchar(10))")
+            .execute()
+            .blockLast();
     MariadbBatch batch = multiConn.createBatch();
-    int[] res = new int[20];
-    for (int i = 0; i < 20; i++) {
+
+    int[] res = new int[10_000];
+    for (int i = 0; i < res.length; i++) {
       batch.add("INSERT INTO multiBatch VALUES (" + i + ", 'test" + i + "')");
       res[i] = i;
     }
+    AtomicInteger resultNb = new AtomicInteger(0);
+    Flux<MariadbResult> f = batch.execute();
+    Disposable disp = f.flatMap(it -> it.getRowsUpdated())
+            .subscribe(i -> {
+              resultNb.incrementAndGet();
+            });
+    Thread.sleep(1000);
 
-    batch
-        .execute()
-        .flatMap(it -> it.getRowsUpdated())
-        .as(StepVerifier::create)
-        .expectNext(1, 1, 1, 1, 1)
-        .expectNextCount(15)
-        .then(
-            () -> {
-              multiConn
-                  .createStatement("SELECT id FROM multiBatch")
-                  .execute()
-                  .flatMap(r -> r.map((row, metadata) -> row.get(0)))
-                  .as(StepVerifier::create)
-                  .expectNext(0, 1, 2, 3, 4)
-                  .expectNextCount(15)
-                  .verifyComplete();
-              multiConn.close().block();
-            })
-        .verifyComplete();
+    int batchDone = resultNb.get();
+    Assertions.assertTrue(batchDone > 0);
+    disp.dispose();
+    Thread.sleep(1000);
+    Assertions.assertTrue(resultNb.get() == batchDone || resultNb.get() == batchDone + 1);
   }
 
   @Test

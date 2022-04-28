@@ -138,7 +138,7 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
         .collectList();
   }
 
-  public Flux<org.mariadb.r2dbc.api.MariadbResult> toResult(
+  public static Flux<org.mariadb.r2dbc.api.MariadbResult> toResult(
       final Protocol protocol,
       Client client,
       Flux<ServerMessage> messages,

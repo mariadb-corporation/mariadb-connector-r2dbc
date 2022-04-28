@@ -165,15 +165,20 @@ public class ClientBase implements Client {
   private void handleConnectionError(Throwable throwable) {
     if (closeChannelIfNeeded()) {
       logger.error("Connection unexpected error", throwable);
-      messageSubscriber.endExchanges(new R2dbcNonTransientResourceException("Connection unexpected error", "08000", throwable));
+      messageSubscriber.endExchanges(
+          new R2dbcNonTransientResourceException(
+              "Connection unexpected error", "08000", throwable));
     } else {
       logger.error("Connection error", throwable);
-      messageSubscriber.endExchanges(new R2dbcNonTransientResourceException("Connection error", "08000", throwable));
+      messageSubscriber.endExchanges(
+          new R2dbcNonTransientResourceException("Connection error", "08000", throwable));
     }
   }
 
   private void handleConnectionEnd() {
-    messageSubscriber.endExchanges(new R2dbcNonTransientResourceException("Connection " + (closeChannelIfNeeded() ? "unexpectedly " : "") + "closed", "08000"));
+    messageSubscriber.endExchanges(
+        new R2dbcNonTransientResourceException(
+            "Connection " + (closeChannelIfNeeded() ? "unexpectedly " : "") + "closed", "08000"));
   }
 
   private boolean closeChannelIfNeeded() {
