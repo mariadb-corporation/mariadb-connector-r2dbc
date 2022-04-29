@@ -141,13 +141,6 @@ public class ClientBase implements Client {
               Math.toIntExact(configuration.getConnectTimeout().toMillis()));
     }
 
-    if (configuration.getSocketTimeout() != null) {
-      tcpClient =
-          tcpClient.option(
-              ChannelOption.SO_TIMEOUT,
-              Math.toIntExact(configuration.getSocketTimeout().toMillis()));
-    }
-
     if (configuration.isTcpKeepAlive()) {
       tcpClient = tcpClient.option(ChannelOption.SO_KEEPALIVE, configuration.isTcpKeepAlive());
     }

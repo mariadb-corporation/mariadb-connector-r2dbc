@@ -8,7 +8,6 @@ import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
@@ -118,7 +117,7 @@ public class ConfigurationTest extends BaseTest {
                     + "&clientSslKey="
                     + clientSslKey
                     + "&allowPipelining=true&useServerPrepStmts"
-                    + "=true&prepareCacheSize=2560&connectTimeout=PT10S&socketTimeout=PT1H&tcpKeepAlive=true"
+                    + "=true&prepareCacheSize=2560&connectTimeout=PT10S&tcpKeepAlive=true"
                     + "&tcpAbortiveClose=true&sslMode=TRUST"
                     + "&connectionAttributes"
                     + "=test=2,"
@@ -135,7 +134,6 @@ public class ConfigurationTest extends BaseTest {
     Assertions.assertTrue(factory.toString().contains("connectionAttributes={test=2, h=4}"));
     Assertions.assertTrue(factory.toString().contains("pamOtherPwd=*,*"));
     Assertions.assertTrue(factory.toString().contains("connectTimeout=PT10S"));
-    Assertions.assertTrue(factory.toString().contains("socketTimeout=PT1H"));
     Assertions.assertTrue(factory.toString().contains("tcpKeepAlive=true"));
     Assertions.assertTrue(factory.toString().contains("tcpAbortiveClose=true"));
   }
@@ -178,7 +176,6 @@ public class ConfigurationTest extends BaseTest {
             .option(ConnectionFactoryOptions.USER, "myUser")
             .option(ConnectionFactoryOptions.DATABASE, "myDb")
             .option(MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES, true)
-            .option(MariadbConnectionFactoryProvider.SOCKET_TIMEOUT, Duration.ofSeconds(3600))
             .option(MariadbConnectionFactoryProvider.TCP_KEEP_ALIVE, true)
             .option(MariadbConnectionFactoryProvider.TCP_ABORTIVE_CLOSE, true)
             .option(Option.valueOf("locale"), "en_US")
@@ -194,7 +191,6 @@ public class ConfigurationTest extends BaseTest {
     Assertions.assertTrue(factory.toString().contains("username='myUser'"));
     Assertions.assertTrue(factory.toString().contains("port=43306"));
     Assertions.assertTrue(factory.toString().contains("connectTimeout=PT10S"));
-    Assertions.assertTrue(factory.toString().contains("socketTimeout=PT1H"));
     Assertions.assertTrue(factory.toString().contains("tcpKeepAlive=true"));
     Assertions.assertTrue(factory.toString().contains("tcpAbortiveClose=true"));
   }
@@ -340,11 +336,11 @@ public class ConfigurationTest extends BaseTest {
     builder.pamOtherPwd(new String[] {"fff", "ddd"});
     builder.tlsProtocol((String[]) null);
     Assertions.assertEquals(
-        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, socketTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, restrictedAuth=null, port=3306, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, isolationLevel=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST, pamOtherPwd=*,*, tinyInt1isBit=false, autoCommit=true}",
+        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, restrictedAuth=null, port=3306, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, isolationLevel=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST, pamOtherPwd=*,*, tinyInt1isBit=false, autoCommit=true}",
         builder.toString());
     builder.tlsProtocol((String) null);
     Assertions.assertEquals(
-        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, socketTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, restrictedAuth=null, port=3306, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, isolationLevel=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST, pamOtherPwd=*,*, tinyInt1isBit=false, autoCommit=true}",
+        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, restrictedAuth=null, port=3306, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, isolationLevel=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST, pamOtherPwd=*,*, tinyInt1isBit=false, autoCommit=true}",
         builder.toString());
     MariadbConnectionConfiguration conf = builder.build();
     Assertions.assertEquals(

@@ -8,7 +8,6 @@ import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryProvider;
 import io.r2dbc.spi.Option;
-import java.time.Duration;
 import org.mariadb.r2dbc.util.Assert;
 import reactor.netty.resources.LoopResources;
 
@@ -31,7 +30,6 @@ public final class MariadbConnectionFactoryProvider implements ConnectionFactory
 
   public static final Option<String> CONNECTION_ATTRIBUTES = Option.valueOf("connectionAttributes");
   public static final Option<String> PAM_OTHER_PASSWORD = Option.valueOf("pamOtherPwd");
-  public static final Option<Duration> SOCKET_TIMEOUT = Option.valueOf("socketTimeout");
   public static final Option<Boolean> TCP_KEEP_ALIVE = Option.valueOf("tcpKeepAlive");
   public static final Option<Boolean> TCP_ABORTIVE_CLOSE = Option.valueOf("tcpAbortiveClose");
   public static final Option<String> SESSION_VARIABLES = Option.valueOf("sessionVariables");

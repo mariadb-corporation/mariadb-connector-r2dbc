@@ -246,15 +246,6 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
-  void socketTimeout() throws Exception {
-    MariadbConnectionConfiguration conf =
-        TestConfiguration.defaultBuilder.clone().socketTimeout(Duration.ofSeconds(1)).build();
-    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
-    consume(connection);
-    connection.close().block();
-  }
-
-  @Test
   void socketTimeoutMultiHost() throws Exception {
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder

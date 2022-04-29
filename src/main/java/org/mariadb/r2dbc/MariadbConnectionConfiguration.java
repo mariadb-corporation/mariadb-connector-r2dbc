@@ -26,7 +26,6 @@ public final class MariadbConnectionConfiguration {
   private final List<HostAddress> hostAddresses;
 
   private final Duration connectTimeout;
-  private final Duration socketTimeout;
   private final boolean tcpKeepAlive;
   private final boolean tcpAbortiveClose;
   private final CharSequence password;
@@ -52,7 +51,6 @@ public final class MariadbConnectionConfiguration {
 
   private MariadbConnectionConfiguration(
       @Nullable Duration connectTimeout,
-      @Nullable Duration socketTimeout,
       @Nullable Boolean tcpKeepAlive,
       @Nullable Boolean tcpAbortiveClose,
       @Nullable String database,
@@ -83,7 +81,6 @@ public final class MariadbConnectionConfiguration {
       String restrictedAuth,
       @Nullable LoopResources loopResources) {
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
-    this.socketTimeout = socketTimeout;
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
     this.tcpAbortiveClose = tcpAbortiveClose == null ? Boolean.FALSE : tcpAbortiveClose;
     this.database = database != null && !database.isEmpty() ? database : null;
@@ -160,12 +157,6 @@ public final class MariadbConnectionConfiguration {
       builder.connectTimeout(
           durationValue(
               connectionFactoryOptions.getValue(ConnectionFactoryOptions.CONNECT_TIMEOUT)));
-    }
-
-    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SOCKET_TIMEOUT)) {
-      builder.socketTimeout(
-          durationValue(
-              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SOCKET_TIMEOUT)));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TCP_KEEP_ALIVE)) {
@@ -404,10 +395,6 @@ public final class MariadbConnectionConfiguration {
     return prepareCacheSize;
   }
 
-  public Duration getSocketTimeout() {
-    return socketTimeout;
-  }
-
   public boolean isTcpKeepAlive() {
     return tcpKeepAlive;
   }
@@ -448,8 +435,6 @@ public final class MariadbConnectionConfiguration {
         + '\''
         + ", connectTimeout="
         + connectTimeout
-        + ", socketTimeout="
-        + socketTimeout
         + ", tcpKeepAlive="
         + tcpKeepAlive
         + ", tcpAbortiveClose="
@@ -511,7 +496,6 @@ public final class MariadbConnectionConfiguration {
     private boolean allowPublicKeyRetrieval;
     @Nullable private String username;
     @Nullable private Duration connectTimeout;
-    @Nullable private Duration socketTimeout;
     @Nullable private Boolean tcpKeepAlive;
     @Nullable private Boolean tcpAbortiveClose;
     @Nullable private String database;
@@ -562,7 +546,6 @@ public final class MariadbConnectionConfiguration {
 
       return new MariadbConnectionConfiguration(
           this.connectTimeout,
-          this.socketTimeout,
           this.tcpKeepAlive,
           this.tcpAbortiveClose,
           this.database,
@@ -607,11 +590,6 @@ public final class MariadbConnectionConfiguration {
 
     public Builder restrictedAuth(@Nullable String restrictedAuth) {
       this.restrictedAuth = restrictedAuth;
-      return this;
-    }
-
-    public Builder socketTimeout(@Nullable Duration socketTimeout) {
-      this.socketTimeout = socketTimeout;
       return this;
     }
 
@@ -941,8 +919,6 @@ public final class MariadbConnectionConfiguration {
           + username
           + ", connectTimeout="
           + connectTimeout
-          + ", socketTimeout="
-          + socketTimeout
           + ", tcpKeepAlive="
           + tcpKeepAlive
           + ", tcpAbortiveClose="
