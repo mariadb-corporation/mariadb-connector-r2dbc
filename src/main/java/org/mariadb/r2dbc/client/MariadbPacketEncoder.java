@@ -21,8 +21,8 @@ public class MariadbPacketEncoder extends MessageToByteEncoder<ClientMessage> {
     try {
       ByteBuf buf = msg.encode(context, allocator);
 
-      int packetLength = 0;
-      while (buf.readableBytes() > 0) {
+      int packetLength;
+      do {
         packetLength = Math.min(0xffffff, buf.readableBytes());
         ByteBuf header = Unpooled.buffer(4, 4);
         header.writeMediumLE(packetLength);
@@ -30,7 +30,7 @@ public class MariadbPacketEncoder extends MessageToByteEncoder<ClientMessage> {
         out.addComponent(true, header);
         out.addComponent(true, buf.slice(buf.readerIndex(), packetLength));
         buf.readerIndex(buf.readerIndex() + packetLength);
-      }
+      } while (buf.readableBytes() > 0);
 
       if (packetLength == 0xffffff) {
         // in case last packet is full, sending an empty packet to indicate that command is complete

@@ -3,6 +3,7 @@
 
 package org.mariadb.r2dbc.integration;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -16,8 +17,6 @@ import org.mariadb.r2dbc.api.MariadbResult;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class BatchTest extends BaseConnectionTest {
 
@@ -106,15 +105,15 @@ public class BatchTest extends BaseConnectionTest {
   void cancelBatch() throws Exception {
     // error crashing maxscale 6.1.x
     Assumptions.assumeTrue(
-            !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
-                    && !"skysql-ha".equals(System.getenv("srv")));
+        !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
+            && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnectionConfiguration confNoMulti =
-            TestConfiguration.defaultBuilder.clone().allowMultiQueries(false).build();
+        TestConfiguration.defaultBuilder.clone().allowMultiQueries(false).build();
     MariadbConnection multiConn = new MariadbConnectionFactory(confNoMulti).create().block();
     multiConn
-            .createStatement("CREATE TEMPORARY TABLE multiBatch (id int, test varchar(10))")
-            .execute()
-            .blockLast();
+        .createStatement("CREATE TEMPORARY TABLE multiBatch (id int, test varchar(10))")
+        .execute()
+        .blockLast();
     MariadbBatch batch = multiConn.createBatch();
 
     int[] res = new int[10_000];
@@ -124,10 +123,8 @@ public class BatchTest extends BaseConnectionTest {
     }
     AtomicInteger resultNb = new AtomicInteger(0);
     Flux<MariadbResult> f = batch.execute();
-    Disposable disp = f.flatMap(it -> it.getRowsUpdated())
-            .subscribe(i -> {
-              resultNb.incrementAndGet();
-            });
+    Disposable disp =
+        f.flatMap(it -> it.getRowsUpdated()).subscribe(i -> resultNb.incrementAndGet());
     Thread.sleep(1000);
 
     int batchDone = resultNb.get();
