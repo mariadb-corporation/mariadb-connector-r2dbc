@@ -58,6 +58,6 @@ public class HostAddress {
 
   @Override
   public String toString() {
-    return "HostAddress{" + "host='" + host + '\'' + ", port=" + port + '}';
+    return host + ':' + port;
   }
 }

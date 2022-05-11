@@ -21,6 +21,7 @@ public final class QueryWithParametersPacket implements ClientMessage {
   private final List<BindEncodedValue> bindValues;
   private final MessageSequence sequencer = new Sequencer((byte) 0xff);
   private final String[] generatedColumns;
+  private ByteBuf savedBuf = null;
 
   public QueryWithParametersPacket(
       ClientPrepareResult prepareResult,
@@ -33,6 +34,7 @@ public final class QueryWithParametersPacket implements ClientMessage {
 
   @Override
   public ByteBuf encode(Context context, ByteBufAllocator byteBufAllocator) {
+    if (savedBuf != null) return savedBuf;
     Assert.requireNonNull(byteBufAllocator, "byteBufAllocator must not be null");
     String additionalReturningPart = null;
     if (generatedColumns != null) {
@@ -66,12 +68,21 @@ public final class QueryWithParametersPacket implements ClientMessage {
     return out;
   }
 
+  public void save(ByteBuf buf, int initialReaderIndex) {
+    savedBuf = buf.readerIndex(initialReaderIndex).retain();
+  }
+
   @Override
   public void releaseEncodedBinds() {
     bindValues.forEach(
         b -> {
           if (b.getValue() != null) b.getValue().release();
         });
+    bindValues.clear();
+  }
+
+  public void resetSequencer() {
+    sequencer.reset();
   }
 
   public MessageSequence getSequencer() {

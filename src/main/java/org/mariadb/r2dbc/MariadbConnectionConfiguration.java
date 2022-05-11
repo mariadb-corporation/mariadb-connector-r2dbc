@@ -24,10 +24,11 @@ public final class MariadbConnectionConfiguration {
   public static final int DEFAULT_PORT = 3306;
   private final String database;
   private final List<HostAddress> hostAddresses;
-
+  private HaMode haMode;
   private final Duration connectTimeout;
   private final boolean tcpKeepAlive;
   private final boolean tcpAbortiveClose;
+  private final boolean transactionReplay;
   private final CharSequence password;
   private final CharSequence[] pamOtherPwd;
   private final int port;
@@ -50,15 +51,18 @@ public final class MariadbConnectionConfiguration {
   private final LoopResources loopResources;
 
   private MariadbConnectionConfiguration(
+      String haMode,
       @Nullable Duration connectTimeout,
       @Nullable Boolean tcpKeepAlive,
       @Nullable Boolean tcpAbortiveClose,
+      @Nullable Boolean transactionReplay,
       @Nullable String database,
       @Nullable String host,
       @Nullable Map<String, String> connectionAttributes,
       @Nullable Map<String, String> sessionVariables,
       @Nullable CharSequence password,
       int port,
+      @Nullable List<HostAddress> hostAddresses,
       @Nullable String socket,
       @Nullable String username,
       boolean allowMultiQueries,
@@ -80,13 +84,19 @@ public final class MariadbConnectionConfiguration {
       boolean tinyInt1isBit,
       String restrictedAuth,
       @Nullable LoopResources loopResources) {
+    this.haMode = haMode == null ? HaMode.NONE : HaMode.from(haMode);
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
     this.tcpAbortiveClose = tcpAbortiveClose == null ? Boolean.FALSE : tcpAbortiveClose;
+    this.transactionReplay = transactionReplay == null ? Boolean.FALSE : transactionReplay;
     this.database = database != null && !database.isEmpty() ? database : null;
     this.isolationLevel = isolationLevel;
     this.restrictedAuth = restrictedAuth != null ? restrictedAuth.split(",") : null;
-    this.hostAddresses = HostAddress.parse(host, port);
+    if (hostAddresses != null) {
+      this.hostAddresses = hostAddresses;
+    } else {
+      this.hostAddresses = HostAddress.parse(host, port);
+    }
     this.connectionAttributes = connectionAttributes;
     this.sessionVariables = sessionVariables;
     this.password = password != null && !password.toString().isEmpty() ? password : null;
@@ -172,11 +182,24 @@ public final class MariadbConnectionConfiguration {
                   MariadbConnectionFactoryProvider.TCP_ABORTIVE_CLOSE)));
     }
 
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TRANSACTION_REPLAY)) {
+      builder.transactionReplay(
+          boolValue(
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.TRANSACTION_REPLAY)));
+    }
+
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SESSION_VARIABLES)) {
       String sessionVarString =
           (String)
               connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SESSION_VARIABLES);
       builder.sessionVariables(getMapFromString(sessionVarString));
+    }
+
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.HAMODE)) {
+      String haMode =
+          (String) connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.HAMODE);
+      builder.haMode(haMode);
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.ALLOW_PIPELINING)) {
@@ -322,6 +345,10 @@ public final class MariadbConnectionConfiguration {
     return this.database;
   }
 
+  public HaMode getHaMode() {
+    return this.haMode;
+  }
+
   @Nullable
   public List<HostAddress> getHostAddresses() {
     return this.hostAddresses;
@@ -403,6 +430,10 @@ public final class MariadbConnectionConfiguration {
     return tcpAbortiveClose;
   }
 
+  public boolean isTransactionReplay() {
+    return transactionReplay;
+  }
+
   public String[] getRestrictedAuth() {
     return restrictedAuth;
   }
@@ -430,19 +461,19 @@ public final class MariadbConnectionConfiguration {
         + "database='"
         + database
         + '\''
-        + ", host='"
-        + (hostAddresses == null ? null : Arrays.toString(hostAddresses.toArray()))
-        + '\''
+        + ", hosts={"
+        + (hostAddresses == null ? "" : Arrays.toString(hostAddresses.toArray()))
+        + '}'
         + ", connectTimeout="
         + connectTimeout
         + ", tcpKeepAlive="
         + tcpKeepAlive
         + ", tcpAbortiveClose="
         + tcpAbortiveClose
+        + ", transactionReplay="
+        + transactionReplay
         + ", password="
         + hiddenPwd
-        + ", port="
-        + port
         + ", prepareCacheSize="
         + prepareCacheSize
         + ", socket='"
@@ -491,6 +522,7 @@ public final class MariadbConnectionConfiguration {
    */
   public static final class Builder implements Cloneable {
 
+    @Nullable private String haMode;
     @Nullable private String rsaPublicKey;
     @Nullable private String cachingRsaPublicKey;
     private boolean allowPublicKeyRetrieval;
@@ -498,7 +530,9 @@ public final class MariadbConnectionConfiguration {
     @Nullable private Duration connectTimeout;
     @Nullable private Boolean tcpKeepAlive;
     @Nullable private Boolean tcpAbortiveClose;
+    @Nullable private Boolean transactionReplay;
     @Nullable private String database;
+    @Nullable private List<HostAddress> hostAddresses;
     @Nullable private String host;
     @Nullable private Map<String, String> sessionVariables;
     @Nullable private Map<String, String> connectionAttributes;
@@ -545,15 +579,18 @@ public final class MariadbConnectionConfiguration {
       }
 
       return new MariadbConnectionConfiguration(
+          this.haMode,
           this.connectTimeout,
           this.tcpKeepAlive,
           this.tcpAbortiveClose,
+          this.transactionReplay,
           this.database,
           this.host,
           this.connectionAttributes,
           this.sessionVariables,
           this.password,
           this.port,
+          this.hostAddresses,
           this.socket,
           this.username,
           this.allowMultiQueries,
@@ -588,6 +625,16 @@ public final class MariadbConnectionConfiguration {
       return this;
     }
 
+    public Builder haMode(@Nullable String haMode) {
+      this.haMode = haMode;
+      return this;
+    }
+
+    public Builder hostAddresses(@Nullable List<HostAddress> hostAddresses) {
+      this.hostAddresses = hostAddresses;
+      return this;
+    }
+
     public Builder restrictedAuth(@Nullable String restrictedAuth) {
       this.restrictedAuth = restrictedAuth;
       return this;
@@ -600,6 +647,11 @@ public final class MariadbConnectionConfiguration {
 
     public Builder tcpAbortiveClose(@Nullable Boolean tcpAbortiveClose) {
       this.tcpAbortiveClose = tcpAbortiveClose;
+      return this;
+    }
+
+    public Builder transactionReplay(@Nullable Boolean transactionReplay) {
+      this.transactionReplay = transactionReplay;
       return this;
     }
 
@@ -923,6 +975,8 @@ public final class MariadbConnectionConfiguration {
           + tcpKeepAlive
           + ", tcpAbortiveClose="
           + tcpAbortiveClose
+          + ", transactionReplay="
+          + transactionReplay
           + ", database="
           + database
           + ", host="
@@ -937,6 +991,9 @@ public final class MariadbConnectionConfiguration {
           + restrictedAuth
           + ", port="
           + port
+          + ", hosts={"
+          + (hostAddresses == null ? "" : Arrays.toString(hostAddresses.toArray()))
+          + '}'
           + ", socket="
           + socket
           + ", allowMultiQueries="

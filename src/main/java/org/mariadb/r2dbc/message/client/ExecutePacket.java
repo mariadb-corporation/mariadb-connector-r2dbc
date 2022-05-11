@@ -6,20 +6,27 @@ package org.mariadb.r2dbc.message.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import java.util.List;
+import org.mariadb.r2dbc.ExceptionFactory;
+import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.MessageSequence;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.BindEncodedValue;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
+import reactor.core.publisher.Mono;
 
 public final class ExecutePacket implements ClientMessage {
   private final List<BindEncodedValue> bindValues;
-  private final int statementId;
+  private int statementId;
   private final int parameterCount;
+  private final String sql;
   private final MessageSequence sequencer = new Sequencer((byte) 0xff);
+  private ByteBuf savedBuf = null;
 
-  public ExecutePacket(ServerPrepareResult prepareResult, List<BindEncodedValue> bindValues) {
+  public ExecutePacket(
+      String sql, ServerPrepareResult prepareResult, List<BindEncodedValue> bindValues) {
+    this.sql = sql;
     this.bindValues = bindValues;
     this.statementId = prepareResult == null ? -1 : prepareResult.getStatementId();
     this.parameterCount = prepareResult == null ? bindValues.size() : prepareResult.getNumParams();
@@ -27,6 +34,7 @@ public final class ExecutePacket implements ClientMessage {
 
   @Override
   public ByteBuf encode(Context context, ByteBufAllocator allocator) {
+    if (savedBuf != null) return savedBuf;
     ByteBuf buf = allocator.ioBuffer();
     buf.writeByte(0x17);
     buf.writeIntLE(statementId);
@@ -62,8 +70,46 @@ public final class ExecutePacket implements ClientMessage {
     return buf;
   }
 
+  public Mono<ClientMessage> rePrepare(Client client) {
+    ServerPrepareResult res;
+    if (client.getPrepareCache() != null && (res = client.getPrepareCache().get(sql)) != null) {
+      this.forceStatementId(res.getStatementId());
+      return Mono.just(this);
+    }
+    return client
+        .sendPrepare(new PreparePacket(sql), ExceptionFactory.INSTANCE, sql)
+        .flatMap(
+            serverPrepareResult -> {
+              this.forceStatementId(serverPrepareResult.getStatementId());
+              return Mono.just(this);
+            });
+  }
+
+  public void save(ByteBuf buf, int initialReaderIndex) {
+    savedBuf = buf.readerIndex(initialReaderIndex).retain();
+  }
+
+  public void forceStatementId(int statementId) {
+    this.statementId = statementId;
+    if (savedBuf != null) {
+      // replace byte at position 1 with new statement id
+      int writerIndex = this.savedBuf.writerIndex();
+      this.savedBuf.writerIndex(this.savedBuf.readerIndex() + 1);
+      this.savedBuf.writeIntLE(statementId);
+      this.savedBuf.writerIndex(writerIndex);
+    }
+  }
+
   public MessageSequence getSequencer() {
     return sequencer;
+  }
+
+  public void resetSequencer() {
+    sequencer.reset();
+  }
+
+  public String getSql() {
+    return sql;
   }
 
   @Override
@@ -72,5 +118,11 @@ public final class ExecutePacket implements ClientMessage {
         b -> {
           if (b.getValue() != null) b.getValue().release();
         });
+    bindValues.clear();
+  }
+
+  @Override
+  public String toString() {
+    return "ExecutePacket{" + "sql='" + sql + '\'' + '}';
   }
 }

@@ -53,13 +53,29 @@ public class TcpProxy {
 
   public void forceClose() {
     socket.sendRst();
+    try {
+      Thread.sleep(5);
+    } catch (InterruptedException e) {
+      // eat Exception
+    }
+    socket.kill();
+  }
+
+  public void restartForce() {
+    socket.sendRst();
+    Executors.newSingleThreadExecutor().execute(socket);
+    try {
+      Thread.sleep(5);
+    } catch (InterruptedException e) {
+      // eat Exception
+    }
   }
 
   /** Restart proxy. */
   public void restart() {
     Executors.newSingleThreadExecutor().execute(socket);
     try {
-      Thread.sleep(10);
+      Thread.sleep(5);
     } catch (InterruptedException e) {
       // eat Exception
     }

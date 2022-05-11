@@ -11,7 +11,7 @@ import io.r2dbc.spi.IsolationLevel;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.client.ContextImpl;
+import org.mariadb.r2dbc.client.SimpleContext;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
@@ -71,6 +71,7 @@ class BufferUtilsTest {
 
     BufferUtils.skipLengthEncode(buf);
     assertEquals(10, buf.readerIndex());
+    buf.release();
   }
 
   @Test
@@ -130,6 +131,7 @@ class BufferUtilsTest {
     buf.writerIndex(1000);
 
     assertEquals(-1, BufferUtils.readLengthEncodedInt(buf));
+    buf.release();
   }
 
   @Test
@@ -155,6 +157,7 @@ class BufferUtilsTest {
     buf.setBytes(0, b);
     buf.writerIndex(1000);
     assertEquals("AB", BufferUtils.readLengthEncodedString(buf));
+    buf.release();
   }
 
   @Test
@@ -183,12 +186,13 @@ class BufferUtilsTest {
     byte[] res = new byte[2];
     bb.getBytes(0, res);
     assertArrayEquals("AB".getBytes(StandardCharsets.UTF_8), res);
+    buf.release();
   }
 
   @Test
   void write() {
     Context ctxNoBackSlash =
-        new ContextImpl(
+        new SimpleContext(
             "10.5.5-mariadb",
             1,
             1,
@@ -199,7 +203,7 @@ class BufferUtilsTest {
             null,
             IsolationLevel.REPEATABLE_READ);
     Context ctx =
-        new ContextImpl(
+        new SimpleContext(
             "10.5.5-mariadb",
             1,
             1,
@@ -254,6 +258,7 @@ class BufferUtilsTest {
     res = new byte[buf.writerIndex()];
     buf.getBytes(0, res);
     assertArrayEquals(utf8Wrong4bytes2, res);
+    buf.release();
   }
 
   @Test
@@ -266,8 +271,8 @@ class BufferUtilsTest {
           0x2e
         });
     buf.readerIndex(0);
-    System.out.println(buf.readerIndex());
     buf.writerIndex(16);
     Assertions.assertEquals("6D0000000A352E352E352D31302E362E", BufferUtils.toString(buf));
+    buf.release();
   }
 }

@@ -3,7 +3,7 @@
 
 package org.mariadb.r2dbc.integration.authentication;
 
-import io.r2dbc.spi.R2dbcPermissionDeniedException;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
@@ -115,7 +115,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
                 SslMode.from("1".equals(System.getenv("TEST_REQUIRE_TLS")) ? "trust" : "disabled"))
             .build();
     assertThrows(
-        R2dbcPermissionDeniedException.class,
+        R2dbcNonTransientResourceException.class,
         () -> new MariadbConnectionFactory(conf).create().block(),
         "Unsupported authentication plugin client_ed25519. Authorized plugin: [mysql_native_password]");
   }
@@ -188,7 +188,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
             .restrictedAuth("mysql_native_password,dialog,mysql_clear_password")
             .build();
     assertThrows(
-        R2dbcPermissionDeniedException.class,
+        R2dbcNonTransientResourceException.class,
         () -> new MariadbConnectionFactory(conf).create().block(),
         "Unsupported authentication plugin client_ed25519. Authorized plugin: [mysql_native_password, dialog, mysql_clear_password]");
 
@@ -199,7 +199,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
             .restrictedAuth("mysql_native_password,ed25519")
             .build();
     assertThrows(
-        R2dbcPermissionDeniedException.class,
+        R2dbcNonTransientResourceException.class,
         () -> new MariadbConnectionFactory(conf2).create().block(),
         "Unsupported authentication plugin");
   }

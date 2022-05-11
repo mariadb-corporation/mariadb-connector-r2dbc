@@ -34,6 +34,11 @@ public class Select_1_user extends Common {
     return consume(state.r2dbcPrepare);
   }
 
+  @Benchmark
+  public Object[] testR2dbcFailover(MyState state) throws Throwable {
+    return consume(state.r2dbcFailover);
+  }
+
 //  @Benchmark
 //  public Object[] testR2dbcMySql(MyState state) throws Throwable {
 //    return consume(state.r2dbcMysql, blackhole);

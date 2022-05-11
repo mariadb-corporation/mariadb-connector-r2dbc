@@ -12,6 +12,10 @@ public class Sequencer implements MessageSequence {
     this.sequenceId = sequenceId;
   }
 
+  public void reset() {
+    sequenceId = (byte) 0xff;
+  }
+
   public byte next() {
     return ++sequenceId;
   }

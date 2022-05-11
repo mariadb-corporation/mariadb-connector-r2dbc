@@ -7,7 +7,7 @@ import io.netty.buffer.ByteBufAllocator;
 import io.r2dbc.spi.IsolationLevel;
 import org.mariadb.r2dbc.message.Context;
 
-public class ContextImpl implements Context {
+public class SimpleContext implements Context {
 
   private final long threadId;
   private final long serverCapabilities;
@@ -18,7 +18,7 @@ public class ContextImpl implements Context {
   private IsolationLevel isolationLevel;
   private String database;
 
-  public ContextImpl(
+  public SimpleContext(
       String serverVersion,
       long threadId,
       long capabilities,

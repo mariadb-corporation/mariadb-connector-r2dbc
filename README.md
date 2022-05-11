@@ -32,7 +32,7 @@ The MariaDB Connector is available through maven using :
     <dependency>
         <groupId>org.mariadb</groupId>
         <artifactId>r2dbc-mariadb</artifactId>
-        <version>1.1.0-rc</version>
+        <version>1.1.2</version>
     </dependency>
 ```
 
@@ -111,12 +111,50 @@ Basic example:
 | **`restrictedAuth`** | if set, restrict authentication plugin to secure list. Default provided plugins are mysql_native_password, mysql_clear_password, client_ed25519, dialog, sha256_password and caching_sha2_password |*string* | |
 | **`loopResources`** | permits to share netty EventLoopGroup among multiple async libraries/framework |*LoopResources* | |
 
-## Roadmap
+## Failover
 
-* Performance !
-* Fast batch using mariadb bulk
-* GeoJSON datatype
-* Pluggable types for MariaDB 10.5 (JSON, INET4, INET6, BOOLEAN, ...)
+Failover occurs when a connection to a primary database server fails and the connector opens up a connection to another database server.
+For example, server A has the current connection. After a failure (server crash, network down …) the connection will switch to another server (B).
+
+Load balancing allows load to be distributed over multiple servers : 
+When initializing a connection or after a failed connection, the connector will attempt to connect to a host. The connection is selected randomly among the valid hosts. Thereafter, all statements will run on that database server until the connection will be closed (or fails).
+Example: when creating a pool of 60 connections, each one will use a random host. With 3 master hosts, the pool will have about 20 connections to each host.
+
+```java
+ConnectionFactory factory = ConnectionFactories.get("r2dbc:mariadb:sequential://user:password@host:3306,host2:3302/myDB?option1=value");
+```
+
+
+### Failover behaviour
+
+Failover parameter is set (i.e. prefixing connection string with `r2dbc:mariadb:[sequential|loadbalancing]://...` or using HaMode builder). 
+
+There can be multiple fail causes. When a failure occurs many things will be done:
+
+* connection recovery (re-establishing connection transparently)
+* re-execute command/transaction if possible
+ 
+During failover, the fail host address will be put on a blacklist (shared by JVM) for 60 seconds. Connector will always try to connect non blacklisted host first, but can retry to connect blacklisted host before 60s if all hosts are blacklisted.
+
+### re-execution
+The driver will try to reconnect to any valid host (not blasklisted, or if all primary host are blacklisted trying blacklisted hosts). If reconnection fail, an Exception with be thrown with SQLState "08XXX". If using a pool, this connection will be discarded.
+
+on successful reconnection, there will be different cases.
+
+If driver identify that command can be replayed without issue (for example connection.isValid(), a PREPARE/ROLLBACK command), driver will execute command without throwing any error.
+
+Driver cannot transparently handle all cases : imagine that the failover occurs when executing an INSERT command without a transaction: driver cannot know that command has been received and executed on server. In those case, an SQLException with be thrown with SQLState "25S03".
+
+#### Option `transactionReplay` :
+Most of the time, queries occurs in transaction (ORM for example doesn't permit using auto-commit), so redo transaction implementation will solve most of failover cases transparently for user point of view.
+
+Redo transaction approach is to save commands in transaction. When a failover occurs during a transaction, the connector can automatically reconnect and replay transaction, making failover completely transparent.
+
+There is some limitations :
+
+driver will buffer up commands in a transaction until some inner limit. 
+huge command will temporarily disable transaction buffering for current transaction.
+Commands must be idempotent only (queries can be "replayable")
 
 
 ## Tracker 

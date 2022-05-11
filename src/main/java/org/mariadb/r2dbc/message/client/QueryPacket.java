@@ -33,4 +33,13 @@ public final class QueryPacket implements ClientMessage {
   public MessageSequence getSequencer() {
     return sequencer;
   }
+
+  public void resetSequencer() {
+    sequencer.reset();
+  }
+
+  @Override
+  public String toString() {
+    return "QueryPacket{" + "sql='" + sql + '\'' + '}';
+  }
 }

@@ -48,7 +48,17 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
   @Override
   public Flux<MariadbResult> execute() {
     if (configuration.allowMultiQueries()) {
-      return this.client.executeSimpleCommand(String.join(";", this.statements));
+      Flux<ServerMessage> messages =
+          this.client.sendCommand(new QueryPacket(String.join(";", this.statements)), true);
+      return MariadbCommonStatement.toResult(
+          Protocol.TEXT,
+          this.client,
+          messages,
+          ExceptionFactory.INSTANCE,
+          null,
+          null,
+          configuration);
+
     } else {
       Iterator<String> iterator = this.statements.iterator();
       Sinks.Many<String> commandsSink = Sinks.many().unicast().onBackpressureBuffer();
@@ -59,11 +69,17 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
               sql -> {
                 Flux<ServerMessage> messages =
                     this.client
-                        .sendCommand(new QueryPacket(sql))
+                        .sendCommand(new QueryPacket(sql), false)
                         .doOnComplete(() -> tryNextCommand(iterator, commandsSink, canceled));
 
                 return MariadbCommonStatement.toResult(
-                    Protocol.TEXT, this.client, messages, ExceptionFactory.INSTANCE, null, null);
+                    Protocol.TEXT,
+                    this.client,
+                    messages,
+                    ExceptionFactory.INSTANCE,
+                    null,
+                    null,
+                    configuration);
               })
           .flatMap(mariadbResultFlux -> mariadbResultFlux)
           .doOnCancel(() -> canceled.set(true))

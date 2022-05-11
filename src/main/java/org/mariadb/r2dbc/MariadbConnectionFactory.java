@@ -3,10 +3,25 @@
 
 package org.mariadb.r2dbc;
 
+import io.netty.channel.unix.DomainSocketAddress;
 import io.r2dbc.spi.*;
-import org.mariadb.r2dbc.client.ha.SimpleFactory;
+import java.net.SocketAddress;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
+import org.mariadb.r2dbc.client.Client;
+import org.mariadb.r2dbc.client.FailoverClient;
+import org.mariadb.r2dbc.client.SimpleClient;
+import org.mariadb.r2dbc.message.Protocol;
+import org.mariadb.r2dbc.message.ServerMessage;
+import org.mariadb.r2dbc.message.client.QueryPacket;
+import org.mariadb.r2dbc.message.flow.AuthenticationFlow;
 import org.mariadb.r2dbc.util.Assert;
+import org.mariadb.r2dbc.util.HostAddress;
+import org.mariadb.r2dbc.util.constants.Capabilities;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.netty.resources.ConnectionProvider;
 
 public final class MariadbConnectionFactory implements ConnectionFactory {
 
@@ -22,7 +37,105 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
 
   @Override
   public Mono<org.mariadb.r2dbc.api.MariadbConnection> create() {
-    return SimpleFactory.create(configuration);
+    ReentrantLock lock = new ReentrantLock();
+    return ((configuration.getSocket() != null)
+            ? connectToSocket(
+                configuration, new DomainSocketAddress(configuration.getSocket()), null, lock)
+            : (configuration.getHaMode().equals(HaMode.NONE)
+                ? configuration.getHaMode().connectHost(configuration, lock, false)
+                : configuration
+                    .getHaMode()
+                    .connectHost(configuration, lock, false)
+                    .flatMap(c -> Mono.just(new FailoverClient(configuration, lock, c)))))
+        .flatMap(
+            client ->
+                Mono.just(
+                        new MariadbConnection(
+                            client,
+                            configuration.getIsolationLevel() == null
+                                ? IsolationLevel.REPEATABLE_READ
+                                : configuration.getIsolationLevel(),
+                            configuration))
+                    .onErrorResume(throwable -> closeWithError(client, throwable)))
+        .cast(org.mariadb.r2dbc.api.MariadbConnection.class);
+  }
+
+  private static Mono<Client> connectToSocket(
+      final MariadbConnectionConfiguration configuration,
+      SocketAddress endpoint,
+      HostAddress hostAddress,
+      ReentrantLock lock) {
+    return SimpleClient.connect(
+            ConnectionProvider.newConnection(), endpoint, hostAddress, configuration, lock)
+        .delayUntil(client -> AuthenticationFlow.exchange(client, configuration, hostAddress))
+        .cast(Client.class)
+        .flatMap(client -> setSessionVariables(configuration, client).thenReturn(client))
+        .onErrorMap(e -> cannotConnect(e, endpoint));
+  }
+
+  public static Mono<Void> setSessionVariables(
+      final MariadbConnectionConfiguration configuration, Client client) {
+
+    // set default autocommit value
+    StringBuilder sql =
+        new StringBuilder("SET autocommit=" + (configuration.autocommit() ? "1" : "0"));
+
+    // set default transaction isolation
+    String txIsolation =
+        (!client.getVersion().isMariaDBServer()
+                && (client.getVersion().versionGreaterOrEqual(8, 0, 3)
+                    || (client.getVersion().getMajorVersion() < 8
+                        && client.getVersion().versionGreaterOrEqual(5, 7, 20))))
+            ? "transaction_isolation"
+            : "tx_isolation";
+    sql.append(",")
+        .append(txIsolation)
+        .append("='")
+        .append(
+            configuration.getIsolationLevel() == null
+                ? "REPEATABLE-READ"
+                : configuration.getIsolationLevel().asSql().replace(" ", "-"))
+        .append("'");
+
+    // set session tracking
+    if ((client.getContext().getClientCapabilities() & Capabilities.CLIENT_SESSION_TRACK) > 0) {
+      sql.append(",session_track_schema=1");
+      sql.append(",session_track_system_variables='autocommit,").append(txIsolation).append("'");
+    }
+
+    // set session variables if defined
+    if (configuration.getSessionVariables() != null
+        && configuration.getSessionVariables().size() > 0) {
+      Map<String, String> sessionVariable = configuration.getSessionVariables();
+      Iterator<String> keys = sessionVariable.keySet().iterator();
+      for (int i = 0; i < sessionVariable.size(); i++) {
+        String key = keys.next();
+        String value = sessionVariable.get(key);
+        if (value == null)
+          throw new IllegalArgumentException(
+              String.format("Session variable '%s' has no value", key));
+        sql.append(",").append(key).append("=").append(value);
+      }
+    }
+    Flux<ServerMessage> messages = client.sendCommand(new QueryPacket(sql.toString()), true);
+    return MariadbCommonStatement.toResult(
+            Protocol.TEXT, client, messages, ExceptionFactory.INSTANCE, null, null, configuration)
+        .last()
+        .then();
+  }
+
+  public static Mono<MariadbConnection> closeWithError(Client client, Throwable throwable) {
+    return client.close().then(Mono.error(throwable));
+  }
+
+  public static Throwable cannotConnect(Throwable throwable, SocketAddress endpoint) {
+
+    if (throwable instanceof R2dbcException) {
+      return throwable;
+    }
+
+    return new R2dbcNonTransientResourceException(
+        String.format("Cannot connect to %s", endpoint), throwable);
   }
 
   @Override

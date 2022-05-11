@@ -16,4 +16,9 @@ public final class PingPacket implements ClientMessage {
     buf.writeByte(0x0e);
     return buf;
   }
+
+  @Override
+  public String toString() {
+    return "PingPacket{}";
+  }
 }

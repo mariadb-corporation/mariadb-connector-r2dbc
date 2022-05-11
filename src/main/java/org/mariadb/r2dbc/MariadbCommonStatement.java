@@ -144,7 +144,8 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
       Flux<ServerMessage> messages,
       ExceptionFactory factory,
       AtomicReference<ServerPrepareResult> prepareResult,
-      String[] generatedColumns) {
+      String[] generatedColumns,
+      MariadbConnectionConfiguration configuration) {
     return messages
         .windowUntil(it -> it.resultSetEnd())
         .map(
@@ -156,7 +157,7 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
                     factory,
                     generatedColumns,
                     client.getVersion().supportReturning(),
-                    client.getConf()))
+                    configuration))
         .cast(org.mariadb.r2dbc.api.MariadbResult.class)
         .doOnDiscard(RowPacket.class, RowPacket::release);
   }

@@ -74,9 +74,11 @@ public class ErrorTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && (throwable
+                    && throwable.getMessage().contains("Fail to establish connection to")
+                    && throwable
+                        .getCause()
                         .getMessage()
-                        .contains("Access denied for user 'userWithoutRight'")))
+                        .contains("Access denied for user 'userWithoutRight'"))
         .verify();
   }
 

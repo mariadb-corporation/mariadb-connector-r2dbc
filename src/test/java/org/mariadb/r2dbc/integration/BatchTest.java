@@ -127,11 +127,12 @@ public class BatchTest extends BaseConnectionTest {
         f.flatMap(it -> it.getRowsUpdated()).subscribe(i -> resultNb.incrementAndGet());
     Thread.sleep(1000);
 
-    int batchDone = resultNb.get();
-    Assertions.assertTrue(batchDone > 0);
+    Assertions.assertTrue(resultNb.get() > 0);
     disp.dispose();
     Thread.sleep(1000);
-    Assertions.assertTrue(resultNb.get() == batchDone || resultNb.get() == batchDone + 1);
+    Assertions.assertTrue(
+        resultNb.get() > 1 && resultNb.get() < 10_000,
+        String.format("expected %s to be 0 < x < 10000", resultNb.get()));
   }
 
   @Test

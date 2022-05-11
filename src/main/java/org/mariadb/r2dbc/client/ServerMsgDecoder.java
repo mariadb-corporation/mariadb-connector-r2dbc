@@ -14,6 +14,7 @@ import reactor.util.concurrent.Queues;
 
 public class ServerMsgDecoder {
   private final Client client;
+  private final MariadbConnectionConfiguration configuration;
   private DecoderState state = null;
   private final Queue<String> prepareSql = Queues.<String>small().get();
   private long clientCapabilities;
@@ -22,8 +23,9 @@ public class ServerMsgDecoder {
   private ColumnDefinitionPacket[] prepareColumns;
   private Context context = null;
 
-  public ServerMsgDecoder(Client client) {
+  public ServerMsgDecoder(Client client, MariadbConnectionConfiguration configuration) {
     this.client = client;
+    this.configuration = configuration;
   }
 
   public ServerMessage decode(ByteBuf packet, Exchange exchange) {
@@ -63,7 +65,7 @@ public class ServerMsgDecoder {
   }
 
   public MariadbConnectionConfiguration getConf() {
-    return this.client.getConf();
+    return configuration;
   }
 
   public ServerPrepareResult endPrepare() {

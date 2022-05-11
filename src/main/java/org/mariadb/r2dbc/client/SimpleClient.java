@@ -23,17 +23,17 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
-import org.mariadb.r2dbc.ExceptionFactory;
-import org.mariadb.r2dbc.MariadbConnectionConfiguration;
-import org.mariadb.r2dbc.MariadbTransactionDefinition;
+import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.*;
+import org.mariadb.r2dbc.message.server.CompletePrepareResult;
+import org.mariadb.r2dbc.message.server.ErrorPacket;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
-import org.mariadb.r2dbc.message.server.RowPacket;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.PrepareCache;
+import org.mariadb.r2dbc.util.ServerPrepareResult;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
@@ -46,15 +46,21 @@ import reactor.util.Logger;
 import reactor.util.Loggers;
 import reactor.util.concurrent.Queues;
 
-public class ClientBase implements Client {
+public class SimpleClient implements Client {
 
-  private static final Logger logger = Loggers.getLogger(ClientBase.class);
-  private final MariadbConnectionConfiguration configuration;
+  private static final Logger logger = Loggers.getLogger(SimpleClient.class);
+  protected final MariadbConnectionConfiguration configuration;
   private final ServerMessageSubscriber messageSubscriber;
   private final Sinks.Many<Publisher<ClientMessage>> requestSink =
       Sinks.many().unicast().onBackpressureBuffer();
+  private final Queue<Exchange> exchangeQueue =
+      Queues.<Exchange>get(Queues.SMALL_BUFFER_SIZE).get();
+  private final Queue<ServerMessage> receiverQueue =
+      Queues.<ServerMessage>get(Queues.SMALL_BUFFER_SIZE).get();
+
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final ServerMsgDecoder decoder;
+  private final MariadbPacketEncoder encoder;
   private final PrepareCache prepareCache;
   private final ByteBufAllocator byteBufAllocator;
 
@@ -70,7 +76,7 @@ public class ClientBase implements Client {
     return context;
   }
 
-  protected ClientBase(
+  protected SimpleClient(
       Connection connection,
       MariadbConnectionConfiguration configuration,
       HostAddress hostAddress,
@@ -83,15 +89,17 @@ public class ClientBase implements Client {
         new PrepareCache(
             this.configuration.useServerPrepStmts() ? this.configuration.getPrepareCacheSize() : 0,
             this);
-    this.decoder = new ServerMsgDecoder(this);
+    this.decoder = new ServerMsgDecoder(this, configuration);
+    this.encoder = new MariadbPacketEncoder();
     this.byteBufAllocator = connection.outbound().alloc();
-    this.messageSubscriber = new ServerMessageSubscriber(this.lock, this.isClosed);
+    this.messageSubscriber =
+        new ServerMessageSubscriber(this.lock, this.isClosed, exchangeQueue, receiverQueue);
     connection.addHandler(new MariadbFrameDecoder());
 
     if (logger.isTraceEnabled()) {
       connection.addHandlerFirst(
           LoggingHandler.class.getSimpleName(),
-          new LoggingHandler(ClientBase.class, LogLevel.TRACE));
+          new LoggingHandler(SimpleClient.class, LogLevel.TRACE));
     }
 
     connection
@@ -106,17 +114,14 @@ public class ClientBase implements Client {
             .asFlux()
             .concatMap(Function.identity())
             .cast(ClientMessage.class)
-            .map(
-                clientMessage ->
-                    MariadbPacketEncoder.encodeFlux(
-                        clientMessage, this.context, this.byteBufAllocator))
+            .map(encoder::encodeFlux)
             .flatMap(b -> connection.outbound().send(Mono.just(b)), 1)
             .then();
 
     request.doAfterTerminate(this::handleConnectionEnd).subscribe();
   }
 
-  public static Mono<Client> connect(
+  public static Mono<SimpleClient> connect(
       ConnectionProvider connectionProvider,
       SocketAddress socketAddress,
       HostAddress hostAddress,
@@ -129,7 +134,7 @@ public class ClientBase implements Client {
     tcpClient = setSocketOption(configuration, tcpClient);
     return tcpClient
         .connect()
-        .flatMap(it -> Mono.just(new ClientBase(it, configuration, hostAddress, lock)));
+        .flatMap(it -> Mono.just(new SimpleClient(it, configuration, hostAddress, lock)));
   }
 
   public static TcpClient setSocketOption(
@@ -177,7 +182,7 @@ public class ClientBase implements Client {
   private boolean closeChannelIfNeeded() {
     if (this.isClosed.compareAndSet(false, true)) {
       Channel channel = this.connection.channel();
-      if (!channel.isOpen()) {
+      if (channel.isOpen()) {
         this.connection.dispose();
       }
       return true;
@@ -271,30 +276,29 @@ public class ClientBase implements Client {
   public Mono<Void> beginTransaction() {
     try {
       lock.lock();
-      return execute(sink -> this.messageSubscriber.begin(sink, "BEGIN", this::sendClientMsgs))
+
+      return execute(
+              sink -> {
+                if (!exchangeQueue.isEmpty()
+                    || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
+                  Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, "BEGIN");
+                  if (this.exchangeQueue.offer(exchange)) {
+                    sendClientMsgs(Mono.just(new QueryPacket("BEGIN")));
+                    sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
+                  } else {
+                    sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
+                  }
+                } else {
+                  logger.debug("Skipping start transaction because already in transaction");
+                  sink.complete();
+                }
+              })
           .handle(ExceptionFactory.withSql("BEGIN")::handleErrorResponse)
           .then();
+
     } finally {
       lock.unlock();
     }
-  }
-
-  public Flux<org.mariadb.r2dbc.api.MariadbResult> executeSimpleCommand(String sql) {
-    Flux<ServerMessage> response = this.sendCommand(new QueryPacket(sql));
-    Flux<org.mariadb.r2dbc.api.MariadbResult> flux =
-        response
-            .windowUntil(it -> it.resultSetEnd())
-            .map(
-                dataRow ->
-                    new MariadbResult(
-                        true,
-                        null,
-                        dataRow,
-                        ExceptionFactory.withSql(sql),
-                        null,
-                        getVersion().supportReturning(),
-                        getConf()));
-    return flux.doOnDiscard(RowPacket.class, RowPacket::release);
   }
 
   /**
@@ -319,7 +323,22 @@ public class ClientBase implements Client {
     String sql = sb.toString();
     try {
       lock.lock();
-      return execute(sink -> this.messageSubscriber.begin(sink, sql, this::sendClientMsgs))
+      return execute(
+              sink -> {
+                if (!exchangeQueue.isEmpty()
+                    || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
+                  Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
+                  if (this.exchangeQueue.offer(exchange)) {
+                    sendClientMsgs(Mono.just(new QueryPacket(sql)));
+                    sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
+                  } else {
+                    sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
+                  }
+                } else {
+                  logger.debug("Skipping start transaction because already in transaction");
+                  sink.complete();
+                }
+              })
           .handle(ExceptionFactory.withSql(sql)::handleErrorResponse)
           .then();
     } finally {
@@ -335,14 +354,34 @@ public class ClientBase implements Client {
   public Mono<Void> commitTransaction() {
     try {
       lock.lock();
-      return execute(
-              sink ->
-                  this.messageSubscriber.executeWhenTransaction(
-                      sink, "COMMIT", this::sendClientMsgs))
+      return execute(sink -> executeWhenTransaction(sink, "COMMIT"))
           .handle(ExceptionFactory.withSql("COMMIT")::handleErrorResponse)
           .then();
     } finally {
       lock.unlock();
+    }
+  }
+
+  private void executeWhenTransaction(FluxSink<ServerMessage> sink, String sql) {
+    if (!exchangeQueue.isEmpty() || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) > 0) {
+      try {
+        lock.lock();
+        Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
+        if (this.exchangeQueue.offer(exchange)) {
+          sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
+          sendClientMsgs(Mono.just(new QueryPacket(sql)));
+        } else {
+          sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
+        }
+      } catch (Throwable t) {
+        t.printStackTrace();
+        throw t;
+      } finally {
+        lock.unlock();
+      }
+    } else {
+      logger.debug(String.format("Skipping '%s' because no active transaction", sql));
+      sink.complete();
     }
   }
 
@@ -354,10 +393,7 @@ public class ClientBase implements Client {
   public Mono<Void> rollbackTransaction() {
     try {
       lock.lock();
-      return execute(
-              sink ->
-                  this.messageSubscriber.executeWhenTransaction(
-                      sink, "ROLLBACK", this::sendClientMsgs))
+      return execute(sink -> executeWhenTransaction(sink, "ROLLBACK"))
           .handle(ExceptionFactory.withSql("ROLLBACK")::handleErrorResponse)
           .then();
     } finally {
@@ -373,35 +409,9 @@ public class ClientBase implements Client {
   public Mono<Void> rollbackTransactionToSavepoint(String name) {
     try {
       lock.lock();
-      String cmd = String.format("ROLLBACK TO SAVEPOINT `%s`", name.replace("`", "``"));
-      return execute(
-              sink ->
-                  this.messageSubscriber.executeWhenTransaction(sink, cmd, this::sendClientMsgs))
-          .handle(ExceptionFactory.withSql(cmd)::handleErrorResponse)
-          .then();
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  public Mono<Void> releaseSavepoint(String name) {
-    try {
-      lock.lock();
-      String cmd = String.format("RELEASE SAVEPOINT `%s`", name.replace("`", "``"));
-      return sendCommand(new QueryPacket(cmd))
-          .handle(ExceptionFactory.withSql(cmd)::handleErrorResponse)
-          .then();
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  public Mono<Void> createSavepoint(String name) {
-    try {
-      lock.lock();
-      String cmd = String.format("SAVEPOINT `%s`", name.replace("`", "``"));
-      return sendCommand(new QueryPacket(cmd))
-          .handle(ExceptionFactory.withSql(cmd)::handleErrorResponse)
+      String sql = String.format("ROLLBACK TO SAVEPOINT `%s`", name.replace("`", "``"));
+      return execute(sink -> executeWhenTransaction(sink, sql))
+          .handle(ExceptionFactory.withSql(sql)::handleErrorResponse)
           .then();
     } finally {
       lock.unlock();
@@ -417,8 +427,29 @@ public class ClientBase implements Client {
     try {
       lock.lock();
       return execute(
-              sink ->
-                  this.messageSubscriber.executeAutoCommit(sink, autoCommit, this::sendClientMsgs))
+              sink -> {
+                String sql = "SET autocommit=" + (autoCommit ? '1' : '0');
+                if (!this.exchangeQueue.isEmpty() || autoCommit != isAutoCommit()) {
+
+                  try {
+                    Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
+                    if (this.exchangeQueue.offer(exchange)) {
+                      sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
+                      sendClientMsgs(Mono.just(new QueryPacket(sql)));
+                    } else {
+                      sink.error(
+                          new R2dbcTransientResourceException("Request queue limit reached"));
+                    }
+                  } catch (Throwable t) {
+                    t.printStackTrace();
+                    throw t;
+                  }
+
+                } else {
+                  logger.debug("Skipping autocommit since already in that state");
+                  sink.complete();
+                }
+              })
           .handle(ExceptionFactory.withSql(null)::handleErrorResponse)
           .then();
     } finally {
@@ -426,24 +457,52 @@ public class ClientBase implements Client {
     }
   }
 
-  @Override
   public Flux<ServerMessage> receive(DecoderState initialState) {
-    return messageSubscriber.receive(initialState);
+    return Flux.create(
+        sink -> {
+          try {
+            lock.lock();
+            Exchange exchange = new Exchange(sink, initialState);
+            sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
+            if (!this.exchangeQueue.offer(exchange)) {
+              sink.error(
+                  new R2dbcTransientResourceException(
+                      "Request queue limit reached during handshake"));
+            }
+          } catch (Throwable t) {
+            t.printStackTrace();
+            throw t;
+          } finally {
+            lock.unlock();
+          }
+        });
   }
 
   public void setContext(InitialHandshakePacket handshake, long clientCapabilities) {
     this.context =
-        new ContextImpl(
-            handshake.getServerVersion(),
-            handshake.getThreadId(),
-            handshake.getCapabilities(),
-            handshake.getServerStatus(),
-            handshake.isMariaDBServer(),
-            clientCapabilities,
-            configuration.getDatabase(),
-            byteBufAllocator,
-            configuration.getIsolationLevel());
+        !HaMode.NONE.equals(configuration.getHaMode()) && configuration.isTransactionReplay()
+            ? new RedoContext(
+                handshake.getServerVersion(),
+                handshake.getThreadId(),
+                handshake.getCapabilities(),
+                handshake.getServerStatus(),
+                handshake.isMariaDBServer(),
+                clientCapabilities,
+                configuration.getDatabase(),
+                byteBufAllocator,
+                configuration.getIsolationLevel())
+            : new SimpleContext(
+                handshake.getServerVersion(),
+                handshake.getThreadId(),
+                handshake.getCapabilities(),
+                handshake.getServerStatus(),
+                handshake.isMariaDBServer(),
+                clientCapabilities,
+                configuration.getDatabase(),
+                byteBufAllocator,
+                configuration.getIsolationLevel());
     decoder.setContext(context);
+    encoder.setContext(context);
   }
 
   /**
@@ -487,16 +546,20 @@ public class ClientBase implements Client {
   protected class ServerMessageSubscriber implements CoreSubscriber<ByteBuf> {
     private Subscription upstream;
     private AtomicBoolean close;
-    protected final Queue<Exchange> exchangeQueue =
-        Queues.<Exchange>get(Queues.SMALL_BUFFER_SIZE).get();
-    private final Queue<ServerMessage> receiverQueue =
-        Queues.<ServerMessage>get(Queues.SMALL_BUFFER_SIZE).get();
     private final AtomicLong receiverDemands = new AtomicLong(0);
     private final ReentrantLock lock;
+    private final Queue<Exchange> exchangeQueue;
+    private final Queue<ServerMessage> receiverQueue;
 
-    public ServerMessageSubscriber(ReentrantLock lock, AtomicBoolean close) {
+    public ServerMessageSubscriber(
+        ReentrantLock lock,
+        AtomicBoolean close,
+        Queue<Exchange> exchangeQueue,
+        Queue<ServerMessage> receiverQueue) {
       this.lock = lock;
       this.close = close;
+      this.receiverQueue = receiverQueue;
+      this.exchangeQueue = exchangeQueue;
     }
 
     @Override
@@ -580,168 +643,6 @@ public class ClientBase implements Client {
         exchange.getSink().error(exception);
       }
     }
-
-    public Flux<ServerMessage> receive(DecoderState initialState) {
-      return Flux.create(
-          sink -> {
-            try {
-              lock.lock();
-              Exchange exchange = new Exchange(sink, initialState);
-              sink.onRequest(value -> onRequest(exchange, value));
-              if (!this.exchangeQueue.offer(exchange)) {
-                sink.error(
-                    new R2dbcTransientResourceException(
-                        "Request queue limit reached during handshake"));
-              }
-            } catch (Throwable t) {
-              t.printStackTrace();
-              throw t;
-            } finally {
-              lock.unlock();
-            }
-          });
-    }
-
-    public Flux<ServerMessage> sendCommand(
-        PreparePacket preparePacket,
-        ExecutePacket executePacket,
-        Consumer<Publisher<ClientMessage>> sender) {
-
-      return Flux.create(
-          sink -> {
-            if (!isConnected()) {
-              sink.error(
-                  new R2dbcNonTransientResourceException(
-                      "Connection is close. Cannot send anything"));
-              return;
-            }
-            try {
-              lock.lock();
-              Exchange exchange =
-                  new Exchange(
-                      sink, DecoderState.PREPARE_AND_EXECUTE_RESPONSE, preparePacket.getSql());
-              if (this.exchangeQueue.offer(exchange)) {
-                sink.onRequest(value -> onRequest(exchange, value));
-                decoder.addPrepare(preparePacket.getSql());
-                sender.accept(Flux.just(preparePacket, executePacket));
-              } else {
-                sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
-                return;
-              }
-            } catch (Throwable t) {
-              t.printStackTrace();
-              sink.error(t);
-            } finally {
-              lock.unlock();
-            }
-          });
-    }
-
-    public Flux<ServerMessage> sendCommand(
-        ClientMessage message,
-        DecoderState initialState,
-        String sql,
-        Consumer<Publisher<ClientMessage>> sender) {
-      return Flux.create(
-          sink -> {
-            if (!isConnected()) {
-              sink.error(
-                  new R2dbcNonTransientResourceException(
-                      "Connection is close. Cannot send anything"));
-              return;
-            }
-            try {
-              lock.lock();
-              if (message instanceof PreparePacket) {
-                decoder.addPrepare(((PreparePacket) message).getSql());
-              }
-
-              Exchange exchange = new Exchange(sink, initialState, sql);
-              if (this.exchangeQueue.offer(exchange)) {
-                sink.onRequest(value -> onRequest(exchange, value));
-                sender.accept(Mono.just(message));
-              } else {
-                sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
-              }
-            } catch (Throwable t) {
-              t.printStackTrace();
-              sink.error(t);
-            } finally {
-              lock.unlock();
-            }
-          });
-    }
-
-    protected void begin(
-        FluxSink<ServerMessage> sink, String sql, Consumer<Publisher<ClientMessage>> sender) {
-      if (!exchangeQueue.isEmpty()
-          || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
-        Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
-        if (this.exchangeQueue.offer(exchange)) {
-          sender.accept(Mono.just(new QueryPacket(sql)));
-          sink.onRequest(value -> onRequest(exchange, value));
-        } else {
-          sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
-        }
-      } else {
-        logger.debug("Skipping start transaction because already in transaction");
-        sink.complete();
-      }
-    }
-
-    private void executeAutoCommit(
-        FluxSink<ServerMessage> sink,
-        boolean autoCommit,
-        Consumer<Publisher<ClientMessage>> sender) {
-      String sql = "SET autocommit=" + (autoCommit ? '1' : '0');
-      if (this.exchangeQueue.isEmpty() || autoCommit != isAutoCommit()) {
-
-        try {
-          lock.lock();
-          Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
-          if (this.exchangeQueue.offer(exchange)) {
-            sink.onRequest(value -> onRequest(exchange, value));
-            sender.accept(Mono.just(new QueryPacket(sql)));
-          } else {
-            sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
-          }
-        } catch (Throwable t) {
-          t.printStackTrace();
-          throw t;
-        } finally {
-          lock.unlock();
-        }
-
-      } else {
-        logger.debug("Skipping autocommit since already in that state");
-        sink.complete();
-      }
-    }
-
-    private void executeWhenTransaction(
-        FluxSink<ServerMessage> sink, String cmd, Consumer<Publisher<ClientMessage>> sender) {
-      if (!exchangeQueue.isEmpty()
-          || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) > 0) {
-        try {
-          lock.lock();
-          Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, cmd);
-          if (this.exchangeQueue.offer(exchange)) {
-            sink.onRequest(value -> onRequest(exchange, value));
-            sender.accept(Mono.just(new QueryPacket(cmd)));
-          } else {
-            sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
-          }
-        } catch (Throwable t) {
-          t.printStackTrace();
-          throw t;
-        } finally {
-          lock.unlock();
-        }
-      } else {
-        logger.debug(String.format("Skipping '%s' because no active transaction", cmd));
-        sink.complete();
-      }
-    }
   }
 
   public void sendCommandWithoutResult(ClientMessage message) {
@@ -753,26 +654,95 @@ public class ClientBase implements Client {
     }
   }
 
-  public Flux<ServerMessage> sendCommand(ClientMessage message) {
-    return this.messageSubscriber.sendCommand(
-        message, DecoderState.QUERY_RESPONSE, null, this::sendClientMsgs);
-  }
-
-  public Flux<ServerMessage> sendCommand(ClientMessage message, DecoderState initialState) {
-    return this.messageSubscriber.sendCommand(message, initialState, null, this::sendClientMsgs);
+  public Flux<ServerMessage> sendCommand(ClientMessage message, boolean canSafelyBeReExecuted) {
+    return sendCommand(message, DecoderState.QUERY_RESPONSE, null, canSafelyBeReExecuted);
   }
 
   public Flux<ServerMessage> sendCommand(
-      ClientMessage message, DecoderState initialState, String sql) {
-    return this.messageSubscriber.sendCommand(message, initialState, sql, this::sendClientMsgs);
+      ClientMessage message, DecoderState initialState, boolean canSafelyBeReExecuted) {
+    return sendCommand(message, initialState, null, canSafelyBeReExecuted);
   }
 
-  public Flux<ServerMessage> sendCommand(PreparePacket preparePacket, ExecutePacket executePacket) {
-    return this.messageSubscriber.sendCommand(preparePacket, executePacket, this::sendClientMsgs);
+  public Flux<ServerMessage> sendCommand(
+      ClientMessage message, DecoderState initialState, String sql, boolean canSafelyBeReExecuted) {
+    return Flux.create(
+        sink -> {
+          if (!isConnected()) {
+            sink.error(
+                new R2dbcNonTransientResourceException(
+                    "Connection is close. Cannot send anything"));
+            return;
+          }
+          try {
+            lock.lock();
+            Exchange exchange = new Exchange(sink, initialState, sql);
+            if (this.exchangeQueue.offer(exchange)) {
+              if (message instanceof PreparePacket) {
+                decoder.addPrepare(((PreparePacket) message).getSql());
+              }
+              sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
+              sendClientMsgs(Mono.just(message));
+            } else {
+              sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
+            }
+          } catch (Throwable t) {
+            sink.error(t);
+          } finally {
+            lock.unlock();
+          }
+        });
   }
 
-  public MariadbConnectionConfiguration getConf() {
-    return configuration;
+  public Mono<ServerPrepareResult> sendPrepare(
+      ClientMessage requests, ExceptionFactory factory, String sql) {
+    return sendCommand(requests, DecoderState.PREPARE_RESPONSE, sql, true)
+        .handle(
+            (it, sink) -> {
+              if (it instanceof ErrorPacket) {
+                sink.error(factory.from((ErrorPacket) it));
+                return;
+              }
+              if (it instanceof CompletePrepareResult) {
+                sink.next(((CompletePrepareResult) it).getPrepare());
+              }
+              if (it.ending()) {
+                sink.complete();
+              }
+            })
+        .cast(ServerPrepareResult.class)
+        .singleOrEmpty();
+  }
+
+  public Flux<ServerMessage> sendCommand(
+      PreparePacket preparePacket, ExecutePacket executePacket, boolean canSafelyBeReExecuted) {
+    return Flux.create(
+        sink -> {
+          if (!isConnected()) {
+            sink.error(
+                new R2dbcNonTransientResourceException(
+                    "Connection is close. Cannot send anything"));
+            return;
+          }
+          try {
+            lock.lock();
+            Exchange exchange =
+                new Exchange(
+                    sink, DecoderState.PREPARE_AND_EXECUTE_RESPONSE, preparePacket.getSql());
+            if (this.exchangeQueue.offer(exchange)) {
+              sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
+              decoder.addPrepare(preparePacket.getSql());
+              sendClientMsgs(Flux.just(preparePacket, executePacket));
+            } else {
+              sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
+              return;
+            }
+          } catch (Throwable t) {
+            t.printStackTrace();
+            sink.error(t);
+          } finally {
+            lock.unlock();
+          }
+        });
   }
 
   public HostAddress getHostAddress() {

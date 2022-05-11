@@ -185,11 +185,11 @@ public class ConfigurationTest extends BaseTest {
     MariadbConnectionFactory factory = MariadbConnectionFactory.from(conf);
 
     Assertions.assertTrue(factory.toString().contains("database='myDb'"));
-    Assertions.assertTrue(factory.toString().contains("host='someHost'"));
+    Assertions.assertTrue(
+        factory.toString().contains("hosts={[someHost:43306]}"), factory.toString());
     Assertions.assertTrue(factory.toString().contains("allowMultiQueries=true"));
     Assertions.assertTrue(factory.toString().contains("allowPipelining=true"));
     Assertions.assertTrue(factory.toString().contains("username='myUser'"));
-    Assertions.assertTrue(factory.toString().contains("port=43306"));
     Assertions.assertTrue(factory.toString().contains("connectTimeout=PT10S"));
     Assertions.assertTrue(factory.toString().contains("tcpKeepAlive=true"));
     Assertions.assertTrue(factory.toString().contains("tcpAbortiveClose=true"));
@@ -336,11 +336,11 @@ public class ConfigurationTest extends BaseTest {
     builder.pamOtherPwd(new String[] {"fff", "ddd"});
     builder.tlsProtocol((String[]) null);
     Assertions.assertEquals(
-        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, restrictedAuth=null, port=3306, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, isolationLevel=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST, pamOtherPwd=*,*, tinyInt1isBit=false, autoCommit=true}",
+        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, transactionReplay=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, restrictedAuth=null, port=3306, hosts={}, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, isolationLevel=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST, pamOtherPwd=*,*, tinyInt1isBit=false, autoCommit=true}",
         builder.toString());
     builder.tlsProtocol((String) null);
     Assertions.assertEquals(
-        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, restrictedAuth=null, port=3306, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, isolationLevel=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST, pamOtherPwd=*,*, tinyInt1isBit=false, autoCommit=true}",
+        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, transactionReplay=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, restrictedAuth=null, port=3306, hosts={}, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, isolationLevel=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST, pamOtherPwd=*,*, tinyInt1isBit=false, autoCommit=true}",
         builder.toString());
     MariadbConnectionConfiguration conf = builder.build();
     Assertions.assertEquals(

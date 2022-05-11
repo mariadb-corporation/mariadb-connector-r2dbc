@@ -55,7 +55,7 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
       ExceptionFactory exceptionFactory = ExceptionFactory.withSql(sql);
       request =
           client
-              .sendCommand(new QueryPacket(sql))
+              .sendCommand(new QueryPacket(sql), true)
               .handle(exceptionFactory::handleErrorResponse)
               .then()
               .doOnSuccess(ignore -> this.isolationLevel = isoLevel);
@@ -82,10 +82,13 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
   @Override
   public Mono<Void> createSavepoint(String name) {
     Assert.requireNonNull(name, "name must not be null");
-    if (isAutoCommit()) {
-      return this.client.beginTransaction().then(this.client.createSavepoint(name));
-    }
-    return this.client.createSavepoint(name);
+    Mono<Void> needsBegin = isAutoCommit() ? this.client.beginTransaction() : Mono.empty();
+    String cmd = String.format("SAVEPOINT `%s`", name.replace("`", "``"));
+    return needsBegin.then(
+        client
+            .sendCommand(new QueryPacket(cmd), true)
+            .handle(ExceptionFactory.withSql(cmd)::handleErrorResponse)
+            .then());
   }
 
   @Override
@@ -123,7 +126,11 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
   @Override
   public Mono<Void> releaseSavepoint(String name) {
     Assert.requireNonNull(name, "name must not be null");
-    return this.client.releaseSavepoint(name);
+    String cmd = String.format("RELEASE SAVEPOINT `%s`", name.replace("`", "``"));
+    return client
+        .sendCommand(new QueryPacket(cmd), true)
+        .handle(ExceptionFactory.withSql(cmd)::handleErrorResponse)
+        .then();
   }
 
   @Override
@@ -205,7 +212,7 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
 
     ExceptionFactory exceptionFactory = ExceptionFactory.withSql(sql);
     return client
-        .sendCommand(new QueryPacket(sql))
+        .sendCommand(new QueryPacket(sql), true)
         .handle(exceptionFactory::handleErrorResponse)
         .then();
   }
@@ -223,7 +230,7 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
     ExceptionFactory exceptionFactory = ExceptionFactory.withSql(sql);
     final IsolationLevel newIsolation = isolationLevel;
     return client
-        .sendCommand(new QueryPacket(sql))
+        .sendCommand(new QueryPacket(sql), true)
         .handle(exceptionFactory::handleErrorResponse)
         .then()
         .doOnSuccess(ignore -> this.sessionIsolationLevel = newIsolation);
@@ -251,12 +258,14 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
 
     return Mono.create(
         sink -> {
-          if (!this.client.isConnected()) {
+          // only when using failover, connection might be recreated
+          if (HaMode.NONE.equals(this.configuration.getHaMode()) && !this.client.isConnected()) {
             sink.success(false);
             return;
           }
+
           this.client
-              .sendCommand(new PingPacket())
+              .sendCommand(new PingPacket(), true)
               .windowUntil(it -> it.ending())
               .flatMap(Function.identity())
               .subscribe(
@@ -285,7 +294,7 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
     ExceptionFactory exceptionFactory = ExceptionFactory.withSql("COM_INIT_DB");
     final String newDatabase = database;
     return client
-        .sendCommand(new ChangeSchemaPacket(database))
+        .sendCommand(new ChangeSchemaPacket(database), true)
         .handle(exceptionFactory::handleErrorResponse)
         .then()
         .doOnSuccess(ignore -> this.database = newDatabase);

@@ -64,8 +64,7 @@ public class HostAddressTest {
     Assertions.assertEquals(new HostAddress("host1", 3303), conf.getHostAddresses().get(0));
     Assertions.assertEquals(new HostAddress("host2", 3307), conf.getHostAddresses().get(1));
     Assertions.assertEquals(new HostAddress("host3", 3309), conf.getHostAddresses().get(2));
-    Assertions.assertEquals(
-        "HostAddress{host='host3', port=3309}", conf.getHostAddresses().get(2).toString());
+    Assertions.assertEquals("host3:3309", conf.getHostAddresses().get(2).toString());
   }
 
   @Test
@@ -98,7 +97,6 @@ public class HostAddressTest {
     Assertions.assertEquals(new HostAddress("host1", 3303), conf.getHostAddresses().get(0));
     Assertions.assertEquals(new HostAddress("host2", 3306), conf.getHostAddresses().get(1));
     Assertions.assertEquals(new HostAddress("host3", 3309), conf.getHostAddresses().get(2));
-    Assertions.assertEquals(
-        "HostAddress{host='host3', port=3309}", conf.getHostAddresses().get(2).toString());
+    Assertions.assertEquals("host3:3309", conf.getHostAddresses().get(2).toString());
   }
 }

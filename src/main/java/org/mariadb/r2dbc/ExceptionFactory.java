@@ -33,6 +33,15 @@ public final class ExceptionFactory {
     return new R2dbcNonTransientResourceException(message, "H1000", 9000, this.sql, cause);
   }
 
+  public R2dbcException createConnectionErrorException(String message) {
+    return new R2dbcNonTransientResourceException(message, "08000", 9000, this.sql);
+  }
+
+  public R2dbcException createConnectionErrorException(String message, Throwable cause) {
+    return new R2dbcNonTransientResourceException(
+        message + " : " + cause.getMessage(), "08000", 9000, this.sql, cause);
+  }
+
   public static R2dbcException createException(
       String message, String sqlState, int errorCode, String sql) {
 

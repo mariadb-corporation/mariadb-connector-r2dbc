@@ -77,8 +77,10 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
                                       values,
                                       client.getVersion().supportReturning()
                                           ? generatedColumns
-                                          : null)));
-              return toResult(Protocol.TEXT, client, messages, factory, null, generatedColumns);
+                                          : null),
+                                  false));
+              return toResult(
+                  Protocol.TEXT, client, messages, factory, null, generatedColumns, configuration);
             }
 
             // batch
@@ -99,11 +101,18 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
                                               values,
                                               client.getVersion().supportReturning()
                                                   ? generatedColumns
-                                                  : null)))
+                                                  : null),
+                                          false))
                               .doOnComplete(() -> tryNextBinding(iterator, bindingSink, canceled));
 
                       return toResult(
-                          Protocol.TEXT, this.client, messages, factory, null, generatedColumns);
+                          Protocol.TEXT,
+                          this.client,
+                          messages,
+                          factory,
+                          null,
+                          generatedColumns,
+                          configuration);
                     })
                 .flatMap(mariadbResultFlux -> mariadbResultFlux)
                 .doOnCancel(() -> clearBindings(iterator, canceled))
@@ -116,8 +125,10 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
       return Flux.defer(
           () -> {
             Flux<ServerMessage> messages =
-                this.client.sendCommand(new QueryPacket(sql), DecoderState.QUERY_RESPONSE, sql);
-            return toResult(Protocol.TEXT, client, messages, factory, null, generatedColumns);
+                this.client.sendCommand(
+                    new QueryPacket(sql), DecoderState.QUERY_RESPONSE, sql, false);
+            return toResult(
+                Protocol.TEXT, client, messages, factory, null, generatedColumns, configuration);
           });
     }
   }

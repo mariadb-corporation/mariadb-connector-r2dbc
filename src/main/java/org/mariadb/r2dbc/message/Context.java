@@ -3,6 +3,7 @@
 
 package org.mariadb.r2dbc.message;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.r2dbc.spi.IsolationLevel;
 import org.mariadb.r2dbc.client.ServerVersion;
@@ -30,4 +31,6 @@ public interface Context {
   ServerVersion getVersion();
 
   ByteBufAllocator getByteBufAllocator();
+
+  default void saveRedo(ClientMessage msg, ByteBuf buf, int initialReaderIndex) {}
 }

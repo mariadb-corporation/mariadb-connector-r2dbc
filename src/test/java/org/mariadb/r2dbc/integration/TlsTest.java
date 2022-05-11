@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -40,12 +41,14 @@ public class TlsTest extends BaseConnectionTest {
             : Integer.valueOf(System.getenv("TEST_MAXSCALE_TLS_PORT"));
     // try default if not present
     if (serverSslCert == null) {
-      File sslDir = new File(System.getProperty("user.dir") + "/../../ssl");
+      File sslDir = new File(System.getProperty("user.dir") + "/../ssl");
+      if (!sslDir.exists() || !sslDir.isDirectory()) {
+        sslDir = new File(System.getProperty("user.dir") + "/../../ssl");
+      }
       if (sslDir.exists() && sslDir.isDirectory()) {
-
-        serverSslCert = System.getProperty("user.dir") + "/../../ssl/server.crt";
-        clientSslCert = System.getProperty("user.dir") + "/../../ssl/client.crt";
-        clientSslKey = System.getProperty("user.dir") + "/../../ssl/client.key";
+        serverSslCert = sslDir.getPath() + "/server.crt";
+        clientSslCert = sslDir.getPath() + "/client.crt";
+        clientSslKey = sslDir.getPath() + "/client.key";
       }
     }
 
@@ -388,14 +391,15 @@ public class TlsTest extends BaseConnectionTest {
             .serverSslCert(serverSslCert)
             .clientSslKey(clientSslKey)
             .build();
-    new MariadbConnectionFactory(conf)
-        .create()
-        .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcNonTransientException
-                    && throwable.getMessage().contains("Access denied"))
-        .verify();
+    try {
+      new MariadbConnectionFactory(conf).create().block();
+      Assertions.fail();
+    } catch (Throwable throwable) {
+      throwable.printStackTrace();
+      Assertions.assertTrue(
+          throwable instanceof R2dbcNonTransientException
+              && throwable.getMessage().contains("Access denied"));
+    }
   }
 
   @Test

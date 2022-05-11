@@ -15,4 +15,8 @@ public interface ClientMessage {
   default void releaseEncodedBinds() {}
 
   ByteBuf encode(Context context, ByteBufAllocator byteBufAllocator);
+
+  default void save(ByteBuf buf, int initialReaderIndex) {}
+
+  default void resetSequencer() {}
 }

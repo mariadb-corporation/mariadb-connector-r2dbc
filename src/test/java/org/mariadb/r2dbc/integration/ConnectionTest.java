@@ -246,7 +246,7 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
-  void socketTimeoutMultiHost() throws Exception {
+  void timeoutMultiHost() throws Exception {
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
@@ -1001,7 +1001,7 @@ public class ConnectionTest extends BaseConnectionTest {
             .blockLast();
     Assumptions.assumeTrue(maxConn.intValue() < 600);
 
-    R2dbcTransientResourceException expected = null;
+    Throwable expected = null;
     Mono<?>[] cons = new Mono<?>[maxConn.intValue()];
     for (int i = 0; i < maxConn.intValue(); i++) {
       cons[i] = new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create();
@@ -1010,7 +1010,7 @@ public class ConnectionTest extends BaseConnectionTest {
     for (int i = 0; i < maxConn.intValue(); i++) {
       try {
         connections[i] = (MariadbConnection) cons[i].block();
-      } catch (R2dbcTransientResourceException e) {
+      } catch (Throwable e) {
         expected = e;
       }
     }
@@ -1021,7 +1021,8 @@ public class ConnectionTest extends BaseConnectionTest {
       }
     }
     Assertions.assertNotNull(expected);
-    Assertions.assertTrue(expected.getMessage().contains("Too many connections"));
+    Assertions.assertTrue(expected.getMessage().contains("Fail to establish connection to"));
+    Assertions.assertTrue(expected.getCause().getMessage().contains("Too many connections"));
     Thread.sleep(1000);
   }
 

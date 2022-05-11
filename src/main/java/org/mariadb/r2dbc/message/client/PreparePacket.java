@@ -28,6 +28,10 @@ public final class PreparePacket implements ClientMessage {
     return sequencer;
   }
 
+  public void resetSequencer() {
+    sequencer.reset();
+  }
+
   @Override
   public ByteBuf encode(Context context, ByteBufAllocator allocator) {
     ByteBuf buf = allocator.ioBuffer(this.sql.length() + 1);

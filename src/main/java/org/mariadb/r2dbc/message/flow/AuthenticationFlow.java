@@ -14,6 +14,7 @@ import org.mariadb.r2dbc.authentication.AuthenticationFlowPluginLoader;
 import org.mariadb.r2dbc.authentication.AuthenticationPlugin;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.client.DecoderState;
+import org.mariadb.r2dbc.client.SimpleClient;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.HandshakeResponse;
@@ -34,20 +35,20 @@ public final class AuthenticationFlow {
   private AuthenticationPlugin pluginHandler;
   private AuthSwitchPacket authSwitchPacket;
   private AuthMoreDataPacket authMoreDataPacket;
-  private final Client client;
+  private final SimpleClient client;
   private FluxSink<State> sink;
   private final HostAddress hostAddress;
   private long clientCapabilities;
 
   private AuthenticationFlow(
-      Client client, MariadbConnectionConfiguration configuration, HostAddress hostAddress) {
+      SimpleClient client, MariadbConnectionConfiguration configuration, HostAddress hostAddress) {
     this.client = client;
     this.configuration = configuration;
     this.hostAddress = hostAddress;
   }
 
   public static Mono<Client> exchange(
-      Client client, MariadbConnectionConfiguration configuration, HostAddress hostAddress) {
+      SimpleClient client, MariadbConnectionConfiguration configuration, HostAddress hostAddress) {
     AuthenticationFlow flow = new AuthenticationFlow(client, configuration, hostAddress);
     Assert.requireNonNull(client, "client must not be null");
 
@@ -185,14 +186,12 @@ public final class AuthenticationFlow {
         return flow.client
             .sendCommand(
                 flow.createHandshakeResponse(flow.clientCapabilities),
-                DecoderState.AUTHENTICATION_SWITCH_RESPONSE)
+                DecoderState.AUTHENTICATION_SWITCH_RESPONSE,
+                false)
             .<State>handle(
                 (message, sink) -> {
                   if (message instanceof ErrorPacket) {
-                    R2dbcException exception =
-                        ExceptionFactory.createException((ErrorPacket) message, null);
-                    sink.error(
-                        new R2dbcNonTransientResourceException(exception.getMessage(), exception));
+                    sink.error(ExceptionFactory.createException((ErrorPacket) message, null));
                   } else if (message instanceof OkPacket) {
                     sink.next(COMPLETED);
                   } else if (message instanceof AuthSwitchPacket) {
@@ -242,7 +241,8 @@ public final class AuthenticationFlow {
           // this can occur when there is a "finishing" message for authentication plugin
           // example CachingSha2PasswordFlow that finish with a successful FAST_AUTH
           flux =
-              flow.client.sendCommand(clientMessage, DecoderState.AUTHENTICATION_SWITCH_RESPONSE);
+              flow.client.sendCommand(
+                  clientMessage, DecoderState.AUTHENTICATION_SWITCH_RESPONSE, false);
         } else {
           flux = flow.client.receive(DecoderState.AUTHENTICATION_SWITCH_RESPONSE);
         }

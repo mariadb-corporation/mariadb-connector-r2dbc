@@ -16,8 +16,6 @@ import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.ExecutePacket;
 import org.mariadb.r2dbc.message.client.PreparePacket;
 import org.mariadb.r2dbc.message.client.QueryPacket;
-import org.mariadb.r2dbc.message.server.CompletePrepareResult;
-import org.mariadb.r2dbc.message.server.ErrorPacket;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.Binding;
 import org.mariadb.r2dbc.util.ServerNamedParamParser;
@@ -123,12 +121,19 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
                           .flatMapMany(
                               values ->
                                   this.client.sendCommand(
-                                      new ExecutePacket(prepareResult.get(), values),
+                                      new ExecutePacket(sql, prepareResult.get(), values),
                                       DecoderState.QUERY_RESPONSE,
-                                      sql))
+                                      sql,
+                                      false))
                           .doFinally(s -> prepareResult.get().decrementUse(client));
                   return toResult(
-                      Protocol.BINARY, client, messages, factory, prepareResult, generatedColumns);
+                      Protocol.BINARY,
+                      client,
+                      messages,
+                      factory,
+                      prepareResult,
+                      generatedColumns,
+                      configuration);
                 } else {
                   // prepare is closing
                   prepareResult.set(null);
@@ -143,24 +148,34 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
                         .flatMapMany(
                             values ->
                                 this.client.sendCommand(
-                                    new PreparePacket(sql), new ExecutePacket(null, values)));
+                                    new PreparePacket(sql),
+                                    new ExecutePacket(sql, null, values),
+                                    false));
               } else {
                 messages =
-                    sendPrepare(sql, factory)
+                    client
+                        .sendPrepare(new PreparePacket(sql), factory, sql)
                         .flatMapMany(
-                            prepareResult1 -> {
-                              prepareResult.set(prepareResult1);
+                            serverPrepareResult -> {
+                              prepareResult.set(serverPrepareResult);
                               return bindingParameterResults(binding, getExpectedSize())
                                   .flatMapMany(
                                       values ->
                                           this.client.sendCommand(
-                                              new ExecutePacket(prepareResult1, values),
+                                              new ExecutePacket(sql, prepareResult.get(), values),
                                               DecoderState.QUERY_RESPONSE,
-                                              sql));
+                                              sql,
+                                              false));
                             });
               }
               return toResult(
-                      Protocol.BINARY, client, messages, factory, prepareResult, generatedColumns)
+                      Protocol.BINARY,
+                      client,
+                      messages,
+                      factory,
+                      prepareResult,
+                      generatedColumns,
+                      configuration)
                   .doFinally(
                       s -> {
                         if (prepareResult.get() != null) {
@@ -183,23 +198,26 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
                                       .flatMapMany(
                                           values ->
                                               this.client.sendCommand(
-                                                  new ExecutePacket(prepareResult.get(), values)))
+                                                  new ExecutePacket(
+                                                      sql, prepareResult.get(), values),
+                                                  false))
                                       .doOnComplete(
                                           () -> tryNextBinding(iterator, bindingSink, canceled));
-                              ;
+
                               return toResult(
                                   Protocol.BINARY,
                                   this.client,
                                   messages,
                                   factory,
                                   prepareResult,
-                                  generatedColumns);
+                                  generatedColumns,
+                                  configuration);
                             })
                         .doOnSubscribe(
                             it ->
                                 bindingSink.emitNext(
                                     iterator.next(), Sinks.EmitFailureHandler.FAIL_FAST))
-                        .doOnComplete(() -> this.bindings.clear())
+                        .doOnComplete(this.bindings::clear)
                         .doFinally(
                             s -> {
                               if (prepareResult.get() != null) {
@@ -214,29 +232,12 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
       return Flux.defer(
           () -> {
             Flux<ServerMessage> messages =
-                this.client.sendCommand(new QueryPacket(sql), DecoderState.QUERY_RESPONSE, sql);
-            return toResult(Protocol.TEXT, client, messages, factory, null, generatedColumns);
+                this.client.sendCommand(
+                    new QueryPacket(sql), DecoderState.QUERY_RESPONSE, sql, false);
+            return toResult(
+                Protocol.TEXT, client, messages, factory, null, generatedColumns, configuration);
           });
     }
-  }
-
-  private Mono<ServerPrepareResult> sendPrepare(String sql, ExceptionFactory factory) {
-    return this.client
-        .sendCommand(new PreparePacket(sql), DecoderState.PREPARE_RESPONSE, sql)
-        .handle(
-            (it, sink) -> {
-              if (it instanceof ErrorPacket) {
-                sink.error(factory.from((ErrorPacket) it));
-                return;
-              }
-              if (it instanceof CompletePrepareResult) {
-                prepareResult.set(((CompletePrepareResult) it).getPrepare());
-                sink.next(prepareResult.get());
-              }
-              if (it.ending()) sink.complete();
-            })
-        .cast(ServerPrepareResult.class)
-        .singleOrEmpty();
   }
 
   private Mono<ServerPrepareResult> prepareIfNotDone(String sql, ExceptionFactory factory) {
@@ -244,7 +245,9 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
     if (prepareResult.get() == null) {
       prepareResult.set(client.getPrepareCache().get(sql));
       if (prepareResult.get() == null) {
-        return sendPrepare(sql, factory);
+        return client
+            .sendPrepare(new PreparePacket(sql), factory, sql)
+            .doOnSuccess(p -> prepareResult.set(p));
       }
     }
     prepareResult.get().incrementUse();
