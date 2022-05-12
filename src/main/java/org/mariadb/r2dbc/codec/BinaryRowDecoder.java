@@ -1,23 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.codec;
 
 import io.netty.buffer.ByteBuf;
+import java.util.List;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
 public class BinaryRowDecoder extends RowDecoder {
 
-  private int columnNumber;
-  private ColumnDefinitionPacket[] columns;
-  private byte[] nullBitmap;
+  private final int columnNumber;
+  private final List<ColumnDefinitionPacket> columns;
+  private final byte[] nullBitmap;
 
   public BinaryRowDecoder(
-      int columnNumber, ColumnDefinitionPacket[] columns, MariadbConnectionConfiguration conf) {
-    super(conf);
+      List<ColumnDefinitionPacket> columns,
+      MariadbConnectionConfiguration conf,
+      ExceptionFactory factory) {
+    super(conf, factory);
     this.columns = columns;
-    this.columnNumber = columnNumber;
+    this.columnNumber = columns.size();
+    nullBitmap = new byte[(columnNumber + 9) / 8];
   }
 
   @SuppressWarnings("unchecked")
@@ -26,7 +31,7 @@ public class BinaryRowDecoder extends RowDecoder {
 
     // check NULL-Bitmap that indicate if field is null
     if ((nullBitmap[(index + 2) / 8] & (1 << ((index + 2) % 8))) != 0) {
-      if (type.isPrimitive()) {
+      if (type != null && type.isPrimitive()) {
         throw new IllegalArgumentException(
             String.format("Cannot return null for primitive %s", type.getName()));
       }
@@ -36,14 +41,14 @@ public class BinaryRowDecoder extends RowDecoder {
     setPosition(index);
 
     // type generic, return "natural" java type
-    if (Object.class == type || type == null) {
-      Codec<T> defaultCodec = ((Codec<T>) column.getDefaultCodec(conf));
-      return defaultCodec.decodeBinary(buf, length, column, type);
+    if (Object.class == type) {
+      Codec<T> defaultCodec = ((Codec<T>) column.getType().getDefaultCodec());
+      return defaultCodec.decodeBinary(buf, length, column, type, factory);
     }
 
     for (Codec<?> codec : Codecs.LIST) {
       if (codec.canDecode(column, type)) {
-        return ((Codec<T>) codec).decodeBinary(buf, length, column, type);
+        return ((Codec<T>) codec).decodeBinary(buf, length, column, type, factory);
       }
     }
 
@@ -55,7 +60,6 @@ public class BinaryRowDecoder extends RowDecoder {
   @Override
   public void resetRow(ByteBuf buf) {
     buf.skipBytes(1); // skip 0x00 header
-    nullBitmap = new byte[(columnNumber + 9) / 8];
     buf.readBytes(nullBitmap);
     super.resetRow(buf);
   }
@@ -77,7 +81,7 @@ public class BinaryRowDecoder extends RowDecoder {
     for (; index < newIndex; index++) {
       if ((nullBitmap[(index + 2) / 8] & (1 << ((index + 2) % 8))) == 0) {
         // skip bytes
-        switch (columns[index].getType()) {
+        switch (columns.get(index).getDataType()) {
           case BIGINT:
           case DOUBLE:
             buf.skipBytes(8);
@@ -126,7 +130,7 @@ public class BinaryRowDecoder extends RowDecoder {
     }
 
     // read asked field position and length
-    switch (columns[index].getType()) {
+    switch (columns.get(index).getDataType()) {
       case BIGINT:
       case DOUBLE:
         length = 8;

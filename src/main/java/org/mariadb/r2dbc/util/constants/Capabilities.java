@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.util.constants;
 
@@ -39,6 +39,9 @@ public class Capabilities {
       1L << 32; /* Client support progress indicator (since 10.2) */
   public static final long MARIADB_CLIENT_COM_MULTI =
       1L << 33; /* bundle command during connection */
+
+  /** permit COM_STMT_BULK commands */
+  public static final long MARIADB_CLIENT_STMT_BULK_OPERATIONS = 1L << 34;
 
   // permit skipping metadata
   public static final long MARIADB_CLIENT_CACHE_METADATA = 1L << 36;

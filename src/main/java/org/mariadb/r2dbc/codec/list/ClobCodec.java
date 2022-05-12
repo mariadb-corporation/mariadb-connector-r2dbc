@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.r2dbc.spi.Clob;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -20,10 +23,10 @@ public class ClobCodec implements Codec<Clob> {
   public static final ClobCodec INSTANCE = new ClobCodec();
 
   private static final EnumSet<DataType> COMPATIBLE_TYPES =
-      EnumSet.of(DataType.VARCHAR, DataType.VARSTRING, DataType.STRING);
+      EnumSet.of(DataType.TEXT, DataType.VARSTRING, DataType.STRING);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType()) && (type.isAssignableFrom(Clob.class));
+    return COMPATIBLE_TYPES.contains(column.getDataType()) && (type.isAssignableFrom(Clob.class));
   }
 
   public boolean canEncode(Class<?> value) {
@@ -32,51 +35,50 @@ public class ClobCodec implements Codec<Clob> {
 
   @Override
   public Clob decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Clob> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Clob> type,
+      ExceptionFactory factory) {
     String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
     return Clob.from(Mono.just(rawValue));
   }
 
   @Override
   public Clob decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Clob> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Clob> type,
+      ExceptionFactory factory) {
     String rawValue = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
     return Clob.from(Mono.just(rawValue));
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Clob value) {
-    buf.writeByte('\'');
-    Flux.from(value.stream())
-        .handle(
-            (tempVal, sync) -> {
-              BufferUtils.write(buf, tempVal.toString(), false, context);
-              sync.next(buf);
-            })
-        .subscribe();
-    buf.writeByte('\'');
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        Flux.from(((Clob) value).stream())
+            .reduce(new StringBuilder(), (a, b) -> a.append(b))
+            .map(
+                b ->
+                    BufferUtils.encodeEscapedBytes(
+                        allocator,
+                        BufferUtils.STRING_PREFIX,
+                        b.toString().getBytes(StandardCharsets.UTF_8),
+                        context))
+            .doOnSubscribe(e -> ((Clob) value).discard()));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Clob value) {
-    buf.writeByte(0xfe);
-    int initialPos = buf.writerIndex();
-    buf.writerIndex(buf.writerIndex() + 8); // reserve length encoded length bytes
-    Flux.from(value.stream())
-        .handle(
-            (tempVal, sync) -> {
-              buf.writeCharSequence(tempVal, StandardCharsets.UTF_8);
-              sync.next(buf);
-            })
-        .doOnComplete(
-            () -> {
-              // Write length
-              int endPos = buf.writerIndex();
-              buf.writerIndex(initialPos);
-              buf.writeLongLE(endPos - (initialPos + 8));
-              buf.writerIndex(endPos);
-            })
-        .subscribe();
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(
+        Flux.from(((Clob) value).stream())
+            .reduce(new StringBuilder(), (a, b) -> a.append(b))
+            .map(b -> BufferUtils.encodeLengthUtf8(allocator, b.toString()))
+            .doOnSubscribe(e -> ((Clob) value).discard()));
   }
 
   public DataType getBinaryEncodeType() {

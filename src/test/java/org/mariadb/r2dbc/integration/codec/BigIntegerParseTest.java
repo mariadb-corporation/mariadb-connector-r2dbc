@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.codec;
 
@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.util.MariadbType;
 import reactor.test.StepVerifier;
 
 public class BigIntegerParseTest extends BaseConnectionTest {
@@ -188,7 +189,10 @@ public class BigIntegerParseTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && throwable.getMessage().equals("byte overflow"))
+                    && throwable.getMessage().equals("byte overflow")
+                    && ((R2dbcNonTransientResourceException) throwable)
+                        .getSql()
+                        .equals("SELECT t1 FROM BigIntTable WHERE 1 = ? LIMIT 3"))
         .verify();
     connection
         .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ? LIMIT 3")
@@ -609,6 +613,22 @@ public class BigIntegerParseTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
         .as(StepVerifier::create)
         .expectNextMatches(c -> c.equals(BigInteger.class))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM BigIntTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(MariadbType.BIGINT))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM BigIntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(MariadbType.UNSIGNED_BIGINT))
         .verifyComplete();
   }
 }

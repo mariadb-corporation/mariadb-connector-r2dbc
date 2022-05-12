@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.parameter;
 
@@ -11,10 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbResult;
@@ -176,9 +173,9 @@ public class TimeParameterTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     validate(
-        Optional.of(Duration.parse("PT1S")),
-        Optional.of(Duration.parse("PT-1S")),
-        Optional.of(Duration.parse("PT0M")));
+        Optional.of(LocalTime.parse("00:00:01")),
+        Optional.of(LocalTime.parse("23:59:59")),
+        Optional.of(LocalTime.parse("00:00:00")));
   }
 
   @Test
@@ -188,6 +185,7 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   @Test
   void byteValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     byteValue(sharedConnPrepare);
   }
 
@@ -200,9 +198,9 @@ public class TimeParameterTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     validate(
-        Optional.of(Duration.parse("PT1M27S")),
-        Optional.of(Duration.parse("PT-1M-28S")),
-        Optional.of(Duration.parse("PT0M")));
+        Optional.of(LocalTime.parse("00:01:27")),
+        Optional.of(LocalTime.parse("23:58:32")),
+        Optional.of(LocalTime.parse("00:00:00")));
   }
 
   @Test
@@ -224,9 +222,9 @@ public class TimeParameterTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     validate(
-        Optional.of(Duration.parse("PT1M27S")),
-        Optional.of(Duration.parse("PT-1M-28S")),
-        Optional.of(Duration.parse("PT0M")));
+        Optional.of(LocalTime.parse("00:01:27")),
+        Optional.of(LocalTime.parse("23:58:32")),
+        Optional.of(LocalTime.parse("00:00:00")));
   }
 
   @Test
@@ -236,6 +234,7 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   @Test
   void doubleValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     doubleValue(sharedConnPrepare);
   }
 
@@ -248,9 +247,9 @@ public class TimeParameterTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     validate(
-        Optional.of(Duration.parse("PT1M27S")),
-        Optional.of(Duration.parse("PT1M28S")),
-        Optional.of(Duration.parse("PT0M")));
+        Optional.of(LocalTime.parse("00:01:27")),
+        Optional.of(LocalTime.parse("00:01:28")),
+        Optional.of(LocalTime.parse("00:00:00")));
   }
 
   @Test
@@ -272,9 +271,9 @@ public class TimeParameterTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     validate(
-        Optional.of(Duration.parse("PT1S")),
-        Optional.of(Duration.parse("PT-1S")),
-        Optional.of(Duration.parse("PT0M")));
+        Optional.of(LocalTime.parse("00:00:01")),
+        Optional.of(LocalTime.parse("23:59:59")),
+        Optional.of(LocalTime.parse("00:00:00")));
   }
 
   @Test
@@ -296,9 +295,9 @@ public class TimeParameterTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     validate(
-        Optional.of(Duration.parse("PT1S")),
-        Optional.of(Duration.parse("PT-1S")),
-        Optional.of(Duration.parse("PT0M")));
+        Optional.of(LocalTime.parse("00:00:01")),
+        Optional.of(LocalTime.parse("23:59:59")),
+        Optional.of(LocalTime.parse("00:00:00")));
   }
 
   @Test
@@ -320,9 +319,9 @@ public class TimeParameterTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     validate(
-        Optional.of(Duration.parse("PT5H8M9.0014S")),
-        Optional.of(Duration.parse("PT5H8M10.123456S")),
-        Optional.of(Duration.parse("PT5H8M11.123S")));
+        Optional.of(LocalTime.parse("05:08:09.0014")),
+        Optional.of(LocalTime.parse("05:08:10.123456")),
+        Optional.of(LocalTime.parse("05:08:11.123")));
   }
 
   @Test
@@ -388,14 +387,14 @@ public class TimeParameterTest extends BaseConnectionTest {
     connection
         .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
         .bind(0, Duration.parse("PT5H8M9.0014S"))
-        .bind(1, Duration.parse("PT-5H8M10S"))
+        .bind(1, Duration.parse("PT-5H-8M-10S"))
         .bind(2, Duration.parse("PT5H8M11.123S"))
         .execute()
         .blockLast();
     validate(
-        Optional.of(Duration.parse("PT5H8M9.0014S")),
-        Optional.of(Duration.parse("PT-5H8M10S")),
-        Optional.of(Duration.parse("PT5H8M11.123S")));
+        Optional.of(LocalTime.parse("05:08:09.0014")),
+        Optional.of(LocalTime.parse("18:51:50")),
+        Optional.of(LocalTime.parse("05:08:11.123")));
   }
 
   private void durationValue2(MariadbConnection connection) {
@@ -405,13 +404,13 @@ public class TimeParameterTest extends BaseConnectionTest {
         .createStatement("INSERT INTO TimeParam VALUES (?,?,?)")
         .bind(0, Duration.parse("PT0S"))
         .bind(1, Duration.parse("PT-1.123S"))
-        .bind(2, Duration.parse("PT-5H8M11.123S"))
+        .bind(2, Duration.parse("PT-5H-8M-11.123S"))
         .execute()
         .blockLast();
     validate(
-        Optional.of(Duration.parse("PT0S")),
-        Optional.of(Duration.parse("PT-1.123S")),
-        Optional.of(Duration.parse("PT-5H8M11.123S")));
+        Optional.of(LocalTime.parse("00:00:00")),
+        Optional.of(LocalTime.parse("23:59:58.877")),
+        Optional.of(LocalTime.parse("18:51:48.877")));
   }
 
   @Test
@@ -433,12 +432,12 @@ public class TimeParameterTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     validate(
-        Optional.of(Duration.parse("PT5H8M9.0014S")),
-        Optional.of(Duration.parse("PT5H8M10S")),
-        Optional.of(Duration.parse("PT5H8M11.123S")));
+        Optional.of(LocalTime.parse("05:08:09.0014")),
+        Optional.of(LocalTime.parse("05:08:10")),
+        Optional.of(LocalTime.parse("05:08:11.123")));
   }
 
-  private void validate(Optional<Duration> t1, Optional<Duration> t2, Optional<Duration> t3) {
+  private void validate(Optional<LocalTime> t1, Optional<LocalTime> t2, Optional<LocalTime> t3) {
     sharedConn
         .createStatement("SELECT * FROM TimeParam")
         .execute()
@@ -447,7 +446,7 @@ public class TimeParameterTest extends BaseConnectionTest {
                 r.map(
                     (row, metadata) ->
                         Flux.just(
-                            Optional.ofNullable((Duration) row.get(0)),
+                            Optional.ofNullable((LocalTime) row.get(0)),
                             Optional.ofNullable(row.get(1)),
                             Optional.ofNullable(row.get(2)))))
         .blockLast()

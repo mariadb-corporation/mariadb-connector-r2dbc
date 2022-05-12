@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.parameter;
 
@@ -13,11 +13,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.BitSet;
 import java.util.Optional;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbResult;
@@ -73,6 +69,7 @@ public class BitParameterTest extends BaseConnectionTest {
 
   @Test
   void booleanValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     booleanValue(sharedConnPrepare);
   }
 
@@ -86,12 +83,8 @@ public class BitParameterTest extends BaseConnectionTest {
 
     Assertions.assertTrue(
         stmt.toString()
-                .contains(
-                    "parameters=[Parameter{codec=BooleanCodec, value=true}, Parameter{codec=BooleanCodec, value=true}, Parameter{codec=BooleanCodec, value=false}]")
-            || stmt.toString()
-                .contains(
-                    "parameters={0=Parameter{codec=BooleanCodec, value=true}, 1=Parameter{codec=BooleanCodec, "
-                        + "value=true}, 2=Parameter{codec=BooleanCodec, value=false}}"),
+            .contains(
+                "bindings=[Binding{binds={0=BindValue{codec=BooleanCodec}, 1=BindValue{codec=BooleanCodec}, 2=BindValue{codec=BooleanCodec}}}]"),
         stmt.toString());
     stmt.execute().blockLast();
     validate(
@@ -107,6 +100,7 @@ public class BitParameterTest extends BaseConnectionTest {
 
   @Test
   void bigIntValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     bigIntValue(sharedConnPrepare);
   }
 
@@ -155,6 +149,7 @@ public class BitParameterTest extends BaseConnectionTest {
 
   @Test
   void decimalValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     decimalValue(sharedConnPrepare);
   }
 
@@ -179,6 +174,7 @@ public class BitParameterTest extends BaseConnectionTest {
 
   @Test
   void intValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     intValue(sharedConnPrepare);
   }
 
@@ -203,6 +199,7 @@ public class BitParameterTest extends BaseConnectionTest {
 
   @Test
   void byteValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     byteValue(sharedConnPrepare);
   }
 
@@ -234,13 +231,29 @@ public class BitParameterTest extends BaseConnectionTest {
     connection
         .createStatement("INSERT INTO ByteParam VALUES (?,?,?)")
         .bind(0, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 15}))))
-        .bind(1, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127}))))
+        .bind(1, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 1, 2}))))
         .bind(2, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {0}))))
         .execute()
         .blockLast();
+
     validate(
         Optional.of(BitSet.valueOf(new byte[] {(byte) 15})),
-        Optional.of(BitSet.valueOf(new byte[] {(byte) 127, 0, (byte) 1})),
+        Optional.of(BitSet.valueOf(new byte[] {(byte) 2, (byte) 1})),
+        Optional.of(BitSet.valueOf(new byte[] {(byte) 0})));
+
+    sharedConn.createStatement("TRUNCATE TABLE ByteParam").execute().blockLast();
+
+    connection
+        .createStatement("INSERT INTO ByteParam VALUES (?,?,?)")
+        .bind(0, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 15}))))
+        .bind(1, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {(byte) 1, 2}))))
+        .bind(2, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {0}))))
+        .execute()
+        .blockLast();
+
+    validate(
+        Optional.of(BitSet.valueOf(new byte[] {(byte) 15})),
+        Optional.of(BitSet.valueOf(new byte[] {(byte) 2, (byte) 1})),
         Optional.of(BitSet.valueOf(new byte[] {(byte) 0})));
   }
 
@@ -275,6 +288,7 @@ public class BitParameterTest extends BaseConnectionTest {
 
   @Test
   void doubleValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     doubleValue(sharedConnPrepare);
   }
 
@@ -323,6 +337,7 @@ public class BitParameterTest extends BaseConnectionTest {
 
   @Test
   void longValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     longValue(sharedConnPrepare);
   }
 

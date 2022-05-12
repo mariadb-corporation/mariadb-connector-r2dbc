@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.MessageSequence;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
-import org.mariadb.r2dbc.message.server.Sequencer;
 
 public final class SslRequestPacket implements ClientMessage {
 
-  private InitialHandshakePacket initialHandshakePacket;
-  private long clientCapabilities;
+  private final InitialHandshakePacket initialHandshakePacket;
+  private final long clientCapabilities;
 
   public SslRequestPacket(InitialHandshakePacket initialHandshakePacket, long clientCapabilities) {
     this.initialHandshakePacket = initialHandshakePacket;
@@ -28,7 +29,7 @@ public final class SslRequestPacket implements ClientMessage {
             initialHandshakePacket.getMajorServerVersion(),
             initialHandshakePacket.getMinorServerVersion());
 
-    ByteBuf buf = allocator.ioBuffer(32);
+    ByteBuf buf = allocator.buffer(32, 32);
 
     buf.writeIntLE((int) clientCapabilities);
     buf.writeIntLE(1024 * 1024 * 1024);
@@ -40,7 +41,7 @@ public final class SslRequestPacket implements ClientMessage {
   }
 
   @Override
-  public Sequencer getSequencer() {
+  public MessageSequence getSequencer() {
     return initialHandshakePacket.getSequencer();
   }
 }

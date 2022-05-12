@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.codec;
 
@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.util.MariadbType;
 import reactor.test.StepVerifier;
 
 public class BlobParseTest extends BaseConnectionTest {
@@ -81,8 +82,9 @@ public class BlobParseTest extends BaseConnectionTest {
                       row.get(1);
                       return row.get(0);
                     }))
-        .cast(Blob.class)
-        .flatMap(Blob::stream)
+        //        .cast(Blob.class)
+        //        .flatMap(Blob::stream)
+        .cast(ByteBuffer.class)
         .as(StepVerifier::create)
         .consumeNextWith(consumer)
         .consumeNextWith(consumer)
@@ -521,7 +523,15 @@ public class BlobParseTest extends BaseConnectionTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
         .as(StepVerifier::create)
-        .expectNextMatches(c -> c.equals(Blob.class))
+        .expectNextMatches(c -> c.equals(ByteBuffer.class))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM BlobTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(MariadbType.BLOB))
         .verifyComplete();
   }
 }

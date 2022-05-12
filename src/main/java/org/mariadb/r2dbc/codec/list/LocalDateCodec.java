@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 
 public class LocalDateCodec implements Codec<LocalDate> {
 
@@ -27,7 +29,7 @@ public class LocalDateCodec implements Codec<LocalDate> {
           DataType.TIMESTAMP,
           DataType.YEAR,
           DataType.VARSTRING,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.STRING);
 
   public static int[] parseDate(ByteBuf buf, int length) {
@@ -51,7 +53,8 @@ public class LocalDateCodec implements Codec<LocalDate> {
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(LocalDate.class);
+    return COMPATIBLE_TYPES.contains(column.getDataType())
+        && type.isAssignableFrom(LocalDate.class);
   }
 
   public boolean canEncode(Class<?> value) {
@@ -60,10 +63,14 @@ public class LocalDateCodec implements Codec<LocalDate> {
 
   @Override
   public LocalDate decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalDate> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends LocalDate> type,
+      ExceptionFactory factory) {
 
     int[] parts;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case YEAR:
         short y = (short) LongCodec.parse(buf, length);
 
@@ -94,8 +101,9 @@ public class LocalDateCodec implements Codec<LocalDate> {
         String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         String[] stDatePart = val.split("-| ");
         if (stDatePart.length < 3) {
-          throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' (%s) cannot be decoded as Date", val, column.getType()));
+          throw factory.createParsingException(
+              String.format(
+                  "value '%s' (%s) cannot be decoded as Date", val, column.getDataType()));
         }
 
         try {
@@ -104,8 +112,9 @@ public class LocalDateCodec implements Codec<LocalDate> {
           int dayOfMonth = Integer.valueOf(stDatePart[2]);
           return LocalDate.of(year, month, dayOfMonth);
         } catch (NumberFormatException nfe) {
-          throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' (%s) cannot be decoded as Date", val, column.getType()));
+          throw factory.createParsingException(
+              String.format(
+                  "value '%s' (%s) cannot be decoded as Date", val, column.getDataType()));
         }
     }
     if (parts == null) return null;
@@ -114,13 +123,17 @@ public class LocalDateCodec implements Codec<LocalDate> {
 
   @Override
   public LocalDate decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends LocalDate> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends LocalDate> type,
+      ExceptionFactory factory) {
 
     int year = 0;
     int month = 1;
     int dayOfMonth = 1;
 
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TIMESTAMP:
       case DATETIME:
         if (length > 0) {
@@ -162,8 +175,9 @@ public class LocalDateCodec implements Codec<LocalDate> {
         String val = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         String[] stDatePart = val.split("-| ");
         if (stDatePart.length < 3) {
-          throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' (%s) cannot be decoded as Date", val, column.getType()));
+          throw factory.createParsingException(
+              String.format(
+                  "value '%s' (%s) cannot be decoded as Date", val, column.getDataType()));
         }
 
         try {
@@ -172,27 +186,42 @@ public class LocalDateCodec implements Codec<LocalDate> {
           dayOfMonth = Integer.valueOf(stDatePart[2]);
           return LocalDate.of(year, month, dayOfMonth);
         } catch (NumberFormatException nfe) {
-          throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' (%s) cannot be decoded as Date", val, column.getType()));
+          throw factory.createParsingException(
+              String.format(
+                  "value '%s' (%s) cannot be decoded as Date", val, column.getDataType()));
         }
     }
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, LocalDate value) {
-    buf.writeByte('\'');
-    buf.writeCharSequence(
-        value.format(DateTimeFormatter.ISO_LOCAL_DATE), StandardCharsets.US_ASCII);
-    buf.writeByte('\'');
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> {
+          ByteBuf buf = allocator.buffer();
+          buf.writeByte('\'');
+          buf.writeCharSequence(
+              ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE),
+              StandardCharsets.US_ASCII);
+          buf.writeByte('\'');
+          return buf;
+        });
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, LocalDate value) {
-    buf.writeByte(7); // length
-    buf.writeShortLE((short) value.get(ChronoField.YEAR));
-    buf.writeByte(value.get(ChronoField.MONTH_OF_YEAR));
-    buf.writeByte(value.get(ChronoField.DAY_OF_MONTH));
-    buf.writeBytes(new byte[] {0, 0, 0});
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> {
+          LocalDate val = (LocalDate) value;
+          ByteBuf buf = allocator.buffer(8, 8);
+          buf.writeByte(7); // length
+          buf.writeShortLE((short) val.get(ChronoField.YEAR));
+          buf.writeByte(val.get(ChronoField.MONTH_OF_YEAR));
+          buf.writeByte(val.get(ChronoField.DAY_OF_MONTH));
+          buf.writeBytes(new byte[] {0, 0, 0});
+          return buf;
+        });
   }
 
   public DataType getBinaryEncodeType() {

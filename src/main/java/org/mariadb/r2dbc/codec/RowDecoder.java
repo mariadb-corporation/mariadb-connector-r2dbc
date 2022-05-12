@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.codec;
 
 import io.netty.buffer.ByteBuf;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.Assert;
 
 public abstract class RowDecoder {
   protected static final int NULL_LENGTH = -1;
@@ -15,9 +17,12 @@ public abstract class RowDecoder {
   protected int length;
   protected int index;
   protected MariadbConnectionConfiguration conf;
+  protected ExceptionFactory factory;
 
-  public RowDecoder(MariadbConnectionConfiguration conf) {
+  public RowDecoder(MariadbConnectionConfiguration conf, ExceptionFactory factory) {
+    Assert.requireNonNull(factory, "missing factory parameter");
     this.conf = conf;
+    this.factory = factory;
   }
 
   public void resetRow(ByteBuf buf) {
@@ -36,18 +41,18 @@ public abstract class RowDecoder {
               DataType.MEDIUMINT,
               DataType.INTEGER,
               DataType.BIGINT)
-          .contains(column.getType())) {
+          .contains(column.getDataType())) {
         throw new IllegalArgumentException(
             String.format(
                 "No decoder for type %s[] and column type %s(%s)",
                 type.getComponentType().getName(),
-                column.getType().toString(),
+                column.getDataType().toString(),
                 column.isSigned() ? "signed" : "unsigned"));
       }
       throw new IllegalArgumentException(
           String.format(
               "No decoder for type %s[] and column type %s",
-              type.getComponentType().getName(), column.getType().toString()));
+              type.getComponentType().getName(), column.getDataType().toString()));
     }
     if (EnumSet.of(
             DataType.TINYINT,
@@ -55,18 +60,18 @@ public abstract class RowDecoder {
             DataType.MEDIUMINT,
             DataType.INTEGER,
             DataType.BIGINT)
-        .contains(column.getType())) {
+        .contains(column.getDataType())) {
       throw new IllegalArgumentException(
           String.format(
               "No decoder for type %s and column type %s(%s)",
               type.getName(),
-              column.getType().toString(),
+              column.getDataType().toString(),
               column.isSigned() ? "signed" : "unsigned"));
     }
     throw new IllegalArgumentException(
         String.format(
             "No decoder for type %s and column type %s",
-            type.getName(), column.getType().toString()));
+            type.getName(), column.getDataType().toString()));
   }
 
   public abstract void setPosition(int position);

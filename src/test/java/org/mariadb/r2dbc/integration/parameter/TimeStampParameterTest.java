@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.parameter;
 
@@ -396,9 +396,9 @@ public class TimeStampParameterTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     validate(
-        Optional.of(LocalDateTime.parse(LocalDate.now().toString() + "T05:08:10.123456")),
-        Optional.of(LocalDateTime.parse(LocalDate.now().toString() + "T06:08:15.045500")),
-        Optional.of(LocalDateTime.parse(LocalDate.now().toString() + "T07:08:10.123000")));
+        Optional.of(LocalDateTime.parse(LocalDate.now() + "T05:08:10.123456")),
+        Optional.of(LocalDateTime.parse(LocalDate.now() + "T06:08:15.045500")),
+        Optional.of(LocalDateTime.parse(LocalDate.now() + "T07:08:10.123000")));
   }
 
   private void localTimeValue(MariadbConnection connection) {

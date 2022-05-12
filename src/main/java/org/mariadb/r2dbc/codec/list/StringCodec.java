@@ -1,18 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class StringCodec implements Codec<String> {
@@ -40,7 +43,7 @@ public class StringCodec implements Codec<String> {
           DataType.DECIMAL,
           DataType.ENUM,
           DataType.SET,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.VARSTRING,
           DataType.STRING);
 
@@ -54,7 +57,7 @@ public class StringCodec implements Codec<String> {
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(String.class);
+    return COMPATIBLE_TYPES.contains(column.getDataType()) && type.isAssignableFrom(String.class);
   }
 
   public boolean canEncode(Class<?> value) {
@@ -63,8 +66,12 @@ public class StringCodec implements Codec<String> {
 
   @Override
   public String decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends String> type) {
-    if (column.getType() == DataType.BIT) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends String> type,
+      ExceptionFactory factory) {
+    if (column.getDataType() == DataType.BIT) {
 
       byte[] bytes = new byte[length];
       buf.readBytes(bytes);
@@ -89,9 +96,13 @@ public class StringCodec implements Codec<String> {
 
   @Override
   public String decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends String> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends String> type,
+      ExceptionFactory factory) {
     String rawValue;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case BIT:
         byte[] bytes = new byte[length];
         buf.readBytes(bytes);
@@ -133,6 +144,8 @@ public class StringCodec implements Codec<String> {
       case MEDIUMINT:
         rawValue =
             String.valueOf(column.isSigned() ? buf.readMediumLE() : buf.readUnsignedMediumLE());
+        // medium int is encoded on 3 bytes + one empty byte
+        buf.skipBytes(1);
         if (column.isZeroFill()) {
           return zeroFilling(rawValue, column);
         }
@@ -247,18 +260,24 @@ public class StringCodec implements Codec<String> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, String value) {
-    BufferUtils.write(buf, value, true, context);
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        () ->
+            BufferUtils.encodeEscapedBytes(
+                allocator,
+                BufferUtils.STRING_PREFIX,
+                ((String) value).getBytes(StandardCharsets.UTF_8),
+                context));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, String value) {
-    byte[] b = value.getBytes(StandardCharsets.UTF_8);
-    BufferUtils.writeLengthEncode(b.length, buf);
-    buf.writeBytes(b);
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(() -> BufferUtils.encodeLengthUtf8(allocator, (String) value));
   }
 
   public DataType getBinaryEncodeType() {
-    return DataType.VARSTRING;
+    return DataType.TEXT;
   }
 }

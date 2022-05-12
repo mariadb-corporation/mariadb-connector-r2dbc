@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
@@ -8,7 +8,6 @@ import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
@@ -61,6 +60,31 @@ public class ConfigurationTest extends BaseTest {
                 "r2dbc:mariadb://root%40%C3%A5:p%40ssword@localhost:3305/%D1" + "%88db");
     Assertions.assertTrue(factory.toString().contains("username='root@å'"));
     Assertions.assertTrue(factory.toString().contains("database='шdb'"));
+    Assertions.assertTrue(factory.toString().contains("isolationLevel=null"));
+  }
+
+  @Test
+  void isolationLevel() {
+    MariadbConnectionFactory factory =
+        (MariadbConnectionFactory)
+            ConnectionFactories.get(
+                "r2dbc:mariadb://root:password@localhost:3305/db?isolationLevel=REPEATABLE-READ");
+    Assertions.assertTrue(factory.toString().contains("username='root'"));
+    Assertions.assertTrue(factory.toString().contains("database='db'"));
+    Assertions.assertTrue(
+        factory.toString().contains("isolationLevel=IsolationLevel{sql='REPEATABLE READ'}"));
+  }
+
+  @Test
+  void haMode() {
+    MariadbConnectionFactory factory =
+        (MariadbConnectionFactory)
+            ConnectionFactories.get(
+                "r2dbc:mariadb:failover://root:password@localhost:3305/db?isolationLevel=REPEATABLE-READ");
+    Assertions.assertTrue(factory.toString().contains("username='root'"));
+    Assertions.assertTrue(factory.toString().contains("database='db'"));
+    Assertions.assertTrue(
+        factory.toString().contains("isolationLevel=IsolationLevel{sql='REPEATABLE READ'}"));
   }
 
   @Test
@@ -93,7 +117,7 @@ public class ConfigurationTest extends BaseTest {
                     + "&clientSslKey="
                     + clientSslKey
                     + "&allowPipelining=true&useServerPrepStmts"
-                    + "=true&prepareCacheSize=2560&connectTimeout=PT10S&socketTimeout=PT1H&tcpKeepAlive=true"
+                    + "=true&prepareCacheSize=2560&connectTimeout=PT10S&tcpKeepAlive=true"
                     + "&tcpAbortiveClose=true&sslMode=TRUST"
                     + "&connectionAttributes"
                     + "=test=2,"
@@ -104,13 +128,12 @@ public class ConfigurationTest extends BaseTest {
     Assertions.assertTrue(factory.toString().contains("serverSslCert=" + serverSslCert));
     Assertions.assertTrue(factory.toString().contains("clientSslCert=" + clientSslCert));
     Assertions.assertTrue(factory.toString().contains("allowPipelining=true"));
-    Assertions.assertTrue(factory.toString().contains("useServerPrepStmts=true"));
+    Assertions.assertTrue(factory.toString().contains("useServerPrepStmts=false"));
     Assertions.assertTrue(factory.toString().contains("prepareCacheSize=2560"));
     Assertions.assertTrue(factory.toString().contains("sslMode=TRUST"));
     Assertions.assertTrue(factory.toString().contains("connectionAttributes={test=2, h=4}"));
     Assertions.assertTrue(factory.toString().contains("pamOtherPwd=*,*"));
     Assertions.assertTrue(factory.toString().contains("connectTimeout=PT10S"));
-    Assertions.assertTrue(factory.toString().contains("socketTimeout=PT1H"));
     Assertions.assertTrue(factory.toString().contains("tcpKeepAlive=true"));
     Assertions.assertTrue(factory.toString().contains("tcpAbortiveClose=true"));
   }
@@ -126,7 +149,25 @@ public class ConfigurationTest extends BaseTest {
   }
 
   @Test
+  void checkDecoded() {
+    ConnectionFactoryOptions options =
+        ConnectionFactoryOptions.parse("r2dbc:mariadb://ro%3Aot:pw%3Ad@localhost:3306/db");
+    MariadbConnectionConfiguration conf =
+        MariadbConnectionConfiguration.fromOptions(options).build();
+    Assertions.assertEquals("ro:ot", conf.getUsername());
+    Assertions.assertEquals("pw:d", conf.getPassword().toString());
+  }
+
+  @Test
   void factory() {
+
+    final ConnectionFactoryOptions option1s = ConnectionFactoryOptions.builder().build();
+
+    assertThrows(
+        NoSuchOptionException.class,
+        () -> MariadbConnectionConfiguration.fromOptions(option1s).build(),
+        "");
+
     ConnectionFactoryOptions options =
         ConnectionFactoryOptions.builder()
             .option(ConnectionFactoryOptions.DRIVER, "mariadb")
@@ -135,7 +176,6 @@ public class ConfigurationTest extends BaseTest {
             .option(ConnectionFactoryOptions.USER, "myUser")
             .option(ConnectionFactoryOptions.DATABASE, "myDb")
             .option(MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES, true)
-            .option(MariadbConnectionFactoryProvider.SOCKET_TIMEOUT, Duration.ofSeconds(3600))
             .option(MariadbConnectionFactoryProvider.TCP_KEEP_ALIVE, true)
             .option(MariadbConnectionFactoryProvider.TCP_ABORTIVE_CLOSE, true)
             .option(Option.valueOf("locale"), "en_US")
@@ -145,13 +185,12 @@ public class ConfigurationTest extends BaseTest {
     MariadbConnectionFactory factory = MariadbConnectionFactory.from(conf);
 
     Assertions.assertTrue(factory.toString().contains("database='myDb'"));
-    Assertions.assertTrue(factory.toString().contains("host='someHost'"));
+    Assertions.assertTrue(
+        factory.toString().contains("hosts={[someHost:43306]}"), factory.toString());
     Assertions.assertTrue(factory.toString().contains("allowMultiQueries=true"));
     Assertions.assertTrue(factory.toString().contains("allowPipelining=true"));
     Assertions.assertTrue(factory.toString().contains("username='myUser'"));
-    Assertions.assertTrue(factory.toString().contains("port=43306"));
     Assertions.assertTrue(factory.toString().contains("connectTimeout=PT10S"));
-    Assertions.assertTrue(factory.toString().contains("socketTimeout=PT1H"));
     Assertions.assertTrue(factory.toString().contains("tcpKeepAlive=true"));
     Assertions.assertTrue(factory.toString().contains("tcpAbortiveClose=true"));
   }
@@ -191,7 +230,7 @@ public class ConfigurationTest extends BaseTest {
             .build();
     MariadbConnectionConfiguration conf =
         MariadbConnectionConfiguration.fromOptions(options).build();
-    Assertions.assertEquals("someHost", conf.getHost());
+    Assertions.assertEquals("someHost", conf.getHostAddresses().get(0).getHost());
     Assertions.assertEquals(43306, conf.getPort());
     Assertions.assertEquals(true, conf.allowMultiQueries());
 
@@ -297,11 +336,11 @@ public class ConfigurationTest extends BaseTest {
     builder.pamOtherPwd(new String[] {"fff", "ddd"});
     builder.tlsProtocol((String[]) null);
     Assertions.assertEquals(
-        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, socketTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, port=3306, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST, pamOtherPwd=*,*, tinyInt1isBit=false, autoCommit=true}",
+        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, transactionReplay=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, restrictedAuth=null, port=3306, hosts={}, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, isolationLevel=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST, pamOtherPwd=*,*, tinyInt1isBit=false, autoCommit=true}",
         builder.toString());
     builder.tlsProtocol((String) null);
     Assertions.assertEquals(
-        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, socketTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, port=3306, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST, pamOtherPwd=*,*, tinyInt1isBit=false, autoCommit=true}",
+        "Builder{rsaPublicKey=null, cachingRsaPublicKey=null, allowPublicKeyRetrieval=false, username=admin, connectTimeout=null, tcpKeepAlive=null, tcpAbortiveClose=null, transactionReplay=null, database=dbname, host=localhost, sessionVariables=null, connectionAttributes=null, password=*, restrictedAuth=null, port=3306, hosts={}, socket=null, allowMultiQueries=false, allowPipelining=true, useServerPrepStmts=false, prepareCacheSize=null, isolationLevel=null, tlsProtocol=null, serverSslCert=null, clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST, pamOtherPwd=*,*, tinyInt1isBit=false, autoCommit=true}",
         builder.toString());
     MariadbConnectionConfiguration conf = builder.build();
     Assertions.assertEquals(

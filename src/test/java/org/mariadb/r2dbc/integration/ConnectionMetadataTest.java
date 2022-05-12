@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
@@ -27,8 +27,13 @@ public class ConnectionMetadataTest extends BaseConnectionTest {
     String version = System.getenv("v");
     if (type != null && System.getenv("TRAVIS") != null) {
       if ("mariadb".equals(type) || "mysql".equals(type)) {
-        assertTrue(meta.getDatabaseVersion().contains(version));
-        assertEquals(type.toLowerCase(), meta.getDatabaseProductName().toLowerCase());
+        assertTrue(
+            meta.getDatabaseVersion().contains(version),
+            "Error " + meta.getDatabaseVersion() + " doesn't contains " + version);
+        assertEquals(
+            type.toLowerCase(),
+            meta.getDatabaseProductName().toLowerCase(),
+            "Error comparing " + type + " with " + meta.getDatabaseProductName());
       }
     }
   }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.tools;
 
@@ -15,7 +15,7 @@ public class TcpProxySocket implements Runnable {
 
   private final String host;
   private final int remoteport;
-  private int localport;
+  private final int localport;
   private boolean stop = false;
   private Socket client = null;
   private Socket server = null;

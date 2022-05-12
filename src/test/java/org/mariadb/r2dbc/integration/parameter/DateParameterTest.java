@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.parameter;
 
@@ -10,10 +10,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbResult;
@@ -87,7 +84,10 @@ public class DateParameterTest extends BaseConnectionTest {
           .expectErrorMatches(
               throwable ->
                   throwable instanceof R2dbcBadGrammarException
-                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007"))
+                      && ((R2dbcBadGrammarException) throwable).getSqlState().equals("22007")
+                      && ((R2dbcBadGrammarException) throwable)
+                          .getSql()
+                          .equals("INSERT INTO DateParam VALUES (?,?,?)"))
           .verify();
     }
   }
@@ -163,6 +163,7 @@ public class DateParameterTest extends BaseConnectionTest {
 
   @Test
   void intValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     intValue(sharedConnPrepare);
   }
 

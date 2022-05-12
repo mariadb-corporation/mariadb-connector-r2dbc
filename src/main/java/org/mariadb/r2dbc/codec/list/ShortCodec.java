@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.netty.buffer.ByteBufAllocator;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class ShortCodec implements Codec<Short> {
@@ -24,7 +26,7 @@ public class ShortCodec implements Codec<Short> {
           DataType.FLOAT,
           DataType.DOUBLE,
           DataType.OLDDECIMAL,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.DECIMAL,
           DataType.ENUM,
           DataType.VARSTRING,
@@ -38,7 +40,7 @@ public class ShortCodec implements Codec<Short> {
           DataType.YEAR);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType())
+    return COMPATIBLE_TYPES.contains(column.getDataType())
         && ((type.isPrimitive() && type == Short.TYPE) || type.isAssignableFrom(Short.class));
   }
 
@@ -48,9 +50,13 @@ public class ShortCodec implements Codec<Short> {
 
   @Override
   public Short decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Short> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Short> type,
+      ExceptionFactory factory) {
     long result;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TINYINT:
       case SMALLINT:
       case MEDIUMINT:
@@ -75,13 +81,13 @@ public class ShortCodec implements Codec<Short> {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValueExact();
           break;
         } catch (NumberFormatException | ArithmeticException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as Short", str));
         }
     }
 
     if ((short) result != result || (result < 0 && !column.isSigned())) {
-      throw new R2dbcNonTransientResourceException("Short overflow");
+      throw factory.createParsingException("Short overflow");
     }
 
     return (short) result;
@@ -89,10 +95,14 @@ public class ShortCodec implements Codec<Short> {
 
   @Override
   public Short decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Short> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Short> type,
+      ExceptionFactory factory) {
 
     long result;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TINYINT:
         result = column.isSigned() ? buf.readByte() : buf.readUnsignedByte();
         break;
@@ -113,7 +123,7 @@ public class ShortCodec implements Codec<Short> {
       case BIGINT:
         result = buf.readLongLE();
         if (result < 0 & !column.isSigned()) {
-          throw new R2dbcNonTransientResourceException("Short overflow");
+          throw factory.createParsingException("Short overflow");
         }
         break;
 
@@ -140,26 +150,34 @@ public class ShortCodec implements Codec<Short> {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValueExact();
           break;
         } catch (NumberFormatException | ArithmeticException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as Short", str));
         }
     }
 
     if ((short) result != result || (result < 0 && !column.isSigned())) {
-      throw new R2dbcNonTransientResourceException("Short overflow");
+      throw factory.createParsingException("Short overflow");
     }
 
     return (short) result;
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Short value) {
-    BufferUtils.writeAscii(buf, String.valueOf(value));
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> BufferUtils.encodeAscii(allocator, Integer.toString((Short) value)));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Short value) {
-    buf.writeShortLE(value);
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> {
+          ByteBuf buf = allocator.buffer(2, 2);
+          buf.writeShortLE((Short) value);
+          return buf;
+        });
   }
 
   public DataType getBinaryEncodeType() {

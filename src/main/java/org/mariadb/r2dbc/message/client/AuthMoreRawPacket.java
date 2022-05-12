@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import org.mariadb.r2dbc.client.Context;
-import org.mariadb.r2dbc.message.server.Sequencer;
+import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.MessageSequence;
 
 public final class AuthMoreRawPacket implements ClientMessage {
 
-  private byte[] raw;
-  private Sequencer sequencer;
+  private final byte[] raw;
+  private final MessageSequence sequencer;
 
-  public AuthMoreRawPacket(Sequencer sequencer, byte[] raw) {
+  public AuthMoreRawPacket(MessageSequence sequencer, byte[] raw) {
     this.sequencer = sequencer;
     this.raw = raw;
   }
@@ -26,7 +27,7 @@ public final class AuthMoreRawPacket implements ClientMessage {
   }
 
   @Override
-  public Sequencer getSequencer() {
+  public MessageSequence getSequencer() {
     return sequencer;
   }
 }

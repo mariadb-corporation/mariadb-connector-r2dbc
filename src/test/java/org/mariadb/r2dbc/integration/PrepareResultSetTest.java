@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
@@ -21,7 +19,7 @@ import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.test.StepVerifier;
 
 public class PrepareResultSetTest extends BaseConnectionTest {
-  private static List<String> stringList =
+  private static final List<String> stringList =
       Arrays.asList(
           "456",
           "789000002",
@@ -43,7 +41,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
 
   @BeforeAll
   public static void before2() {
-    sharedConn.createStatement("DROP TABLE IF EXISTS PrepareResultSetTest").execute().blockLast();
+    after2();
     sharedConn
         .createStatement(
             "CREATE TABLE PrepareResultSetTest("
@@ -71,37 +69,52 @@ public class PrepareResultSetTest extends BaseConnectionTest {
             "INSERT INTO PrepareResultSetTest VALUES (456,789000002,25,30, 456.45,127,2020,45,'ዩኒኮድ ወረጘ የጝ',65445681355454,987456,45000, 45.9, -2, 2045, 12, 'ዩኒኮድ What does this means ?')")
         .execute()
         .blockLast();
+    sharedConn.createStatement("CREATE TABLE myTable(a varchar(10))").execute().blockLast();
+    sharedConn
+        .createStatement(
+            "CREATE TABLE parameterLengthEncoded(t0 VARCHAR(1024),t1 MEDIUMTEXT) DEFAULT CHARSET=utf8mb4")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "CREATE TABLE parameterLengthEncodedLong (t0 LONGTEXT) DEFAULT CHARSET=utf8mb4")
+        .execute()
+        .blockLast();
+    sharedConn.createStatement("CREATE TABLE validateParam(t0 VARCHAR(10))").execute().blockLast();
+    sharedConnPrepare
+        .createStatement(
+            "CREATE TABLE missingParameter(t1 VARCHAR(256),t2 VARCHAR(256)) DEFAULT CHARSET=utf8mb4")
+        .execute()
+        .blockLast();
   }
 
   @AfterAll
   public static void after2() {
-    sharedConn.createStatement("DROP TABLE PrepareResultSetTest").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS PrepareResultSetTest").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS myTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS parameterLengthEncoded").execute().blockLast();
+    sharedConn
+        .createStatement("DROP TABLE IF EXISTS parameterLengthEncodedLong")
+        .execute()
+        .blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS validateParam").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS missingParameter").execute().blockLast();
   }
 
   @Test
   void bindWithName() {
-    assertThrows(
-        Exception.class,
-        () ->
-            sharedConnPrepare
-                .createStatement("INSERT INTO myTable (a) VALUES (:var1)")
-                .bind("var1", "test"),
-        "Cannot use getColumn(name) with prepared statement");
-    assertThrows(
-        Exception.class,
-        () ->
-            sharedConnPrepare
-                .createStatement("INSERT INTO myTable (a) VALUES (:var1)")
-                .bindNull("var1", String.class),
-        "Cannot use getColumn(name) with prepared statement");
+    sharedConnPrepare
+        .createStatement("INSERT INTO myTable (a) VALUES (:var1)")
+        .bind("var1", "test")
+        .execute();
   }
 
   @Test
   void validateParam() {
-    sharedConnPrepare
-        .createStatement("CREATE TEMPORARY TABLE validateParam(t0 VARCHAR(10))")
-        .execute()
-        .blockLast();
+    // disabling with maxscale due to MXS-3956
+    // to be re-enable when > 6.1.1
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     Assertions.assertThrows(
         Exception.class,
         () ->
@@ -118,35 +131,39 @@ public class PrepareResultSetTest extends BaseConnectionTest {
                 .execute()
                 .flatMap(r -> r.getRowsUpdated())
                 .blockLast(),
-        "Parameter at position 0 is not set");
+        "No parameters have been set");
   }
 
   @Test
   void parameterLengthEncoded() {
-    Assumptions.assumeTrue(maxAllowedPacket() >= 16 * 1024 * 1024);
-
+    Assumptions.assumeTrue(maxAllowedPacket() >= 17 * 1024 * 1024);
+    Assumptions.assumeTrue(runLongTest());
     char[] arr1024 = new char[1024];
     for (int i = 0; i < arr1024.length; i++) {
       arr1024[i] = (char) ('a' + (i % 10));
     }
-
     char[] arr = new char[16_000_000];
     for (int i = 0; i < arr.length; i++) {
       arr[i] = (char) ('a' + (i % 10));
     }
+    char[] arr2 = new char[17_000_000];
+    for (int i = 0; i < arr2.length; i++) {
+      arr2[i] = (char) ('a' + (i % 10));
+    }
+    String arr1024St = String.valueOf(arr1024);
+    String arrSt = String.valueOf(arr);
+    String arrSt2 = String.valueOf(arr2);
 
     sharedConnPrepare
-        .createStatement(
-            "CREATE TEMPORARY TABLE parameterLengthEncoded"
-                + "(t0 VARCHAR(1024),t1 MEDIUMTEXT) DEFAULT CHARSET=utf8mb4")
-        .execute()
-        .blockLast();
-    sharedConnPrepare
         .createStatement("INSERT INTO parameterLengthEncoded VALUES (?, ?)")
-        .bind(0, String.valueOf(arr1024))
-        .bind(1, String.valueOf(arr))
+        .bind(0, arr1024St)
+        .bind(1, arrSt)
+        .add()
+        .bind(0, arr1024St)
+        .bind(1, arrSt2)
         .execute()
         .blockLast();
+    AtomicBoolean first = new AtomicBoolean(true);
     sharedConnPrepare
         .createStatement("SELECT * FROM parameterLengthEncoded WHERE 1 = ?")
         .bind(0, 1)
@@ -156,25 +173,38 @@ public class PrepareResultSetTest extends BaseConnectionTest {
                 r.map(
                     (row, metadata) -> {
                       String t0 = row.get(0, String.class);
-                      String t1 = row.get(1, String.class);
-                      Assertions.assertEquals(String.valueOf(arr1024), t0);
-                      Assertions.assertEquals(String.valueOf(arr), t1);
+                      if (first.get()) {
+                        String t1 = row.get(1, String.class);
+                        Assertions.assertEquals(arrSt, t1);
+                        first.set(false);
+                      } else {
+                        String t1 = row.get(1, String.class);
+                        Assertions.assertEquals(arrSt2, t1);
+                      }
+                      Assertions.assertEquals(arr1024St, t0);
                       return t0;
                     }))
         .as(StepVerifier::create)
         .expectNext(String.valueOf(arr1024))
         .verifyComplete();
+    first.set(true);
     sharedConnPrepare
-        .createStatement("SELECT * FROM parameterLengthEncoded /* ? */")
+        .createStatement("SELECT * FROM parameterLengthEncoded /* ? */ ")
         .execute()
         .flatMap(
             r ->
                 r.map(
                     (row, metadata) -> {
                       String t0 = row.get(0, String.class);
-                      String t1 = row.get(1, String.class);
-                      Assertions.assertEquals(String.valueOf(arr1024), t0);
-                      Assertions.assertEquals(String.valueOf(arr), t1);
+                      if (first.get()) {
+                        String t1 = row.get(1, String.class);
+                        Assertions.assertEquals(arrSt, t1);
+                        first.set(false);
+                      } else {
+                        String t1 = row.get(1, String.class);
+                        Assertions.assertEquals(arrSt2, t1);
+                      }
+                      Assertions.assertEquals(arr1024St, t0);
                       return t0;
                     }))
         .as(StepVerifier::create)
@@ -194,12 +224,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
       arr[i] = (char) ('a' + (i % 10));
     }
     String val = String.valueOf(arr);
-    sharedConnPrepare
-        .createStatement(
-            "CREATE TEMPORARY TABLE parameterLengthEncodedLong"
-                + "(t0 LONGTEXT) DEFAULT CHARSET=utf8mb4")
-        .execute()
-        .blockLast();
+
     sharedConnPrepare.beginTransaction().block();
     sharedConnPrepare
         .createStatement("INSERT INTO parameterLengthEncodedLong VALUES (?)")
@@ -218,27 +243,25 @@ public class PrepareResultSetTest extends BaseConnectionTest {
 
   @Test
   void missingParameter() {
-    sharedConnPrepare
-        .createStatement(
-            "CREATE TEMPORARY TABLE missingParameter"
-                + "(t1 VARCHAR(256),t2 VARCHAR(256)) DEFAULT CHARSET=utf8mb4")
-        .execute()
-        .blockLast();
-
     // missing first parameter
     MariadbStatement stmt =
         sharedConnPrepare.createStatement("INSERT INTO missingParameter(t1, t2) VALUES (?, ?)");
 
-    stmt.bind(1, "test").execute().blockLast();
-
+    assertThrows(
+        IllegalStateException.class,
+        () -> stmt.bind(1, "test").execute().blockLast(),
+        "Parameter at position 0 is not set");
     assertThrows(
         IllegalArgumentException.class, () -> stmt.bind(null, null), "identifier cannot be null");
     assertThrows(
-        IllegalArgumentException.class,
+        NoSuchElementException.class,
         () -> stmt.bind("test", null),
-        "Cannot use getColumn(name) with prepared statement");
+        "No parameter with name 'test' found");
+    stmt.bindNull(0, null).bind(1, "test").execute().blockLast();
+
+    stmt.bind(1, "test");
     assertThrows(
-        IllegalArgumentException.class, () -> stmt.add(), "Parameter at position 0 is not set");
+        IllegalStateException.class, () -> stmt.add(), "Parameter at position 0 is not set");
     sharedConnPrepare
         .createStatement("SELECT * FROM missingParameter")
         .execute()
@@ -262,12 +285,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
           .createStatement("SELECT * FROM PrepareResultSetTest WHERE 1 = ?")
           .bind(0, 1)
           .execute()
-          .flatMap(
-              r ->
-                  r.map(
-                      (row, metadata) -> {
-                        return row.get(finalI, String.class);
-                      }))
+          .flatMap(r -> r.map((row, metadata) -> row.get(finalI, String.class)))
           .as(StepVerifier::create)
           .expectNext(stringList.get(i))
           .verifyComplete();
@@ -398,7 +416,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bind(-1, 1),
-        "index must be in 0-0 range but value is -1");
+        "wrong index value -1, index must be positive");
     stmt.bind(0, 1).execute().subscribe().dispose();
     stmt.bind(0, 1)
         .execute()
@@ -410,20 +428,30 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bind(2, 1),
-        "index must be in 0-0 range but value is 2");
+        "Binding index 2 when only 1 parameters are expected");
     assertThrows(
         IllegalArgumentException.class,
-        () -> stmt.bind(0, this),
+        () -> stmt.bind(0, this).execute().blockLast(),
         "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest (parameter at index 0) ");
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bindNull(-1, Integer.class),
-        "index must be in 0-0 range but value is -1");
+        "wrong index value -1, index must be positive");
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bindNull(2, Integer.class),
-        "index must be in 0-0 range but value is 2");
-    stmt.bindNull(0, this.getClass());
+        "Cannot bind parameter 2, statement has 1 parameters");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.bindNull(0, this.getClass()),
+        "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest");
+
+    // error crashing maxscale 6.1.x
+    Assumptions.assumeTrue(
+        !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
+            && !"skysql-ha".equals(System.getenv("srv")));
+
+    stmt.bindNull(0, String.class);
     stmt.execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, Long.class)))
         .as(StepVerifier::create)
@@ -431,11 +459,10 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .verifyComplete();
     // no parameter
     assertThrows(
-        IllegalArgumentException.class,
+        IllegalStateException.class,
         () -> stmt.execute().blockLast(),
-        "Parameter at position 0 is not " + "set");
-    assertThrows(
-        IllegalArgumentException.class, () -> stmt.add(), "Parameter at position 0 is not set");
+        "No parameters have been set");
+    Assertions.assertThrows(IllegalArgumentException.class, () -> stmt.add());
   }
 
   @Test
@@ -486,8 +513,11 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext(Optional.of("2"), Optional.empty())
         .verifyComplete();
-
-    stmt.bindNull(0, this.getClass())
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.bindNull(0, this.getClass()),
+        "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest");
+    stmt.bindNull(0, String.class)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
@@ -498,9 +528,9 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         () -> stmt.bindNull(null, String.class),
         "identifier cannot be null");
     assertThrows(
-        IllegalArgumentException.class,
+        NoSuchElementException.class,
         () -> stmt.bindNull("fff", String.class),
-        "Cannot use getColumn(name) with prepared statement");
+        "No parameter with name 'fff' found (possible values [null])");
   }
 
   @Test
@@ -514,10 +544,10 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bind(2, 1),
-        "index must be in 0-0 range but value is 2");
+        "Binding index 2 when only 1 parameters are expected");
     assertThrows(
         IllegalArgumentException.class,
-        () -> stmt.bind(0, this),
+        () -> stmt.bind(0, this).execute().blockLast(),
         "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest (parameter at index 0) ");
     assertThrows(
         IndexOutOfBoundsException.class,
@@ -526,14 +556,19 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bindNull(2, Integer.class),
-        "index must be in 0-0 range but value is 2");
-    stmt.bindNull(0, this.getClass());
+        "Cannot bind parameter 2, statement has 1 parameters");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.bindNull(0, this.getClass()),
+        "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest (parameter at index 0)");
+    stmt.bindNull(0, String.class);
+    stmt.bind(0, 1);
     stmt.execute().blockLast();
     // no parameter
     assertThrows(
-        IllegalArgumentException.class,
+        IllegalStateException.class,
         () -> stmt.execute().blockLast(),
-        "Parameter at position 0 is not set");
+        "No parameters have been set");
   }
 
   private List<String> prepareInfo(MariadbConnection connection) {

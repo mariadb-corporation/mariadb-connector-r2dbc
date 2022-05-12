@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.netty.buffer.ByteBufAllocator;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class BigDecimalCodec implements Codec<BigDecimal> {
@@ -32,12 +34,13 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
           DataType.OLDDECIMAL,
           DataType.YEAR,
           DataType.DECIMAL,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.VARSTRING,
           DataType.STRING);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(BigDecimal.class);
+    return COMPATIBLE_TYPES.contains(column.getDataType())
+        && type.isAssignableFrom(BigDecimal.class);
   }
 
   public boolean canEncode(Class<?> value) {
@@ -46,8 +49,12 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
 
   @Override
   public BigDecimal decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BigDecimal> type) {
-    switch (column.getType()) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends BigDecimal> type,
+      ExceptionFactory factory) {
+    switch (column.getDataType()) {
       case TINYINT:
       case SMALLINT:
       case MEDIUMINT:
@@ -74,7 +81,7 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
         try {
           return new BigDecimal(str);
         } catch (NumberFormatException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as BigDecimal", str));
         }
     }
@@ -82,9 +89,13 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
 
   @Override
   public BigDecimal decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BigDecimal> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends BigDecimal> type,
+      ExceptionFactory factory) {
 
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TINYINT:
         if (!column.isSigned()) {
           return BigDecimal.valueOf(buf.readUnsignedByte());
@@ -145,22 +156,24 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
         try {
           return new BigDecimal(str);
         } catch (NumberFormatException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as BigDecimal", str));
         }
     }
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, BigDecimal value) {
-    BufferUtils.writeAscii(buf, value.toPlainString());
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> BufferUtils.encodeAscii(allocator, ((BigDecimal) value).toPlainString()));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, BigDecimal value) {
-    String asciiFormat = value.toPlainString();
-    BufferUtils.writeLengthEncode(asciiFormat.length(), buf);
-    BufferUtils.writeAscii(buf, asciiFormat);
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> BufferUtils.encodeLengthAscii(allocator, ((BigDecimal) value).toPlainString()));
   }
 
   public DataType getBinaryEncodeType() {

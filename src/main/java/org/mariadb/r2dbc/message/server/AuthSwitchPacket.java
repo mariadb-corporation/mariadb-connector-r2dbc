@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.message.AuthSwitch;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.ServerMessage;
 
-public class AuthSwitchPacket implements ServerMessage {
+public class AuthSwitchPacket implements AuthSwitch, ServerMessage {
 
-  private Sequencer sequencer;
-  private String plugin;
-  private byte[] seed;
+  private final Sequencer sequencer;
+  private final String plugin;
+  private final byte[] seed;
 
   public AuthSwitchPacket(Sequencer sequencer, String plugin, byte[] seed) {
     this.sequencer = sequencer;

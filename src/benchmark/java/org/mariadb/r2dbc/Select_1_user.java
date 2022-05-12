@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc;
 
@@ -32,6 +32,11 @@ public class Select_1_user extends Common {
   @Benchmark
   public Object[] testR2dbcPrepare(MyState state) throws Throwable {
     return consume(state.r2dbcPrepare);
+  }
+
+  @Benchmark
+  public Object[] testR2dbcFailover(MyState state) throws Throwable {
+    return consume(state.r2dbcFailover);
   }
 
 //  @Benchmark

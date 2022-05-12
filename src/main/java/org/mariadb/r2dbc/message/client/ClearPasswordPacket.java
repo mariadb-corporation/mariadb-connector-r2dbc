@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
-import org.mariadb.r2dbc.client.Context;
-import org.mariadb.r2dbc.message.server.Sequencer;
+import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.MessageSequence;
 
 public final class ClearPasswordPacket implements ClientMessage {
 
-  private CharSequence password;
-  private Sequencer sequencer;
+  private final CharSequence password;
+  private final MessageSequence sequencer;
 
-  public ClearPasswordPacket(Sequencer sequencer, CharSequence password) {
+  public ClearPasswordPacket(MessageSequence sequencer, CharSequence password) {
     this.sequencer = sequencer;
     this.password = password;
   }
@@ -29,7 +30,7 @@ public final class ClearPasswordPacket implements ClientMessage {
   }
 
   @Override
-  public Sequencer getSequencer() {
+  public MessageSequence getSequencer() {
     return sequencer;
   }
 }

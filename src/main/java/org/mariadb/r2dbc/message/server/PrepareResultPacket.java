@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 
 public final class PrepareResultPacket implements ServerMessage {
@@ -13,8 +14,8 @@ public final class PrepareResultPacket implements ServerMessage {
   private final int numColumns;
   private final int numParams;
   private final boolean eofDeprecated;
-  private Sequencer sequencer;
-  private boolean continueOnEnd;
+  private final Sequencer sequencer;
+  private final boolean continueOnEnd;
 
   private PrepareResultPacket(
       final Sequencer sequencer,
@@ -52,7 +53,7 @@ public final class PrepareResultPacket implements ServerMessage {
         statementId,
         numColumns,
         numParams,
-        ((context.getServerCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0),
+        ((context.getClientCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0),
         continueOnEnd);
   }
 

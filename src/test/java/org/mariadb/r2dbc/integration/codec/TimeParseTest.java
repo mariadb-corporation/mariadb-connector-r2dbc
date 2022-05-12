@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.codec;
 
@@ -16,6 +16,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.util.MariadbType;
 import reactor.test.StepVerifier;
 
 public class TimeParseTest extends BaseConnectionTest {
@@ -70,10 +71,10 @@ public class TimeParseTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
         .expectNext(
-            Optional.of(Duration.parse("P3DT18H0.012340S")),
-            Optional.of(Duration.parse("P33DT8H0.123S")),
-            Optional.of(Duration.parse("PT8M")),
-            Optional.of(Duration.parse("PT22S")),
+            Optional.of(LocalTime.parse("18:00:00.012340")),
+            Optional.of(LocalTime.parse("08:00:00.123")),
+            Optional.of(LocalTime.parse("00:08:00")),
+            Optional.of(LocalTime.parse("00:00:22")),
             Optional.empty())
         .verifyComplete();
     connection
@@ -83,10 +84,10 @@ public class TimeParseTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
         .expectNext(
-            Optional.of(Duration.parse("PT-10H-1M-2.01234S")),
-            Optional.of(Duration.parse("PT-10.123S")),
-            Optional.of(Duration.parse("PT0M")),
-            Optional.of(Duration.parse("PT-22S")),
+            Optional.of(LocalTime.parse("13:58:57.987660")),
+            Optional.of(LocalTime.parse("23:59:49.877")),
+            Optional.of(LocalTime.parse("00:00")),
+            Optional.of(LocalTime.parse("23:59:38")),
             Optional.empty())
         .verifyComplete();
   }
@@ -109,10 +110,23 @@ public class TimeParseTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Duration.class))))
         .as(StepVerifier::create)
         .expectNext(
-            Optional.of(Duration.parse("PT90H0.012340S")),
-            Optional.of(Duration.parse("PT800H0.123S")),
+            Optional.of(Duration.parse("P3DT18H0.012340S")),
+            Optional.of(Duration.parse("P33DT8H0.123S")),
             Optional.of(Duration.parse("PT8M")),
             Optional.of(Duration.parse("PT22S")),
+            Optional.empty())
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t2 FROM TimeParseTest WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Duration.class))))
+        .as(StepVerifier::create)
+        .expectNext(
+            Optional.of(Duration.parse("PT-10H-1M-2.01234S")),
+            Optional.of(Duration.parse("PT-10.123S")),
+            Optional.of(Duration.parse("PT0M")),
+            Optional.of(Duration.parse("PT-22S")),
             Optional.empty())
         .verifyComplete();
   }
@@ -541,7 +555,15 @@ public class TimeParseTest extends BaseConnectionTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
         .as(StepVerifier::create)
-        .expectNextMatches(c -> c.equals(Duration.class))
+        .expectNextMatches(c -> c.equals(LocalTime.class))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM TimeParseTest WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(MariadbType.TIME))
         .verifyComplete();
   }
 }

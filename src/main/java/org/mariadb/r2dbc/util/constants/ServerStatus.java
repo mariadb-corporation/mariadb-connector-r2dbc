@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.util.constants;
 
@@ -16,5 +16,6 @@ public class ServerStatus {
   public static final short METADATA_CHANGED = 1024;
   public static final short QUERY_WAS_SLOW = 2048;
   public static final short PS_OUT_PARAMETERS = 4096;
-  public static final short SERVER_SESSION_STATE_CHANGED = 1 << 14;
+  public static final short STATUS_IN_TRANS_READONLY = 1 << 13;
+  public static final short SESSION_STATE_CHANGED = 1 << 14;
 }

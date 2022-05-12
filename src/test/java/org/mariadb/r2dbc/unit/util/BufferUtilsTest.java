@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.unit.util;
 
@@ -7,10 +7,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.r2dbc.spi.IsolationLevel;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.client.SimpleContext;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 
@@ -69,6 +71,7 @@ class BufferUtilsTest {
 
     BufferUtils.skipLengthEncode(buf);
     assertEquals(10, buf.readerIndex());
+    buf.release();
   }
 
   @Test
@@ -128,6 +131,7 @@ class BufferUtilsTest {
     buf.writerIndex(1000);
 
     assertEquals(-1, BufferUtils.readLengthEncodedInt(buf));
+    buf.release();
   }
 
   @Test
@@ -153,6 +157,7 @@ class BufferUtilsTest {
     buf.setBytes(0, b);
     buf.writerIndex(1000);
     assertEquals("AB", BufferUtils.readLengthEncodedString(buf));
+    buf.release();
   }
 
   @Test
@@ -181,23 +186,44 @@ class BufferUtilsTest {
     byte[] res = new byte[2];
     bb.getBytes(0, res);
     assertArrayEquals("AB".getBytes(StandardCharsets.UTF_8), res);
+    buf.release();
   }
 
   @Test
   void write() {
     Context ctxNoBackSlash =
-        new Context("10.5.5-mariadb", 1, 1, ServerStatus.NO_BACKSLASH_ESCAPES, true);
-    Context ctx = new Context("10.5.5-mariadb", 1, 1, (short) 0, true);
+        new SimpleContext(
+            "10.5.5-mariadb",
+            1,
+            1,
+            ServerStatus.NO_BACKSLASH_ESCAPES,
+            true,
+            1,
+            "testr2",
+            null,
+            IsolationLevel.REPEATABLE_READ);
+    Context ctx =
+        new SimpleContext(
+            "10.5.5-mariadb",
+            1,
+            1,
+            (short) 0,
+            true,
+            1,
+            "testr2",
+            null,
+            IsolationLevel.REPEATABLE_READ);
 
     ByteBuf buf = allocator.buffer(1000);
     buf.writerIndex(0);
-    BufferUtils.write(buf, "A'\"\0\\€'\"\0\\", false, ctxNoBackSlash);
+    byte[] val = "A'\"\0\\€'\"\0\\".getBytes(StandardCharsets.UTF_8);
+    BufferUtils.escapedBytes(buf, val, val.length, ctxNoBackSlash);
     byte[] res = new byte[buf.writerIndex()];
     buf.getBytes(0, res);
     assertArrayEquals("A''\"\0\\€''\"\0\\".getBytes(StandardCharsets.UTF_8), res);
 
     buf.writerIndex(0);
-    BufferUtils.write(buf, "A'\"\0\\€'\"\0\\", false, ctx);
+    BufferUtils.escapedBytes(buf, val, val.length, ctx);
     res = new byte[buf.writerIndex()];
     buf.getBytes(0, res);
     assertArrayEquals("A\\'\\\"\\\0\\\\€\\'\\\"\\\0\\\\".getBytes(StandardCharsets.UTF_8), res);
@@ -210,28 +236,29 @@ class BufferUtilsTest {
     final byte[] utf8Wrong4bytes2 = new byte[] {-16, (byte) -97, (byte) -103};
 
     buf.writerIndex(0);
-    BufferUtils.write(buf, new String(utf8Wrong2bytes, StandardCharsets.UTF_8), false, ctx);
+    BufferUtils.escapedBytes(buf, utf8Wrong2bytes, utf8Wrong2bytes.length, ctx);
     res = new byte[buf.writerIndex()];
     buf.getBytes(0, res);
-    assertArrayEquals(new byte[] {8, -17, -65, -67, 111, 111}, res);
+    assertArrayEquals(utf8Wrong2bytes, res);
 
     buf.writerIndex(0);
-    BufferUtils.write(buf, new String(utf8Wrong3bytes, StandardCharsets.UTF_8), false, ctx);
+    BufferUtils.escapedBytes(buf, utf8Wrong3bytes, utf8Wrong3bytes.length, ctx);
     res = new byte[buf.writerIndex()];
     buf.getBytes(0, res);
-    assertArrayEquals(new byte[] {7, 10, -17, -65, -67, 111, 111}, res);
+    assertArrayEquals(utf8Wrong3bytes, res);
 
     buf.writerIndex(0);
-    BufferUtils.write(buf, new String(utf8Wrong4bytes, StandardCharsets.UTF_8), false, ctx);
+    BufferUtils.escapedBytes(buf, utf8Wrong4bytes, utf8Wrong4bytes.length, ctx);
     res = new byte[buf.writerIndex()];
     buf.getBytes(0, res);
-    assertArrayEquals(new byte[] {16, 32, 10, -17, -65, -67, 111, 111}, res);
+    assertArrayEquals(utf8Wrong4bytes, res);
 
     buf.writerIndex(0);
-    BufferUtils.write(buf, new String(utf8Wrong4bytes2, StandardCharsets.UTF_8), false, ctx);
+    BufferUtils.escapedBytes(buf, utf8Wrong4bytes2, utf8Wrong4bytes2.length, ctx);
     res = new byte[buf.writerIndex()];
     buf.getBytes(0, res);
-    assertArrayEquals(new byte[] {-17, -65, -67}, res);
+    assertArrayEquals(utf8Wrong4bytes2, res);
+    buf.release();
   }
 
   @Test
@@ -244,8 +271,8 @@ class BufferUtilsTest {
           0x2e
         });
     buf.readerIndex(0);
-    System.out.println(buf.readerIndex());
     buf.writerIndex(16);
     Assertions.assertEquals("6D0000000A352E352E352D31302E362E", BufferUtils.toString(buf));
+    buf.release();
   }
 }

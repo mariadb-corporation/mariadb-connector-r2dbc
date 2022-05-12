@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.message.client;
 
@@ -10,26 +10,26 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Properties;
-import java.util.function.Supplier;
 import org.mariadb.r2dbc.MariadbConnectionFactoryProvider;
-import org.mariadb.r2dbc.client.Context;
-import org.mariadb.r2dbc.message.flow.ClearPasswordPluginFlow;
-import org.mariadb.r2dbc.message.flow.NativePasswordPluginFlow;
+import org.mariadb.r2dbc.authentication.addon.ClearPasswordPluginFlow;
+import org.mariadb.r2dbc.authentication.standard.NativePasswordPluginFlow;
+import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.BufferUtils;
-import org.mariadb.r2dbc.util.PidFactory;
+import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 
 public final class HandshakeResponse implements ClientMessage {
 
-  private InitialHandshakePacket initialHandshakePacket;
-  private String username;
-  private CharSequence password;
-  private String database;
-  private Map<String, String> connectionAttributes;
-  private String host;
-  private long clientCapabilities;
+  private final InitialHandshakePacket initialHandshakePacket;
+  private final String username;
+  private final CharSequence password;
+  private final String database;
+  private final Map<String, String> connectionAttributes;
+  private final HostAddress hostAddress;
+  private final long clientCapabilities;
 
   public HandshakeResponse(
       InitialHandshakePacket initialHandshakePacket,
@@ -37,14 +37,14 @@ public final class HandshakeResponse implements ClientMessage {
       CharSequence password,
       String database,
       Map<String, String> connectionAttributes,
-      String host,
+      HostAddress hostAddress,
       long clientCapabilities) {
     this.initialHandshakePacket = initialHandshakePacket;
     this.username = username;
     this.password = password;
     this.database = database;
     this.connectionAttributes = connectionAttributes;
-    this.host = host;
+    this.hostAddress = hostAddress;
     this.clientCapabilities = clientCapabilities;
   }
 
@@ -64,11 +64,7 @@ public final class HandshakeResponse implements ClientMessage {
         || (serverLanguage >= 224 && serverLanguage <= 247)) {
       return (byte) serverLanguage;
     }
-    if (majorVersion == 5 && minorVersion <= 1) {
-      // 5.1 version doesn't know 4 bytes utf8
-      return (byte) 33; // utf8_general_ci
-    }
-    return (byte) 224; // UTF8MB4_UNICODE_CI;
+    return (byte) ((majorVersion == 5 && minorVersion <= 1) ? 33 : 224);
   }
 
   @Override
@@ -80,18 +76,15 @@ public final class HandshakeResponse implements ClientMessage {
             initialHandshakePacket.getMajorServerVersion(),
             initialHandshakePacket.getMinorServerVersion());
 
-    ByteBuf buf = allocator.ioBuffer(4096);
+    ByteBuf buf = allocator.buffer(4096);
 
     final byte[] authData;
     String authenticationPluginType = initialHandshakePacket.getAuthenticationPluginType();
     switch (authenticationPluginType) {
       case ClearPasswordPluginFlow.TYPE:
         // TODO check that SSL is enable
-        if (password == null) {
-          authData = new byte[0];
-        } else {
-          authData = password.toString().getBytes(StandardCharsets.UTF_8);
-        }
+        authData =
+            (password == null) ? new byte[0] : password.toString().getBytes(StandardCharsets.UTF_8);
         break;
 
       default:
@@ -107,17 +100,15 @@ public final class HandshakeResponse implements ClientMessage {
     buf.writeZero(19); // 19
     buf.writeIntLE((int) (clientCapabilities >> 32)); // Maria extended flag
 
-    if (username != null && !username.isEmpty()) {
-      buf.writeCharSequence(username, StandardCharsets.UTF_8);
-    } else {
-      // to permit SSO
-      buf.writeCharSequence(System.getProperty("user.name"), StandardCharsets.UTF_8);
-    }
+    // to permit SSO
+    buf.writeCharSequence(
+        (username != null && !username.isEmpty()) ? username : System.getProperty("user.name"),
+        StandardCharsets.UTF_8);
     buf.writeZero(1);
 
     if ((initialHandshakePacket.getCapabilities() & Capabilities.PLUGIN_AUTH_LENENC_CLIENT_DATA)
         != 0) {
-      BufferUtils.writeLengthEncode(authData.length, buf);
+      buf.writeBytes(BufferUtils.encodeLength(authData.length));
       buf.writeBytes(authData);
     } else if ((initialHandshakePacket.getCapabilities() & Capabilities.SECURE_CONNECTION) != 0) {
       buf.writeByte((byte) authData.length);
@@ -139,8 +130,8 @@ public final class HandshakeResponse implements ClientMessage {
 
     if ((initialHandshakePacket.getCapabilities() & Capabilities.CONNECT_ATTRS) != 0) {
       ByteBuf bufAttributes = allocator.buffer(2048);
-      writeConnectAttributes(bufAttributes, connectionAttributes, host);
-      BufferUtils.writeLengthEncode(bufAttributes.writerIndex(), buf);
+      writeConnectAttributes(bufAttributes, connectionAttributes, hostAddress);
+      buf.writeBytes(BufferUtils.encodeLength(bufAttributes.writerIndex()));
       buf.writeBytes(bufAttributes, 0, bufAttributes.writerIndex());
       bufAttributes.release();
     }
@@ -154,7 +145,7 @@ public final class HandshakeResponse implements ClientMessage {
   }
 
   private void writeConnectAttributes(
-      ByteBuf buf, Map<String, String> connectionAttributes, String host) {
+      ByteBuf buf, Map<String, String> connectionAttributes, HostAddress hostAddress) {
     BufferUtils.writeLengthEncode("_client_name", buf);
     BufferUtils.writeLengthEncode(MariadbConnectionFactoryProvider.MARIADB_DRIVER, buf);
 
@@ -170,17 +161,10 @@ public final class HandshakeResponse implements ClientMessage {
     }
 
     BufferUtils.writeLengthEncode("_server_host", buf);
-    BufferUtils.writeLengthEncode(host != null ? host : "", buf);
+    BufferUtils.writeLengthEncode(hostAddress != null ? hostAddress.getHost() : "", buf);
 
     BufferUtils.writeLengthEncode("_os", buf);
     BufferUtils.writeLengthEncode(System.getProperty("os.name"), buf);
-
-    final Supplier<String> pidRequest = PidFactory.getInstance();
-    String pid = pidRequest.get();
-    if (pid != null) {
-      BufferUtils.writeLengthEncode("_pid", buf);
-      BufferUtils.writeLengthEncode(pid, buf);
-    }
 
     BufferUtils.writeLengthEncode("_thread", buf);
     BufferUtils.writeLengthEncode(Long.toString(Thread.currentThread().getId()), buf);

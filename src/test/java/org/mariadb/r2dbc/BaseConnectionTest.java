@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc;
 
 import io.r2dbc.spi.ValidationDepth;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.Random;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.extension.*;
+import org.junit.jupiter.api.function.Executable;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.tools.TcpProxy;
+import org.mariadb.r2dbc.util.HostAddress;
 import reactor.test.StepVerifier;
 
 public class BaseConnectionTest extends BaseTest {
@@ -21,7 +22,7 @@ public class BaseConnectionTest extends BaseTest {
   public static MariadbConnection sharedConn;
   public static MariadbConnection sharedConnPrepare;
   public static TcpProxy proxy;
-  private static Random rand = new Random();
+  private static final Random rand = new Random();
   public static final Boolean backslashEscape =
       System.getenv("NO_BACKSLASH_ESCAPES") != null
           ? Boolean.valueOf(System.getenv("NO_BACKSLASH_ESCAPES"))
@@ -58,21 +59,17 @@ public class BaseConnectionTest extends BaseTest {
   }
 
   public MariadbConnection createProxyCon() throws Exception {
+    HostAddress hostAddress = TestConfiguration.defaultConf.getHostAddresses().get(0);
     try {
-      proxy =
-          new TcpProxy(
-              TestConfiguration.defaultConf.getHost(), TestConfiguration.defaultConf.getPort());
+      proxy = new TcpProxy(hostAddress.getHost(), hostAddress.getPort());
     } catch (IOException i) {
-      throw new SQLException("proxy error", i);
+      throw new Exception("proxy error", i);
     }
     MariadbConnectionConfiguration confProxy =
         TestConfiguration.defaultBuilder
             .clone()
             .port(proxy.getLocalPort())
-            .host(
-                System.getenv("TRAVIS") != null
-                    ? TestConfiguration.defaultConf.getHost()
-                    : "localhost")
+            .host(System.getenv("TRAVIS") != null ? hostAddress.getHost() : "localhost")
             .build();
     return new MariadbConnectionFactory(confProxy).create().block();
   }
@@ -81,7 +78,7 @@ public class BaseConnectionTest extends BaseTest {
   public void afterEach1() {
     int i = rand.nextInt();
     sharedConn
-        .createStatement("SELECT " + i)
+        .createStatement("SELECT " + i + ", 'a'")
         .execute()
         .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
         .as(StepVerifier::create)
@@ -90,7 +87,7 @@ public class BaseConnectionTest extends BaseTest {
 
     int j = rand.nextInt();
     sharedConnPrepare
-        .createStatement("SELECT " + j)
+        .createStatement("SELECT " + j + ", 'b'")
         .execute()
         .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
         .as(StepVerifier::create)
@@ -102,6 +99,20 @@ public class BaseConnectionTest extends BaseTest {
   public static void afterEAll() {
     sharedConn.close().block();
     sharedConnPrepare.close().block();
+  }
+
+  public static boolean runLongTest() {
+    String runLongTest = System.getenv("RUN_LONG_TEST");
+    if (runLongTest != null) {
+      return Boolean.parseBoolean(runLongTest);
+    }
+    return false;
+  }
+
+  public static void assertThrowsContains(
+      Class<? extends Exception> expectedType, Executable executable, String expected) {
+    Exception e = Assertions.assertThrows(expectedType, executable);
+    Assertions.assertTrue(e.getMessage().contains(expected), "real message:" + e.getMessage());
   }
 
   public static boolean isMariaDBServer() {

@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.netty.buffer.ByteBufAllocator;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class IntCodec implements Codec<Integer> {
@@ -25,7 +27,7 @@ public class IntCodec implements Codec<Integer> {
           DataType.FLOAT,
           DataType.DOUBLE,
           DataType.OLDDECIMAL,
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.DECIMAL,
           DataType.ENUM,
           DataType.VARSTRING,
@@ -39,7 +41,7 @@ public class IntCodec implements Codec<Integer> {
           DataType.YEAR);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType())
+    return COMPATIBLE_TYPES.contains(column.getDataType())
         && ((type.isPrimitive() && type == Integer.TYPE) || type.isAssignableFrom(Integer.class));
   }
 
@@ -49,9 +51,13 @@ public class IntCodec implements Codec<Integer> {
 
   @Override
   public Integer decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Integer> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Integer> type,
+      ExceptionFactory factory) {
     long result;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TINYINT:
       case SMALLINT:
       case MEDIUMINT:
@@ -63,7 +69,7 @@ public class IntCodec implements Codec<Integer> {
       case BIGINT:
         result = LongCodec.parse(buf, length);
         if (result < 0 & !column.isSigned()) {
-          throw new R2dbcNonTransientResourceException("integer overflow");
+          throw factory.createParsingException("integer overflow");
         }
         break;
 
@@ -82,13 +88,13 @@ public class IntCodec implements Codec<Integer> {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValueExact();
           break;
         } catch (NumberFormatException | ArithmeticException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as Integer", str));
         }
     }
 
     if ((int) result != result) {
-      throw new R2dbcNonTransientResourceException("integer overflow");
+      throw factory.createParsingException("integer overflow");
     }
 
     return (int) result;
@@ -96,10 +102,14 @@ public class IntCodec implements Codec<Integer> {
 
   @Override
   public Integer decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Integer> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Integer> type,
+      ExceptionFactory factory) {
 
     long result;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case INTEGER:
         result = column.isSigned() ? buf.readIntLE() : buf.readUnsignedIntLE();
         break;
@@ -131,7 +141,7 @@ public class IntCodec implements Codec<Integer> {
           try {
             return val.intValueExact();
           } catch (ArithmeticException ae) {
-            throw new R2dbcNonTransientResourceException("integer overflow");
+            throw factory.createParsingException("integer overflow");
           }
         }
 
@@ -157,26 +167,33 @@ public class IntCodec implements Codec<Integer> {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValueExact();
           break;
         } catch (NumberFormatException | ArithmeticException nfe) {
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as Integer", str));
         }
     }
 
     if ((int) result != result || (result < 0 && !column.isSigned())) {
-      throw new R2dbcNonTransientResourceException("integer overflow");
+      throw factory.createParsingException("integer overflow");
     }
 
     return (int) result;
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Integer value) {
-    BufferUtils.writeAscii(buf, String.valueOf(value));
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(() -> BufferUtils.encodeAscii(allocator, value.toString()));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Integer value) {
-    buf.writeIntLE(value);
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> {
+          ByteBuf buf = allocator.buffer(4, 4);
+          buf.writeIntLE((Integer) value);
+          return buf;
+        });
   }
 
   public DataType getBinaryEncodeType() {

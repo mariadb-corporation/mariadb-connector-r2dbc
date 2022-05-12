@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
@@ -14,20 +14,30 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.netty.resources.LoopResources;
 import reactor.test.StepVerifier;
 
 public class ConnectionTest extends BaseConnectionTest {
   private Level initialReactorLvl;
   private Level initialLvl;
+
+  @BeforeAll
+  public static void before2() {
+    dropAll();
+    sharedConn.createStatement("CREATE DATABASE test_r2dbc").execute().blockLast();
+  }
+
+  @AfterAll
+  public static void dropAll() {
+    sharedConn.createStatement("DROP DATABASE test_r2dbc").execute().blockLast();
+  }
 
   @Test
   void localValidation() {
@@ -139,11 +149,11 @@ public class ConnectionTest extends BaseConnectionTest {
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
-    // disableLog();
+    //    disableLog();
     MariadbConnection connection = createProxyCon();
     proxy.stop();
     connection.close().block();
-    // reInitLog();
+    //    reInitLog();
   }
 
   @Test
@@ -152,7 +162,7 @@ public class ConnectionTest extends BaseConnectionTest {
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
-    // disableLog();
+    //    disableLog();
     MariadbConnection connection = createProxyCon();
     new Timer()
         .schedule(
@@ -165,7 +175,7 @@ public class ConnectionTest extends BaseConnectionTest {
             200);
 
     assertTimeout(
-        Duration.ofSeconds(2),
+        Duration.ofSeconds(5),
         () -> {
           try {
             connection
@@ -188,7 +198,7 @@ public class ConnectionTest extends BaseConnectionTest {
                 .as(StepVerifier::create)
                 .expectNext(Boolean.FALSE)
                 .verifyComplete();
-            // reInitLog();
+            //            reInitLog();
           }
         });
   }
@@ -236,12 +246,62 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
-  void socketTimeoutTimeout() throws Exception {
+  void timeoutMultiHost() throws Exception {
     MariadbConnectionConfiguration conf =
-        TestConfiguration.defaultBuilder.clone().socketTimeout(Duration.ofSeconds(1)).build();
+        TestConfiguration.defaultBuilder
+            .clone()
+            .host(
+                "128.2.2.2,"
+                    + TestConfiguration.defaultBuilder
+                        .clone()
+                        .build()
+                        .getHostAddresses()
+                        .get(0)
+                        .getHost())
+            .connectTimeout(Duration.ofMillis(500))
+            .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     consume(connection);
     connection.close().block();
+  }
+
+  @Test
+  public void localSocket() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("local") != null
+            && "1".equals(System.getenv("local"))
+            && !System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win"));
+    String socket =
+        sharedConn
+            .createStatement("select @@socket")
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+            .blockLast();
+    sharedConn.createStatement("DROP USER IF EXISTS testSocket@'localhost'").execute().blockLast();
+    sharedConn
+        .createStatement("CREATE USER testSocket@'localhost' IDENTIFIED BY 'MySup5%rPassw@ord'")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "GRANT SELECT on *.* to testSocket@'localhost' IDENTIFIED BY 'MySup5%rPassw@ord'")
+        .execute()
+        .blockLast();
+    sharedConn.createStatement("FLUSH PRIVILEGES").execute().blockLast();
+
+    MariadbConnectionConfiguration conf =
+        MariadbConnectionConfiguration.builder()
+            .username("testSocket")
+            .password("MySup5%rPassw@ord")
+            .database(TestConfiguration.database)
+            .socket(socket)
+            .build();
+
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    consume(connection);
+    connection.close().block();
+
+    sharedConn.createStatement("DROP USER testSocket@'localhost'").execute().blockLast();
   }
 
   @Test
@@ -372,6 +432,67 @@ public class ConnectionTest extends BaseConnectionTest {
     con.beginTransaction().subscribe();
     con.beginTransaction().block();
     con.beginTransaction().block();
+    con.rollbackTransaction().block();
+  }
+
+  @Test
+  void multipleBeginWithIsolation() throws Exception {
+    MariadbTransactionDefinition[] transactionDefinitions = {
+      MariadbTransactionDefinition.READ_ONLY,
+      MariadbTransactionDefinition.READ_WRITE,
+      MariadbTransactionDefinition.EMPTY,
+      MariadbTransactionDefinition.WITH_CONSISTENT_SNAPSHOT_READ_ONLY,
+      MariadbTransactionDefinition.WITH_CONSISTENT_SNAPSHOT_READ_WRITE
+    };
+
+    for (MariadbTransactionDefinition transactionDefinition : transactionDefinitions) {
+      MariadbConnection connection = factory.create().block();
+      multipleBeginWithIsolation(connection, transactionDefinition);
+      connection.close().block();
+
+      connection =
+          new MariadbConnectionFactory(
+                  TestConfiguration.defaultBuilder.clone().allowPipelining(false).build())
+              .create()
+              .block();
+      multipleBeginWithIsolation(connection, transactionDefinition);
+      connection.close().block();
+    }
+  }
+
+  void multipleBeginWithIsolation(
+      MariadbConnection con, MariadbTransactionDefinition transactionDefinition) throws Exception {
+    con.beginTransaction(transactionDefinition).subscribe();
+    con.beginTransaction(transactionDefinition).block();
+    con.beginTransaction(transactionDefinition).block();
+    con.rollbackTransaction().block();
+  }
+
+  @Test
+  void beginTransactionWithIsolation() throws Exception {
+    TransactionDefinition transactionDefinition =
+        MariadbTransactionDefinition.READ_ONLY.isolationLevel(IsolationLevel.READ_COMMITTED);
+    TransactionDefinition transactionDefinition2 =
+        MariadbTransactionDefinition.READ_ONLY.isolationLevel(IsolationLevel.REPEATABLE_READ);
+    assertFalse(sharedConn.isInTransaction());
+
+    sharedConn.beginTransaction(transactionDefinition).block();
+    assertEquals(IsolationLevel.READ_COMMITTED, sharedConn.getTransactionIsolationLevel());
+    assertTrue(sharedConn.isInTransaction());
+    assertTrue(sharedConn.isInReadOnlyTransaction());
+    sharedConn.beginTransaction(transactionDefinition).block();
+    sharedConn
+        .beginTransaction(transactionDefinition2)
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcPermissionDeniedException
+                    && throwable
+                        .getMessage()
+                        .equals(
+                            "Transaction characteristics can't be changed while a transaction is in progress"))
+        .verify();
+    sharedConn.rollbackTransaction().block();
   }
 
   @Test
@@ -393,6 +514,7 @@ public class ConnectionTest extends BaseConnectionTest {
     con.setAutoCommit(true).subscribe();
     con.setAutoCommit(true).block();
     con.setAutoCommit(false).block();
+    con.setAutoCommit(true).block();
   }
 
   @Test
@@ -429,6 +551,9 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void multiThreading() throws Throwable {
+    Assumptions.assumeTrue(
+        !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+
     AtomicInteger completed = new AtomicInteger(0);
     ThreadPoolExecutor scheduler =
         new ThreadPoolExecutor(10, 20, 50, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
@@ -520,7 +645,7 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   protected class ExecuteQueries implements Runnable {
-    private AtomicInteger i;
+    private final AtomicInteger i;
 
     public ExecuteQueries(AtomicInteger i) {
       this.i = i;
@@ -548,8 +673,8 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   protected class ExecuteQueriesOnSameConnection implements Runnable {
-    private AtomicInteger i;
-    private MariadbConnection connection;
+    private final AtomicInteger i;
+    private final MariadbConnection connection;
 
     public ExecuteQueriesOnSameConnection(AtomicInteger i, MariadbConnection connection) {
       this.i = i;
@@ -579,19 +704,32 @@ public class ConnectionTest extends BaseConnectionTest {
         new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create().block();
     try {
       IsolationLevel defaultValue = IsolationLevel.REPEATABLE_READ;
-
-      if ("skysql".equals(System.getenv("srv")) || "skysql-ha".equals(System.getenv("srv"))) {
-        defaultValue = IsolationLevel.READ_COMMITTED;
-      }
-
       Assertions.assertEquals(defaultValue, connection.getTransactionIsolationLevel());
       connection.setTransactionIsolationLevel(IsolationLevel.READ_UNCOMMITTED).block();
+      connection.createStatement("BEGIN").execute().blockLast();
       Assertions.assertEquals(
           IsolationLevel.READ_UNCOMMITTED, connection.getTransactionIsolationLevel());
       connection.setTransactionIsolationLevel(defaultValue).block();
     } finally {
       connection.close().block();
     }
+  }
+
+  @Test
+  void getDatabase() {
+    MariadbConnection connection =
+        new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create().block();
+    assertEquals(TestConfiguration.database, connection.getDatabase());
+    connection.setDatabase("test_r2dbc").block();
+    assertEquals("test_r2dbc", connection.getDatabase());
+    String db =
+        connection
+            .createStatement("SELECT DATABASE()")
+            .execute()
+            .flatMap(it -> it.map((row, rowMetadata) -> row.get(0, String.class)))
+            .blockFirst();
+    assertEquals("test_r2dbc", db);
+    connection.close().block();
   }
 
   @Test
@@ -612,6 +750,7 @@ public class ConnectionTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .verifyComplete();
     sharedConn.createStatement("DROP TABLE IF EXISTS rollbackTable").execute().blockLast();
+    sharedConn.setAutoCommit(true).block();
   }
 
   @Test
@@ -745,11 +884,11 @@ public class ConnectionTest extends BaseConnectionTest {
                   "MariadbConnection{client=Client{isClosed=false, "
                       + "context=ConnectionContext{"));
       if (!"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv"))) {
-
         Assertions.assertTrue(
             connection
                 .toString()
-                .contains(", isolationLevel=IsolationLevel{sql='REPEATABLE READ'}}"));
+                .contains(", isolationLevel=IsolationLevel{sql='REPEATABLE READ'}}"),
+            connection.toString());
       }
     } finally {
       connection.close().block();
@@ -802,7 +941,7 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
-  public void initialIsolationLevel() {
+  public void initialIsolationLevel() throws CloneNotSupportedException {
     Assumptions.assumeTrue(
         !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     for (IsolationLevel level : levels) {
@@ -812,7 +951,31 @@ public class ConnectionTest extends BaseConnectionTest {
           .blockLast();
       MariadbConnection connection =
           new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create().block();
+      assertEquals(IsolationLevel.REPEATABLE_READ, connection.getTransactionIsolationLevel());
+      connection.close().block();
+
+      connection =
+          new MariadbConnectionFactory(
+                  TestConfiguration.defaultBuilder.clone().isolationLevel(level).build())
+              .create()
+              .block();
       assertEquals(level, connection.getTransactionIsolationLevel());
+      String sql = "SELECT @@tx_isolation";
+
+      if (!isMariaDBServer()) {
+        if ((minVersion(8, 0, 3))
+            || (sharedConn.getMetadata().getMajorVersion() < 8 && minVersion(5, 7, 20))) {
+          sql = "SELECT @@transaction_isolation";
+        }
+      }
+
+      String iso =
+          connection
+              .createStatement(sql)
+              .execute()
+              .flatMap(it -> it.map((row, rowMetadata) -> row.get(0, String.class)))
+              .blockFirst();
+      assertEquals(level, IsolationLevel.valueOf(iso.replace("-", " ")));
       connection.close().block();
     }
 
@@ -825,6 +988,11 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   public void errorOnConnection() throws Throwable {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv")));
+
     BigInteger maxConn =
         sharedConn
             .createStatement("select @@max_connections")
@@ -833,7 +1001,7 @@ public class ConnectionTest extends BaseConnectionTest {
             .blockLast();
     Assumptions.assumeTrue(maxConn.intValue() < 600);
 
-    R2dbcTransientResourceException expected = null;
+    Throwable expected = null;
     Mono<?>[] cons = new Mono<?>[maxConn.intValue()];
     for (int i = 0; i < maxConn.intValue(); i++) {
       cons[i] = new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create();
@@ -842,7 +1010,7 @@ public class ConnectionTest extends BaseConnectionTest {
     for (int i = 0; i < maxConn.intValue(); i++) {
       try {
         connections[i] = (MariadbConnection) cons[i].block();
-      } catch (R2dbcTransientResourceException e) {
+      } catch (Throwable e) {
         expected = e;
       }
     }
@@ -853,7 +1021,8 @@ public class ConnectionTest extends BaseConnectionTest {
       }
     }
     Assertions.assertNotNull(expected);
-    Assertions.assertTrue(expected.getMessage().contains("Too many connections"));
+    Assertions.assertTrue(expected.getMessage().contains("Fail to establish connection to"));
+    Assertions.assertTrue(expected.getCause().getMessage().contains("Too many connections"));
     Thread.sleep(1000);
   }
 
@@ -865,7 +1034,9 @@ public class ConnectionTest extends BaseConnectionTest {
             && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnection connection = factory.create().block();
     long threadId = connection.getThreadId();
-
+    assertNotNull(connection.getHost());
+    assertEquals(TestConfiguration.defaultBuilder.build().getPort(), connection.getPort());
+    connection.getPort();
     Runnable runnable =
         () -> {
           try {
@@ -909,5 +1080,72 @@ public class ConnectionTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext(Boolean.FALSE)
         .verifyComplete();
+  }
+
+  @Test
+  public void queryTimeout() throws Throwable {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
+    MariadbConnection connection =
+        new MariadbConnectionFactory(TestConfiguration.defaultBuilder.clone().build())
+            .create()
+            .block();
+    connection.setStatementTimeout(Duration.ofMillis(0500)).block();
+
+    try {
+      connection
+          .createStatement(
+              "select * from information_schema.columns as c1, "
+                  + "information_schema.tables, information_schema.tables as t2")
+          .execute()
+          .flatMap(r -> r.map((rows, meta) -> ""))
+          .blockLast();
+      Assertions.fail();
+    } catch (R2dbcTimeoutException e) {
+      assertTrue(
+          e.getMessage().contains("Query execution was interrupted (max_statement_time exceeded)")
+              || e.getMessage()
+                  .contains(
+                      "Query execution was interrupted, maximum statement execution time exceeded"));
+    } finally {
+      connection.close().block();
+    }
+  }
+
+  @Test
+  public void setLockWaitTimeout() {
+    sharedConn.setLockWaitTimeout(Duration.ofMillis(1)).block();
+  }
+
+  @Test
+  public void testPools() throws Throwable {
+    boolean hasReactorTcp = false;
+    boolean hasMariaDbThreads = false;
+    Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
+    for (Thread thread : threadSet) {
+      if (thread.getName().contains("reactor-tcp")) hasReactorTcp = true;
+      if (thread.getName().contains("mariadb")) hasMariaDbThreads = true;
+    }
+    assertTrue(hasReactorTcp);
+    assertFalse(hasMariaDbThreads);
+
+    MariadbConnection connection =
+        new MariadbConnectionFactory(
+                TestConfiguration.defaultBuilder
+                    .clone()
+                    .loopResources(LoopResources.create("mariadb"))
+                    .build())
+            .create()
+            .block();
+
+    threadSet = Thread.getAllStackTraces().keySet();
+    for (Thread thread : threadSet) {
+      if (thread.getName().contains("mariadb")) hasMariaDbThreads = true;
+    }
+    assertTrue(hasMariaDbThreads);
+
+    connection.close().block();
   }
 }

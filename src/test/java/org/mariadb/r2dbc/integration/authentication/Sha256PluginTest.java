@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.authentication;
 
@@ -12,14 +12,15 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 public class Sha256PluginTest extends BaseConnectionTest {
 
   private static String rsaPublicKey;
   private static String cachingRsaPublicKey;
-  private static boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+  private static final boolean isWindows =
+      System.getProperty("os.name").toLowerCase().contains("win");
 
   private static boolean validPath(String path) {
     if (path == null) return false;
@@ -164,43 +165,43 @@ public class Sha256PluginTest extends BaseConnectionTest {
         .createStatement("DROP USER sha256User")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
+        .onErrorReturn(Flux.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER sha256User2")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
+        .onErrorReturn(Flux.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER sha256User3")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
+        .onErrorReturn(Flux.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
+        .onErrorReturn(Flux.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User2")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
+        .onErrorReturn(Flux.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User3")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
+        .onErrorReturn(Flux.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User4")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
+        .onErrorReturn(Flux.empty())
         .blockLast();
   }
 

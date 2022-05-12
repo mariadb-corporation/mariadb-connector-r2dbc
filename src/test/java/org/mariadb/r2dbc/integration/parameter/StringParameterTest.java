@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.parameter;
 
@@ -15,11 +15,7 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
@@ -32,7 +28,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class StringParameterTest extends BaseConnectionTest {
-  private static MariadbConnectionMetadata meta = sharedConn.getMetadata();
+  private static final MariadbConnectionMetadata meta = sharedConn.getMetadata();
 
   @BeforeAll
   public static void before2() {
@@ -68,7 +64,7 @@ public class StringParameterTest extends BaseConnectionTest {
         .createStatement("INSERT INTO StringParam VALUES (?,?,?)")
         .bindNull(0, BigInteger.class)
         .bindNull(1, BigInteger.class)
-        .bindNull(2, null)
+        .bindNull(2, Short.class)
         .execute()
         .blockLast();
     validate(Optional.empty(), Optional.empty(), Optional.empty());
@@ -105,9 +101,6 @@ public class StringParameterTest extends BaseConnectionTest {
             .bind(0, BitSet.valueOf(revertOrder("çà¤\\".getBytes(StandardCharsets.UTF_8))))
             .bind(1, BitSet.valueOf(revertOrder("你好".getBytes(StandardCharsets.UTF_8))))
             .bind(2, BitSet.valueOf(revertOrder("🌟hello\\".getBytes(StandardCharsets.UTF_8))));
-    Assertions.assertTrue(
-        stmt.toString().contains("parameters=[Parameter{codec=BitSetCodec, value={")
-            || stmt.toString().contains("parameters={0=Parameter{codec=BitSetCodec, value={"));
     stmt.execute().blockLast();
     validate(Optional.of("çà¤\\"), Optional.of("你好"), Optional.of("🌟hello\\"));
   }
@@ -130,9 +123,6 @@ public class StringParameterTest extends BaseConnectionTest {
             .bind(0, "çà¤\\".getBytes(StandardCharsets.UTF_8))
             .bind(1, "你好".getBytes(StandardCharsets.UTF_8))
             .bind(2, "🌟hello\\".getBytes(StandardCharsets.UTF_8));
-    Assertions.assertTrue(
-        stmt.toString().contains("parameters=[Parameter{codec=ByteArrayCodec, value=")
-            || stmt.toString().contains("parameters={0=Parameter{codec=ByteArrayCodec, value="));
     stmt.execute().blockLast();
     validate(Optional.of("çà¤\\"), Optional.of("你好"), Optional.of("🌟hello\\"));
   }
@@ -165,6 +155,7 @@ public class StringParameterTest extends BaseConnectionTest {
 
   @Test
   void stringValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     stringValue(sharedConnPrepare);
   }
 
@@ -218,7 +209,6 @@ public class StringParameterTest extends BaseConnectionTest {
             .bind(0, Clob.from(Mono.just("123")))
             .bind(1, Clob.from(Mono.just("你好")))
             .bind(2, Clob.from(Mono.just("🌟hello\\")));
-    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=ClobCodec,"));
     stmt.execute().blockLast();
     validate(Optional.of("123"), Optional.of("你好"), Optional.of("🌟hello\\"));
   }
@@ -230,6 +220,7 @@ public class StringParameterTest extends BaseConnectionTest {
 
   @Test
   void decimalValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     decimalValue(sharedConnPrepare);
   }
 
@@ -251,6 +242,7 @@ public class StringParameterTest extends BaseConnectionTest {
 
   @Test
   void intValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     intValue(sharedConnPrepare);
   }
 
@@ -272,6 +264,7 @@ public class StringParameterTest extends BaseConnectionTest {
 
   @Test
   void byteValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     byteValue(sharedConnPrepare);
   }
 
@@ -316,6 +309,7 @@ public class StringParameterTest extends BaseConnectionTest {
 
   @Test
   void doubleValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     doubleValue(sharedConnPrepare);
     validate(Optional.of("127"), Optional.of("-128"), Optional.of("0"));
   }
@@ -358,6 +352,7 @@ public class StringParameterTest extends BaseConnectionTest {
 
   @Test
   void longValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     longValue(sharedConnPrepare);
   }
 
@@ -477,7 +472,6 @@ public class StringParameterTest extends BaseConnectionTest {
             .bind(0, Duration.parse("P3DT18H0.012340S"))
             .bind(1, Duration.parse("PT8M"))
             .bind(2, Duration.parse("PT22S"));
-    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=DurationCodec,"));
     stmt.execute().blockLast();
   }
 

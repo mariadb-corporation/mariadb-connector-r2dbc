@@ -1,6 +1,6 @@
 <!--
   ~ SPDX-License-Identifier: Apache-2.0
-  ~ Copyright (c) 2020-2021 MariaDB Corporation Ab
+  ~ Copyright (c) 2020-2022 MariaDB Corporation Ab
   -->
 
 <project
@@ -11,7 +11,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.mariadb</groupId>
   <artifactId>r2dbc-mariadb</artifactId>
-  <version>1.0.3</version>
+  <version>1.1.2</version>
   <packaging>jar</packaging>
   <url>https://github.com/mariadb-corporation/mariadb-connector-r2dbc</url>
 
@@ -21,14 +21,14 @@
   <properties>
     <java.version>1.8</java.version>
     <jsr305.version>3.0.2</jsr305.version>
-    <junit.version>5.7.2</junit.version>
-    <jmh.version>1.32</jmh.version>
-    <logback.version>1.2.3</logback.version>
-    <netty.version>4.1.65.Final</netty.version>
+    <junit.version>5.8.2</junit.version>
+    <jmh.version>1.34</jmh.version>
+    <logback.version>1.2.10</logback.version>
+    <netty.version>4.1.73.Final</netty.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <r2dbc-spi.version>0.8.5.RELEASE</r2dbc-spi.version>
-    <reactor.version>Dysprosium-SR21</reactor.version>
-    <mariadb-jdbc.version>3.0.0-alpha</mariadb-jdbc.version>
+    <r2dbc-spi.version>0.9.1.RELEASE</r2dbc-spi.version>
+    <reactor.version>2020.0.15</reactor.version>
+    <mariadb-jdbc.version>3.0.4</mariadb-jdbc.version>
     <uberjar.name>benchmarks</uberjar.name>
   </properties>
 
@@ -97,11 +97,25 @@
     </dependencies>
   </dependencyManagement>
 
+  <repositories>
+    <repository>
+      <id>sonatype-nexus-snapshots</id>
+      <name>Sonatype Nexus Snapshots</name>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </repository>
+  </repositories>
+
   <dependencies>
     <dependency>
       <groupId>io.r2dbc</groupId>
       <artifactId>r2dbc-spi</artifactId>
       <version>${r2dbc-spi.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.r2dbc</groupId>
+      <artifactId>r2dbc-spi-test</artifactId>
+      <version>${r2dbc-spi.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>io.projectreactor</groupId>
@@ -134,16 +148,6 @@
       <artifactId>reactor-test</artifactId>
       <scope>test</scope>
     </dependency>
-<!--    <dependency>-->
-<!--      <groupId>org.junit.jupiter</groupId>-->
-<!--      <artifactId>junit-jupiter-api</artifactId>-->
-<!--      <scope>test</scope>-->
-<!--    </dependency>-->
-<!--    <dependency>-->
-<!--      <groupId>org.junit.jupiter</groupId>-->
-<!--      <artifactId>junit-jupiter-params</artifactId>-->
-<!--      <scope>test</scope>-->
-<!--    </dependency>-->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
@@ -153,6 +157,12 @@
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
       <version>${logback.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mariadb.jdbc</groupId>
+      <artifactId>mariadb-java-client</artifactId>
+      <version>${mariadb-jdbc.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -165,17 +175,41 @@
         <version>3.8.1</version>
         <configuration>
           <compilerArgs>
-            <arg>-Xlint:all,-options,-path,-processing</arg>
+            <arg>-Xlint:all,-options,-path,-processing,-requires-transitive-automatic,-requires-automatic</arg>
           </compilerArgs>
           <showWarnings>true</showWarnings>
           <source>${java.version}</source>
           <target>${java.version}</target>
         </configuration>
+        <executions>
+          <execution>
+            <id>compile-java-8</id>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>compile-java-9</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+            <configuration>
+              <release>9</release>
+              <source>9</source>
+              <target>9</target>
+              <compileSourceRoots>
+                <compileSourceRoot>${project.basedir}/src/main/java9</compileSourceRoot>
+              </compileSourceRoots>
+              <multiReleaseOutput>true</multiReleaseOutput>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-        <version>3.1.2</version>
+        <version>3.2.0</version>
         <configuration>
           <archive>
             <manifest>
@@ -184,7 +218,7 @@
             </manifest>
             <manifestEntries>
               <R2DBC-Specification-Version>${r2dbc-spi.version}</R2DBC-Specification-Version>
-              <Automatic-Module-Name>r2dbc.mariadb</Automatic-Module-Name>
+              <Multi-Release>true</Multi-Release>
             </manifestEntries>
           </archive>
         </configuration>
@@ -305,7 +339,7 @@
           <plugin>
             <groupId>org.jacoco</groupId>
             <artifactId>jacoco-maven-plugin</artifactId>
-            <version>0.8.5</version>
+            <version>0.8.7</version>
             <configuration>
               <excludes>
                 <exclude>**/ed25519/**/*.class</exclude>
@@ -343,14 +377,14 @@
           <version>${jmh.version}</version>
         </dependency>
         <dependency>
-          <groupId>org.mariadb.jdbc</groupId>
-          <artifactId>mariadb-java-client</artifactId>
-          <version>${mariadb-jdbc.version}</version>
-        </dependency>
-        <dependency>
           <groupId>ch.qos.logback</groupId>
           <artifactId>logback-classic</artifactId>
           <version>${logback.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>org.mariadb.jdbc</groupId>
+          <artifactId>mariadb-java-client</artifactId>
+          <version>${mariadb-jdbc.version}</version>
         </dependency>
       </dependencies>
 
@@ -369,7 +403,7 @@
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>build-helper-maven-plugin</artifactId>
-            <version>3.0.0</version>
+            <version>3.3.0</version>
             <executions>
               <execution>
                 <id>add-source</id>
@@ -402,7 +436,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-shade-plugin</artifactId>
-            <version>3.2.1</version>
+            <version>3.2.4</version>
             <executions>
               <execution>
                 <phase>package</phase>

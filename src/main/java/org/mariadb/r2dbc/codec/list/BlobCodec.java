@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import io.r2dbc.spi.Blob;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -31,24 +33,28 @@ public class BlobCodec implements Codec<Blob> {
           DataType.LONGBLOB,
           DataType.STRING,
           DataType.VARSTRING,
-          DataType.VARCHAR);
+          DataType.TEXT);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType()) && type.isAssignableFrom(Blob.class);
+    return COMPATIBLE_TYPES.contains(column.getDataType()) && type.isAssignableFrom(Blob.class);
   }
 
   @Override
   public Blob decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Blob> type) {
-    switch (column.getType()) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Blob> type,
+      ExceptionFactory factory) {
+    switch (column.getDataType()) {
       case STRING:
-      case VARCHAR:
+      case TEXT:
       case VARSTRING:
         if (!column.isBinary()) {
           buf.skipBytes(length);
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format(
-                  "Data type %s (not binary) cannot be decoded as Blob", column.getType()));
+                  "Data type %s (not binary) cannot be decoded as Blob", column.getDataType()));
         }
         return new MariaDbBlob(buf.readRetainedSlice(length));
 
@@ -60,8 +66,12 @@ public class BlobCodec implements Codec<Blob> {
 
   @Override
   public Blob decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Blob> type) {
-    switch (column.getType()) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Blob> type,
+      ExceptionFactory factory) {
+    switch (column.getDataType()) {
       case BIT:
       case TINYBLOB:
       case MEDIUMBLOB:
@@ -74,9 +84,9 @@ public class BlobCodec implements Codec<Blob> {
         // STRING, VARCHAR, VARSTRING:
         if (!column.isBinary()) {
           buf.skipBytes(length);
-          throw new R2dbcNonTransientResourceException(
+          throw factory.createParsingException(
               String.format(
-                  "Data type %s (not binary) cannot be decoded as Blob", column.getType()));
+                  "Data type %s (not binary) cannot be decoded as Blob", column.getDataType()));
         }
         return new MariaDbBlob(buf.readRetainedSlice(length));
     }
@@ -87,49 +97,37 @@ public class BlobCodec implements Codec<Blob> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Blob value) {
-    buf.writeBytes("_binary '".getBytes(StandardCharsets.US_ASCII));
-    Flux.from(value.stream())
-        .handle(
-            (tempVal, sync) -> {
-              if (tempVal.hasArray()) {
-                BufferUtils.writeEscaped(
-                    buf, tempVal.array(), tempVal.arrayOffset(), tempVal.remaining(), context);
-              } else {
-                byte[] intermediaryBuf = new byte[tempVal.remaining()];
-                tempVal.get(intermediaryBuf);
-                BufferUtils.writeEscaped(buf, intermediaryBuf, 0, intermediaryBuf.length, context);
-              }
-              sync.next(buf);
-            })
-        .doOnComplete(
-            () -> {
-              buf.writeByte((byte) '\'');
-            })
-        .subscribe();
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        Flux.from(((Blob) value).stream())
+            .reduce(
+                allocator.compositeBuffer(),
+                (a, b) -> a.addComponent(true, Unpooled.wrappedBuffer(b)))
+            .map(
+                b -> {
+                  ByteBuf returnedBuf = BufferUtils.encodeEscapedBuffer(allocator, b, context);
+                  b.release();
+                  return returnedBuf;
+                })
+            .doOnSubscribe(e -> ((Blob) value).discard()));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Blob value) {
-    buf.writeByte(0xfe);
-    int initialPos = buf.writerIndex();
-    buf.writerIndex(buf.writerIndex() + 8); // reserve length encoded length bytes
-
-    Flux.from(value.stream())
-        .handle(
-            (tempVal, sync) -> {
-              buf.writeBytes(tempVal);
-              sync.next(buf);
-            })
-        .doOnComplete(
-            () -> {
-              // Write length
-              int endPos = buf.writerIndex();
-              buf.writerIndex(initialPos);
-              buf.writeLongLE(endPos - (initialPos + 8));
-              buf.writerIndex(endPos);
-            })
-        .subscribe();
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(
+        Flux.from(((Blob) value).stream())
+            .reduce(
+                allocator.compositeBuffer(),
+                (a, b) -> a.addComponent(true, Unpooled.wrappedBuffer(b)))
+            .map(
+                c ->
+                    c.addComponent(
+                        true,
+                        0,
+                        Unpooled.wrappedBuffer(BufferUtils.encodeLength(c.readableBytes()))))
+            .doOnSubscribe(e -> ((Blob) value).discard()));
   }
 
   private class MariaDbBlob implements Blob {

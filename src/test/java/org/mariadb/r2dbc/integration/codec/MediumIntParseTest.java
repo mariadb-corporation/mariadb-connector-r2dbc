@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.codec;
 
@@ -13,11 +13,13 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.util.MariadbType;
 import reactor.test.StepVerifier;
 
 public class MediumIntParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
     sharedConn
         .createStatement("CREATE TABLE MediumIntTable (t1 MEDIUMINT, t2 MEDIUMINT ZEROFILL)")
         .execute()
@@ -39,8 +41,8 @@ public class MediumIntParseTest extends BaseConnectionTest {
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE MediumIntTable").execute().blockLast();
-    sharedConn.createStatement("DROP TABLE MediumIntUnsignedTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS MediumIntTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS MediumIntUnsignedTable").execute().blockLast();
   }
 
   @Test
@@ -513,6 +515,22 @@ public class MediumIntParseTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
         .as(StepVerifier::create)
         .expectNextMatches(c -> c.equals(Integer.class))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM MediumIntTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(MariadbType.INTEGER))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM MediumIntUnsignedTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(MariadbType.INTEGER))
         .verifyComplete();
   }
 }

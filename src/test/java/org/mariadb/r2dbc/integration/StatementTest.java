@@ -1,18 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import io.r2dbc.spi.Statement;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
+import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.api.MariadbStatement;
+import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 public class StatementTest extends BaseConnectionTest {
@@ -20,44 +23,23 @@ public class StatementTest extends BaseConnectionTest {
   @Test
   void bindOnStatementWithoutParameter() {
     Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (1,2)");
-    try {
-      stmt = stmt.add(); // mean nothing there
-      stmt.bind(0, 1);
-      Assertions.fail("must have thrown exception");
-    } catch (UnsupportedOperationException e) {
-      Assertions.assertTrue(
-          e.getMessage()
-              .contains(
-                  "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'"));
-    }
+    assertThrowsContains(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bind(1, 1),
+        "Binding index 1 when only 0 parameters are expected");
 
-    try {
-      stmt.bind("name", 1);
-      Assertions.fail("must have thrown exception");
-    } catch (UnsupportedOperationException e) {
-      Assertions.assertTrue(
-          e.getMessage()
-              .contains(
-                  "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'"));
-    }
-    try {
-      stmt.bindNull(0, String.class);
-      Assertions.fail("must have thrown exception");
-    } catch (UnsupportedOperationException e) {
-      Assertions.assertTrue(
-          e.getMessage()
-              .contains(
-                  "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'"));
-    }
-    try {
-      stmt.bindNull("name", String.class);
-      Assertions.fail("must have thrown exception");
-    } catch (UnsupportedOperationException e) {
-      Assertions.assertTrue(
-          e.getMessage()
-              .contains(
-                  "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'"));
-    }
+    assertThrowsContains(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bind("name", 1),
+        "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'");
+    assertThrowsContains(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bindNull(0, String.class),
+        "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'");
+    assertThrowsContains(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bindNull("name", String.class),
+        "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'");
   }
 
   @Test
@@ -65,11 +47,11 @@ public class StatementTest extends BaseConnectionTest {
     Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (:1,:2)");
 
     assertThrows(
-        IllegalArgumentException.class,
+        NoSuchElementException.class,
         () -> stmt.bind("bla", "nok"),
         "No parameter with name 'bla' found (possible values [1, 2])");
     assertThrows(
-        IllegalArgumentException.class,
+        NoSuchElementException.class,
         () -> stmt.bindNull("bla", String.class),
         "No parameter with name 'bla' found (possible values [1, 2])");
     stmt.bind("1", "ok").bindNull("2", String.class);
@@ -78,31 +60,18 @@ public class StatementTest extends BaseConnectionTest {
   @Test
   void bindOnPreparedStatementWrongParameter() {
     Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (?, ?)");
-    try {
-      stmt.bind(-1, 1);
-      Assertions.fail("must have thrown exception");
-    } catch (IndexOutOfBoundsException e) {
-      Assertions.assertTrue(e.getMessage().contains("index must be in 0-1 range but value is -1"));
-    }
-    try {
-      stmt.bind(2, 1);
-      Assertions.fail("must have thrown exception");
-    } catch (IndexOutOfBoundsException e) {
-      Assertions.assertTrue(e.getMessage().contains("index must be in 0-1 range but value is 2"));
-    }
-
-    try {
-      stmt.bindNull(-1, String.class);
-      Assertions.fail("must have thrown exception");
-    } catch (IndexOutOfBoundsException e) {
-      Assertions.assertTrue(e.getMessage().contains("index must be in 0-1 range but value is -1"));
-    }
-    try {
-      stmt.bindNull(2, String.class);
-      Assertions.fail("must have thrown exception");
-    } catch (IndexOutOfBoundsException e) {
-      Assertions.assertTrue(e.getMessage().contains("index must be in 0-1 range but value is 2"));
-    }
+    assertThrowsContains(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bind(-1, 1),
+        "wrong index value -1, index must be positive");
+    assertThrowsContains(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bindNull(-1, String.class),
+        "wrong index value -1, index must be positive");
+    assertThrowsContains(
+        IndexOutOfBoundsException.class,
+        () -> stmt.bindNull(2, String.class),
+        "Cannot bind parameter 2, statement has 2 parameters");
   }
 
   @Test
@@ -117,7 +86,7 @@ public class StatementTest extends BaseConnectionTest {
     try {
       stmt.bind("other", 1);
       Assertions.fail("must have thrown exception");
-    } catch (IllegalArgumentException e) {
+    } catch (NoSuchElementException e) {
       Assertions.assertTrue(
           e.getMessage()
               .contains("No parameter with name 'other' found (possible values [name1, name2])"));
@@ -125,7 +94,7 @@ public class StatementTest extends BaseConnectionTest {
     try {
       stmt.bindNull("other", String.class);
       Assertions.fail("must have thrown exception");
-    } catch (IllegalArgumentException e) {
+    } catch (NoSuchElementException e) {
       Assertions.assertTrue(
           e.getMessage()
               .contains("No parameter with name 'other' found (possible values [name1, name2])"));
@@ -134,9 +103,9 @@ public class StatementTest extends BaseConnectionTest {
 
   @Test
   void bindUnknownClass() {
-    Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (?)");
+    MariadbStatement stmt = sharedConn.createStatement("INSERT INTO someTable values (?)");
     try {
-      stmt.bind(0, sharedConn);
+      stmt.bind(0, sharedConn).execute().subscribe();
       Assertions.fail("must have thrown exception");
     } catch (IllegalArgumentException e) {
       Assertions.assertTrue(
@@ -165,7 +134,7 @@ public class StatementTest extends BaseConnectionTest {
 
     try {
       stmt.execute();
-    } catch (IllegalArgumentException e) {
+    } catch (IllegalStateException e) {
       Assertions.assertTrue(e.getMessage().contains("Parameter at position 0 is not set"));
     }
   }
@@ -174,11 +143,12 @@ public class StatementTest extends BaseConnectionTest {
   void statementToString() {
     String st = sharedConn.createStatement("SELECT 1").toString();
     Assertions.assertTrue(
-        st.contains("MariadbSimpleQueryStatement{") && st.contains("sql='SELECT 1'"));
+        st.contains("MariadbClientParameterizedQueryStatement{") && st.contains("sql='SELECT 1'"),
+        st);
     String st2 = sharedConn.createStatement("SELECT ?").toString();
     Assertions.assertTrue(
-        st2.contains("MariadbClientParameterizedQueryStatement{")
-            && st2.contains("sql='SELECT ?'"));
+        st2.contains("MariadbClientParameterizedQueryStatement{") && st2.contains("sql='SELECT ?'"),
+        st2);
   }
 
   @Test
@@ -204,6 +174,38 @@ public class StatementTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNextCount(200)
         .verifyComplete();
+  }
+
+  @Test
+  void metadataNotSkipped() {
+    String sql;
+
+    StringBuilder sb = new StringBuilder("select ?");
+    for (int i = 1; i < 1000; i++) {
+      sb.append(",?");
+    }
+    sql = sb.toString();
+    int[] rnds = randParams();
+    io.r2dbc.spi.Statement statement = sharedConnPrepare.createStatement(sql);
+    for (int j = 0; j < 2; j++) {
+      for (int i = 0; i < 1000; i++) {
+        statement.bind(i, rnds[i]);
+      }
+
+      Integer val =
+          Flux.from(statement.execute())
+              .flatMap(it -> it.map((row, rowMetadata) -> row.get(0, Integer.class)))
+              .blockLast();
+      if (rnds[0] != val) throw new IllegalStateException("ERROR");
+    }
+  }
+
+  private static int[] randParams() {
+    int[] rnds = new int[1000];
+    for (int i = 0; i < 1000; i++) {
+      rnds[i] = (int) (Math.random() * 1000);
+    }
+    return rnds;
   }
 
   @Test
@@ -238,6 +240,7 @@ public class StatementTest extends BaseConnectionTest {
           .expectNext(1)
           .verifyComplete();
     }
+
     sharedConn
         .createStatement("INSERT INTO dupplicate(id, test) VALUES (1, 'dupplicate')")
         .execute()
@@ -246,7 +249,8 @@ public class StatementTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcDataIntegrityViolationException
-                    && throwable.getMessage().contains("Duplicate entry '1' for key"))
+                    && (throwable.getMessage().contains("Duplicate entry '1' for key")
+                        || throwable.getMessage().contains("Duplicate key in container")))
         .verify();
   }
 
@@ -286,6 +290,7 @@ public class StatementTest extends BaseConnectionTest {
   @Test
   public void returning() {
     Assumptions.assumeTrue(isMariaDBServer());
+
     if (!minVersion(10, 5, 1)) {
       Assertions.assertThrows(
           IllegalArgumentException.class,
@@ -480,7 +485,6 @@ public class StatementTest extends BaseConnectionTest {
         .bind(0, "b")
         .add()
         .bind(0, "c")
-        .add()
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get("id", String.class)))
         .as(StepVerifier::create)
@@ -537,26 +541,41 @@ public class StatementTest extends BaseConnectionTest {
         .bind(0, "c")
         .add()
         .bind(0, "d")
-        .add()
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get("id", String.class)))
         .as(StepVerifier::create)
         .expectNext("7", "8")
         .verifyComplete();
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            sharedConn
+                .createStatement("INSERT INTO prepareReturning(test) VALUES (?)")
+                .returnGeneratedValues()
+                .bind(0, "c")
+                .add()
+                .bind(0, "d")
+                .add()
+                .execute(),
+        "Parameter at position 0 is not set");
   }
 
   @Test
   void parameterNull() {
-    sharedConn
-        .createStatement("CREATE TEMPORARY TABLE parameterNull(t varchar(10), t2 varchar(10))")
+    parameterNull(sharedConn);
+    parameterNull(sharedConnPrepare);
+  }
+
+  void parameterNull(MariadbConnection conn) {
+    conn.createStatement("CREATE TEMPORARY TABLE parameterNull(t varchar(10), t2 varchar(10))")
         .execute()
         .blockLast();
-    sharedConn
-        .createStatement("INSERT INTO parameterNull VALUES ('1', '1'), (null, '2'), (null, null)")
+    conn.createStatement("INSERT INTO parameterNull VALUES ('1', '1'), (null, '2'), (null, null)")
         .execute()
         .blockLast();
     MariadbStatement stmt =
-        sharedConn.createStatement("SELECT t2 FROM parameterNull WHERE COALESCE(t,?) is null");
+        conn.createStatement("SELECT t2 FROM parameterNull WHERE COALESCE(t,?) is null");
     stmt.bindNull(0, Integer.class)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
@@ -570,12 +589,10 @@ public class StatementTest extends BaseConnectionTest {
         .expectNext(Optional.of("2"), Optional.empty())
         .verifyComplete();
 
-    stmt.bindNull(0, this.getClass())
-        .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
-        .as(StepVerifier::create)
-        .expectNext(Optional.of("2"), Optional.empty())
-        .verifyComplete();
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> stmt.bindNull(0, this.getClass()),
+        "No encoder for class org.mariadb.r2dbc.integration.StatementTest");
   }
 
   @Test

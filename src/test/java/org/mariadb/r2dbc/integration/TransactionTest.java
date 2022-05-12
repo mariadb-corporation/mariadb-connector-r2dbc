@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
-import io.r2dbc.spi.*;
 import java.net.URL;
-import java.util.*;
 import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
@@ -14,7 +12,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class TransactionTest extends BaseConnectionTest {
-  private static String insertCmd =
+  private static final String insertCmd =
       "INSERT INTO `users` (`first_name`, `last_name`, `email`) VALUES ('MariaDB', 'Row', 'mariadb@test.com')";
 
   @BeforeAll
@@ -24,9 +22,9 @@ public class TransactionTest extends BaseConnectionTest {
         .createStatement(
             "CREATE TABLE `users` (\n"
                 + " `id` int(11) NOT NULL AUTO_INCREMENT,\n"
-                + " `first_name` varchar(255) COLLATE utf16_slovak_ci NOT NULL,\n"
-                + " `last_name` varchar(255) COLLATE utf16_slovak_ci NOT NULL,\n"
-                + " `email` varchar(255) COLLATE utf16_slovak_ci NOT NULL,\n"
+                + " `first_name` varchar(255) NOT NULL,\n"
+                + " `last_name` varchar(255) NOT NULL,\n"
+                + " `email` varchar(255) NOT NULL,\n"
                 + " PRIMARY KEY (`id`)\n"
                 + ")")
         .execute()
@@ -175,6 +173,7 @@ public class TransactionTest extends BaseConnectionTest {
         .blockLast();
     checkInserted(conn, 2);
     conn.rollbackTransaction().block();
+    conn.setAutoCommit(true).block();
     conn.close();
   }
 
@@ -191,6 +190,7 @@ public class TransactionTest extends BaseConnectionTest {
     conn.rollbackTransactionToSavepoint("mySavePoint").block();
     checkInserted(conn, 1);
     conn.rollbackTransaction().block();
+    conn.setAutoCommit(true).block();
     conn.close();
   }
 
@@ -208,6 +208,7 @@ public class TransactionTest extends BaseConnectionTest {
         .blockLast();
     checkInserted(conn, 1);
     conn.rollbackTransaction().block();
+    conn.setAutoCommit(true).block();
     conn.close();
   }
 

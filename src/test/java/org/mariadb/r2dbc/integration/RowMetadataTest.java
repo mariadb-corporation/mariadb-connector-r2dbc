@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
@@ -8,10 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import io.r2dbc.spi.ColumnMetadata;
 import io.r2dbc.spi.Nullability;
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -52,6 +49,7 @@ public class RowMetadataTest extends BaseConnectionTest {
   }
 
   @Test
+  @SuppressWarnings("deprecation")
   void rowMeta() {
     sharedConn
         .createStatement(
@@ -65,13 +63,18 @@ public class RowMetadataTest extends BaseConnectionTest {
                       List<String> expected =
                           Arrays.asList("t1Alias", "t2", "t3", "t4", "t5", "t6");
                       assertEquals(expected.size(), metadata.getColumnNames().size());
+                      assertTrue(metadata.contains("t1Alias"));
+                      assertTrue(metadata.contains("T1ALIAS"));
+                      assertTrue(metadata.contains("t1alias"));
+                      assertFalse(metadata.contains("t1Aliass"));
+
                       assertArrayEquals(expected.toArray(), metadata.getColumnNames().toArray());
                       this.assertThrows(
-                          IllegalArgumentException.class,
+                          IndexOutOfBoundsException.class,
                           () -> metadata.getColumnMetadata(-1),
                           "Column index -1 is not in permit range[0,5]");
                       this.assertThrows(
-                          IllegalArgumentException.class,
+                          IndexOutOfBoundsException.class,
                           () -> metadata.getColumnMetadata(6),
                           "Column index 6 is not in permit range[0,5]");
                       ColumnMetadata colMeta = metadata.getColumnMetadata(0);
@@ -87,7 +90,7 @@ public class RowMetadataTest extends BaseConnectionTest {
                       assertEquals(
                           System.getProperty("TEST_DATABASE", TestConfiguration.database),
                           t1Meta.getSchema());
-                      assertEquals("t1Alias", t1Meta.getColumnAlias());
+                      assertEquals("t1Alias", t1Meta.getName());
                       assertEquals("t1", t1Meta.getColumn());
                       assertEquals("rowmeta", t1Meta.getTable());
                       assertEquals("rowMetaAlias", t1Meta.getTableAlias());
@@ -106,7 +109,7 @@ public class RowMetadataTest extends BaseConnectionTest {
                       assertEquals("t2", colMeta.getName());
 
                       this.assertThrows(
-                          IllegalArgumentException.class,
+                          NoSuchElementException.class,
                           () -> metadata.getColumnMetadata("wrongName"),
                           "Column name 'wrongName' does not exist in column names [t1Alias, t2, t3, t4, t5, t6]");
 
@@ -123,7 +126,7 @@ public class RowMetadataTest extends BaseConnectionTest {
                       assertEquals(
                           System.getProperty("TEST_DATABASE", TestConfiguration.database),
                           t2Meta.getSchema());
-                      assertEquals("t2", t2Meta.getColumnAlias());
+                      assertEquals("t2", t2Meta.getName());
                       assertEquals("t2", t2Meta.getColumn());
                       assertEquals("rowmeta", t2Meta.getTable());
                       assertEquals("rowMetaAlias", t2Meta.getTableAlias());

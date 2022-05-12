@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc;
 
@@ -13,19 +13,22 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 import org.mariadb.r2dbc.util.Assert;
+import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.SslConfig;
+import reactor.netty.resources.LoopResources;
+import reactor.netty.tcp.TcpResources;
 import reactor.util.annotation.Nullable;
 
 public final class MariadbConnectionConfiguration {
 
   public static final int DEFAULT_PORT = 3306;
   private final String database;
-  private final String host;
-
+  private final List<HostAddress> hostAddresses;
+  private HaMode haMode;
   private final Duration connectTimeout;
-  private final Duration socketTimeout;
   private final boolean tcpKeepAlive;
   private final boolean tcpAbortiveClose;
+  private final boolean transactionReplay;
   private final CharSequence password;
   private final CharSequence[] pamOtherPwd;
   private final int port;
@@ -44,18 +47,22 @@ public final class MariadbConnectionConfiguration {
   private final boolean useServerPrepStmts;
   private final boolean autocommit;
   private final boolean tinyInt1isBit;
+  private final String[] restrictedAuth;
+  private final LoopResources loopResources;
 
   private MariadbConnectionConfiguration(
+      String haMode,
       @Nullable Duration connectTimeout,
-      @Nullable Duration socketTimeout,
       @Nullable Boolean tcpKeepAlive,
       @Nullable Boolean tcpAbortiveClose,
+      @Nullable Boolean transactionReplay,
       @Nullable String database,
       @Nullable String host,
       @Nullable Map<String, String> connectionAttributes,
       @Nullable Map<String, String> sessionVariables,
       @Nullable CharSequence password,
       int port,
+      @Nullable List<HostAddress> hostAddresses,
       @Nullable String socket,
       @Nullable String username,
       boolean allowMultiQueries,
@@ -70,16 +77,26 @@ public final class MariadbConnectionConfiguration {
       @Nullable String cachingRsaPublicKey,
       boolean allowPublicKeyRetrieval,
       boolean useServerPrepStmts,
+      IsolationLevel isolationLevel,
       boolean autocommit,
       @Nullable Integer prepareCacheSize,
       @Nullable CharSequence[] pamOtherPwd,
-      boolean tinyInt1isBit) {
+      boolean tinyInt1isBit,
+      String restrictedAuth,
+      @Nullable LoopResources loopResources) {
+    this.haMode = haMode == null ? HaMode.NONE : HaMode.from(haMode);
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
-    this.socketTimeout = socketTimeout;
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
     this.tcpAbortiveClose = tcpAbortiveClose == null ? Boolean.FALSE : tcpAbortiveClose;
+    this.transactionReplay = transactionReplay == null ? Boolean.FALSE : transactionReplay;
     this.database = database != null && !database.isEmpty() ? database : null;
-    this.host = host;
+    this.isolationLevel = isolationLevel;
+    this.restrictedAuth = restrictedAuth != null ? restrictedAuth.split(",") : null;
+    if (hostAddresses != null) {
+      this.hostAddresses = hostAddresses;
+    } else {
+      this.hostAddresses = HostAddress.parse(host, port);
+    }
     this.connectionAttributes = connectionAttributes;
     this.sessionVariables = sessionVariables;
     this.password = password != null && !password.toString().isEmpty() ? password : null;
@@ -98,11 +115,12 @@ public final class MariadbConnectionConfiguration {
     this.rsaPublicKey = rsaPublicKey;
     this.cachingRsaPublicKey = cachingRsaPublicKey;
     this.allowPublicKeyRetrieval = allowPublicKeyRetrieval;
-    this.useServerPrepStmts = useServerPrepStmts;
     this.prepareCacheSize = (prepareCacheSize == null) ? 250 : prepareCacheSize.intValue();
     this.pamOtherPwd = pamOtherPwd;
     this.autocommit = autocommit;
     this.tinyInt1isBit = tinyInt1isBit;
+    this.loopResources = loopResources != null ? loopResources : TcpResources.get();
+    this.useServerPrepStmts = !this.allowMultiQueries && useServerPrepStmts;
   }
 
   static boolean boolValue(Object value) {
@@ -128,13 +146,14 @@ public final class MariadbConnectionConfiguration {
 
   public static Builder fromOptions(ConnectionFactoryOptions connectionFactoryOptions) {
     Builder builder = new Builder();
-    builder.database(connectionFactoryOptions.getValue(DATABASE));
+    builder.database((String) connectionFactoryOptions.getValue(DATABASE));
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SOCKET)) {
       builder.socket(
-          connectionFactoryOptions.getRequiredValue(MariadbConnectionFactoryProvider.SOCKET));
+          (String)
+              connectionFactoryOptions.getRequiredValue(MariadbConnectionFactoryProvider.SOCKET));
     } else {
-      builder.host(connectionFactoryOptions.getRequiredValue(HOST));
+      builder.host((String) connectionFactoryOptions.getRequiredValue(HOST));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.ALLOW_MULTI_QUERIES)) {
@@ -150,12 +169,6 @@ public final class MariadbConnectionConfiguration {
               connectionFactoryOptions.getValue(ConnectionFactoryOptions.CONNECT_TIMEOUT)));
     }
 
-    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SOCKET_TIMEOUT)) {
-      builder.socketTimeout(
-          durationValue(
-              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SOCKET_TIMEOUT)));
-    }
-
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TCP_KEEP_ALIVE)) {
       builder.tcpKeepAlive(
           boolValue(
@@ -169,10 +182,24 @@ public final class MariadbConnectionConfiguration {
                   MariadbConnectionFactoryProvider.TCP_ABORTIVE_CLOSE)));
     }
 
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TRANSACTION_REPLAY)) {
+      builder.transactionReplay(
+          boolValue(
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.TRANSACTION_REPLAY)));
+    }
+
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SESSION_VARIABLES)) {
       String sessionVarString =
-          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SESSION_VARIABLES);
+          (String)
+              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SESSION_VARIABLES);
       builder.sessionVariables(getMapFromString(sessionVarString));
+    }
+
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.HAMODE)) {
+      String haMode =
+          (String) connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.HAMODE);
+      builder.haMode(haMode);
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.ALLOW_PIPELINING)) {
@@ -188,6 +215,14 @@ public final class MariadbConnectionConfiguration {
               connectionFactoryOptions.getValue(
                   MariadbConnectionFactoryProvider.USE_SERVER_PREPARE)));
     }
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.ISOLATION_LEVEL)) {
+      String isolationLvl =
+          (String)
+              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.ISOLATION_LEVEL);
+      builder.isolationLevel(
+          isolationLvl == null ? null : IsolationLevel.valueOf(isolationLvl.replace("-", " ")));
+    }
+
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.AUTO_COMMIT)) {
       builder.autocommit(
           boolValue(
@@ -202,7 +237,9 @@ public final class MariadbConnectionConfiguration {
     if (connectionFactoryOptions.hasOption(
         MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES)) {
       String connAttributes =
-          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES);
+          (String)
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.CONNECTION_ATTRIBUTES);
       builder.connectionAttributes(getMapFromString(connAttributes));
     }
 
@@ -216,32 +253,39 @@ public final class MariadbConnectionConfiguration {
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SSL_MODE)) {
       builder.sslMode(
           SslMode.from(
-              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SSL_MODE)));
+              (String)
+                  connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SSL_MODE)));
     }
     builder.serverSslCert(
-        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SERVER_SSL_CERT));
+        (String)
+            connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SERVER_SSL_CERT));
     builder.clientSslCert(
-        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_CERT));
+        (String)
+            connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_CERT));
     builder.clientSslKey(
-        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_KEY));
+        (String)
+            connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_KEY));
     builder.clientSslPassword(
-        connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_PWD));
+        (String)
+            connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.CLIENT_SSL_PWD));
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TLS_PROTOCOL)) {
       String[] protocols =
-          connectionFactoryOptions
-              .getValue(MariadbConnectionFactoryProvider.TLS_PROTOCOL)
+          ((String)
+                  connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.TLS_PROTOCOL))
               .split("[,;\\s]+");
       builder.tlsProtocol(protocols);
     }
-    builder.password(connectionFactoryOptions.getValue(PASSWORD));
-    builder.username(connectionFactoryOptions.getRequiredValue(USER));
+    builder.password((CharSequence) connectionFactoryOptions.getValue(PASSWORD));
+    builder.username((String) connectionFactoryOptions.getRequiredValue(USER));
     if (connectionFactoryOptions.hasOption(PORT)) {
       builder.port(intValue(connectionFactoryOptions.getValue(PORT)));
     }
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.PAM_OTHER_PASSWORD)) {
       String s =
-          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.PAM_OTHER_PASSWORD);
+          (String)
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.PAM_OTHER_PASSWORD);
       String[] pairs = s.split(",");
       try {
         for (int i = 0; i < pairs.length; i++) {
@@ -251,6 +295,12 @@ public final class MariadbConnectionConfiguration {
         // eat, StandardCharsets.UTF_8 is always supported
       }
       builder.pamOtherPwd(pairs);
+    }
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.LOOP_RESOURCES)) {
+      LoopResources loopResources =
+          (LoopResources)
+              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.LOOP_RESOURCES);
+      builder.loopResources(loopResources);
     }
 
     return builder;
@@ -295,9 +345,13 @@ public final class MariadbConnectionConfiguration {
     return this.database;
   }
 
+  public HaMode getHaMode() {
+    return this.haMode;
+  }
+
   @Nullable
-  public String getHost() {
-    return this.host;
+  public List<HostAddress> getHostAddresses() {
+    return this.hostAddresses;
   }
 
   @Nullable
@@ -368,16 +422,24 @@ public final class MariadbConnectionConfiguration {
     return prepareCacheSize;
   }
 
-  public Duration getSocketTimeout() {
-    return socketTimeout;
-  }
-
   public boolean isTcpKeepAlive() {
     return tcpKeepAlive;
   }
 
   public boolean isTcpAbortiveClose() {
     return tcpAbortiveClose;
+  }
+
+  public boolean isTransactionReplay() {
+    return transactionReplay;
+  }
+
+  public String[] getRestrictedAuth() {
+    return restrictedAuth;
+  }
+
+  public LoopResources loopResources() {
+    return loopResources;
   }
 
   @Override
@@ -399,21 +461,19 @@ public final class MariadbConnectionConfiguration {
         + "database='"
         + database
         + '\''
-        + ", host='"
-        + host
-        + '\''
+        + ", hosts={"
+        + (hostAddresses == null ? "" : Arrays.toString(hostAddresses.toArray()))
+        + '}'
         + ", connectTimeout="
         + connectTimeout
-        + ", socketTimeout="
-        + socketTimeout
         + ", tcpKeepAlive="
         + tcpKeepAlive
         + ", tcpAbortiveClose="
         + tcpAbortiveClose
+        + ", transactionReplay="
+        + transactionReplay
         + ", password="
         + hiddenPwd
-        + ", port="
-        + port
         + ", prepareCacheSize="
         + prepareCacheSize
         + ", socket='"
@@ -450,6 +510,8 @@ public final class MariadbConnectionConfiguration {
         + tinyInt1isBit
         + ", pamOtherPwd="
         + hiddenPamPwd
+        + ", restrictedAuth="
+        + restrictedAuth
         + '}';
   }
 
@@ -460,15 +522,17 @@ public final class MariadbConnectionConfiguration {
    */
   public static final class Builder implements Cloneable {
 
+    @Nullable private String haMode;
     @Nullable private String rsaPublicKey;
     @Nullable private String cachingRsaPublicKey;
     private boolean allowPublicKeyRetrieval;
     @Nullable private String username;
     @Nullable private Duration connectTimeout;
-    @Nullable private Duration socketTimeout;
     @Nullable private Boolean tcpKeepAlive;
     @Nullable private Boolean tcpAbortiveClose;
+    @Nullable private Boolean transactionReplay;
     @Nullable private String database;
+    @Nullable private List<HostAddress> hostAddresses;
     @Nullable private String host;
     @Nullable private Map<String, String> sessionVariables;
     @Nullable private Map<String, String> connectionAttributes;
@@ -478,6 +542,7 @@ public final class MariadbConnectionConfiguration {
     private boolean allowMultiQueries = false;
     private boolean allowPipelining = true;
     private boolean useServerPrepStmts = false;
+    private IsolationLevel isolationLevel = null;
     private boolean autocommit = true;
     private boolean tinyInt1isBit = true;
     @Nullable Integer prepareCacheSize;
@@ -488,6 +553,8 @@ public final class MariadbConnectionConfiguration {
     @Nullable private CharSequence clientSslPassword;
     private SslMode sslMode = SslMode.DISABLE;
     private CharSequence[] pamOtherPwd;
+    private String restrictedAuth;
+    @Nullable private LoopResources loopResources;
 
     private Builder() {}
 
@@ -512,16 +579,18 @@ public final class MariadbConnectionConfiguration {
       }
 
       return new MariadbConnectionConfiguration(
+          this.haMode,
           this.connectTimeout,
-          this.socketTimeout,
           this.tcpKeepAlive,
           this.tcpAbortiveClose,
+          this.transactionReplay,
           this.database,
           this.host,
           this.connectionAttributes,
           this.sessionVariables,
           this.password,
           this.port,
+          this.hostAddresses,
           this.socket,
           this.username,
           this.allowMultiQueries,
@@ -536,10 +605,13 @@ public final class MariadbConnectionConfiguration {
           this.cachingRsaPublicKey,
           this.allowPublicKeyRetrieval,
           this.useServerPrepStmts,
+          this.isolationLevel,
           this.autocommit,
           this.prepareCacheSize,
           this.pamOtherPwd,
-          this.tinyInt1isBit);
+          this.tinyInt1isBit,
+          this.restrictedAuth,
+          this.loopResources);
     }
 
     /**
@@ -553,8 +625,18 @@ public final class MariadbConnectionConfiguration {
       return this;
     }
 
-    public Builder socketTimeout(@Nullable Duration socketTimeout) {
-      this.socketTimeout = socketTimeout;
+    public Builder haMode(@Nullable String haMode) {
+      this.haMode = haMode;
+      return this;
+    }
+
+    public Builder hostAddresses(@Nullable List<HostAddress> hostAddresses) {
+      this.hostAddresses = hostAddresses;
+      return this;
+    }
+
+    public Builder restrictedAuth(@Nullable String restrictedAuth) {
+      this.restrictedAuth = restrictedAuth;
       return this;
     }
 
@@ -565,6 +647,11 @@ public final class MariadbConnectionConfiguration {
 
     public Builder tcpAbortiveClose(@Nullable Boolean tcpAbortiveClose) {
       this.tcpAbortiveClose = tcpAbortiveClose;
+      return this;
+    }
+
+    public Builder transactionReplay(@Nullable Boolean transactionReplay) {
+      this.transactionReplay = transactionReplay;
       return this;
     }
 
@@ -765,6 +852,17 @@ public final class MariadbConnectionConfiguration {
     }
 
     /**
+     * Permit to set default isolation level
+     *
+     * @param isolationLevel transaction isolation level
+     * @return this {@link Builder}
+     */
+    public Builder isolationLevel(IsolationLevel isolationLevel) {
+      this.isolationLevel = isolationLevel;
+      return this;
+    }
+
+    /**
      * Permit to indicate default autocommit value. Default value True.
      *
      * @param autocommit use autocommit
@@ -837,6 +935,11 @@ public final class MariadbConnectionConfiguration {
       return this;
     }
 
+    public Builder loopResources(LoopResources loopResources) {
+      this.loopResources = Assert.requireNonNull(loopResources, "loopResources must not be null");
+      return this;
+    }
+
     @Override
     public Builder clone() throws CloneNotSupportedException {
       return (Builder) super.clone();
@@ -868,12 +971,12 @@ public final class MariadbConnectionConfiguration {
           + username
           + ", connectTimeout="
           + connectTimeout
-          + ", socketTimeout="
-          + socketTimeout
           + ", tcpKeepAlive="
           + tcpKeepAlive
           + ", tcpAbortiveClose="
           + tcpAbortiveClose
+          + ", transactionReplay="
+          + transactionReplay
           + ", database="
           + database
           + ", host="
@@ -884,8 +987,13 @@ public final class MariadbConnectionConfiguration {
           + connectionAttributes
           + ", password="
           + hiddenPwd
+          + ", restrictedAuth="
+          + restrictedAuth
           + ", port="
           + port
+          + ", hosts={"
+          + (hostAddresses == null ? "" : Arrays.toString(hostAddresses.toArray()))
+          + '}'
           + ", socket="
           + socket
           + ", allowMultiQueries="
@@ -895,6 +1003,8 @@ public final class MariadbConnectionConfiguration {
           + ", useServerPrepStmts="
           + useServerPrepStmts
           + ", prepareCacheSize="
+          + isolationLevel
+          + ", isolationLevel="
           + prepareCacheSize
           + ", tlsProtocol="
           + tlsProtocol

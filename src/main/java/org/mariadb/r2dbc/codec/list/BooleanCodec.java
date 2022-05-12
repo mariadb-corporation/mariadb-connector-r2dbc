@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class BooleanCodec implements Codec<Boolean> {
@@ -19,7 +22,7 @@ public class BooleanCodec implements Codec<Boolean> {
 
   private static final EnumSet<DataType> COMPATIBLE_TYPES =
       EnumSet.of(
-          DataType.VARCHAR,
+          DataType.TEXT,
           DataType.VARSTRING,
           DataType.STRING,
           DataType.BIGINT,
@@ -34,7 +37,7 @@ public class BooleanCodec implements Codec<Boolean> {
           DataType.BIT);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType())
+    return COMPATIBLE_TYPES.contains(column.getDataType())
         && ((type.isPrimitive() && type == Boolean.TYPE) || type.isAssignableFrom(Boolean.class));
   }
 
@@ -44,8 +47,12 @@ public class BooleanCodec implements Codec<Boolean> {
 
   @Override
   public Boolean decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Boolean> type) {
-    switch (column.getType()) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Boolean> type,
+      ExceptionFactory factory) {
+    switch (column.getDataType()) {
       case BIT:
         return ByteCodec.parseBit(buf, length) != 0;
 
@@ -75,9 +82,13 @@ public class BooleanCodec implements Codec<Boolean> {
 
   @Override
   public Boolean decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Boolean> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Boolean> type,
+      ExceptionFactory factory) {
 
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case BIT:
         return ByteCodec.parseBit(buf, length) != 0;
 
@@ -113,13 +124,16 @@ public class BooleanCodec implements Codec<Boolean> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Boolean value) {
-    BufferUtils.writeAscii(buf, value ? "1" : "0");
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> BufferUtils.encodeAscii(allocator, ((Boolean) value) ? "1" : "0"));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Boolean value) {
-    buf.writeByte(value ? 1 : 0);
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(() -> BufferUtils.encodeByte(allocator, ((Boolean) value) ? 1 : 0));
   }
 
   public DataType getBinaryEncodeType() {

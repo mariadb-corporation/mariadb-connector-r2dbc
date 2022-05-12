@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.authentication;
 
@@ -39,11 +39,17 @@ public class PamPluginTest extends BaseConnectionTest {
         .blockLast();
     sharedConn.createStatement("FLUSH PRIVILEGES").execute().blockLast();
 
+    int testPort = TestConfiguration.port;
+    if (System.getenv("TEST_PAM_PORT") != null) {
+      testPort = Integer.parseInt(System.getenv("TEST_PAM_PORT"));
+    }
+
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
             .username(System.getenv("TEST_PAM_USER"))
             .password(System.getenv("TEST_PAM_PWD"))
+            .port(testPort)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();

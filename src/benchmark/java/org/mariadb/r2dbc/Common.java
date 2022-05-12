@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc;
 
@@ -36,6 +36,7 @@ public class Common {
     protected Connection jdbcPrepare;
 
     protected io.r2dbc.spi.Connection r2dbc;
+    protected io.r2dbc.spi.Connection r2dbcFailover;
     protected io.r2dbc.spi.Connection r2dbcPrepare;
 //    protected io.r2dbc.spi.Connection r2dbcMysql;
 
@@ -49,7 +50,15 @@ public class Common {
               .password(password)
               .database(database)
               .build();
-
+      MariadbConnectionConfiguration confFailover =
+              MariadbConnectionConfiguration.builder()
+                      .host(host)
+                      .port(port)
+                      .username(username)
+                      .password(password)
+                      .database(database)
+                      .haMode(HaMode.SEQUENTIAL.name())
+                      .build();
       MariadbConnectionConfiguration confPrepare =
           MariadbConnectionConfiguration.builder()
               .host(host)
@@ -60,25 +69,16 @@ public class Common {
               .useServerPrepStmts(true)
               .build();
 
-//      MySqlConnectionConfiguration confMysql =
-//          MySqlConnectionConfiguration.builder()
-//              .host(host)
-//              .username(username)
-//              .database(database)
-//              .password(password)
-//              .sslMode(SslMode.DISABLED)
-//              .port(port)
-//              .build();
       String jdbcUrl =
           String.format(
-              "mariadb://%s:%s/%s?user=%s&password=%s", host, port, database, username, password);
+              "jdbc:mariadb://%s:%s/%s?user=%s&password=%s", host, port, database, username, password);
 
       try {
-        jdbc = DriverManager.getConnection("jdbc:" + jdbcUrl);
-        jdbcPrepare = DriverManager.getConnection("jdbc:" + jdbcUrl + "&useServerPrepStmts=true");
+        jdbc = DriverManager.getConnection(jdbcUrl);
+        jdbcPrepare = DriverManager.getConnection(jdbcUrl + "&useServerPrepStmts=true");
         r2dbc = MariadbConnectionFactory.from(conf).create().block();
+        r2dbcFailover = MariadbConnectionFactory.from(confFailover).create().block();
         r2dbcPrepare = MariadbConnectionFactory.from(confPrepare).create().block();
-//        r2dbcMysql = MySqlConnectionFactory.from(confMysql).create().block();
 
       } catch (SQLException e) {
         e.printStackTrace();
@@ -91,8 +91,8 @@ public class Common {
       jdbc.close();
       jdbcPrepare.close();
       Mono.from(r2dbc.close()).block();
+      Mono.from(r2dbcFailover.close()).block();
       Mono.from(r2dbcPrepare.close()).block();
-//      Mono.from(r2dbcMysql.close()).block();
     }
   }
 }

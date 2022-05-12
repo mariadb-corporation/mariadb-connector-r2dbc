@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.parameter;
 
@@ -15,11 +15,7 @@ import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
@@ -32,7 +28,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class BlobParameterTest extends BaseConnectionTest {
-  private static MariadbConnectionMetadata meta = sharedConn.getMetadata();
+  private static final MariadbConnectionMetadata meta = sharedConn.getMetadata();
 
   @BeforeAll
   public static void before2() {
@@ -81,6 +77,7 @@ public class BlobParameterTest extends BaseConnectionTest {
 
   @Test
   void bigIntValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     bigIntValue(sharedConnPrepare);
   }
 
@@ -129,6 +126,7 @@ public class BlobParameterTest extends BaseConnectionTest {
 
   @Test
   void decimalValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     decimalValue(sharedConnPrepare);
   }
 
@@ -153,6 +151,7 @@ public class BlobParameterTest extends BaseConnectionTest {
 
   @Test
   void intValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     intValue(sharedConnPrepare);
   }
 
@@ -177,6 +176,7 @@ public class BlobParameterTest extends BaseConnectionTest {
 
   @Test
   void byteValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     byteValue(sharedConnPrepare);
   }
 
@@ -214,7 +214,6 @@ public class BlobParameterTest extends BaseConnectionTest {
                 Blob.from(
                     Mono.just(ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127, (byte) 92}))))
             .bind(2, Blob.from(Mono.just(ByteBuffer.wrap(new byte[] {0}))));
-    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=BlobCodec,"));
     stmt.execute().blockLast();
     validateNotNull(
         ByteBuffer.wrap(new byte[] {(byte) 15}),
@@ -239,7 +238,6 @@ public class BlobParameterTest extends BaseConnectionTest {
             .bind(0, new ByteArrayInputStream(new byte[] {(byte) 15}))
             .bind(1, new ByteArrayInputStream(new byte[] {(byte) 1, 0, (byte) 127}))
             .bind(2, new ByteArrayInputStream(new byte[] {0}));
-    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=StreamCodec,"));
     stmt.execute().blockLast();
     validateNotNull(
         ByteBuffer.wrap(new byte[] {(byte) 15}),
@@ -290,7 +288,6 @@ public class BlobParameterTest extends BaseConnectionTest {
             .bind(0, new ByteArrayInputStream(new byte[] {(byte) 15}))
             .bind(1, new ByteArrayInputStream((new byte[] {(byte) 1, 39, (byte) 127})))
             .bind(2, new ByteArrayInputStream((new byte[] {0})));
-    Assertions.assertTrue(stmt.toString().contains("Parameter{codec=StreamCodec,"));
     stmt.execute().blockLast();
     validateNotNull(
         ByteBuffer.wrap(new byte[] {(byte) 15}),
@@ -337,6 +334,7 @@ public class BlobParameterTest extends BaseConnectionTest {
 
   @Test
   void doubleValuePrepare() {
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(8, 0, 0));
     doubleValue(sharedConnPrepare);
     validateNotNull(
         ByteBuffer.wrap("11".getBytes()),

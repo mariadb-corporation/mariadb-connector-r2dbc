@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import java.nio.charset.StandardCharsets;
+import io.netty.buffer.ByteBufAllocator;
 import java.util.BitSet;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class BitSetCodec implements Codec<BitSet> {
@@ -37,18 +39,26 @@ public class BitSetCodec implements Codec<BitSet> {
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return column.getType() == DataType.BIT && type.isAssignableFrom(BitSet.class);
+    return column.getDataType() == DataType.BIT && type.isAssignableFrom(BitSet.class);
   }
 
   @Override
   public BitSet decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BitSet> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends BitSet> type,
+      ExceptionFactory factory) {
     return parseBit(buf, length);
   }
 
   @Override
   public BitSet decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends BitSet> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends BitSet> type,
+      ExceptionFactory factory) {
     return parseBit(buf, length);
   }
 
@@ -57,24 +67,31 @@ public class BitSetCodec implements Codec<BitSet> {
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, BitSet value) {
-    byte[] bytes = value.toByteArray();
-    revertOrder(bytes);
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> {
+          byte[] bytes = ((BitSet) value).toByteArray();
+          revertOrder(bytes);
 
-    StringBuilder sb = new StringBuilder(bytes.length * Byte.SIZE + 3);
-    sb.append("b'");
-    for (int i = 0; i < Byte.SIZE * bytes.length; i++)
-      sb.append((bytes[i / Byte.SIZE] << i % Byte.SIZE & 0x80) == 0 ? '0' : '1');
-    sb.append("'");
-    buf.writeCharSequence(sb.toString(), StandardCharsets.US_ASCII);
+          StringBuilder sb = new StringBuilder(bytes.length * Byte.SIZE + 3);
+          sb.append("b'");
+          for (int i = 0; i < Byte.SIZE * bytes.length; i++)
+            sb.append((bytes[i / Byte.SIZE] << i % Byte.SIZE & 0x80) == 0 ? '0' : '1');
+          sb.append("'");
+          return BufferUtils.encodeAscii(allocator, sb.toString());
+        });
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, BitSet value) {
-    byte[] bytes = value.toByteArray();
-    revertOrder(bytes);
-    BufferUtils.writeLengthEncode(bytes.length, buf);
-    buf.writeBytes(bytes);
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> {
+          byte[] bytes = ((BitSet) value).toByteArray();
+          revertOrder(bytes);
+          return BufferUtils.encodeLengthBytes(allocator, bytes);
+        });
   }
 
   public DataType getBinaryEncodeType() {

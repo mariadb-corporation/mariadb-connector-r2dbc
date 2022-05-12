@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
-import org.mariadb.r2dbc.client.Context;
+import io.r2dbc.spi.IsolationLevel;
+import io.r2dbc.spi.Result;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
@@ -12,7 +15,7 @@ import org.mariadb.r2dbc.util.constants.StateChange;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
-public class OkPacket implements ServerMessage {
+public class OkPacket implements ServerMessage, Result.UpdateCount {
   public static final byte TYPE = (byte) 0x00;
   private static final Logger logger = Loggers.getLogger(OkPacket.class);
   private final Sequencer sequencer;
@@ -56,13 +59,35 @@ public class OkPacket implements ServerMessage {
               String variable = BufferUtils.readLengthEncodedString(sessionVariableBuf);
               String value = BufferUtils.readLengthEncodedString(sessionVariableBuf);
               logger.debug("System variable change :  {} = {}", variable, value);
+
+              switch (variable) {
+                case "transaction_isolation":
+                case "tx_isolation":
+                  switch (value) {
+                    case "REPEATABLE-READ":
+                      context.setIsolationLevel(IsolationLevel.REPEATABLE_READ);
+                      break;
+
+                    case "READ-UNCOMMITTED":
+                      context.setIsolationLevel(IsolationLevel.READ_UNCOMMITTED);
+                      break;
+
+                    case "SERIALIZABLE":
+                      context.setIsolationLevel(IsolationLevel.SERIALIZABLE);
+                      break;
+
+                    default:
+                      context.setIsolationLevel(IsolationLevel.READ_COMMITTED);
+                      break;
+                  }
+              }
               break;
 
             case StateChange.SESSION_TRACK_SCHEMA:
               ByteBuf sessionSchemaBuf = BufferUtils.readLengthEncodedBuffer(stateInfo);
-              String database = BufferUtils.readLengthEncodedString(sessionSchemaBuf);
-              // context.setDatabase(database);
-              logger.debug("Database change : now is '{}'", database);
+              String schema = BufferUtils.readLengthEncodedString(sessionSchemaBuf);
+              context.setDatabase(schema);
+              logger.debug("Schema change : now is '{}'", schema);
               break;
           }
         }
@@ -76,10 +101,6 @@ public class OkPacket implements ServerMessage {
         serverStatus,
         warningCount,
         (serverStatus & ServerStatus.MORE_RESULTS_EXISTS) == 0);
-  }
-
-  public long getAffectedRows() {
-    return affectedRows;
   }
 
   public long getLastInsertId() {
@@ -102,5 +123,26 @@ public class OkPacket implements ServerMessage {
   @Override
   public boolean resultSetEnd() {
     return true;
+  }
+
+  @Override
+  public long value() {
+    return affectedRows;
+  }
+
+  @Override
+  public String toString() {
+    return "OkPacket{"
+        + "affectedRows="
+        + affectedRows
+        + ", lastInsertId="
+        + lastInsertId
+        + ", serverStatus="
+        + serverStatus
+        + ", warningCount="
+        + warningCount
+        + ", ending="
+        + ending
+        + '}';
   }
 }

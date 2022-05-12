@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.netty.buffer.ByteBufAllocator;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-import org.mariadb.r2dbc.client.Context;
+import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
+import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class ByteCodec implements Codec<Byte> {
@@ -40,7 +42,7 @@ public class ByteCodec implements Codec<Byte> {
           DataType.ENUM,
           DataType.VARSTRING,
           DataType.STRING,
-          DataType.VARCHAR);
+          DataType.TEXT);
 
   public static long parseBit(ByteBuf buf, int length) {
     if (length == 1) {
@@ -56,7 +58,7 @@ public class ByteCodec implements Codec<Byte> {
   }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getType())
+    return COMPATIBLE_TYPES.contains(column.getDataType())
         && ((type.isPrimitive() && type == Byte.TYPE) || type.isAssignableFrom(Byte.class));
   }
 
@@ -66,10 +68,14 @@ public class ByteCodec implements Codec<Byte> {
 
   @Override
   public Byte decodeText(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Byte> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Byte> type,
+      ExceptionFactory factory) {
 
     long result;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TINYINT:
       case SMALLINT:
       case MEDIUMINT:
@@ -100,14 +106,15 @@ public class ByteCodec implements Codec<Byte> {
         try {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).byteValueExact();
         } catch (NumberFormatException | ArithmeticException nfe) {
-          throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' (%s) cannot be decoded as Byte", str, column.getType()));
+          throw factory.createParsingException(
+              String.format(
+                  "value '%s' (%s) cannot be decoded as Byte", str, column.getDataType()));
         }
         break;
     }
 
     if ((byte) result != result || (result < 0 && !column.isSigned())) {
-      throw new R2dbcNonTransientResourceException("byte overflow");
+      throw factory.createParsingException("byte overflow");
     }
 
     return (byte) result;
@@ -115,10 +122,14 @@ public class ByteCodec implements Codec<Byte> {
 
   @Override
   public Byte decodeBinary(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, Class<? extends Byte> type) {
+      ByteBuf buf,
+      int length,
+      ColumnDefinitionPacket column,
+      Class<? extends Byte> type,
+      ExceptionFactory factory) {
 
     long result;
-    switch (column.getType()) {
+    switch (column.getDataType()) {
       case TINYINT:
         result = column.isSigned() ? buf.readByte() : buf.readUnsignedByte();
         break;
@@ -160,8 +171,8 @@ public class ByteCodec implements Codec<Byte> {
         float f = buf.readFloatLE();
         result = (long) f;
         if ((byte) result != result || (result < 0 && !column.isSigned())) {
-          throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' (%s) cannot be decoded as Byte", f, column.getType()));
+          throw factory.createParsingException(
+              String.format("value '%s' (%s) cannot be decoded as Byte", f, column.getDataType()));
         }
         break;
 
@@ -169,23 +180,24 @@ public class ByteCodec implements Codec<Byte> {
         double d = buf.readDoubleLE();
         result = (long) d;
         if ((byte) result != result || (result < 0 && !column.isSigned())) {
-          throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' (%s) cannot be decoded as Byte", d, column.getType()));
+          throw factory.createParsingException(
+              String.format("value '%s' (%s) cannot be decoded as Byte", d, column.getDataType()));
         }
         break;
 
       case OLDDECIMAL:
       case DECIMAL:
       case ENUM:
-      case VARCHAR:
+      case TEXT:
       case VARSTRING:
       case STRING:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
           result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).byteValueExact();
         } catch (NumberFormatException | ArithmeticException nfe) {
-          throw new R2dbcNonTransientResourceException(
-              String.format("value '%s' (%s) cannot be decoded as Byte", str, column.getType()));
+          throw factory.createParsingException(
+              String.format(
+                  "value '%s' (%s) cannot be decoded as Byte", str, column.getDataType()));
         }
         break;
 
@@ -198,20 +210,23 @@ public class ByteCodec implements Codec<Byte> {
     }
 
     if ((byte) result != result || (result < 0 && !column.isSigned())) {
-      throw new R2dbcNonTransientResourceException("byte overflow");
+      throw factory.createParsingException("byte overflow");
     }
 
     return (byte) result;
   }
 
   @Override
-  public void encodeText(ByteBuf buf, Context context, Byte value) {
-    BufferUtils.writeAscii(buf, Integer.toString((int) value));
+  public BindValue encodeText(
+      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
+    return createEncodedValue(
+        () -> BufferUtils.encodeAscii(allocator, Integer.toString((Byte) value)));
   }
 
   @Override
-  public void encodeBinary(ByteBuf buf, Context context, Byte value) {
-    buf.writeByte(value);
+  public BindValue encodeBinary(
+      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
+    return createEncodedValue(() -> BufferUtils.encodeByte(allocator, (Byte) value));
   }
 
   public DataType getBinaryEncodeType() {

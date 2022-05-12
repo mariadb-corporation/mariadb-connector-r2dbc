@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.util;
 
@@ -27,7 +27,7 @@ public class SslConfig {
 
   public static final SslConfig DISABLE_INSTANCE = new SslConfig(SslMode.DISABLE);
 
-  private SslMode sslMode;
+  private final SslMode sslMode;
   private String serverSslCert;
   private String clientSslCert;
   private String clientSslKey;
@@ -133,6 +133,7 @@ public class SslConfig {
     return inStream;
   }
 
+  @SuppressWarnings("static")
   public GenericFutureListener<Future<? super io.netty.channel.Channel>> getHostNameVerifier(
       CompletableFuture<Void> result, String host, long threadId, SSLEngine engine) {
     return future -> {
@@ -150,7 +151,8 @@ public class SslConfig {
             // of error.
             Certificate[] certs = session.getPeerCertificates();
             X509Certificate cert = (X509Certificate) certs[0];
-            hostnameVerifier.verify(host, cert, threadId);
+
+            DefaultHostnameVerifier.verify(host, cert, threadId);
           }
         } catch (SSLException ex) {
           result.completeExceptionally(

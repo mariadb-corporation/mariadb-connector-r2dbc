@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (c) 2020-2021 MariaDB Corporation Ab
+# Copyright (c) 2020-2022 MariaDB Corporation Ab
 
-org.mariadb.r2dbc.message.flow.NativePasswordPluginFlow
-org.mariadb.r2dbc.message.flow.ClearPasswordPluginFlow
-org.mariadb.r2dbc.message.flow.Ed25519PasswordPluginFlow
-org.mariadb.r2dbc.message.flow.Sha256PasswordPluginFlow
-org.mariadb.r2dbc.message.flow.CachingSha2PasswordFlow
-org.mariadb.r2dbc.message.flow.PamPluginFlow
+org.mariadb.r2dbc.authentication.standard.NativePasswordPluginFlow
+org.mariadb.r2dbc.authentication.addon.ClearPasswordPluginFlow
+org.mariadb.r2dbc.authentication.standard.Ed25519PasswordPluginFlow
+org.mariadb.r2dbc.authentication.standard.Sha256PasswordPluginFlow
+org.mariadb.r2dbc.authentication.standard.CachingSha2PasswordFlow
+org.mariadb.r2dbc.authentication.standard.PamPluginFlow

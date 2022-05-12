@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
@@ -39,9 +39,7 @@ public class BigResultSetTest extends BaseConnectionTest {
 
   @Test
   void BigResultSet() {
-    Assumptions.assumeTrue(
-        System.getenv("RUN_LONG_TEST") == null
-            || !Boolean.parseBoolean(System.getenv("RUN_LONG_TEST")));
+    Assumptions.assumeTrue(runLongTest());
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     // sequence table requirement
     Assumptions.assumeTrue(meta.isMariaDBServer() && minVersion(10, 1, 0));
@@ -57,7 +55,6 @@ public class BigResultSetTest extends BaseConnectionTest {
 
   @Test
   void multipleFluxSubscription() {
-    Assumptions.assumeTrue(Boolean.parseBoolean(System.getProperty("RUN_LONG_TEST", "true")));
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     // sequence table requirement
     Assumptions.assumeTrue(meta.isMariaDBServer() && minVersion(10, 1, 0));
@@ -69,10 +66,7 @@ public class BigResultSetTest extends BaseConnectionTest {
     AtomicInteger total = new AtomicInteger();
 
     for (int i = 0; i < 10; i++) {
-      flux1.subscribe(
-          s -> {
-            total.incrementAndGet();
-          });
+      flux1.subscribe(s -> total.incrementAndGet());
     }
 
     flux1.blockLast();
@@ -81,17 +75,13 @@ public class BigResultSetTest extends BaseConnectionTest {
 
   @Test
   void multiPacketRow() {
-    Assumptions.assumeTrue(
-        checkMaxAllowedPacketMore20m(sharedConn)
-            && Boolean.parseBoolean(System.getProperty("RUN_LONG_TEST", "true")));
+    Assumptions.assumeTrue(checkMaxAllowedPacketMore20m(sharedConn) && runLongTest());
     multiPacketRow(sharedConn);
   }
 
   @Test
   void multiPacketRowPrepare() {
-    Assumptions.assumeTrue(
-        checkMaxAllowedPacketMore20m(sharedConn)
-            && Boolean.parseBoolean(System.getProperty("RUN_LONG_TEST", "true")));
+    Assumptions.assumeTrue(checkMaxAllowedPacketMore20m(sharedConn) && runLongTest());
     multiPacketRow(sharedConnPrepare);
   }
 

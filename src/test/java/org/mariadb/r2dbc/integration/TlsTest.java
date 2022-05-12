@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
@@ -12,13 +12,14 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 public class TlsTest extends BaseConnectionTest {
@@ -40,12 +41,14 @@ public class TlsTest extends BaseConnectionTest {
             : Integer.valueOf(System.getenv("TEST_MAXSCALE_TLS_PORT"));
     // try default if not present
     if (serverSslCert == null) {
-      File sslDir = new File(System.getProperty("user.dir") + "/../../ssl");
+      File sslDir = new File(System.getProperty("user.dir") + "/../ssl");
+      if (!sslDir.exists() || !sslDir.isDirectory()) {
+        sslDir = new File(System.getProperty("user.dir") + "/../../ssl");
+      }
       if (sslDir.exists() && sslDir.isDirectory()) {
-
-        serverSslCert = System.getProperty("user.dir") + "/../../ssl/server.crt";
-        clientSslCert = System.getProperty("user.dir") + "/../../ssl/client.crt";
-        clientSslKey = System.getProperty("user.dir") + "/../../ssl/client.key";
+        serverSslCert = sslDir.getPath() + "/server.crt";
+        clientSslCert = sslDir.getPath() + "/client.crt";
+        clientSslKey = sslDir.getPath() + "/client.key";
       }
     }
 
@@ -60,7 +63,7 @@ public class TlsTest extends BaseConnectionTest {
         .createStatement("DROP USER 'MUTUAL_AUTH'")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Mono.empty())
+        .onErrorReturn(Flux.empty())
         .subscribe();
     String create_sql;
     String grant_sql;
@@ -75,6 +78,39 @@ public class TlsTest extends BaseConnectionTest {
     sharedConn.createStatement(create_sql).execute().subscribe();
     sharedConn.createStatement(grant_sql).execute().subscribe();
     sharedConn.createStatement("FLUSH PRIVILEGES").execute().blockLast();
+  }
+
+  @Test
+  public void testWithoutPassword() throws Throwable {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv"))
+            && !"mariadb-es".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(haveSsl(sharedConn));
+    sharedConn.createStatement("CREATE USER userWithoutPassword").execute().blockLast();
+    sharedConn
+        .createStatement(
+            String.format(
+                "GRANT SELECT on `%s`.* to userWithoutPassword", TestConfiguration.database))
+        .execute()
+        .blockLast();
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .username("userWithoutPassword")
+            .password("")
+            .port(sslPort)
+            .sslMode(SslMode.TRUST)
+            .build();
+    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    connection.close();
+    sharedConn
+        .createStatement("DROP USER IF EXISTS userWithoutPassword")
+        .execute()
+        .map(res -> res.getRowsUpdated())
+        .onErrorReturn(Flux.empty())
+        .blockLast();
   }
 
   @Test
@@ -171,7 +207,10 @@ public class TlsTest extends BaseConnectionTest {
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
-    String trustProtocol = minVersion(8, 0, 0) ? "TLSv1.2" : "TLSv1.1";
+    String trustProtocol =
+        (isMariaDBServer() && minVersion(10, 3, 0)) || (!isMariaDBServer() && minVersion(8, 0, 0))
+            ? "TLSv1.2"
+            : "TLSv1.1";
     Assumptions.assumeTrue(haveSsl(sharedConn));
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
@@ -352,14 +391,15 @@ public class TlsTest extends BaseConnectionTest {
             .serverSslCert(serverSslCert)
             .clientSslKey(clientSslKey)
             .build();
-    new MariadbConnectionFactory(conf)
-        .create()
-        .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcNonTransientException
-                    && throwable.getMessage().contains("Access denied"))
-        .verify();
+    try {
+      new MariadbConnectionFactory(conf).create().block();
+      Assertions.fail();
+    } catch (Throwable throwable) {
+      throwable.printStackTrace();
+      Assertions.assertTrue(
+          throwable instanceof R2dbcNonTransientException
+              && throwable.getMessage().contains("Access denied"));
+    }
   }
 
   @Test

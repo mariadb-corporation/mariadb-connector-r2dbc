@@ -1,7 +1,9 @@
 os: linux
 dist: focal
 language: java
-services: docker
+services:
+  - docker
+  - mysql
 jdk: openjdk11
 addons:
   hosts:
@@ -10,7 +12,7 @@ addons:
 
 before_install:
   - git clone https://github.com/mariadb-corporation/connector-test-machine.git
-env: packet=40
+env: packet=40 local=0 clear_text_plugin=0 RUN_LONG_TEST=true
 install:
   - |-
     case $TRAVIS_OS_NAME in
@@ -20,7 +22,7 @@ install:
         connector-test-machine/launch.bat -t "$srv" -v "$v" -d testr2
         ;;
       linux)
-        source connector-test-machine/launch.sh -t "$srv" -v "$v" -d testr2 -n 0 -l "$local" -p "$packet"
+        source connector-test-machine/launch.sh -t "$srv" -v "$v" -d testr2 -n 0 -l "$local" -p "$packet" -c "$clear_text_plugin"
         ;;
     esac
 
@@ -37,16 +39,14 @@ jobs:
     - env: srv=mariadb v=10.3 local=1
     - env: srv=mariadb v=10.4 local=1
     - env: srv=mariadb v=10.5 local=1
-    - env: srv=mariadb v=10.5 local=1
-      jdk: openjdk8
-      dist: bionic
     - env: srv=mariadb v=10.6 local=1
-    - env: srv=mariadb v=10.5 NO_BACKSLASH_ESCAPES=true
+    - env: srv=mariadb v=10.7 local=1 clear_text_plugin=1
+    - env: srv=mariadb v=10.6 NO_BACKSLASH_ESCAPES=true
     - env: srv=mariadb v=10.6 BENCH=1
     - if: type = push AND fork = false
       env: srv=maxscale
     - if: type = push AND fork = false
-      env: srv=mariadb-es v=10.5
+      env: srv=mariadb-es v=10.6
     - if: type = push AND fork = false
       env: srv=skysql
     - if: type = push AND fork = false

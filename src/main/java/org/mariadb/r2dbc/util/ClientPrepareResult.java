@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.util;
 
@@ -12,9 +12,9 @@ public class ClientPrepareResult implements PrepareResult {
   private final List<byte[]> queryParts;
   private final List<String> paramNameList;
   private final int paramCount;
-  private boolean isQueryMultipleRewritable;
-  private boolean isReturning;
-  private boolean supportAddingReturning;
+  private final boolean isQueryMultipleRewritable;
+  private final boolean isReturning;
+  private final boolean supportAddingReturning;
 
   private ClientPrepareResult(
       List<byte[]> queryParts,

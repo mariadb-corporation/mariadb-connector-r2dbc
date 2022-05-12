@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.unit.util;
 
@@ -83,6 +83,19 @@ public class ClientPrepareResultTest {
         new String[] {
           "select '\\'\"`/*#' as a, ? as \\b, \"\\\"'returningInsertDeleteUpdate\" as c, ", " as d"
         });
+  }
+
+  @Test
+  public void stringReturningParsing() throws Exception {
+    checkParsing(
+        "select * from t \t RETURNINGa()",
+        0,
+        0,
+        true,
+        false,
+        false,
+        new String[] {"select * from t \t RETURNINGa()"},
+        new String[] {"select * from t \t RETURNINGa()"});
   }
 
   @Test

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.codec;
 
@@ -19,7 +19,7 @@ public enum DataType {
   DATETIME(12),
   YEAR(13),
   NEWDATE(14),
-  VARCHAR(15),
+  TEXT(15),
   BIT(16),
   JSON(245),
   DECIMAL(246),
@@ -65,7 +65,7 @@ public enum DataType {
 
     if (charsetNumber != 63 && typeValue >= 249 && typeValue <= 252) {
       // MariaDB Text dataType
-      return DataType.VARCHAR;
+      return DataType.TEXT;
     }
 
     return dataType;

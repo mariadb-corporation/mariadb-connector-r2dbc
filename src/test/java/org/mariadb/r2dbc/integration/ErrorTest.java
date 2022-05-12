@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
@@ -13,7 +13,7 @@ import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 public class ErrorTest extends BaseConnectionTest {
@@ -74,9 +74,11 @@ public class ErrorTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && (throwable
+                    && throwable.getMessage().contains("Fail to establish connection to")
+                    && throwable
+                        .getCause()
                         .getMessage()
-                        .contains("Access denied for user 'userWithoutRight'")))
+                        .contains("Access denied for user 'userWithoutRight'"))
         .verify();
   }
 
@@ -122,7 +124,7 @@ public class ErrorTest extends BaseConnectionTest {
           .createStatement("SET SESSION innodb_lock_wait_timeout=1")
           .execute()
           .map(res -> res.getRowsUpdated())
-          .onErrorReturn(Mono.empty())
+          .onErrorReturn(Flux.empty())
           .blockLast();
       connection.beginTransaction().block();
       connection

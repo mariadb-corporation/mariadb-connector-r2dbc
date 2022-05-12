@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.codec;
 
@@ -17,10 +17,12 @@ import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.util.MariadbType;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -30,11 +32,22 @@ public class StringParseTest extends BaseConnectionTest {
     sharedConn.createStatement("DROP TABLE IF EXISTS StringTable").execute().blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE StringTable (t1 varchar(256)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+            "CREATE TABLE StringTable (t1 varchar(256), t2 TEXT) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
         .execute()
         .blockLast();
     sharedConn
-        .createStatement("INSERT INTO StringTable VALUES ('some🌟'),('1'),('0'), (null)")
+        .createStatement(
+            "INSERT INTO StringTable VALUES ('some🌟', 'some🌟'),('1', '1'),('0', '0'), (null, null)")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "CREATE TABLE StringBinary (t1 varbinary(256), t2 varbinary(1024)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "INSERT INTO StringBinary VALUES ('some🌟', 'some🌟'),('1', '1'),('0', '0'), (null, null)")
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
@@ -43,6 +56,7 @@ public class StringParseTest extends BaseConnectionTest {
   @AfterAll
   public static void afterAll2() {
     sharedConn.createStatement("DROP TABLE IF EXISTS StringTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS StringBinary").execute().blockLast();
     sharedConn.createStatement("DROP TABLE IF EXISTS durationValue").execute().blockLast();
     sharedConn.createStatement("DROP TABLE IF EXISTS localTimeValue").execute().blockLast();
     sharedConn.createStatement("DROP TABLE IF EXISTS localDateValue").execute().blockLast();
@@ -87,6 +101,79 @@ public class StringParseTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
         .expectNext(Optional.of("some🌟"), Optional.of("1"), Optional.of("0"), Optional.empty())
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t2 FROM StringTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("some🌟"), Optional.of("1"), Optional.of("0"), Optional.empty())
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Object.class))))
+        .as(StepVerifier::create)
+        .expectNext(Optional.of("some🌟"), Optional.of("1"), Optional.of("0"), Optional.empty())
+        .verifyComplete();
+  }
+
+  @Test
+  void defaultValueBinary() {
+    defaultValueBinary(sharedConn);
+  }
+
+  @Test
+  void defaultValuePrepareBinary() {
+    defaultValueBinary(sharedConnPrepare);
+  }
+
+  private void defaultValueBinary(MariadbConnection connection) {
+    connection
+        .createStatement("SELECT t1 FROM StringBinary WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .consumeNextWith(
+            c -> {
+              Assertions.assertTrue(c.get() instanceof byte[]);
+              Assertions.assertArrayEquals(
+                  "some🌟".getBytes(StandardCharsets.UTF_8), (byte[]) c.get());
+            })
+        .consumeNextWith(
+            c ->
+                Assertions.assertArrayEquals(
+                    "1".getBytes(StandardCharsets.UTF_8), (byte[]) c.get()))
+        .consumeNextWith(
+            c ->
+                Assertions.assertArrayEquals(
+                    "0".getBytes(StandardCharsets.UTF_8), (byte[]) c.get()))
+        .expectNext(Optional.empty())
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t2 FROM StringBinary WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+        .as(StepVerifier::create)
+        .consumeNextWith(
+            c -> {
+              Assertions.assertTrue(c.get() instanceof byte[]);
+              Assertions.assertArrayEquals(
+                  "some🌟".getBytes(StandardCharsets.UTF_8), (byte[]) c.get());
+            })
+        .consumeNextWith(
+            c -> {
+              Assertions.assertArrayEquals("1".getBytes(StandardCharsets.UTF_8), (byte[]) c.get());
+            })
+        .consumeNextWith(
+            c -> {
+              Assertions.assertArrayEquals("0".getBytes(StandardCharsets.UTF_8), (byte[]) c.get());
+            })
+        .expectNext(Optional.empty())
         .verifyComplete();
     connection
         .createStatement("SELECT t1 FROM StringTable WHERE 1 = ?")
@@ -740,6 +827,22 @@ public class StringParseTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getJavaType()))
         .as(StepVerifier::create)
         .expectNextMatches(c -> c.equals(String.class))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t1 FROM StringTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(MariadbType.VARCHAR))
+        .verifyComplete();
+    connection
+        .createStatement("SELECT t2 FROM StringTable WHERE 1 = ? LIMIT 1")
+        .bind(0, 1)
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> metadata.getColumnMetadata(0).getType()))
+        .as(StepVerifier::create)
+        .expectNextMatches(c -> c.equals(MariadbType.CLOB))
         .verifyComplete();
   }
 }

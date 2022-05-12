@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2021 MariaDB Corporation Ab
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.util;
 
@@ -14,7 +14,7 @@ public class ServerPrepareResult {
 
   private final int statementId;
   private final int numParams;
-  private final ColumnDefinitionPacket[] columns;
+  private ColumnDefinitionPacket[] columns;
 
   private final AtomicBoolean closing = new AtomicBoolean();
   private final AtomicInteger use = new AtomicInteger(1);
@@ -23,6 +23,10 @@ public class ServerPrepareResult {
   public ServerPrepareResult(int statementId, int numParams, ColumnDefinitionPacket[] columns) {
     this.statementId = statementId;
     this.numParams = numParams;
+    this.columns = columns;
+  }
+
+  public void setColumns(ColumnDefinitionPacket[] columns) {
     this.columns = columns;
   }
 
