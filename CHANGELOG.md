@@ -1,5 +1,24 @@
 # Change Log
 
+## [1.1.2](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.1.2) (12 Mai 2022)
+[Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.1.1...1.1.2)
+
+* [R2DBC-54] Support r2dbc spec 0.9.1 version
+* [R2DBC-42] Specification precision on Statement::add
+* [R2DBC-44] simplify client side prepared statement		
+* [R2DBC-45] Implement SPI TestKit to validate driver with spec tests		
+* [R2DBC-46] Add sql to R2DBC exception hierarchy		
+* [R2DBC-47] ensure driver follow spec precision about Row.get returning error.		
+* [R2DBC-48] after spec batch clarification trailing batch should fail		
+* [R2DBC-49] Support for failover and load balancing modes		
+* [R2DBC-50] TIME data without indication default to return Duration in place of LocalTime		
+* [R2DBC-56] Transaction isolation spec precision		
+* [R2DBC-57] varbinary data default must return byte[]		
+* [R2DBC-63] backpressure handling		
+* [R2DBC-64] Support batch cancellation		
+* [R2DBC-53] correct RowMetadata case-sensitivity lookup		
+* [R2DBC-62] Prepared statement wrong column type on prepare meta not skipped
+
 ## [1.1.1-rc](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.1.1) (13 Sept 2021)
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.1.0...1.1.1)
 
