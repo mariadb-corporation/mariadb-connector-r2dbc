@@ -29,34 +29,37 @@ install:
 jobs:
   fast_finish: true
   allow_failures:
-    - env: srv=build v=10.6
+    - env: srv=build
   include:
+    - if: type = push AND fork = false
+      env: srv=mariadb-es v=10.4
+    - if: type = push AND fork = false
+      env: srv=mariadb-es v=10.5
+    - if: type = push AND fork = false
+      env: srv=mariadb-es v=10.6
     - env: srv=mariadb v=10.5
       os: windows
       language: shell
-    - env: srv=mariadb v=10.2 local=1 packet=20
-      dist: bionic
     - env: srv=mariadb v=10.3 local=1
     - env: srv=mariadb v=10.4 local=1
     - env: srv=mariadb v=10.5 local=1
     - env: srv=mariadb v=10.6 local=1
     - env: srv=mariadb v=10.7 local=1 clear_text_plugin=1
+    - env: srv=mariadb v=10.8 local=1
     - env: srv=mariadb v=10.6 NO_BACKSLASH_ESCAPES=true
     - env: srv=mariadb v=10.6 BENCH=1
     - if: type = push AND fork = false
       env: srv=maxscale
     - if: type = push AND fork = false
-      env: srv=mariadb-es v=10.6
-    - if: type = push AND fork = false
       env: srv=skysql
     - if: type = push AND fork = false
       env: srv=skysql-ha
     - if: type = push AND fork = false
-      env: srv=build v=10.6
-    - if: type = push AND fork = false
       env: srv=mysql v=5.7
     - if: type = push AND fork = false
       env: srv=mysql v=8.0
+    - if: type = push AND fork = false
+      env: srv=build
 
 script:
   - mvn clean -Dmaven.test.skip > /dev/null
