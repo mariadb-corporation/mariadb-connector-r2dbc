@@ -12,20 +12,31 @@ public class Select_1000_Rows extends Common {
           "select seq, 'abcdefghijabcdefghijabcdefghijaa' from seq_1_to_1000";
 
   @Benchmark
-  public int testR2dbc(MyState state, Blackhole blackhole) throws Throwable {
+  public Integer testR2dbc(MyState state, Blackhole blackhole) throws Throwable {
     return consume(state.r2dbc, blackhole);
   }
 
   @Benchmark
-  public int testR2dbcPrepare(MyState state, Blackhole blackhole) throws Throwable {
-    return consume(state.r2dbcPrepare, blackhole);
+  public Integer testR2dbcPrepare(MyState state, Blackhole blackhole) throws Throwable {
+    return consumePrepare(state.r2dbcPrepare, blackhole);
   }
 
-  private int consume(io.r2dbc.spi.Connection connection, Blackhole blackhole) {
-    return Flux.from(connection.createStatement(sql).bind(0,1).execute())
+  private Integer consume(io.r2dbc.spi.Connection connection, Blackhole blackhole) {
+      return Flux.from(connection.createStatement(sql).execute())
         .flatMap(it -> it.map((row, rowMetadata) -> {
-          row.get(0, String.class);
-          return row.get(1, Integer.class);
+          Integer i = row.get(0, Integer.class);
+          row.get(1, String.class);
+          return i;
         })).blockLast();
   }
+
+    private Integer consumePrepare(io.r2dbc.spi.Connection connection, Blackhole blackhole) {
+        return Flux.from(connection.createStatement(sql + "WHERE 1 = ?").bind(0,1).execute())
+                .flatMap(it -> it.map((row, rowMetadata) -> {
+                    Integer i = row.get(0, Integer.class);
+                    row.get(1, String.class);
+                    return i;
+                })).blockLast();
+    }
+
 }
