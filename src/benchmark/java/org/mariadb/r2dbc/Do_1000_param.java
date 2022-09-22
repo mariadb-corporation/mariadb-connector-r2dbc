@@ -4,13 +4,17 @@
 package org.mariadb.r2dbc;
 
 import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.infra.Blackhole;
 import reactor.core.publisher.Flux;
 
-import java.sql.ResultSet;
-import java.sql.Statement;
-
-public class Select_1 extends Common {
+public class Do_1000_param extends Common {
+  private static final String sql;
+  static {
+    StringBuilder sb = new StringBuilder("do ?");
+    for (int i = 1; i < 1000; i++) {
+      sb.append(",?");
+    }
+    sql = sb.toString();
+  }
 
   @Benchmark
   public Integer testR2dbc(MyState state) throws Throwable {
@@ -23,15 +27,14 @@ public class Select_1 extends Common {
   }
 
   private Integer consume(io.r2dbc.spi.Connection connection) {
-    int rnd = (int) (Math.random() * 1000);
-    io.r2dbc.spi.Statement statement = connection.createStatement("select " + rnd);
-    Integer val =
+    io.r2dbc.spi.Statement statement = connection.createStatement(sql);
+    for (int i = 0; i < 1000; i++)
+      statement.bind(i,i);
+    return
         Flux.from(statement.execute())
-            .flatMap(it -> it.map((row, rowMetadata) -> row.get(0, Integer.class)))
+            .flatMap(it -> it.getRowsUpdated())
             .blockLast();
-    if (rnd != val)
-      throw new IllegalStateException("ERROR rnd:" + rnd + " different to val:" + val);
-    return val;
   }
+
 
 }

@@ -5,7 +5,6 @@ package org.mariadb.r2dbc.integration;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import ch.qos.logback.classic.Level;
 import io.r2dbc.spi.*;
 import java.io.IOException;
 import java.time.Duration;
@@ -24,7 +23,6 @@ import org.mariadb.r2dbc.util.HostAddress;
 import reactor.test.StepVerifier;
 
 public class FailoverConnectionTest extends BaseConnectionTest {
-
 
   @BeforeAll
   public static void before2() {
@@ -291,5 +289,4 @@ public class FailoverConnectionTest extends BaseConnectionTest {
 
     return new MariadbConnectionFactory(confProxy).create().block();
   }
-
 }
