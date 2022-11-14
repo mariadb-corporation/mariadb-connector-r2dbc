@@ -19,6 +19,7 @@ public class ServerMsgDecoder {
   private final Queue<String> prepareSql = Queues.<String>small().get();
   private long clientCapabilities;
   private int stateCounter = 0;
+  private boolean metaFollows = false;
   private PrepareResultPacket prepare;
   private ColumnDefinitionPacket[] prepareColumns;
   private Context context = null;
@@ -30,7 +31,7 @@ public class ServerMsgDecoder {
 
   public ServerMessage decode(ByteBuf packet, Exchange exchange) {
     Sequencer sequencer = new Sequencer(packet.readByte());
-    if (state == null)
+    if (state == null) 
       state = exchange == null ? DecoderState.QUERY_RESPONSE : exchange.getInitialState();
     state = state.decoder(packet.getUnsignedByte(packet.readerIndex()), packet.readableBytes());
     ServerMessage msg = state.decode(packet, sequencer, this);
@@ -100,5 +101,13 @@ public class ServerMsgDecoder {
   public void setContext(Context context) {
     this.context = context;
     this.clientCapabilities = this.context.getClientCapabilities();
+  }
+  
+  public boolean isMetaFollows() {
+    return metaFollows;
+  }
+  
+  public void setMetaFollows(boolean metaFollows) {
+    this.metaFollows = metaFollows;
   }
 }

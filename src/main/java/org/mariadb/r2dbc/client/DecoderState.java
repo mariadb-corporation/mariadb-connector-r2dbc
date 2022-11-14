@@ -12,6 +12,7 @@ import org.mariadb.r2dbc.util.constants.ServerStatus;
 
 public enum DecoderState implements DecoderStateInterface {
   INIT_HANDSHAKE {
+    @Override
     public DecoderState decoder(short val, int len) {
       switch (val) {
         case 255: // 0xFF
@@ -47,6 +48,7 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   AUTHENTICATION_SWITCH_RESPONSE {
+    @Override
     public DecoderState decoder(short val, int len) {
       switch (val) {
         case 1:
@@ -69,6 +71,7 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   QUERY_RESPONSE {
+    @Override
     public DecoderState decoder(short val, int len) {
       switch (val) {
         case 0:
@@ -82,18 +85,20 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   COLUMN_COUNT {
-    ColumnCountPacket columnCountPacket;
 
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
-      columnCountPacket = ColumnCountPacket.decode(sequencer, body, decoder.getContext());
+      ColumnCountPacket columnCountPacket = ColumnCountPacket.decode(sequencer, body, decoder.getContext());
       decoder.setStateCounter(columnCountPacket.getColumnCount());
+      decoder.setMetaFollows(columnCountPacket.isMetaFollows());
       return columnCountPacket;
     }
 
     @Override
     public DecoderState next(ServerMsgDecoder decoder) {
-      if (columnCountPacket.isMetaFollows()) return COLUMN_DEFINITION;
+      if (decoder.isMetaFollows()) {
+          return COLUMN_DEFINITION;
+      }
       if ((decoder.getClientCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0) {
         return ROW_RESPONSE;
       } else {
@@ -168,6 +173,7 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   ROW_RESPONSE {
+    @Override
     public DecoderState decoder(short val, int len) {
       switch (val) {
         case 254:
@@ -186,6 +192,7 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   ROW_RESPONSE_OUT_PARAM {
+    @Override
     public DecoderState decoder(short val, int len) {
       switch (val) {
         case 254:
@@ -229,6 +236,7 @@ public enum DecoderState implements DecoderStateInterface {
 
   PREPARE_RESPONSE {
 
+    @Override
     public DecoderState decoder(short val, int len) {
       switch (val) {
         case 255: // 0xFF
@@ -266,6 +274,7 @@ public enum DecoderState implements DecoderStateInterface {
 
   PREPARE_AND_EXECUTE_RESPONSE {
 
+    @Override
     public DecoderState decoder(short val, int len) {
       switch (val) {
         case 255: // 0xFF
