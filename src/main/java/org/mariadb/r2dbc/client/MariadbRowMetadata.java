@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2020-2022 MariaDB Corporation Ab
 
-package org.mariadb.r2dbc;
+package org.mariadb.r2dbc.client;
 
 import io.r2dbc.spi.RowMetadata;
 import java.util.*;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.util.Assert;
 
-final class MariadbRowMetadata implements RowMetadata {
+public final class MariadbRowMetadata implements RowMetadata {
 
   private final List<ColumnDefinitionPacket> metadataList;
   private volatile Collection<String> columnNames;
+  private Map<String, Integer> mapper = null;
 
-  MariadbRowMetadata(List<ColumnDefinitionPacket> metadataList) {
+  public MariadbRowMetadata(List<ColumnDefinitionPacket> metadataList) {
     this.metadataList = metadataList;
   }
 
@@ -29,33 +30,12 @@ final class MariadbRowMetadata implements RowMetadata {
 
   @Override
   public ColumnDefinitionPacket getColumnMetadata(String name) {
-    return metadataList.get(getColumn(name));
-  }
-
-  private int getColumn(String name) {
-    Assert.requireNonNull(name, "name must not be null");
-    for (int i = 0; i < this.metadataList.size(); i++) {
-      if (this.metadataList.get(i).getName().equalsIgnoreCase(name)) {
-        return i;
-      }
-    }
-    throw new NoSuchElementException(
-        String.format(
-            "Column name '%s' does not exist in column names %s", name, getColumnNames()));
+    return metadataList.get(getIndex(name));
   }
 
   @Override
   public List<ColumnDefinitionPacket> getColumnMetadatas() {
     return Collections.unmodifiableList(this.metadataList);
-  }
-
-  @Override
-  @Deprecated
-  public Collection<String> getColumnNames() {
-    if (this.columnNames == null) {
-      this.columnNames = getColumnNames(this.metadataList);
-    }
-    return Collections.unmodifiableCollection(this.columnNames);
   }
 
   private Collection<String> getColumnNames(List<ColumnDefinitionPacket> columnMetadatas) {
@@ -82,5 +62,44 @@ final class MariadbRowMetadata implements RowMetadata {
       this.columnNames = getColumnNames(this.metadataList);
     }
     return this.columnNames.stream().anyMatch(columnName::equalsIgnoreCase);
+  }
+
+  public int size() {
+    return this.metadataList.size();
+  }
+
+  protected ColumnDefinitionPacket get(int index) {
+    return this.metadataList.get(index);
+  }
+
+  protected int getIndex(String name) throws NoSuchElementException {
+    Assert.requireNonNull(name, "name must not be null");
+
+    if (mapper == null) {
+      Map<String, Integer> tmpmapper = new HashMap<>();
+      for (int i = 0; i < metadataList.size(); i++) {
+        ColumnDefinitionPacket ci = metadataList.get(i);
+        String columnAlias = ci.getName();
+        if (columnAlias == null || columnAlias.isEmpty()) {
+          String columnName = ci.getColumn();
+          if (columnName != null && !columnName.isEmpty()) {
+            columnName = columnName.toLowerCase(Locale.ROOT);
+            tmpmapper.putIfAbsent(columnName, i);
+          }
+        } else {
+          tmpmapper.putIfAbsent(columnAlias.toLowerCase(Locale.ROOT), i);
+        }
+      }
+      mapper = tmpmapper;
+    }
+
+    Integer ind = mapper.get(name.toLowerCase(Locale.ROOT));
+    if (ind == null) {
+      throw new NoSuchElementException(
+          String.format(
+              "Column name '%s' does not exist in column names %s",
+              name, Collections.unmodifiableCollection(mapper.keySet())));
+    }
+    return ind;
   }
 }

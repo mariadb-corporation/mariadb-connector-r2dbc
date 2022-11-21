@@ -26,11 +26,15 @@ public class AuthMoreDataPacket implements AuthMoreData, ServerMessage {
     return new AuthMoreDataPacket(sequencer, data);
   }
 
-  public void release() {
+  public boolean release() {
     if (buf != null) {
-      buf.release();
-      buf = null;
+      try {
+        return buf.release();
+      } finally {
+        buf = null;
+      }
     }
+    return true;
   }
 
   public MessageSequence getSequencer() {

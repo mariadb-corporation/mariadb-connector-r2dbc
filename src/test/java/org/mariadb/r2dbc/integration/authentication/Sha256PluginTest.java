@@ -12,7 +12,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
-import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class Sha256PluginTest extends BaseConnectionTest {
@@ -165,43 +165,43 @@ public class Sha256PluginTest extends BaseConnectionTest {
         .createStatement("DROP USER sha256User")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER sha256User2")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER sha256User3")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User2")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User3")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User4")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
   }
 

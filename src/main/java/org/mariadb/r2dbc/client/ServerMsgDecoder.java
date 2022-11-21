@@ -31,7 +31,7 @@ public class ServerMsgDecoder {
 
   public ServerMessage decode(ByteBuf packet, Exchange exchange) {
     Sequencer sequencer = new Sequencer(packet.readByte());
-    if (state == null) 
+    if (state == null)
       state = exchange == null ? DecoderState.QUERY_RESPONSE : exchange.getInitialState();
     state = state.decoder(packet.getUnsignedByte(packet.readerIndex()), packet.readableBytes());
     ServerMessage msg = state.decode(packet, sequencer, this);
@@ -102,11 +102,11 @@ public class ServerMsgDecoder {
     this.context = context;
     this.clientCapabilities = this.context.getClientCapabilities();
   }
-  
+
   public boolean isMetaFollows() {
     return metaFollows;
   }
-  
+
   public void setMetaFollows(boolean metaFollows) {
     this.metaFollows = metaFollows;
   }

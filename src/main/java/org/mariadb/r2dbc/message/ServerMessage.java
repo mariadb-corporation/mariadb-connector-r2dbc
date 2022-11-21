@@ -13,5 +13,7 @@ public interface ServerMessage {
     return false;
   }
 
-  default void release() {}
+  default boolean release() {
+    return true;
+  }
 }

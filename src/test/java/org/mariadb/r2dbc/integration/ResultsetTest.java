@@ -218,7 +218,7 @@ public class ResultsetTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof IndexOutOfBoundsException
-                    && throwable.getMessage().equals("Column index 5 not in range [0-2]"))
+                    && throwable.getMessage().equals("Column index 5 is not in permit range[0,2]"))
         .verify();
   }
 
@@ -243,7 +243,7 @@ public class ResultsetTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof IndexOutOfBoundsException
-                    && throwable.getMessage().equals("Column index -5 must be positive"))
+                    && throwable.getMessage().equals("Column index -5 is not in permit range[0,2]"))
         .verify();
   }
 

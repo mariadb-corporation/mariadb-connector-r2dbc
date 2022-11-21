@@ -88,7 +88,8 @@ public enum DecoderState implements DecoderStateInterface {
 
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
-      ColumnCountPacket columnCountPacket = ColumnCountPacket.decode(sequencer, body, decoder.getContext());
+      ColumnCountPacket columnCountPacket =
+          ColumnCountPacket.decode(sequencer, body, decoder.getContext());
       decoder.setStateCounter(columnCountPacket.getColumnCount());
       decoder.setMetaFollows(columnCountPacket.isMetaFollows());
       return columnCountPacket;
@@ -97,7 +98,7 @@ public enum DecoderState implements DecoderStateInterface {
     @Override
     public DecoderState next(ServerMsgDecoder decoder) {
       if (decoder.isMetaFollows()) {
-          return COLUMN_DEFINITION;
+        return COLUMN_DEFINITION;
       }
       if ((decoder.getClientCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0) {
         return ROW_RESPONSE;

@@ -4,9 +4,11 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.util.AbstractReferenceCounted;
+import io.netty.util.ReferenceCounted;
 import org.mariadb.r2dbc.message.ServerMessage;
 
-public final class RowPacket implements ServerMessage {
+public final class RowPacket extends AbstractReferenceCounted implements ServerMessage {
 
   private final ByteBuf raw;
 
@@ -18,7 +20,15 @@ public final class RowPacket implements ServerMessage {
     return raw;
   }
 
-  public void release() {
-    raw.release();
+  @Override
+  public ReferenceCounted touch(Object hint) {
+    return raw.touch(hint);
   }
+
+  public boolean release() {
+    return raw.release();
+  }
+
+  @Override
+  protected void deallocate() {}
 }
