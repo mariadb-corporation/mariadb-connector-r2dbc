@@ -583,10 +583,13 @@ public class SimpleClient implements Client {
       Exchange exchange = this.exchangeQueue.peek();
       ServerMessage srvMsg = decoder.decode(message, exchange);
 
-      if (this.receiverQueue.isEmpty() && exchange != null && exchange.hasDemand()) {
+      if (this.receiverQueue.isEmpty() && exchange != null && exchange.hasDemandOrIsCancelled()) {
         // nothing buffered => directly emit message
         if (srvMsg.ending()) this.exchangeQueue.poll();
         exchange.emit(srvMsg);
+        if (exchange.hasDemandOrIsCancelled()) {
+          requestQueueFilling();
+        }
         return;
       }
 
@@ -622,7 +625,8 @@ public class SimpleClient implements Client {
         if (!lock.tryLock()) return;
         try {
           while (!this.receiverQueue.isEmpty()) {
-            if ((exchange = this.exchangeQueue.peek()) == null || !exchange.hasDemand()) return;
+            if ((exchange = this.exchangeQueue.peek()) == null
+                || !exchange.hasDemandOrIsCancelled()) return;
             if ((srvMsg = this.receiverQueue.poll()) == null) return;
             if (srvMsg.ending()) this.exchangeQueue.poll();
             exchange.emit(srvMsg);
@@ -631,7 +635,7 @@ public class SimpleClient implements Client {
           lock.unlock();
         }
 
-        if ((exchange = this.exchangeQueue.peek()) == null || exchange.hasDemand()) {
+        if ((exchange = this.exchangeQueue.peek()) == null || exchange.hasDemandOrIsCancelled()) {
           requestQueueFilling();
         }
       }

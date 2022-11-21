@@ -8,6 +8,9 @@ import io.r2dbc.spi.R2dbcTransientResourceException;
 import io.r2dbc.spi.Statement;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -15,6 +18,7 @@ import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.api.MariadbStatement;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -252,6 +256,32 @@ public class StatementTest extends BaseConnectionTest {
                     && (throwable.getMessage().contains("Duplicate entry '1' for key")
                         || throwable.getMessage().contains("Duplicate key in container")))
         .verify();
+  }
+
+  @Test
+  public void sinkEndCheck() throws Exception {
+    Assumptions.assumeTrue(isMariaDBServer());
+    CountDownLatch lock = new CountDownLatch(1);
+    AtomicReference<Disposable> d = new AtomicReference<>();
+    AtomicReference<Disposable> d2 = new AtomicReference<>();
+    Flux<Integer> flux =
+        sharedConn
+            .createStatement("SELECT * from seq_1_to_10000")
+            .execute()
+            .flatMap(
+                r ->
+                    r.map(
+                        (row, metadata) -> {
+                          d2.set(sharedConn.createStatement("COMMIT").execute().subscribe());
+                          d.get().dispose();
+                          return row.get(0, Integer.class);
+                        }));
+    d.set(flux.subscribe());
+    for (int i = 0; i < 100; i++) {
+      lock.await(20, TimeUnit.MILLISECONDS);
+      if (d2.get().isDisposed()) break;
+    }
+    Assertions.assertTrue(d2.get().isDisposed());
   }
 
   @Test

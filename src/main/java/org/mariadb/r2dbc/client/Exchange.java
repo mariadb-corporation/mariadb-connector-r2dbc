@@ -38,8 +38,8 @@ public class Exchange {
     return sql;
   }
 
-  public boolean hasDemand() {
-    return demand.get() > 0;
+  public boolean hasDemandOrIsCancelled() {
+    return demand.get() > 0 || this.sink.isCancelled();
   }
 
   public void emit(ServerMessage srvMsg) {
