@@ -13,7 +13,7 @@ import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
-import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class ErrorTest extends BaseConnectionTest {
@@ -124,7 +124,7 @@ public class ErrorTest extends BaseConnectionTest {
           .createStatement("SET SESSION innodb_lock_wait_timeout=1")
           .execute()
           .map(res -> res.getRowsUpdated())
-          .onErrorReturn(Flux.empty())
+          .onErrorReturn(Mono.empty())
           .blockLast();
       connection.beginTransaction().block();
       connection

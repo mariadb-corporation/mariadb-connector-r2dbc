@@ -17,16 +17,16 @@ public class Do_1000_param extends Common {
   }
 
   @Benchmark
-  public Integer testR2dbc(MyState state) throws Throwable {
+  public Long testR2dbc(MyState state) throws Throwable {
     return consume(state.r2dbc);
   }
 
   @Benchmark
-  public Integer testR2dbcPrepare(MyState state) throws Throwable {
+  public Long testR2dbcPrepare(MyState state) throws Throwable {
     return consume(state.r2dbcPrepare);
   }
 
-  private Integer consume(io.r2dbc.spi.Connection connection) {
+  private Long consume(io.r2dbc.spi.Connection connection) {
     io.r2dbc.spi.Statement statement = connection.createStatement(sql);
     for (int i = 0; i < 1000; i++)
       statement.bind(i,i);

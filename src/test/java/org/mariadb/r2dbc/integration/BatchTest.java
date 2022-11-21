@@ -37,7 +37,7 @@ public class BatchTest extends BaseConnectionTest {
         .execute()
         .flatMap(it -> it.getRowsUpdated())
         .as(StepVerifier::create)
-        .expectNext(1, 1, 1, 1, 1)
+        .expectNext(1L, 1L, 1L, 1L, 1L)
         .expectNextCount(15)
         .then(
             () -> {
@@ -84,7 +84,7 @@ public class BatchTest extends BaseConnectionTest {
         .execute()
         .flatMap(it -> it.getRowsUpdated())
         .as(StepVerifier::create)
-        .expectNext(1, 1, 1, 1, 1)
+        .expectNext(1L, 1L, 1L, 1L, 1L)
         .expectNextCount(15)
         .then(
             () -> {

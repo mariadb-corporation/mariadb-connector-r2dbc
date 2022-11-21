@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
-import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class TlsTest extends BaseConnectionTest {
@@ -63,7 +63,7 @@ public class TlsTest extends BaseConnectionTest {
         .createStatement("DROP USER 'MUTUAL_AUTH'")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .subscribe();
     String create_sql;
     String grant_sql;
@@ -109,7 +109,7 @@ public class TlsTest extends BaseConnectionTest {
         .createStatement("DROP USER IF EXISTS userWithoutPassword")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
   }
 

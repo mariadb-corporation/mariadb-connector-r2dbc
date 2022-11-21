@@ -94,7 +94,7 @@ public class SimpleClient implements Client {
     this.byteBufAllocator = connection.outbound().alloc();
     this.messageSubscriber =
         new ServerMessageSubscriber(this.lock, this.isClosed, exchangeQueue, receiverQueue);
-    connection.addHandler(new MariadbFrameDecoder());
+    connection.addHandlerFirst(new MariadbFrameDecoder());
 
     if (logger.isTraceEnabled()) {
       connection.addHandlerFirst(

@@ -31,16 +31,16 @@ public class Insert_batch extends Common {
   }
 
   @Benchmark
-  public Integer testR2dbc(MyState state, Blackhole blackhole) throws Throwable {
+  public Long testR2dbc(MyState state, Blackhole blackhole) throws Throwable {
     return consume(state.r2dbc, blackhole);
   }
 
   @Benchmark
-  public Integer testR2dbcPrepare(MyState state, Blackhole blackhole) throws Throwable {
+  public Long testR2dbcPrepare(MyState state, Blackhole blackhole) throws Throwable {
     return consume(state.r2dbcPrepare, blackhole);
   }
 
-  private Integer consume(io.r2dbc.spi.Connection connection, Blackhole blackhole) {
+  private Long consume(io.r2dbc.spi.Connection connection, Blackhole blackhole) {
     String s = randomString(100);
 
     io.r2dbc.spi.Statement statement = connection.createStatement("INSERT INTO perfTestTextBatch(t0) VALUES (?)");
