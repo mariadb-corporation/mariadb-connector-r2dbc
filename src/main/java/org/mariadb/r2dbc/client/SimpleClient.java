@@ -9,6 +9,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
@@ -23,6 +24,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLParameters;
+
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
@@ -219,8 +222,13 @@ public class SimpleClient implements Client {
       SslRequestPacket sslRequest, MariadbConnectionConfiguration configuration) {
     CompletableFuture<Void> result = new CompletableFuture<>();
     try {
-      SSLEngine engine =
-          configuration.getSslConfig().getSslContext().newEngine(connection.channel().alloc());
+      SslContext sslContext = configuration.getSslConfig().getSslContext();
+      SSLEngine engine;
+      if (this.hostAddress == null) {
+        engine = sslContext.newEngine(connection.channel().alloc(), this.hostAddress.getHost(), this.hostAddress.getPort());
+      } else {
+        engine = sslContext.newEngine(connection.channel().alloc());
+      }
       final SslHandler sslHandler = new SslHandler(engine);
 
       final GenericFutureListener<Future<? super Channel>> listener =
