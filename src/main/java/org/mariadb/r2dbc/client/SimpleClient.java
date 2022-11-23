@@ -119,7 +119,9 @@ public class SimpleClient implements Client {
             .flatMap(b -> connection.outbound().send(Mono.just(b)), 1)
             .then();
 
-    request.doAfterTerminate(this::handleConnectionEnd).subscribe();
+    request
+            .onErrorResume(this::sendResumeError)
+            .doAfterTerminate(this::handleConnectionEnd).subscribe();
   }
 
   public static Mono<SimpleClient> connect(
@@ -172,6 +174,12 @@ public class SimpleClient implements Client {
       messageSubscriber.endExchanges(
           new R2dbcNonTransientResourceException("Connection error", "08000", throwable));
     }
+  }
+  private Mono<Void> sendResumeError(Throwable throwable) {
+    handleConnectionError(throwable);
+    this.requestSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
+    logger.debug("Connection error", throwable);
+    return close();
   }
 
   private void handleConnectionEnd() {
