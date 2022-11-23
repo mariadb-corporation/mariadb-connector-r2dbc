@@ -18,6 +18,7 @@ import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSession;
@@ -135,7 +136,11 @@ public class SslConfig {
 
   @SuppressWarnings("static")
   public GenericFutureListener<Future<? super io.netty.channel.Channel>> getHostNameVerifier(
-      CompletableFuture<Void> result, String host, long threadId, SSLEngine engine) {
+      CompletableFuture<Void> result,
+      String host,
+      long threadId,
+      SSLEngine engine,
+      Supplier<Boolean> closeChannelIfNeeded) {
     return future -> {
       if (!future.isSuccess()) {
         result.completeExceptionally(future.cause());
@@ -155,6 +160,7 @@ public class SslConfig {
             DefaultHostnameVerifier.verify(host, cert, threadId);
           }
         } catch (SSLException ex) {
+          closeChannelIfNeeded.get();
           result.completeExceptionally(
               new R2dbcNonTransientResourceException(
                   "SSL hostname verification failed : " + ex.getMessage(), "08006"));

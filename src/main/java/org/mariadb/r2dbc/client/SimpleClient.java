@@ -120,8 +120,9 @@ public class SimpleClient implements Client {
             .then();
 
     request
-            .onErrorResume(this::sendResumeError)
-            .doAfterTerminate(this::handleConnectionEnd).subscribe();
+        .onErrorResume(this::sendResumeError)
+        .doAfterTerminate(this::handleConnectionEnd)
+        .subscribe();
   }
 
   public static Mono<SimpleClient> connect(
@@ -175,6 +176,7 @@ public class SimpleClient implements Client {
           new R2dbcNonTransientResourceException("Connection error", "08000", throwable));
     }
   }
+
   private Mono<Void> sendResumeError(Throwable throwable) {
     handleConnectionError(throwable);
     this.requestSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
@@ -248,7 +250,8 @@ public class SimpleClient implements Client {
                   result,
                   this.hostAddress == null ? null : this.hostAddress.getHost(),
                   context.getThreadId(),
-                  engine);
+                  engine,
+                  this::closeChannelIfNeeded);
 
       sslHandler.handshakeFuture().addListener(listener);
       // send SSL request in clear
