@@ -3,6 +3,7 @@
 
 package org.mariadb.r2dbc.client;
 
+import io.netty.util.ReferenceCountUtil;
 import java.util.concurrent.atomic.AtomicLong;
 import org.mariadb.r2dbc.message.ServerMessage;
 import reactor.core.publisher.FluxSink;
@@ -43,10 +44,11 @@ public class Exchange {
   }
 
   public void emit(ServerMessage srvMsg) {
-    demand.decrementAndGet();
     if (this.sink.isCancelled()) {
+      ReferenceCountUtil.release(srvMsg);
       return;
     }
+    demand.decrementAndGet();
     this.sink.next(srvMsg);
     if (srvMsg.ending()) {
       this.sink.complete();

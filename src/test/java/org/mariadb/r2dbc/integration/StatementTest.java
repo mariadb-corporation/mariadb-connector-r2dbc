@@ -268,17 +268,17 @@ public class StatementTest extends BaseConnectionTest {
     connection.beginTransaction().block();
     try {
       Flux<Integer> flux =
-              connection
-                      .createStatement("SELECT * from seq_1_to_10000")
-                      .execute()
-                      .flatMap(
-                              r ->
-                                      r.map(
-                                              (row, metadata) -> {
-                                                d2.set(connection.createStatement("COMMIT").execute().subscribe());
-                                                d.get().dispose();
-                                                return row.get(0, Integer.class);
-                                              }));
+          connection
+              .createStatement("SELECT * from seq_1_to_10000")
+              .execute()
+              .flatMap(
+                  r ->
+                      r.map(
+                          (row, metadata) -> {
+                            d2.set(connection.createStatement("COMMIT").execute().subscribe());
+                            d.get().dispose();
+                            return row.get(0, Integer.class);
+                          }));
       d.set(flux.subscribe());
       for (int i = 0; i < 1000; i++) {
         lock.await(20, TimeUnit.MILLISECONDS);
@@ -288,7 +288,8 @@ public class StatementTest extends BaseConnectionTest {
     } finally {
       try {
         connection.close().block();
-      } catch (Exception e) { }
+      } catch (Exception e) {
+      }
     }
   }
 
