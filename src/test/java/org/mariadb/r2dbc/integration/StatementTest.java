@@ -291,7 +291,7 @@ public class StatementTest extends BaseConnectionTest {
             "CREATE TEMPORARY TABLE get_pos (t1 varchar(10), t2 varchar(10), t3 varchar(10), t4 varchar(10))")
         .execute()
         .blockLast();
-
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("INSERT INTO get_pos VALUES ('test1', 'test2', 'test3', 'test4')")
         .execute()
@@ -315,6 +315,7 @@ public class StatementTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext("test1")
         .verifyComplete();
+    sharedConn.rollbackTransaction().block();
   }
 
   @Test
@@ -601,6 +602,7 @@ public class StatementTest extends BaseConnectionTest {
     conn.createStatement("CREATE TEMPORARY TABLE parameterNull(t varchar(10), t2 varchar(10))")
         .execute()
         .blockLast();
+    conn.beginTransaction().block();
     conn.createStatement("INSERT INTO parameterNull VALUES ('1', '1'), (null, '2'), (null, null)")
         .execute()
         .blockLast();
@@ -623,6 +625,7 @@ public class StatementTest extends BaseConnectionTest {
         IllegalArgumentException.class,
         () -> stmt.bindNull(0, this.getClass()),
         "No encoder for class org.mariadb.r2dbc.integration.StatementTest");
+    conn.rollbackTransaction().block();
   }
 
   @Test
@@ -698,6 +701,7 @@ public class StatementTest extends BaseConnectionTest {
   @Test
   public void generatedId() {
 
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement(
             "CREATE TEMPORARY TABLE generatedId (id int not null primary key auto_increment, test varchar(10))")
@@ -758,5 +762,6 @@ public class StatementTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext(20000000)
         .verifyComplete();
+    sharedConn.rollbackTransaction().block();
   }
 }

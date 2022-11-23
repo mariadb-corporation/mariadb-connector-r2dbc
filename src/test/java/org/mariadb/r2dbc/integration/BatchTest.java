@@ -26,6 +26,7 @@ public class BatchTest extends BaseConnectionTest {
         .createStatement("CREATE TEMPORARY TABLE basicBatch (id int, test varchar(10))")
         .execute()
         .blockLast();
+    sharedConn.beginTransaction().block(); // if MAXSCALE ensure using WRITER
     MariadbBatch batch = sharedConn.createBatch();
     int[] res = new int[20];
     for (int i = 0; i < 20; i++) {
@@ -48,6 +49,7 @@ public class BatchTest extends BaseConnectionTest {
                   .as(StepVerifier::create)
                   .expectNext(0, 1, 2, 3, 4)
                   .expectNextCount(15)
+                  .then(() -> sharedConn.commitTransaction())
                   .verifyComplete();
             })
         .verifyComplete();
@@ -73,6 +75,7 @@ public class BatchTest extends BaseConnectionTest {
         .createStatement("CREATE TEMPORARY TABLE multiBatch (id int, test varchar(10))")
         .execute()
         .blockLast();
+    multiConn.beginTransaction().block(); // if MAXSCALE ensure using WRITER
     MariadbBatch batch = multiConn.createBatch();
     int[] res = new int[20];
     for (int i = 0; i < 20; i++) {
@@ -95,6 +98,7 @@ public class BatchTest extends BaseConnectionTest {
                   .as(StepVerifier::create)
                   .expectNext(0, 1, 2, 3, 4)
                   .expectNextCount(15)
+                  .then(() -> multiConn.commitTransaction())
                   .verifyComplete();
               multiConn.close().block();
             })

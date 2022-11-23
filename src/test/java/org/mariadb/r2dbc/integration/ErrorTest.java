@@ -103,8 +103,9 @@ public class ErrorTest extends BaseConnectionTest {
   @Test
   void rollbackException() {
     Assumptions.assumeTrue(
-        !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
-
+        !"maxscale".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnection connection = null;
     MariadbConnection connection2 = null;
     try {
@@ -113,12 +114,11 @@ public class ErrorTest extends BaseConnectionTest {
           .createStatement("CREATE TABLE deadlock(a int primary key) engine=innodb")
           .execute()
           .blockLast();
+      connection2.beginTransaction().block(); // if MAXSCALE ensure using WRITER
       connection2.createStatement("insert into deadlock(a) values(0), (1)").execute().blockLast();
       connection2.setTransactionIsolationLevel(IsolationLevel.SERIALIZABLE);
 
-      connection2.beginTransaction().block();
       connection2.createStatement("update deadlock set a = 2 where a <> 0").execute().blockLast();
-
       connection = factory.create().block();
       connection
           .createStatement("SET SESSION innodb_lock_wait_timeout=1")

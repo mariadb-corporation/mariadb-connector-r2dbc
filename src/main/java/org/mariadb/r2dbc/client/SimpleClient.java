@@ -24,8 +24,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
-import javax.net.ssl.SSLParameters;
-
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
@@ -225,7 +223,11 @@ public class SimpleClient implements Client {
       SslContext sslContext = configuration.getSslConfig().getSslContext();
       SSLEngine engine;
       if (this.hostAddress == null) {
-        engine = sslContext.newEngine(connection.channel().alloc(), this.hostAddress.getHost(), this.hostAddress.getPort());
+        engine =
+            sslContext.newEngine(
+                connection.channel().alloc(),
+                this.hostAddress.getHost(),
+                this.hostAddress.getPort());
       } else {
         engine = sslContext.newEngine(connection.channel().alloc());
       }

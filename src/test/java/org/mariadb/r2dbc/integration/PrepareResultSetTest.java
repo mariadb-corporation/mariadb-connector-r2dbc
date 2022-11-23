@@ -153,7 +153,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     String arr1024St = String.valueOf(arr1024);
     String arrSt = String.valueOf(arr);
     String arrSt2 = String.valueOf(arr2);
-
+    sharedConnPrepare.beginTransaction().block();
     sharedConnPrepare
         .createStatement("INSERT INTO parameterLengthEncoded VALUES (?, ?)")
         .bind(0, arr1024St)
@@ -210,6 +210,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext(String.valueOf(arr1024))
         .verifyComplete();
+    sharedConnPrepare.rollbackTransaction().block();
   }
 
   @Test
@@ -244,6 +245,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   @Test
   void missingParameter() {
     // missing first parameter
+    sharedConnPrepare.beginTransaction().block();
     MariadbStatement stmt =
         sharedConnPrepare.createStatement("INSERT INTO missingParameter(t1, t2) VALUES (?, ?)");
 
@@ -275,6 +277,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext("test")
         .verifyComplete();
+    sharedConnPrepare.rollbackTransaction().block();
   }
 
   @Test
@@ -494,6 +497,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .createStatement("CREATE TEMPORARY TABLE parameterNull(t varchar(10), t2 varchar(10))")
         .execute()
         .blockLast();
+    sharedConnPrepare.beginTransaction().block();
     sharedConnPrepare
         .createStatement("INSERT INTO parameterNull VALUES ('1', '1'), (null, '2'), (null, null)")
         .execute()
@@ -531,6 +535,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         NoSuchElementException.class,
         () -> stmt.bindNull("fff", String.class),
         "No parameter with name 'fff' found (possible values [null])");
+    sharedConnPrepare.rollbackTransaction().block();
   }
 
   @Test
