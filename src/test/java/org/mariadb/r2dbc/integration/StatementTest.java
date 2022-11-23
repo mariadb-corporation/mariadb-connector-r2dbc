@@ -264,24 +264,32 @@ public class StatementTest extends BaseConnectionTest {
     CountDownLatch lock = new CountDownLatch(1);
     AtomicReference<Disposable> d = new AtomicReference<>();
     AtomicReference<Disposable> d2 = new AtomicReference<>();
-    Flux<Integer> flux =
-        sharedConn
-            .createStatement("SELECT * from seq_1_to_10000")
-            .execute()
-            .flatMap(
-                r ->
-                    r.map(
-                        (row, metadata) -> {
-                          d2.set(sharedConn.createStatement("COMMIT").execute().subscribe());
-                          d.get().dispose();
-                          return row.get(0, Integer.class);
-                        }));
-    d.set(flux.subscribe());
-    for (int i = 0; i < 100; i++) {
-      lock.await(20, TimeUnit.MILLISECONDS);
-      if (d2.get().isDisposed()) break;
+    MariadbConnection connection = factory.create().block();
+    connection.beginTransaction().block();
+    try {
+      Flux<Integer> flux =
+              connection
+                      .createStatement("SELECT * from seq_1_to_10000")
+                      .execute()
+                      .flatMap(
+                              r ->
+                                      r.map(
+                                              (row, metadata) -> {
+                                                d2.set(connection.createStatement("COMMIT").execute().subscribe());
+                                                d.get().dispose();
+                                                return row.get(0, Integer.class);
+                                              }));
+      d.set(flux.subscribe());
+      for (int i = 0; i < 1000; i++) {
+        lock.await(20, TimeUnit.MILLISECONDS);
+        if (d2.get() != null && d2.get().isDisposed()) break;
+      }
+      Assertions.assertTrue(d2.get() != null && d2.get().isDisposed());
+    } finally {
+      try {
+        connection.close().block();
+      } catch (Exception e) { }
     }
-    Assertions.assertTrue(d2.get().isDisposed());
   }
 
   @Test

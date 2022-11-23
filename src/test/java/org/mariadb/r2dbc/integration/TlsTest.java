@@ -60,7 +60,7 @@ public class TlsTest extends BaseConnectionTest {
     }
 
     sharedConn
-        .createStatement("DROP USER 'MUTUAL_AUTH'")
+        .createStatement("DROP USER 'MUTUAL_AUTH'@'%'")
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
@@ -248,6 +248,8 @@ public class TlsTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNextMatches(
             val -> {
+              if ("maxscale".equals(System.getenv("srv"))
+                  && !"skysql-ha".equals(System.getenv("srv"))) return true;
               String[] values = {"TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
               return Arrays.stream(values).anyMatch(val::equals);
             })
@@ -335,6 +337,8 @@ public class TlsTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNextMatches(
             val -> {
+              if ("maxscale".equals(System.getenv("srv"))
+                  && !"skysql-ha".equals(System.getenv("srv"))) return true;
               String[] values = {"TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
               return Arrays.stream(values).anyMatch(val::equals);
             })
@@ -425,6 +429,8 @@ public class TlsTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNextMatches(
             val -> {
+              if ("maxscale".equals(System.getenv("srv"))
+                  && !"skysql-ha".equals(System.getenv("srv"))) return true;
               String[] values = {"TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
               return Arrays.stream(values).anyMatch(val::equals);
             })
