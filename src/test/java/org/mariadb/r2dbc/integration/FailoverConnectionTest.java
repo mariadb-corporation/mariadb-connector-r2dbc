@@ -124,8 +124,6 @@ public class FailoverConnectionTest extends BaseConnectionTest {
 
   private void transactionReplayFailingBetweenCmds(MariadbConnection connection) throws Exception {
     try {
-      connection.setAutoCommit(false).block();
-      connection.beginTransaction().block();
       connection.createStatement("SET @con=1").execute().blockLast();
 
       //      proxy.restartForce();

@@ -129,9 +129,10 @@ public class BatchTest extends BaseConnectionTest {
     Flux<MariadbResult> f = batch.execute();
     Disposable disp =
         f.flatMap(it -> it.getRowsUpdated()).subscribe(i -> resultNb.incrementAndGet());
-    Thread.sleep(1000);
-
-    Assertions.assertTrue(resultNb.get() > 0);
+    for (int i = 0; i < 100; i++) {
+      Thread.sleep(50);
+      if (resultNb.get() > 0) break;
+    }
     disp.dispose();
     Thread.sleep(1000);
     Assertions.assertTrue(
