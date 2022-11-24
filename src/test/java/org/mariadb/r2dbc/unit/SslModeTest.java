@@ -34,5 +34,7 @@ public class SslModeTest {
     Assertions.assertEquals(SslMode.VERIFY_FULL, SslMode.from("1"));
     Assertions.assertEquals(SslMode.VERIFY_FULL, SslMode.from("true"));
     Assertions.assertEquals(SslMode.VERIFY_FULL, SslMode.from("enable"));
+    Assertions.assertEquals(SslMode.TUNNEL, SslMode.from("tunnel"));
+    Assertions.assertEquals(SslMode.TUNNEL, SslMode.from("TUNNEL"));
   }
 }
