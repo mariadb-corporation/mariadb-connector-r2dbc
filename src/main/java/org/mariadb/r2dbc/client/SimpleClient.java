@@ -9,10 +9,13 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
-import io.r2dbc.spi.*;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.r2dbc.spi.R2dbcTransientResourceException;
+import io.r2dbc.spi.TransactionDefinition;
 import java.net.SocketAddress;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
@@ -23,11 +26,20 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
-import org.mariadb.r2dbc.*;
+import javax.net.ssl.SSLParameters;
+import org.mariadb.r2dbc.ExceptionFactory;
+import org.mariadb.r2dbc.HaMode;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.MariadbTransactionDefinition;
+import org.mariadb.r2dbc.SslMode;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.ServerMessage;
-import org.mariadb.r2dbc.message.client.*;
+import org.mariadb.r2dbc.message.client.ExecutePacket;
+import org.mariadb.r2dbc.message.client.PreparePacket;
+import org.mariadb.r2dbc.message.client.QueryPacket;
+import org.mariadb.r2dbc.message.client.QuitPacket;
+import org.mariadb.r2dbc.message.client.SslRequestPacket;
 import org.mariadb.r2dbc.message.server.CompletePrepareResult;
 import org.mariadb.r2dbc.message.server.ErrorPacket;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
@@ -38,7 +50,11 @@ import org.mariadb.r2dbc.util.constants.ServerStatus;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
-import reactor.core.publisher.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.Operators;
+import reactor.core.publisher.Sinks;
 import reactor.netty.Connection;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
@@ -95,6 +111,27 @@ public class SimpleClient implements Client {
     this.messageSubscriber =
         new ServerMessageSubscriber(this.lock, this.isClosed, exchangeQueue, receiverQueue);
     connection.addHandler(new MariadbFrameDecoder());
+
+    if (configuration.getSslConfig().getSslMode() == SslMode.TUNNEL) {
+      SSLEngine engine;
+      try {
+        SslContext sslContext = configuration.getSslConfig().getSslContext();
+        if (hostAddress != null) {
+          engine = sslContext.newEngine(
+              connection.channel().alloc(),
+              hostAddress.getHost(),
+              hostAddress.getPort());
+          SSLParameters sslParameters = engine.getSSLParameters();
+          sslParameters.setEndpointIdentificationAlgorithm("HTTPS");
+          engine.setSSLParameters(sslParameters);
+        } else {
+          engine = sslContext.newEngine(connection.channel().alloc());
+        }
+        connection.addHandlerFirst(new SslHandler(engine));
+      } catch (SSLException e) {
+        handleConnectionError(e);
+      }
+    }
 
     if (logger.isTraceEnabled()) {
       connection.addHandlerFirst(
