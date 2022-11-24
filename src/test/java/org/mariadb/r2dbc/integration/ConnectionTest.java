@@ -36,7 +36,7 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @AfterAll
   public static void dropAll() {
-    sharedConn.createStatement("DROP DATABASE test_r2dbc").execute().blockLast();
+    sharedConn.createStatement("DROP DATABASE IF EXISTS test_r2dbc").execute().blockLast();
   }
 
   @Test
@@ -57,27 +57,6 @@ public class ConnectionTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext(Boolean.FALSE)
         .verifyComplete();
-  }
-
-  private void disableLog() {
-    ch.qos.logback.classic.Logger driver =
-        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger("org.mariadb.r2dbc");
-    ch.qos.logback.classic.Logger reactor =
-        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger("reactor.core");
-
-    initialReactorLvl = reactor.getLevel();
-    initialLvl = driver.getLevel();
-    driver.setLevel(Level.OFF);
-    reactor.setLevel(Level.OFF);
-  }
-
-  private void reInitLog() {
-    ch.qos.logback.classic.Logger root =
-        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger("org.mariadb.r2dbc");
-    ch.qos.logback.classic.Logger r2dbc =
-        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger("io.r2dbc.spi");
-    root.setLevel(initialReactorLvl);
-    r2dbc.setLevel(initialReactorLvl);
   }
 
   @Test
@@ -1092,7 +1071,7 @@ public class ConnectionTest extends BaseConnectionTest {
         new MariadbConnectionFactory(TestConfiguration.defaultBuilder.clone().build())
             .create()
             .block();
-    connection.setStatementTimeout(Duration.ofMillis(0500)).block();
+    connection.setStatementTimeout(Duration.ofMillis(500)).block();
 
     try {
       connection

@@ -294,6 +294,41 @@ public class StatementTest extends BaseConnectionTest {
   }
 
   @Test
+  public void sinkFirstOnly() throws Exception {
+    Assumptions.assumeTrue(isMariaDBServer());
+    CountDownLatch lock = new CountDownLatch(1);
+
+    AtomicReference<Disposable> d2 = new AtomicReference<>();
+    MariadbConnection connection = factory.create().block();
+    connection.beginTransaction().block();
+    try {
+      Flux<Integer> flux =
+          connection
+              .createStatement("SELECT * from seq_1_to_10000")
+              .execute()
+              .flatMap(
+                  r ->
+                      r.map(
+                          (row, metadata) -> {
+                            d2.set(connection.createStatement("COMMIT").execute().subscribe());
+                            return row.get(0, Integer.class);
+                          }));
+      System.out.println(flux.blockFirst());
+
+      for (int i = 0; i < 1000; i++) {
+        lock.await(20, TimeUnit.MILLISECONDS);
+        if (d2.get() != null && d2.get().isDisposed()) break;
+      }
+      Assertions.assertTrue(d2.get() != null && d2.get().isDisposed());
+    } finally {
+      try {
+        connection.close().block();
+      } catch (Exception e) {
+      }
+    }
+  }
+
+  @Test
   public void getPosition() {
     sharedConn
         .createStatement(

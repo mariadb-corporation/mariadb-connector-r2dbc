@@ -11,6 +11,7 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
+import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import io.r2dbc.spi.*;
@@ -206,8 +207,9 @@ public class SimpleClient implements Client {
     closeRequested = true;
     return Mono.defer(
         () -> {
+          this.messageSubscriber.close(
+              new R2dbcNonTransientResourceException("Connection closed", "08000"));
           if (this.isClosed.compareAndSet(false, true)) {
-
             Channel channel = this.connection.channel();
             if (!channel.isOpen()) {
               this.connection.dispose();
@@ -604,11 +606,10 @@ public class SimpleClient implements Client {
       Exchange exchange = this.exchangeQueue.peek();
       ServerMessage srvMsg = decoder.decode(message, exchange);
 
-      if (this.receiverQueue.isEmpty() && exchange != null && exchange.hasDemandOrIsCancelled()) {
-        // nothing buffered => directly emit message
-        if (srvMsg.ending()) this.exchangeQueue.poll();
-        exchange.emit(srvMsg);
-        if (exchange.hasDemandOrIsCancelled()) {
+      // nothing buffered => directly emit message
+      if (this.receiverQueue.isEmpty() && exchange != null && exchange.hasDemand()) {
+        if (exchange.emit(srvMsg)) this.exchangeQueue.poll();
+        if (exchange.hasDemand() || exchange.isCancelled()) {
           requestQueueFilling();
         }
         return;
@@ -646,17 +647,15 @@ public class SimpleClient implements Client {
         if (!lock.tryLock()) return;
         try {
           while (!this.receiverQueue.isEmpty()) {
-            if ((exchange = this.exchangeQueue.peek()) == null
-                || !exchange.hasDemandOrIsCancelled()) return;
+            if ((exchange = this.exchangeQueue.peek()) == null || !exchange.hasDemand()) return;
             if ((srvMsg = this.receiverQueue.poll()) == null) return;
-            if (srvMsg.ending()) this.exchangeQueue.poll();
-            exchange.emit(srvMsg);
+            if (exchange.emit(srvMsg)) this.exchangeQueue.poll();
           }
         } finally {
           lock.unlock();
         }
 
-        if ((exchange = this.exchangeQueue.peek()) == null || exchange.hasDemandOrIsCancelled()) {
+        if ((exchange = this.exchangeQueue.peek()) == null || exchange.hasDemand()) {
           requestQueueFilling();
         }
       }
@@ -665,7 +664,18 @@ public class SimpleClient implements Client {
     public void endExchanges(Throwable exception) {
       Exchange exchange;
       while ((exchange = this.exchangeQueue.poll()) != null) {
-        exchange.getSink().error(exception);
+        FluxSink<ServerMessage> sink = exchange.getSink();
+        if (!sink.isCancelled()) exchange.getSink().error(exception);
+      }
+    }
+
+    public void close(R2dbcException error) {
+      Exchange exchange;
+      while ((exchange = this.exchangeQueue.poll()) != null) {
+        exchange.onError(error);
+      }
+      while (!this.receiverQueue.isEmpty()) {
+        ReferenceCountUtil.release(this.receiverQueue.poll());
       }
     }
   }

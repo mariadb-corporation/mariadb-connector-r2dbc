@@ -39,20 +39,42 @@ public class Exchange {
     return sql;
   }
 
-  public boolean hasDemandOrIsCancelled() {
-    return demand.get() > 0 || this.sink.isCancelled();
+  public boolean hasDemand() {
+    return demand.get() > 0;
   }
 
-  public void emit(ServerMessage srvMsg) {
+  public boolean isCancelled() {
+    return sink.isCancelled();
+  }
+
+  public void onError(Throwable throwable) {
+    if (!this.sink.isCancelled()) {
+      this.sink.error(throwable);
+    }
+  }
+
+  /**
+   * Emit server message.
+   *
+   * @param srvMsg message to emit
+   * @return true if ending message
+   */
+  public boolean emit(ServerMessage srvMsg) {
     if (this.sink.isCancelled()) {
       ReferenceCountUtil.release(srvMsg);
-      return;
+      return srvMsg.ending();
     }
+
     demand.decrementAndGet();
     this.sink.next(srvMsg);
+
     if (srvMsg.ending()) {
-      this.sink.complete();
+      if (!this.sink.isCancelled()) {
+        this.sink.complete();
+      }
+      return true;
     }
+    return false;
   }
 
   public void incrementDemand(long n) {

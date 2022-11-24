@@ -12,6 +12,11 @@ public final class QuitPacket implements ClientMessage {
   public static final QuitPacket INSTANCE = new QuitPacket();
 
   @Override
+  public String toString() {
+    return "QuitPacket{}";
+  }
+
+  @Override
   public ByteBuf encode(Context context, ByteBufAllocator allocator) {
     ByteBuf buf = allocator.ioBuffer(1);
     buf.writeByte(0x01);

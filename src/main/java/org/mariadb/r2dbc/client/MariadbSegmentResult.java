@@ -126,11 +126,11 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
                   org.mariadb.r2dbc.api.MariadbOutParameters row =
                       new MariadbOutParameters(
                           buf, new MariadbOutParametersMetadata(columns), factory);
-                  sink.next(new MariadbOutSegment(row, buf));
+                  sink.next(new MariadbOutSegment(row, (RowPacket) message));
                 } else {
                   org.mariadb.r2dbc.api.MariadbRow row =
                       rowConstructor.get().create(buf, meta.get(), factory);
-                  sink.next(new MariadbRowSegment(row, buf));
+                  sink.next(new MariadbRowSegment(row, (RowPacket) message));
                 }
               }
             });
