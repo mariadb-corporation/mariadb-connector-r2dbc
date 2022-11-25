@@ -22,7 +22,6 @@ public class StatementTest extends BaseConnectionTest {
 
   @BeforeAll
   public static void before2() throws Exception {
-    System.out.println("BEFORE");
     dropAll();
     sharedConn
         .createStatement("CREATE TABLE parameterNull(t varchar(10), t2 varchar(10))")
@@ -70,12 +69,10 @@ public class StatementTest extends BaseConnectionTest {
             "CREATE TABLE returningBefore105 (id int not null primary key auto_increment, test varchar(10))")
         .execute()
         .blockLast();
-    System.out.println("BEFORE END");
   }
 
   @AfterAll
   public static void dropAll() {
-    System.out.println("dropAll");
     sharedConn.createStatement("DROP TABLE IF EXISTS parameterNull").execute().blockLast();
     sharedConn
         .createStatement("DROP TABLE IF EXISTS prepareReturningBefore105")
@@ -91,7 +88,6 @@ public class StatementTest extends BaseConnectionTest {
     sharedConn.createStatement("DROP TABLE IF EXISTS get_pos").execute().blockLast();
     sharedConn.createStatement("DROP TABLE IF EXISTS INSERT_RETURNING").execute().blockLast();
     sharedConn.createStatement("DROP TABLE IF EXISTS returningBefore105").execute().blockLast();
-    System.out.println("dropAll END");
   }
 
   @Test

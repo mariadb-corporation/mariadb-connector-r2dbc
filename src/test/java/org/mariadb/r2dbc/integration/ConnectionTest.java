@@ -76,6 +76,7 @@ public class ConnectionTest extends BaseConnectionTest {
       Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
       Assertions.assertTrue(
           t.getMessage().contains("Connection is close. Cannot send anything")
+              || t.getMessage().contains("Connection error")
               || t.getMessage().contains("Connection unexpectedly closed")
               || t.getMessage().contains("Connection unexpected error"),
           "real msg:" + t.getMessage());

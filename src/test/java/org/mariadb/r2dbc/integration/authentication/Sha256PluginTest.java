@@ -240,7 +240,8 @@ public class Sha256PluginTest extends BaseConnectionTest {
 
   @Test
   public void sha256PluginTestWithoutServerRsaKey() throws Exception {
-    Assumptions.assumeTrue(!isWindows && !isMariaDBServer() && minVersion(8, 0, 0));
+    Assumptions.assumeTrue(
+        !isWindows && !isMariaDBServer() && (minVersion(8, 0, 0) && !minVersion(8, 0, 31)));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder

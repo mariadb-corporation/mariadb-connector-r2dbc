@@ -136,7 +136,7 @@ public class BatchTest extends BaseConnectionTest {
     disp.dispose();
     Thread.sleep(1000);
     Assertions.assertTrue(
-        resultNb.get() > 1 && resultNb.get() < 10_000,
+        resultNb.get() > 0 && resultNb.get() < 10_000,
         String.format("expected %s to be 0 < x < 10000", resultNb.get()));
   }
 
