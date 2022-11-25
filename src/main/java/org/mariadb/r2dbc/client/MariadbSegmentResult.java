@@ -71,17 +71,19 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
               }
 
               if (message instanceof EofPacket) {
-                rowConstructor.set(text ? MariadbRowText::new : MariadbRowBinary::new);
-                meta.set(new MariadbRowMetadata(columns));
+                EofPacket eof = (EofPacket) message;
+                if (!eof.ending()) {
+                  rowConstructor.set(text ? MariadbRowText::new : MariadbRowBinary::new);
+                  meta.set(new MariadbRowMetadata(columns));
 
-                // in case metadata follows and prepared statement, update meta
-                if (prepareResult != null && prepareResult.get() != null && metaFollows.get()) {
-                  prepareResult.get().setColumns(columns.toArray(new ColumnDefinitionPacket[0]));
+                  // in case metadata follows and prepared statement, update meta
+                  if (prepareResult != null && prepareResult.get() != null && metaFollows.get()) {
+                    prepareResult.get().setColumns(columns.toArray(new ColumnDefinitionPacket[0]));
+                  }
+
+                  isOutputParameter.set(
+                      (eof.getServerStatus() & ServerStatus.PS_OUT_PARAMETERS) > 0);
                 }
-
-                isOutputParameter.set(
-                    (((EofPacket) message).getServerStatus() & ServerStatus.PS_OUT_PARAMETERS) > 0);
-
                 return;
               }
 
@@ -121,16 +123,16 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
               }
 
               if (message instanceof RowPacket) {
-                ByteBuf buf = ((RowPacket) message).getRaw();
+                RowPacket row = ((RowPacket) message);
                 if (isOutputParameter.get()) {
-                  org.mariadb.r2dbc.api.MariadbOutParameters row =
+                  org.mariadb.r2dbc.api.MariadbOutParameters outParameters =
                       new MariadbOutParameters(
-                          buf, new MariadbOutParametersMetadata(columns), factory);
-                  sink.next(new MariadbOutSegment(row, (RowPacket) message));
+                          row.getRaw(), new MariadbOutParametersMetadata(columns), factory);
+                  sink.next(new MariadbOutSegment(outParameters, (RowPacket) message));
                 } else {
-                  org.mariadb.r2dbc.api.MariadbRow row =
-                      rowConstructor.get().create(buf, meta.get(), factory);
-                  sink.next(new MariadbRowSegment(row, (RowPacket) message));
+                  org.mariadb.r2dbc.api.MariadbRow rowSegment =
+                      rowConstructor.get().create(row.getRaw(), meta.get(), factory);
+                  sink.next(new MariadbRowSegment(rowSegment, (RowPacket) message));
                 }
               }
             });
@@ -202,11 +204,9 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
         this.segments.filter(
             it -> {
               boolean result = filter.test(it);
-
               if (!result) {
                 ReferenceCountUtil.release(it);
               }
-
               return result;
             }));
   }
@@ -219,12 +219,10 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
     return this.segments.concatMap(
         segment -> {
           Publisher<? extends T> result = mappingFunction.apply(segment);
-
           if (result == null) {
             return Mono.error(new IllegalStateException("The mapper returned a null Publisher"));
           }
 
-          // doAfterTerminate to not release resources before they had a chance to get emitted
           if (result instanceof Mono) {
             return ((Mono<T>) result).doFinally(s -> ReferenceCountUtil.release(segment));
           }
@@ -235,8 +233,6 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
 
   @Override
   protected void deallocate() {
-
-    // drain messages for cleanup
     this.getRowsUpdated().subscribe();
   }
 
@@ -247,7 +243,7 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
 
   @Override
   public String toString() {
-    return "MariadbSegmentResult{" + "segments=" + this.segments + '}';
+    return "MariadbSegmentResult{segments=" + this.segments + '}';
   }
 
   static MariadbSegmentResult toResult(

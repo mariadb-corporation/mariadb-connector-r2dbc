@@ -46,7 +46,6 @@ public class SslConfig {
       throws R2dbcTransientResourceException {
     this.sslMode = sslMode;
     this.serverSslCert = serverSslCert;
-    this.clientSslCert = clientSslCert;
     this.tlsProtocol = tlsProtocol;
     this.clientSslCert = clientSslCert;
     this.clientSslKey = clientSslKey;

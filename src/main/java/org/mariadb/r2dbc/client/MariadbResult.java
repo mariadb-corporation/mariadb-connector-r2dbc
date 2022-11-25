@@ -23,7 +23,6 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.server.*;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
-import org.mariadb.r2dbc.util.constants.ServerStatus;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -173,13 +172,16 @@ public class MariadbResult extends AbstractReferenceCounted
           }
 
           if (message instanceof EofPacket) {
-            rowConstructor.set(protocolType ? MariadbRowText::new : MariadbRowBinary::new);
-            meta.set(new MariadbRowMetadata(columns));
-            boolean outputParameter =
-                (((EofPacket) message).getServerStatus() & ServerStatus.PS_OUT_PARAMETERS) > 0;
-            // in case metadata follows and prepared statement, update meta
-            if (prepareResult != null && prepareResult.get() != null && metaFollows.get()) {
-              prepareResult.get().setColumns(columns.toArray(new ColumnDefinitionPacket[0]));
+            EofPacket eof = (EofPacket) message;
+            if (!eof.ending()) {
+
+              rowConstructor.set(protocolType ? MariadbRowText::new : MariadbRowBinary::new);
+              meta.set(new MariadbRowMetadata(columns));
+
+              // in case metadata follows and prepared statement, update meta
+              if (prepareResult != null && prepareResult.get() != null && metaFollows.get()) {
+                prepareResult.get().setColumns(columns.toArray(new ColumnDefinitionPacket[0]));
+              }
             }
             return;
           }

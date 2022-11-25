@@ -60,7 +60,7 @@ public class TlsTest extends BaseConnectionTest {
     }
 
     sharedConn
-        .createStatement("DROP USER 'MUTUAL_AUTH'@'%'")
+        .createStatement("DROP USER 'MUTUAL_AUTH'")
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
@@ -407,6 +407,9 @@ public class TlsTest extends BaseConnectionTest {
 
   @Test
   void fullMutualAuthentication() throws Exception {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+
     Assumptions.assumeTrue(haveSsl(sharedConn));
     Assumptions.assumeTrue(serverSslCert != null && clientSslCert != null & clientSslKey != null);
     MariadbConnectionConfiguration conf =

@@ -8,12 +8,8 @@ import io.r2dbc.spi.R2dbcTransientResourceException;
 import io.r2dbc.spi.Statement;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
@@ -23,6 +19,80 @@ import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 public class StatementTest extends BaseConnectionTest {
+
+  @BeforeAll
+  public static void before2() throws Exception {
+    System.out.println("BEFORE");
+    dropAll();
+    sharedConn
+        .createStatement("CREATE TABLE parameterNull(t varchar(10), t2 varchar(10))")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "CREATE TABLE prepareReturningBefore105 (id int not null primary key auto_increment, test varchar(10))")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "CREATE TABLE returningBefore105WithParameter (id int not null primary key auto_increment, test varchar(10))")
+        .execute()
+        .blockLast();
+
+    sharedConn
+        .createStatement(
+            "CREATE TABLE generatedId (id int not null primary key auto_increment, test varchar(10))")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "CREATE TABLE prepareReturning (id int not null primary key auto_increment, test varchar(10))")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "CREATE TABLE dupplicate (id int not null primary key auto_increment, test varchar(10))")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "CREATE TABLE get_pos (t1 varchar(10), t2 varchar(10), t3 varchar(10), t4 varchar(10))")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement(
+            "CREATE TABLE INSERT_RETURNING (id int not null primary key auto_increment, test varchar(10))")
+        .execute()
+        .blockLast();
+
+    sharedConn
+        .createStatement(
+            "CREATE TABLE returningBefore105 (id int not null primary key auto_increment, test varchar(10))")
+        .execute()
+        .blockLast();
+    System.out.println("BEFORE END");
+  }
+
+  @AfterAll
+  public static void dropAll() {
+    System.out.println("dropAll");
+    sharedConn.createStatement("DROP TABLE IF EXISTS parameterNull").execute().blockLast();
+    sharedConn
+        .createStatement("DROP TABLE IF EXISTS prepareReturningBefore105")
+        .execute()
+        .blockLast();
+    sharedConn
+        .createStatement("DROP TABLE IF EXISTS returningBefore105WithParameter")
+        .execute()
+        .blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS generatedId").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS prepareReturning").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS dupplicate").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS get_pos").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS INSERT_RETURNING").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS returningBefore105").execute().blockLast();
+    System.out.println("dropAll END");
+  }
 
   @Test
   void bindOnStatementWithoutParameter() {
@@ -80,7 +150,7 @@ public class StatementTest extends BaseConnectionTest {
 
   @Test
   void bindWrongName() {
-    Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (:name1, :name2)");
+    Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (:name1,:name2)");
     try {
       stmt.bind(null, 1);
       Assertions.fail("must have thrown exception");
@@ -182,17 +252,21 @@ public class StatementTest extends BaseConnectionTest {
 
   @Test
   void metadataNotSkipped() {
-    String sql;
+    // issue with maxscale 22.08.2
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
 
+    String sql;
+    int param = 500;
     StringBuilder sb = new StringBuilder("select ?");
-    for (int i = 1; i < 1000; i++) {
+    for (int i = 1; i < param; i++) {
       sb.append(",?");
     }
     sql = sb.toString();
     int[] rnds = randParams();
     io.r2dbc.spi.Statement statement = sharedConnPrepare.createStatement(sql);
     for (int j = 0; j < 2; j++) {
-      for (int i = 0; i < 1000; i++) {
+      for (int i = 0; i < param; i++) {
         statement.bind(i, rnds[i]);
       }
 
@@ -200,7 +274,10 @@ public class StatementTest extends BaseConnectionTest {
           Flux.from(statement.execute())
               .flatMap(it -> it.map((row, rowMetadata) -> row.get(0, Integer.class)))
               .blockLast();
-      if (rnds[0] != val) throw new IllegalStateException("ERROR");
+      if (rnds[0] != val) {
+        System.out.println("not Expected");
+        Assertions.fail("ERROR");
+      }
     }
   }
 
@@ -214,12 +291,7 @@ public class StatementTest extends BaseConnectionTest {
 
   @Test
   public void dupplicate() {
-    sharedConn
-        .createStatement(
-            "CREATE TEMPORARY TABLE dupplicate (id int not null primary key auto_increment, test varchar(10))")
-        .execute()
-        .blockLast();
-
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("INSERT INTO dupplicate(test) VALUES ('test1'), ('test2')")
         .execute()
@@ -256,12 +328,12 @@ public class StatementTest extends BaseConnectionTest {
                     && (throwable.getMessage().contains("Duplicate entry '1' for key")
                         || throwable.getMessage().contains("Duplicate key in container")))
         .verify();
+    sharedConn.rollbackTransaction().block();
   }
 
   @Test
-  public void sinkEndCheck() throws Exception {
+  public void sinkEndCheck() throws Throwable {
     Assumptions.assumeTrue(isMariaDBServer());
-    CountDownLatch lock = new CountDownLatch(1);
     AtomicReference<Disposable> d = new AtomicReference<>();
     AtomicReference<Disposable> d2 = new AtomicReference<>();
     MariadbConnection connection = factory.create().block();
@@ -281,7 +353,7 @@ public class StatementTest extends BaseConnectionTest {
                           }));
       d.set(flux.subscribe());
       for (int i = 0; i < 1000; i++) {
-        lock.await(20, TimeUnit.MILLISECONDS);
+        Thread.sleep(20);
         if (d2.get() != null && d2.get().isDisposed()) break;
       }
       Assertions.assertTrue(d2.get() != null && d2.get().isDisposed());
@@ -294,10 +366,8 @@ public class StatementTest extends BaseConnectionTest {
   }
 
   @Test
-  public void sinkFirstOnly() throws Exception {
+  public void sinkFirstOnly() throws Throwable {
     Assumptions.assumeTrue(isMariaDBServer());
-    CountDownLatch lock = new CountDownLatch(1);
-
     AtomicReference<Disposable> d2 = new AtomicReference<>();
     MariadbConnection connection = factory.create().block();
     connection.beginTransaction().block();
@@ -313,10 +383,10 @@ public class StatementTest extends BaseConnectionTest {
                             d2.set(connection.createStatement("COMMIT").execute().subscribe());
                             return row.get(0, Integer.class);
                           }));
-      System.out.println(flux.blockFirst());
+      flux.blockFirst();
 
       for (int i = 0; i < 1000; i++) {
-        lock.await(20, TimeUnit.MILLISECONDS);
+        Thread.sleep(20);
         if (d2.get() != null && d2.get().isDisposed()) break;
       }
       Assertions.assertTrue(d2.get() != null && d2.get().isDisposed());
@@ -330,11 +400,6 @@ public class StatementTest extends BaseConnectionTest {
 
   @Test
   public void getPosition() {
-    sharedConn
-        .createStatement(
-            "CREATE TEMPORARY TABLE get_pos (t1 varchar(10), t2 varchar(10), t3 varchar(10), t4 varchar(10))")
-        .execute()
-        .blockLast();
     sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("INSERT INTO get_pos VALUES ('test1', 'test2', 'test3', 'test4')")
@@ -374,13 +439,7 @@ public class StatementTest extends BaseConnectionTest {
                   .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES ('test1'), ('test2')")
                   .returnGeneratedValues("id", "test"));
     }
-
-    sharedConn
-        .createStatement(
-            "CREATE TEMPORARY TABLE INSERT_RETURNING (id int not null primary key auto_increment, test varchar(10))")
-        .execute()
-        .blockLast();
-
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("INSERT INTO INSERT_RETURNING(test) VALUES ('test3')")
         .returnGeneratedValues("id")
@@ -420,18 +479,13 @@ public class StatementTest extends BaseConnectionTest {
           .expectNext("6a", "7b")
           .verifyComplete();
     }
+    sharedConn.rollbackTransaction().block();
   }
 
   @Test
   public void returningBefore105() {
     Assumptions.assumeFalse((isMariaDBServer() && minVersion(10, 5, 1)));
-
-    sharedConn
-        .createStatement(
-            "CREATE TEMPORARY TABLE returningBefore105 (id int not null primary key auto_increment, test varchar(10))")
-        .execute()
-        .blockLast();
-
+    sharedConn.beginTransaction().block();
     try {
       sharedConn
           .createStatement("INSERT INTO returningBefore105(test) VALUES ('test1'), ('test2')")
@@ -483,18 +537,13 @@ public class StatementTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext("5")
         .verifyComplete();
+    sharedConn.rollbackTransaction().block();
   }
 
   @Test
   public void returningBefore105WithParameter() {
     Assumptions.assumeFalse((isMariaDBServer() && minVersion(10, 5, 1)));
-
-    sharedConn
-        .createStatement(
-            "CREATE TEMPORARY TABLE returningBefore105WithParameter (id int not null primary key auto_increment, test varchar(10))")
-        .execute()
-        .blockLast();
-
+    sharedConn.beginTransaction().block();
     try {
       sharedConn
           .createStatement("INSERT INTO returningBefore105WithParameter(test) VALUES (?), (?)")
@@ -565,18 +614,13 @@ public class StatementTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext("6", "7")
         .verifyComplete();
+    sharedConn.rollbackTransaction().block();
   }
 
   @Test
   public void prepareReturning() {
     Assumptions.assumeTrue(isMariaDBServer() && minVersion(10, 5, 1));
-
-    sharedConn
-        .createStatement(
-            "CREATE TEMPORARY TABLE prepareReturning (id int not null primary key auto_increment, test varchar(10))")
-        .execute()
-        .blockLast();
-
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("INSERT INTO prepareReturning(test) VALUES (?), (?)")
         .returnGeneratedValues("id", "test")
@@ -634,6 +678,7 @@ public class StatementTest extends BaseConnectionTest {
                 .add()
                 .execute(),
         "Parameter at position 0 is not set");
+    sharedConn.rollbackTransaction().block();
   }
 
   @Test
@@ -643,9 +688,6 @@ public class StatementTest extends BaseConnectionTest {
   }
 
   void parameterNull(MariadbConnection conn) {
-    conn.createStatement("CREATE TEMPORARY TABLE parameterNull(t varchar(10), t2 varchar(10))")
-        .execute()
-        .blockLast();
     conn.beginTransaction().block();
     conn.createStatement("INSERT INTO parameterNull VALUES ('1', '1'), (null, '2'), (null, null)")
         .execute()
@@ -675,13 +717,7 @@ public class StatementTest extends BaseConnectionTest {
   @Test
   public void prepareReturningBefore105() {
     Assumptions.assumeFalse((isMariaDBServer() && minVersion(10, 5, 1)));
-
-    sharedConn
-        .createStatement(
-            "CREATE TEMPORARY TABLE prepareReturningBefore105 (id int not null primary key auto_increment, test varchar(10))")
-        .execute()
-        .blockLast();
-
+    sharedConn.beginTransaction().block();
     try {
       sharedConn
           .createStatement("INSERT INTO prepareReturningBefore105(test) VALUES (?), (?)")
@@ -740,18 +776,14 @@ public class StatementTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext("5")
         .verifyComplete();
+    sharedConn.rollbackTransaction().block();
   }
 
   @Test
   public void generatedId() {
-
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     sharedConn.beginTransaction().block();
-    sharedConn
-        .createStatement(
-            "CREATE TEMPORARY TABLE generatedId (id int not null primary key auto_increment, test varchar(10))")
-        .execute()
-        .blockLast();
-
     sharedConn
         .createStatement("INSERT INTO generatedId(test) VALUES (?)")
         .bind(0, "test0")
