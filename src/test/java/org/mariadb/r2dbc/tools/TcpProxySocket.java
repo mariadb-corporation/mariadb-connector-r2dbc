@@ -53,6 +53,7 @@ public class TcpProxySocket implements Runnable {
     stop = true;
     try {
       if (server != null) {
+        client.setSoLinger(true, 0);
         server.close();
       }
     } catch (IOException e) {

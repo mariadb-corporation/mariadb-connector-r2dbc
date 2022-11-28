@@ -78,7 +78,7 @@ public final class AuthenticationFlow {
         .doOnError(
             e -> {
               logger.error("Authentication failed", e);
-              flow.client.close().subscribe();
+              flow.client.close(false).subscribe();
             })
         .then(Mono.just(client));
   }

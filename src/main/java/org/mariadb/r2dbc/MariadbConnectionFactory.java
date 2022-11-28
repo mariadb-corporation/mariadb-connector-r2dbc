@@ -125,7 +125,7 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
   }
 
   public static Mono<MariadbConnection> closeWithError(Client client, Throwable throwable) {
-    return client.close().then(Mono.error(throwable));
+    return client.close(true).then(Mono.error(throwable));
   }
 
   public static Throwable cannotConnect(Throwable throwable, SocketAddress endpoint) {

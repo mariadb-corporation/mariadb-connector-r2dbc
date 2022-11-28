@@ -67,7 +67,7 @@ public class FailoverConnectionTest extends BaseConnectionTest {
     try {
       connection.createStatement("SET @con=1").execute().blockLast();
       assertTrue(connection.validate(ValidationDepth.REMOTE).block());
-      proxy.restart(11000);
+      proxy.restart(15000);
       Thread.sleep(200);
       assertFalse(connection.validate(ValidationDepth.REMOTE).block());
       Thread.sleep(200);

@@ -42,6 +42,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.*;
 import reactor.netty.Connection;
+import reactor.netty.channel.AbortedException;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
 import reactor.util.Logger;
@@ -107,7 +108,6 @@ public class SimpleClient implements Client {
     connection
         .inbound()
         .receive()
-        .doOnError(this::handleConnectionError)
         .doOnComplete(this::handleConnectionEnd)
         .subscribe(messageSubscriber);
 
@@ -166,27 +166,31 @@ public class SimpleClient implements Client {
   }
 
   private void handleConnectionError(Throwable throwable) {
-    if (closeChannelIfNeeded()) {
-      logger.error("Connection unexpected error", throwable);
-      messageSubscriber.endExchanges(
+    R2dbcNonTransientResourceException error;
+    if (AbortedException.isConnectionReset(throwable) && !isConnected()) {
+      error =
           new R2dbcNonTransientResourceException(
-              "Connection unexpected error", "08000", throwable));
+              "Cannot execute command since connection is already closed", "08000", throwable);
     } else {
-      logger.error("Connection error", throwable);
-      messageSubscriber.endExchanges(
-          new R2dbcNonTransientResourceException("Connection error", "08000", throwable));
+      error =
+          new R2dbcNonTransientResourceException(
+              String.format("Connection error", closeChannelIfNeeded() ? "unexpected" : ""),
+              "08000",
+              throwable);
+      logger.error(error.getMessage(), throwable);
     }
+    messageSubscriber.close(error);
   }
 
   private Mono<Void> sendResumeError(Throwable throwable) {
     handleConnectionError(throwable);
     this.requestSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
     logger.debug("Connection error", throwable);
-    return close();
+    return close(false);
   }
 
   private void handleConnectionEnd() {
-    messageSubscriber.endExchanges(
+    messageSubscriber.close(
         new R2dbcNonTransientResourceException(
             "Connection " + (closeChannelIfNeeded() ? "unexpectedly " : "") + "closed", "08000"));
   }
@@ -203,8 +207,8 @@ public class SimpleClient implements Client {
   }
 
   @Override
-  public Mono<Void> close() {
-    closeRequested = true;
+  public Mono<Void> close(boolean closeRequested) {
+    if (closeRequested) this.closeRequested = true;
     return Mono.defer(
         () -> {
           this.messageSubscriber.close(
@@ -590,7 +594,20 @@ public class SimpleClient implements Client {
       this.upstream = subscription;
     }
 
-    public void onError(Throwable t) {}
+    public void onError(Throwable t) {
+      if (this.close.get()) {
+        Operators.onErrorDropped(t, currentContext());
+        return;
+      }
+
+      SimpleClient.this.requestSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
+      this.close.set(true);
+
+      logger.error("Connection error", t);
+
+      SimpleClient.this.close(false).subscribe();
+      handleConnectionError(t);
+    }
 
     public void onComplete() {}
 
@@ -658,14 +675,6 @@ public class SimpleClient implements Client {
         if ((exchange = this.exchangeQueue.peek()) == null || exchange.hasDemand()) {
           requestQueueFilling();
         }
-      }
-    }
-
-    public void endExchanges(Throwable exception) {
-      Exchange exchange;
-      while ((exchange = this.exchangeQueue.poll()) != null) {
-        FluxSink<ServerMessage> sink = exchange.getSink();
-        if (!sink.isCancelled()) exchange.getSink().error(exception);
       }
     }
 

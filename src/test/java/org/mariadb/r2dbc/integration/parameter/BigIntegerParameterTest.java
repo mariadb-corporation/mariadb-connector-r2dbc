@@ -492,7 +492,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     connection.rollbackTransaction().block();
   }
 
-  private void validate(MariadbConnection connection, Optional<String> t1, Optional<String> t2, Optional<String> t3) {
+  private void validate(
+      MariadbConnection connection, Optional<String> t1, Optional<String> t2, Optional<String> t3) {
     connection
         .createStatement("SELECT * FROM BigIntParam")
         .execute()

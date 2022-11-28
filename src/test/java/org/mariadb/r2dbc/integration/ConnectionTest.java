@@ -20,7 +20,6 @@ import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.netty.resources.LoopResources;
 import reactor.test.StepVerifier;
 
@@ -76,6 +75,7 @@ public class ConnectionTest extends BaseConnectionTest {
       Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
       Assertions.assertTrue(
           t.getMessage().contains("Connection is close. Cannot send anything")
+              || t.getMessage().contains("Cannot execute command since connection is already closed")
               || t.getMessage().contains("Connection error")
               || t.getMessage().contains("Connection unexpectedly closed")
               || t.getMessage().contains("Connection unexpected error"),
@@ -113,6 +113,7 @@ public class ConnectionTest extends BaseConnectionTest {
       Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getCause().getClass());
       Assertions.assertTrue(
           t.getCause().getMessage().contains("Connection is close. Cannot send anything")
+                  || t.getMessage().contains("Cannot execute command since connection is already closed")
               || t.getCause().getMessage().contains("Connection unexpectedly closed")
               || t.getCause().getMessage().contains("Connection unexpected error"),
           "real msg:" + t.getCause().getMessage());
@@ -171,7 +172,8 @@ public class ConnectionTest extends BaseConnectionTest {
             Assertions.assertTrue(
                 t.getMessage().contains("Connection is close. Cannot send anything")
                     || t.getMessage().contains("Connection unexpectedly closed")
-                    || t.getMessage().contains("Connection unexpected error"),
+                    || t.getMessage().contains("Connection unexpected error")
+                    || t.getMessage().contains("Connection error"),
                 "real msg:" + t.getMessage());
             connection
                 .validate(ValidationDepth.LOCAL)
@@ -351,7 +353,8 @@ public class ConnectionTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && throwable.getMessage().equals("Connection is close. Cannot send anything"))
+                    && (throwable.getMessage().equals("Connection is close. Cannot send anything") ||
+                        throwable.getMessage().contains("Cannot execute command since connection is already closed")))
         .verify();
   }
 
@@ -507,7 +510,7 @@ public class ConnectionTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && throwable.getMessage().contains("Connection is close. Cannot send anything"))
+                    && (throwable.getMessage().contains("Connection is close. Cannot send anything") || throwable.getMessage().contains("Cannot execute command since connection is already closed")))
         .verify();
   }
 
@@ -741,8 +744,7 @@ public class ConnectionTest extends BaseConnectionTest {
     connection.close().block();
     assertThrows(
         R2dbcNonTransientResourceException.class,
-        () -> stmt.execute().blockLast(),
-        "Connection is close. Cannot send anything");
+        () -> stmt.execute().blockLast(), "");
 
     connection =
         new MariadbConnectionFactory(
@@ -755,7 +757,7 @@ public class ConnectionTest extends BaseConnectionTest {
     assertThrows(
         R2dbcNonTransientResourceException.class,
         () -> stmt2.execute().blockLast(),
-        "Connection is close. Cannot send anything");
+        "");
   }
 
   void commitTransaction(MariadbConnection con) {
@@ -966,45 +968,45 @@ public class ConnectionTest extends BaseConnectionTest {
         .blockLast();
   }
 
-//  @Test
-//  public void errorOnConnection() throws Throwable {
-//    Assumptions.assumeTrue(
-//        !"maxscale".equals(System.getenv("srv"))
-//            && !"skysql-ha".equals(System.getenv("srv"))
-//            && !"skysql".equals(System.getenv("srv")));
-//
-//    BigInteger maxConn =
-//        sharedConn
-//            .createStatement("select @@max_connections")
-//            .execute()
-//            .flatMap(r -> r.map((row, metadata) -> row.get(0, BigInteger.class)))
-//            .blockLast();
-//    Assumptions.assumeTrue(maxConn.intValue() < 600);
-//
-//    Throwable expected = null;
-//    Mono<?>[] cons = new Mono<?>[maxConn.intValue()];
-//    for (int i = 0; i < maxConn.intValue(); i++) {
-//      cons[i] = new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create();
-//    }
-//    MariadbConnection[] connections = new MariadbConnection[maxConn.intValue()];
-//    for (int i = 0; i < maxConn.intValue(); i++) {
-//      try {
-//        connections[i] = (MariadbConnection) cons[i].block();
-//      } catch (Throwable e) {
-//        expected = e;
-//      }
-//    }
-//
-//    for (int i = 0; i < maxConn.intValue(); i++) {
-//      if (connections[i] != null) {
-//        connections[i].close().block();
-//      }
-//    }
-//    Assertions.assertNotNull(expected);
-//    Assertions.assertTrue(expected.getMessage().contains("Fail to establish connection to"));
-//    Assertions.assertTrue(expected.getCause().getMessage().contains("Too many connections"));
-//    Thread.sleep(1000);
-//  }
+  //  @Test
+  //  public void errorOnConnection() throws Throwable {
+  //    Assumptions.assumeTrue(
+  //        !"maxscale".equals(System.getenv("srv"))
+  //            && !"skysql-ha".equals(System.getenv("srv"))
+  //            && !"skysql".equals(System.getenv("srv")));
+  //
+  //    BigInteger maxConn =
+  //        sharedConn
+  //            .createStatement("select @@max_connections")
+  //            .execute()
+  //            .flatMap(r -> r.map((row, metadata) -> row.get(0, BigInteger.class)))
+  //            .blockLast();
+  //    Assumptions.assumeTrue(maxConn.intValue() < 600);
+  //
+  //    Throwable expected = null;
+  //    Mono<?>[] cons = new Mono<?>[maxConn.intValue()];
+  //    for (int i = 0; i < maxConn.intValue(); i++) {
+  //      cons[i] = new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create();
+  //    }
+  //    MariadbConnection[] connections = new MariadbConnection[maxConn.intValue()];
+  //    for (int i = 0; i < maxConn.intValue(); i++) {
+  //      try {
+  //        connections[i] = (MariadbConnection) cons[i].block();
+  //      } catch (Throwable e) {
+  //        expected = e;
+  //      }
+  //    }
+  //
+  //    for (int i = 0; i < maxConn.intValue(); i++) {
+  //      if (connections[i] != null) {
+  //        connections[i].close().block();
+  //      }
+  //    }
+  //    Assertions.assertNotNull(expected);
+  //    Assertions.assertTrue(expected.getMessage().contains("Fail to establish connection to"));
+  //    Assertions.assertTrue(expected.getCause().getMessage().contains("Too many connections"));
+  //    Thread.sleep(1000);
+  //  }
 
   @Test
   void killedConnection() {
