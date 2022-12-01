@@ -17,11 +17,11 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.SslMode;
 import org.mariadb.r2dbc.authentication.AuthenticationPlugin;
 import org.mariadb.r2dbc.message.AuthMoreData;
-import org.mariadb.r2dbc.message.AuthSwitch;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.client.ClearPasswordPacket;
 import org.mariadb.r2dbc.message.client.RsaPublicKeyRequestPacket;
 import org.mariadb.r2dbc.message.client.Sha256PasswordPacket;
+import org.mariadb.r2dbc.message.server.Sequencer;
 
 public class Sha256PasswordPluginFlow implements AuthenticationPlugin {
 
@@ -97,14 +97,15 @@ public class Sha256PasswordPluginFlow implements AuthenticationPlugin {
 
   public ClientMessage next(
       MariadbConnectionConfiguration configuration,
-      AuthSwitch authSwitch,
+      byte[] seed,
+      Sequencer sequencer,
       AuthMoreData authMoreData)
       throws R2dbcException {
 
     if (state == State.INIT) {
       CharSequence password = configuration.getPassword();
       if (password == null || configuration.getSslConfig().getSslMode() != SslMode.DISABLE) {
-        return new ClearPasswordPacket(authSwitch.getSequencer(), password);
+        return new ClearPasswordPacket(sequencer, password);
       } else {
         // retrieve public key from configuration or from server
         if (configuration.getRsaPublicKey() != null && !configuration.getRsaPublicKey().isEmpty()) {
@@ -117,18 +118,14 @@ public class Sha256PasswordPluginFlow implements AuthenticationPlugin {
           }
           state = State.REQUEST_SERVER_KEY;
           // ask public Key Retrieval
-          return new RsaPublicKeyRequestPacket(authSwitch.getSequencer());
+          return new RsaPublicKeyRequestPacket(sequencer);
         }
       }
-      return new Sha256PasswordPacket(
-          authSwitch.getSequencer(), configuration.getPassword(), authSwitch.getSeed(), publicKey);
+      return new Sha256PasswordPacket(sequencer, configuration.getPassword(), seed, publicKey);
     } else {
       publicKey = readPublicKey(authMoreData.getBuf());
       return new Sha256PasswordPacket(
-          authMoreData.getSequencer(),
-          configuration.getPassword(),
-          authSwitch.getSeed(),
-          publicKey);
+          authMoreData.getSequencer(), configuration.getPassword(), seed, publicKey);
     }
   }
 

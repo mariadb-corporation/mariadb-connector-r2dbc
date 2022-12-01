@@ -21,7 +21,9 @@ import reactor.core.publisher.Mono;
 
 public interface Client {
 
-  Mono<Void> close(boolean closeRequested);
+  Mono<Void> close();
+
+  boolean closeChannelIfNeeded();
 
   void sendCommandWithoutResult(ClientMessage requests);
 

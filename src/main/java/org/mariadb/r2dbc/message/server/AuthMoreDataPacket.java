@@ -4,15 +4,16 @@
 package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.util.ReferenceCounted;
 import org.mariadb.r2dbc.message.AuthMoreData;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.MessageSequence;
 import org.mariadb.r2dbc.message.ServerMessage;
 
-public class AuthMoreDataPacket implements AuthMoreData, ServerMessage {
+public class AuthMoreDataPacket implements AuthMoreData, ServerMessage, ReferenceCounted {
 
   private final MessageSequence sequencer;
-  private ByteBuf buf;
+  private final ByteBuf buf;
 
   private AuthMoreDataPacket(MessageSequence sequencer, ByteBuf buf) {
     this.sequencer = sequencer;
@@ -21,20 +22,42 @@ public class AuthMoreDataPacket implements AuthMoreData, ServerMessage {
 
   public static AuthMoreDataPacket decode(MessageSequence sequencer, ByteBuf buf, Context context) {
     buf.skipBytes(1);
-    buf.retain();
     ByteBuf data = buf.readRetainedSlice(buf.readableBytes());
     return new AuthMoreDataPacket(sequencer, data);
   }
 
+  @Override
+  public int refCnt() {
+    return buf.refCnt();
+  }
+
+  @Override
+  public ReferenceCounted retain() {
+    return buf.retain();
+  }
+
+  @Override
+  public ReferenceCounted retain(int increment) {
+    return buf.retain(increment);
+  }
+
+  @Override
+  public ReferenceCounted touch() {
+    return buf.touch();
+  }
+
+  @Override
+  public ReferenceCounted touch(Object hint) {
+    return buf.touch(hint);
+  }
+
   public boolean release() {
-    if (buf != null) {
-      try {
-        return buf.release();
-      } finally {
-        buf = null;
-      }
-    }
-    return true;
+    return buf.release();
+  }
+
+  @Override
+  public boolean release(int decrement) {
+    return buf.release();
   }
 
   public MessageSequence getSequencer() {

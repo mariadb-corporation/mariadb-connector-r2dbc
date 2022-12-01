@@ -282,8 +282,13 @@ public class FailoverClient implements Client {
   }
 
   @Override
-  public Mono<Void> close(boolean closeRequested) {
-    return client.get().close(closeRequested);
+  public Mono<Void> close() {
+    return client.get().close();
+  }
+
+  @Override
+  public boolean closeChannelIfNeeded() {
+    return client.get().closeChannelIfNeeded();
   }
 
   @Override

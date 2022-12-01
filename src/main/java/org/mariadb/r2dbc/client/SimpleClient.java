@@ -24,7 +24,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLException;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
@@ -186,7 +185,7 @@ public class SimpleClient implements Client {
     handleConnectionError(throwable);
     this.requestSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
     logger.debug("Connection error", throwable);
-    return close(false);
+    return closeAll();
   }
 
   private void handleConnectionEnd() {
@@ -195,7 +194,7 @@ public class SimpleClient implements Client {
             "Connection " + (closeChannelIfNeeded() ? "unexpectedly " : "") + "closed", "08000"));
   }
 
-  private boolean closeChannelIfNeeded() {
+  public boolean closeChannelIfNeeded() {
     if (this.isClosed.compareAndSet(false, true)) {
       Channel channel = this.connection.channel();
       if (channel.isOpen()) {
@@ -207,8 +206,12 @@ public class SimpleClient implements Client {
   }
 
   @Override
-  public Mono<Void> close(boolean closeRequested) {
-    if (closeRequested) this.closeRequested = true;
+  public Mono<Void> close() {
+    this.closeRequested = true;
+    return closeAll();
+  }
+
+  private Mono<Void> closeAll() {
     return Mono.defer(
         () -> {
           this.messageSubscriber.close(
@@ -221,7 +224,11 @@ public class SimpleClient implements Client {
             }
 
             return Flux.just(QuitPacket.INSTANCE)
-                .doOnNext(message -> connection.channel().writeAndFlush(message))
+                .doOnNext(
+                    message ->
+                        connection
+                            .channel()
+                            .writeAndFlush(message.encode(context, context.getByteBufAllocator())))
                 .then()
                 .doOnSuccess(v -> this.connection.dispose())
                 .then(this.connection.onDispose());
@@ -262,15 +269,12 @@ public class SimpleClient implements Client {
       sslHandler.handshakeFuture().addListener(listener);
       // send SSL request in clear
       this.sendClientMsgs(Mono.just(sslRequest));
-
       // add SSL handler
       connection.addHandlerFirst(sslHandler);
-      return Mono.fromFuture(result);
-
-    } catch (SSLException | R2dbcTransientResourceException e) {
+    } catch (Throwable e) {
       result.completeExceptionally(e);
-      return Mono.fromFuture(result);
     }
+    return Mono.fromFuture(result);
   }
 
   private Flux<ServerMessage> execute(Consumer<FluxSink<ServerMessage>> s) {
@@ -604,12 +608,19 @@ public class SimpleClient implements Client {
       this.close.set(true);
 
       logger.error("Connection error", t);
-
-      SimpleClient.this.close(false).subscribe();
       handleConnectionError(t);
+      SimpleClient.this.closeAll().subscribe();
     }
 
-    public void onComplete() {}
+    @Override
+    public void onComplete() {
+      R2dbcNonTransientResourceException error =
+          new R2dbcNonTransientResourceException(
+              String.format(
+                  "Connection error", SimpleClient.this.closeChannelIfNeeded() ? "unexpected" : ""),
+              "08000");
+      close(error);
+    }
 
     @Override
     public void onNext(ByteBuf message) {
@@ -622,7 +633,6 @@ public class SimpleClient implements Client {
       this.receiverDemands.decrementAndGet();
       Exchange exchange = this.exchangeQueue.peek();
       ServerMessage srvMsg = decoder.decode(message, exchange);
-
       // nothing buffered => directly emit message
       if (this.receiverQueue.isEmpty() && exchange != null && exchange.hasDemand()) {
         if (exchange.emit(srvMsg)) this.exchangeQueue.poll();

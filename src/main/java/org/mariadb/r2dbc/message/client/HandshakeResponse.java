@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Properties;
 import org.mariadb.r2dbc.MariadbConnectionFactoryProvider;
 import org.mariadb.r2dbc.authentication.addon.ClearPasswordPluginFlow;
+import org.mariadb.r2dbc.authentication.standard.CachingSha2PasswordFlow;
 import org.mariadb.r2dbc.authentication.standard.NativePasswordPluginFlow;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
@@ -85,6 +86,14 @@ public final class HandshakeResponse implements ClientMessage {
         // TODO check that SSL is enable
         authData =
             (password == null) ? new byte[0] : password.toString().getBytes(StandardCharsets.UTF_8);
+        break;
+      case CachingSha2PasswordFlow.TYPE:
+        authenticationPluginType = CachingSha2PasswordFlow.TYPE;
+        authData =
+            (password == null)
+                ? new byte[0]
+                : CachingSha2PasswordFlow.sha256encryptPassword(
+                    password, initialHandshakePacket.getSeed());
         break;
 
       default:

@@ -154,6 +154,15 @@ public class Sha256PluginTest extends BaseConnectionTest {
             .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User4'")
             .execute()
             .blockLast();
+        sharedConn
+            .createStatement(
+                "CREATE USER 'userWithWrongPassword'  IDENTIFIED WITH caching_sha2_password BY 'blabla'")
+            .execute()
+            .blockLast();
+        sharedConn
+            .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'userWithWrongPassword'")
+            .execute()
+            .blockLast();
       }
     }
   }
@@ -334,6 +343,28 @@ public class Sha256PluginTest extends BaseConnectionTest {
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();
+  }
+
+  @Test
+  public void WrongUserCachingSha256PluginTestWithoutServerRsaKey() throws Exception {
+    Assumptions.assumeTrue(!isWindows && minVersion(8, 0, 0));
+
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .username("userWithWrongPassword")
+            .password("WRONG")
+            .allowPublicKeyRetrieval(true)
+            .build();
+    new MariadbConnectionFactory(conf)
+        .create()
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable -> {
+              return throwable instanceof R2dbcNonTransientResourceException
+                  && throwable.getMessage().contains("Access denied");
+            })
+        .verify();
   }
 
   @Test

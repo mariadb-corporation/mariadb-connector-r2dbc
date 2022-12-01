@@ -10,10 +10,7 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
-import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
+import java.io.*;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.List;
@@ -50,7 +47,9 @@ public class SslConfig {
     this.clientSslCert = clientSslCert;
     this.clientSslKey = clientSslKey;
     this.clientSslPassword = clientSslPassword;
-    this.sslContextBuilder = getSslContextBuilder();
+    if (sslMode != SslMode.DISABLE) {
+      this.sslContextBuilder = getSslContextBuilder();
+    }
   }
 
   public SslConfig(SslMode sslMode) {
@@ -69,14 +68,22 @@ public class SslConfig {
     } else {
 
       if (serverSslCert != null) {
+        InputStream inStream = null;
         try {
-          InputStream inStream = loadCert(serverSslCert);
+          inStream = loadCert(serverSslCert);
           sslCtxBuilder.trustManager(inStream);
         } catch (FileNotFoundException fileNotFoundEx) {
           throw new R2dbcTransientResourceException(
               "Failed to find serverSslCert file. serverSslCert=" + serverSslCert,
               "08000",
               fileNotFoundEx);
+        } finally {
+          if (inStream != null) {
+            try {
+              inStream.close();
+            } catch (IOException e) {
+            }
+          }
         }
       } else {
         throw new R2dbcTransientResourceException(
@@ -84,18 +91,25 @@ public class SslConfig {
       }
     }
     if (clientSslCert != null && clientSslKey != null) {
-      InputStream certificatesStream;
+      InputStream certificatesStream = null;
       try {
         certificatesStream = loadCert(clientSslCert);
       } catch (FileNotFoundException fileNotFoundEx) {
+        if (certificatesStream != null) {
+          try {
+            certificatesStream.close();
+          } catch (IOException e) {
+          }
+        }
         throw new R2dbcTransientResourceException(
             "Failed to find clientSslCert file. clientSslCert=" + clientSslCert,
             "08000",
             fileNotFoundEx);
       }
 
+      InputStream privateKeyStream = null;
       try {
-        InputStream privateKeyStream = new FileInputStream(clientSslKey);
+        privateKeyStream = loadCert(clientSslKey);
         sslCtxBuilder.keyManager(
             certificatesStream,
             privateKeyStream,
@@ -105,6 +119,13 @@ public class SslConfig {
             "Failed to find clientSslKey file. clientSslKey=" + clientSslKey,
             "08000",
             fileNotFoundEx);
+      } finally {
+        if (privateKeyStream != null) {
+          try {
+            privateKeyStream.close();
+          } catch (IOException e) {
+          }
+        }
       }
     }
 
@@ -119,7 +140,7 @@ public class SslConfig {
   }
 
   private InputStream loadCert(String path) throws FileNotFoundException {
-    InputStream inStream = null;
+    InputStream inStream;
     // generate a keyStore from the provided cert
     if (path.startsWith("-----BEGIN CERTIFICATE-----")) {
       inStream = new ByteArrayInputStream(path.getBytes());
@@ -142,6 +163,7 @@ public class SslConfig {
       Supplier<Boolean> closeChannelIfNeeded) {
     return future -> {
       if (!future.isSuccess()) {
+        closeChannelIfNeeded.get();
         result.completeExceptionally(future.cause());
         return;
       }

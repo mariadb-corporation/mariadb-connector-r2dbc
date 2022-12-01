@@ -6,8 +6,8 @@ package org.mariadb.r2dbc.authentication;
 import io.r2dbc.spi.R2dbcException;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.AuthMoreData;
-import org.mariadb.r2dbc.message.AuthSwitch;
 import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.server.Sequencer;
 
 public interface AuthenticationPlugin {
 
@@ -17,7 +17,8 @@ public interface AuthenticationPlugin {
 
   ClientMessage next(
       MariadbConnectionConfiguration configuration,
-      AuthSwitch authSwitch,
+      byte[] seed,
+      Sequencer sequencer,
       AuthMoreData authMoreData)
       throws R2dbcException;
 }

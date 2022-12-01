@@ -6,9 +6,9 @@ package org.mariadb.r2dbc.authentication.standard;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.authentication.AuthenticationPlugin;
 import org.mariadb.r2dbc.message.AuthMoreData;
-import org.mariadb.r2dbc.message.AuthSwitch;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.client.ClearPasswordPacket;
+import org.mariadb.r2dbc.message.server.Sequencer;
 
 public final class PamPluginFlow implements AuthenticationPlugin {
 
@@ -26,12 +26,13 @@ public final class PamPluginFlow implements AuthenticationPlugin {
 
   public ClientMessage next(
       MariadbConnectionConfiguration configuration,
-      AuthSwitch authSwitch,
+      byte[] seed,
+      Sequencer sequencer,
       AuthMoreData authMoreData) {
     while (true) {
       counter++;
       if (counter == 0) {
-        return new ClearPasswordPacket(authSwitch.getSequencer(), configuration.getPassword());
+        return new ClearPasswordPacket(sequencer, configuration.getPassword());
       } else {
         if (configuration.getPamOtherPwd() == null) {
           throw new IllegalArgumentException(
@@ -43,8 +44,7 @@ public final class PamPluginFlow implements AuthenticationPlugin {
                   "PAM authentication required at least %s passwords, but pamOtherPwd has only %s",
                   counter, configuration.getPamOtherPwd().length));
         }
-        return new ClearPasswordPacket(
-            authSwitch.getSequencer(), configuration.getPamOtherPwd()[counter - 1]);
+        return new ClearPasswordPacket(sequencer, configuration.getPamOtherPwd()[counter - 1]);
       }
     }
   }

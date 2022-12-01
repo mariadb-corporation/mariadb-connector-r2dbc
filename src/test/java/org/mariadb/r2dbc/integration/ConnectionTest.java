@@ -75,7 +75,8 @@ public class ConnectionTest extends BaseConnectionTest {
       Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
       Assertions.assertTrue(
           t.getMessage().contains("Connection is close. Cannot send anything")
-              || t.getMessage().contains("Cannot execute command since connection is already closed")
+              || t.getMessage()
+                  .contains("Cannot execute command since connection is already closed")
               || t.getMessage().contains("Connection error")
               || t.getMessage().contains("Connection unexpectedly closed")
               || t.getMessage().contains("Connection unexpected error"),
@@ -113,7 +114,8 @@ public class ConnectionTest extends BaseConnectionTest {
       Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getCause().getClass());
       Assertions.assertTrue(
           t.getCause().getMessage().contains("Connection is close. Cannot send anything")
-                  || t.getMessage().contains("Cannot execute command since connection is already closed")
+              || t.getMessage()
+                  .contains("Cannot execute command since connection is already closed")
               || t.getCause().getMessage().contains("Connection unexpectedly closed")
               || t.getCause().getMessage().contains("Connection unexpected error"),
           "real msg:" + t.getCause().getMessage());
@@ -353,8 +355,10 @@ public class ConnectionTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && (throwable.getMessage().equals("Connection is close. Cannot send anything") ||
-                        throwable.getMessage().contains("Cannot execute command since connection is already closed")))
+                    && (throwable.getMessage().equals("Connection is close. Cannot send anything")
+                        || throwable
+                            .getMessage()
+                            .contains("Cannot execute command since connection is already closed")))
         .verify();
   }
 
@@ -510,7 +514,10 @@ public class ConnectionTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && (throwable.getMessage().contains("Connection is close. Cannot send anything") || throwable.getMessage().contains("Cannot execute command since connection is already closed")))
+                    && (throwable.getMessage().contains("Connection is close. Cannot send anything")
+                        || throwable
+                            .getMessage()
+                            .contains("Cannot execute command since connection is already closed")))
         .verify();
   }
 
@@ -742,9 +749,7 @@ public class ConnectionTest extends BaseConnectionTest {
     commitTransaction(connection);
     MariadbStatement stmt = connection.createStatement("DO 1");
     connection.close().block();
-    assertThrows(
-        R2dbcNonTransientResourceException.class,
-        () -> stmt.execute().blockLast(), "");
+    assertThrows(R2dbcNonTransientResourceException.class, () -> stmt.execute().blockLast(), "");
 
     connection =
         new MariadbConnectionFactory(
@@ -754,10 +759,7 @@ public class ConnectionTest extends BaseConnectionTest {
     commitTransaction(connection);
     MariadbStatement stmt2 = connection.createStatement("DO 1");
     connection.close().block();
-    assertThrows(
-        R2dbcNonTransientResourceException.class,
-        () -> stmt2.execute().blockLast(),
-        "");
+    assertThrows(R2dbcNonTransientResourceException.class, () -> stmt2.execute().blockLast(), "");
   }
 
   void commitTransaction(MariadbConnection con) {
@@ -1047,7 +1049,8 @@ public class ConnectionTest extends BaseConnectionTest {
             Assertions.assertTrue(
                 t.getMessage().contains("Connection is close. Cannot send anything")
                     || t.getMessage().contains("Connection unexpectedly closed")
-                    || t.getMessage().contains("Connection unexpected error"),
+                    || t.getMessage().contains("Connection unexpected error")
+                    || t.getMessage().contains("Connection error"),
                 "real msg:" + t.getMessage());
             connection
                 .validate(ValidationDepth.LOCAL)

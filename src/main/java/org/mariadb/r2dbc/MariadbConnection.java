@@ -66,7 +66,7 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
 
   @Override
   public Mono<Void> close() {
-    return this.client.close(true).then(Mono.empty());
+    return this.client.close().then(Mono.empty());
   }
 
   @Override

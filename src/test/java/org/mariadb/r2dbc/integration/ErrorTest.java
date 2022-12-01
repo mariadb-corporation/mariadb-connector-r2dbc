@@ -42,7 +42,7 @@ public class ErrorTest extends BaseConnectionTest {
 
   @Test
   void permissionDenied() throws Exception {
-    sharedConn.createStatement("CREATE USER userWithoutRight").execute().blockLast();
+    sharedConn.createStatement("CREATE USER IF NOT EXISTS userWithoutRight").execute().blockLast();
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()

@@ -20,6 +20,7 @@ import reactor.test.StepVerifier;
 public class IntParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("CREATE TABLE IntTable (t1 INT, t2 INT ZEROFILL)")
         .execute()
@@ -38,6 +39,7 @@ public class IntParseTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
