@@ -94,7 +94,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
             .password("MySup8%rPassw@ord")
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
-    connection.close();
+    connection.close().block();
   }
 
   @Test

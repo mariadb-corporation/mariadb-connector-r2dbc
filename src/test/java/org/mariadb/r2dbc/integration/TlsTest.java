@@ -104,7 +104,7 @@ public class TlsTest extends BaseConnectionTest {
             .sslMode(SslMode.TRUST)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
-    connection.close();
+    connection.close().block();
     sharedConn
         .createStatement("DROP USER IF EXISTS userWithoutPassword")
         .execute()

@@ -40,18 +40,15 @@ public class BatchTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext(1L, 1L, 1L, 1L, 1L)
         .expectNextCount(15)
-        .then(
-            () -> {
-              sharedConn
-                  .createStatement("SELECT id FROM basicBatch")
-                  .execute()
-                  .flatMap(r -> r.map((row, metadata) -> row.get(0)))
-                  .as(StepVerifier::create)
-                  .expectNext(0, 1, 2, 3, 4)
-                  .expectNextCount(15)
-                  .then(() -> sharedConn.commitTransaction())
-                  .verifyComplete();
-            })
+        .verifyComplete();
+    sharedConn
+        .createStatement("SELECT id FROM basicBatch")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0)))
+        .as(StepVerifier::create)
+        .expectNext(0, 1, 2, 3, 4)
+        .expectNextCount(15)
+        .then(() -> sharedConn.commitTransaction())
         .verifyComplete();
   }
 
@@ -60,6 +57,7 @@ public class BatchTest extends BaseConnectionTest {
     // error crashing maxscale 6.1.x
     Assumptions.assumeTrue(
         !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
+            && !"maxscale".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnectionConfiguration confMulti =
         TestConfiguration.defaultBuilder.clone().allowMultiQueries(true).build();
@@ -82,27 +80,23 @@ public class BatchTest extends BaseConnectionTest {
       batch.add("INSERT INTO multiBatch VALUES (" + i + ", 'test" + i + "')");
       res[i] = i;
     }
-
     batch
         .execute()
         .flatMap(it -> it.getRowsUpdated())
         .as(StepVerifier::create)
         .expectNext(1L, 1L, 1L, 1L, 1L)
         .expectNextCount(15)
-        .then(
-            () -> {
-              multiConn
-                  .createStatement("SELECT id FROM multiBatch")
-                  .execute()
-                  .flatMap(r -> r.map((row, metadata) -> row.get(0)))
-                  .as(StepVerifier::create)
-                  .expectNext(0, 1, 2, 3, 4)
-                  .expectNextCount(15)
-                  .then(() -> multiConn.commitTransaction())
-                  .verifyComplete();
-              multiConn.close().block();
-            })
         .verifyComplete();
+    multiConn
+        .createStatement("SELECT id FROM multiBatch")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0)))
+        .as(StepVerifier::create)
+        .expectNext(0, 1, 2, 3, 4)
+        .expectNextCount(15)
+        .verifyComplete();
+    multiConn.commitTransaction();
+    multiConn.close().block();
   }
 
   @Test
@@ -114,30 +108,34 @@ public class BatchTest extends BaseConnectionTest {
     MariadbConnectionConfiguration confNoMulti =
         TestConfiguration.defaultBuilder.clone().allowMultiQueries(false).build();
     MariadbConnection multiConn = new MariadbConnectionFactory(confNoMulti).create().block();
-    multiConn
-        .createStatement("CREATE TEMPORARY TABLE multiBatch (id int, test varchar(10))")
-        .execute()
-        .blockLast();
-    MariadbBatch batch = multiConn.createBatch();
+    try {
+      multiConn
+          .createStatement("CREATE TEMPORARY TABLE multiBatch (id int, test varchar(10))")
+          .execute()
+          .blockLast();
+      MariadbBatch batch = multiConn.createBatch();
 
-    int[] res = new int[10_000];
-    for (int i = 0; i < res.length; i++) {
-      batch.add("INSERT INTO multiBatch VALUES (" + i + ", 'test" + i + "')");
-      res[i] = i;
+      int[] res = new int[10_000];
+      for (int i = 0; i < res.length; i++) {
+        batch.add("INSERT INTO multiBatch VALUES (" + i + ", 'test" + i + "')");
+        res[i] = i;
+      }
+      AtomicInteger resultNb = new AtomicInteger(0);
+      Flux<MariadbResult> f = batch.execute();
+      Disposable disp =
+          f.flatMap(it -> it.getRowsUpdated()).subscribe(i -> resultNb.incrementAndGet());
+      for (int i = 0; i < 100; i++) {
+        Thread.sleep(50);
+        if (resultNb.get() > 0) break;
+      }
+      disp.dispose();
+      Thread.sleep(1000);
+      Assertions.assertTrue(
+          resultNb.get() > 0 && resultNb.get() < 10_000,
+          String.format("expected %s to be 0 < x < 10000", resultNb.get()));
+    } finally {
+      multiConn.close().block();
     }
-    AtomicInteger resultNb = new AtomicInteger(0);
-    Flux<MariadbResult> f = batch.execute();
-    Disposable disp =
-        f.flatMap(it -> it.getRowsUpdated()).subscribe(i -> resultNb.incrementAndGet());
-    for (int i = 0; i < 100; i++) {
-      Thread.sleep(50);
-      if (resultNb.get() > 0) break;
-    }
-    disp.dispose();
-    Thread.sleep(1000);
-    Assertions.assertTrue(
-        resultNb.get() > 0 && resultNb.get() < 10_000,
-        String.format("expected %s to be 0 < x < 10000", resultNb.get()));
   }
 
   @Test

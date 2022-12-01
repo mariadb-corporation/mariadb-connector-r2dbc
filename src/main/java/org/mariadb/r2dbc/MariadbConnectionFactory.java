@@ -111,9 +111,12 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
       for (int i = 0; i < sessionVariable.size(); i++) {
         String key = keys.next();
         String value = sessionVariable.get(key);
-        if (value == null)
-          throw new IllegalArgumentException(
-              String.format("Session variable '%s' has no value", key));
+        if (value == null) {
+          client.close().subscribe();
+          return Mono.error(
+              new R2dbcNonTransientResourceException(
+                  String.format("Session variable '%s' has no value", key)));
+        }
         sql.append(",").append(key).append("=").append(value);
       }
     }

@@ -21,6 +21,7 @@ public class BaseConnectionTest extends BaseTest {
   public static MariadbConnectionFactory factory = TestConfiguration.defaultFactory;
   public static MariadbConnection sharedConn;
   public static MariadbConnection sharedConnPrepare;
+  public static int initialConnectionNumber = -1;
   public static TcpProxy proxy;
   private static final Random rand = new Random();
   public static final Boolean backslashEscape =
@@ -56,6 +57,12 @@ public class BaseConnectionTest extends BaseTest {
           .execute()
           .blockLast();
     }
+    initialConnectionNumber =
+        sharedConn
+            .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
+            .blockLast();
   }
 
   public MariadbConnection createProxyCon() throws Exception {
@@ -76,14 +83,21 @@ public class BaseConnectionTest extends BaseTest {
 
   @AfterEach
   public void afterEach1() {
-    int i = rand.nextInt();
-    sharedConn
-        .createStatement("SELECT " + i + ", 'a'")
-        .execute()
-        .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
-        .as(StepVerifier::create)
-        .expectNext(i)
-        .verifyComplete();
+    int finalConnectionNumber =
+        sharedConn
+            .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
+            .blockLast();
+    if (finalConnectionNumber - initialConnectionNumber > 0) {
+      System.err.println(
+          String.format(
+              "Error connection not ended : changed=%s (ended:%s initial:%s)",
+              (finalConnectionNumber - initialConnectionNumber),
+              initialConnectionNumber,
+              finalConnectionNumber));
+    }
+    initialConnectionNumber = finalConnectionNumber;
 
     int j = rand.nextInt();
     sharedConnPrepare

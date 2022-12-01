@@ -51,7 +51,7 @@ public class TransactionTest extends BaseConnectionTest {
         .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
         .blockLast();
     checkInserted(conn, 1);
-    conn.close();
+    conn.close().block();
   }
 
   @Test
@@ -60,7 +60,7 @@ public class TransactionTest extends BaseConnectionTest {
     // must issue only one begin command
     conn.beginTransaction().thenMany(conn.beginTransaction()).blockLast();
     conn.beginTransaction().block();
-    conn.close();
+    conn.close().block();
   }
 
   @Test
@@ -94,7 +94,7 @@ public class TransactionTest extends BaseConnectionTest {
         .blockLast();
     conn.rollbackTransaction().block();
     checkInserted(conn, 0);
-    conn.close();
+    conn.close().block();
   }
 
   @Test
@@ -107,7 +107,7 @@ public class TransactionTest extends BaseConnectionTest {
         .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
         .blockLast();
     checkInserted(conn, 0);
-    conn.close();
+    conn.close().block();
   }
 
   @Test
@@ -174,7 +174,7 @@ public class TransactionTest extends BaseConnectionTest {
     checkInserted(conn, 2);
     conn.rollbackTransaction().block();
     conn.setAutoCommit(true).block();
-    conn.close();
+    conn.close().block();
   }
 
   @Test
@@ -191,7 +191,7 @@ public class TransactionTest extends BaseConnectionTest {
     checkInserted(conn, 1);
     conn.rollbackTransaction().block();
     conn.setAutoCommit(true).block();
-    conn.close();
+    conn.close().block();
   }
 
   @Test
@@ -209,7 +209,7 @@ public class TransactionTest extends BaseConnectionTest {
     checkInserted(conn, 1);
     conn.rollbackTransaction().block();
     conn.setAutoCommit(true).block();
-    conn.close();
+    conn.close().block();
   }
 
   private Mono<Void> checkInserted(MariadbConnection conn, int expectedValue) {
