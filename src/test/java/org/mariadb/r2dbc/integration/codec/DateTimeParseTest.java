@@ -23,6 +23,8 @@ public class DateTimeParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     Assumptions.assumeTrue(isMariaDBServer());
+    afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("CREATE TABLE DateTimeTable (t1 DATETIME(6) NULL)")
         .execute()
@@ -33,11 +35,12 @@ public class DateTimeParseTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE DateTimeTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS DateTimeTable").execute().blockLast();
   }
 
   @Test
