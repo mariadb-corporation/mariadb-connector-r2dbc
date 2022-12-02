@@ -20,17 +20,20 @@ import reactor.test.StepVerifier;
 public class DoubleParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn.createStatement("CREATE TABLE DoubleTable (t1 DOUBLE)").execute().blockLast();
     sharedConn
         .createStatement("INSERT INTO DoubleTable VALUES (0.1),(1),(922.92233), (null)")
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE DoubleTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS DoubleTable").execute().blockLast();
   }
 
   @Test

@@ -22,6 +22,8 @@ import reactor.test.StepVerifier;
 public class BitParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("CREATE TABLE BitTable (t1 BIT(16), t2 int, t3 BIT(3))")
         .execute()
@@ -37,12 +39,13 @@ public class BitParseTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE BitTable").execute().blockLast();
-    sharedConn.createStatement("DROP TABLE BitTable2").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS BitTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS BitTable2").execute().blockLast();
   }
 
   @Test

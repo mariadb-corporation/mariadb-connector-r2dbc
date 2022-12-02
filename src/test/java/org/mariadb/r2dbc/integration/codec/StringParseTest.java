@@ -29,6 +29,8 @@ import reactor.test.StepVerifier;
 public class StringParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn.createStatement("DROP TABLE IF EXISTS StringTable").execute().blockLast();
     sharedConn
         .createStatement(
@@ -51,6 +53,7 @@ public class StringParseTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll

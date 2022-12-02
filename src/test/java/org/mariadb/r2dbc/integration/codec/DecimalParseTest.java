@@ -20,6 +20,8 @@ import reactor.test.StepVerifier;
 public class DecimalParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("CREATE TABLE DecimalTable (t1 DECIMAL(40,20))")
         .execute()
@@ -31,11 +33,12 @@ public class DecimalParseTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE DecimalTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS DecimalTable").execute().blockLast();
   }
 
   @Test

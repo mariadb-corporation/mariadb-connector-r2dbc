@@ -20,6 +20,7 @@ public class MediumIntParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("CREATE TABLE MediumIntTable (t1 MEDIUMINT, t2 MEDIUMINT ZEROFILL)")
         .execute()
@@ -37,6 +38,7 @@ public class MediumIntParseTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll

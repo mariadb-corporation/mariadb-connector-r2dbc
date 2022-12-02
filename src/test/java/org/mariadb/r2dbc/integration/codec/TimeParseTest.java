@@ -22,6 +22,8 @@ import reactor.test.StepVerifier;
 public class TimeParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("CREATE TABLE TimeParseTest (t1 TIME(6), t2 TIME(6))")
         .execute()
@@ -35,11 +37,12 @@ public class TimeParseTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE TimeParseTest").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS TimeParseTest").execute().blockLast();
   }
 
   @Test

@@ -27,6 +27,8 @@ import reactor.test.StepVerifier;
 public class BlobParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn.createStatement("CREATE TABLE BlobTable (t1 BLOB, t2 int)").execute().blockLast();
     sharedConn
         .createStatement(
@@ -34,11 +36,12 @@ public class BlobParseTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE BlobTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS BlobTable").execute().blockLast();
   }
 
   @Test

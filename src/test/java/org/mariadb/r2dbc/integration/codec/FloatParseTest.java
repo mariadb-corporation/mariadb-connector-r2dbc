@@ -21,17 +21,19 @@ public class FloatParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn.createStatement("CREATE TABLE FloatTable (t1 FLOAT)").execute().blockLast();
     sharedConn
         .createStatement("INSERT INTO FloatTable VALUES (0.1),(1),(922.92233), (null)")
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE FloatTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS FloatTable").execute().blockLast();
   }
 
   @Test

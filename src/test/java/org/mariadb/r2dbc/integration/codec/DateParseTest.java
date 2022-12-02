@@ -22,17 +22,20 @@ import reactor.test.StepVerifier;
 public class DateParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn.createStatement("CREATE TABLE DateTable (t1 DATE, t2 int)").execute().blockLast();
     sharedConn
         .createStatement("INSERT INTO DateTable VALUES('2010-01-12',1), ('2011-2-28',2), (null,3)")
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE DateTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS DateTable").execute().blockLast();
   }
 
   @Test
