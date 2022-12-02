@@ -259,9 +259,7 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
   }
 
   static class MariadbRowSegment extends AbstractReferenceCounted implements Result.RowSegment {
-
     private final Row row;
-
     private final ReferenceCounted releaseable;
 
     public MariadbRowSegment(Row row, ReferenceCounted releaseable) {

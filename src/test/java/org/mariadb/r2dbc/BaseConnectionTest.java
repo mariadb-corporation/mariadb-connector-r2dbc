@@ -92,7 +92,7 @@ public class BaseConnectionTest extends BaseTest {
     if (finalConnectionNumber - initialConnectionNumber > 0) {
       System.err.println(
           String.format(
-              "Error connection not ended : changed=%s (ended:%s initial:%s)",
+              "Error connection not ended : changed=%s (initial:%s ended:%s)",
               (finalConnectionNumber - initialConnectionNumber),
               initialConnectionNumber,
               finalConnectionNumber));

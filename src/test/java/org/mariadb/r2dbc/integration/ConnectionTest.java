@@ -539,39 +539,41 @@ public class ConnectionTest extends BaseConnectionTest {
   void multiThreading() throws Throwable {
     Assumptions.assumeTrue(
         !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
-
-    AtomicInteger completed = new AtomicInteger(0);
-    ThreadPoolExecutor scheduler =
-        new ThreadPoolExecutor(10, 20, 50, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
-
-    for (int i = 0; i < 100; i++) {
-      scheduler.execute(new ExecuteQueries(completed));
-    }
-    scheduler.shutdown();
-    scheduler.awaitTermination(120, TimeUnit.SECONDS);
-    Assertions.assertEquals(100, completed.get());
-  }
-
-  @Test
-  void multiThreadingSameConnection() throws Throwable {
-    // disableLog();
+    List<ExecuteQueries> queries = new ArrayList<>(100);
     try {
       AtomicInteger completed = new AtomicInteger(0);
       ThreadPoolExecutor scheduler =
           new ThreadPoolExecutor(10, 20, 50, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
 
-      MariadbConnection connection = factory.create().block();
+      for (int i = 0; i < 100; i++) {
+        ExecuteQueries exec = new ExecuteQueries(completed);
+        queries.add(exec);
+        scheduler.execute(exec);
+      }
+      scheduler.shutdown();
+      scheduler.awaitTermination(120, TimeUnit.SECONDS);
+      Assertions.assertEquals(100, completed.get());
+    } finally {
+      for (ExecuteQueries exec : queries) exec.closeConnection();
+    }
+  }
+
+  @Test
+  void multiThreadingSameConnection() throws Throwable {
+    MariadbConnection connection = factory.create().block();
+    try {
+      AtomicInteger completed = new AtomicInteger(0);
+      ThreadPoolExecutor scheduler =
+          new ThreadPoolExecutor(10, 20, 50, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
 
       for (int i = 0; i < 100; i++) {
         scheduler.execute(new ExecuteQueriesOnSameConnection(completed, connection));
       }
       scheduler.shutdown();
       scheduler.awaitTermination(120, TimeUnit.SECONDS);
-      connection.close().block();
       Assertions.assertEquals(100, completed.get());
     } finally {
-      Thread.sleep(100);
-      // reInitLog();
+      connection.close().block();
     }
   }
 
@@ -632,13 +634,13 @@ public class ConnectionTest extends BaseConnectionTest {
 
   protected class ExecuteQueries implements Runnable {
     private final AtomicInteger i;
+    private MariadbConnection connection = null;
 
     public ExecuteQueries(AtomicInteger i) {
       this.i = i;
     }
 
     public void run() {
-      MariadbConnection connection = null;
       try {
         connection = factory.create().block();
         int rnd = (int) (Math.random() * 1000);
@@ -653,8 +655,12 @@ public class ConnectionTest extends BaseConnectionTest {
       } catch (Throwable e) {
         e.printStackTrace();
       } finally {
-        if (connection != null) connection.close().block();
+        closeConnection();
       }
+    }
+
+    public void closeConnection() {
+      if (connection != null) connection.close().block();
     }
   }
 
@@ -1053,7 +1059,7 @@ public class ConnectionTest extends BaseConnectionTest {
                 .as(StepVerifier::create)
                 .expectNext(Boolean.FALSE)
                 .verifyComplete();
-            // reInitLog();
+            Thread.sleep(100);
           }
         });
     connection

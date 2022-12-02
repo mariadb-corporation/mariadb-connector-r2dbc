@@ -113,15 +113,6 @@ public final class ExecutePacket implements ClientMessage {
   }
 
   @Override
-  public void releaseEncodedBinds() {
-    bindValues.forEach(
-        b -> {
-          if (b.getValue() != null) b.getValue().release();
-        });
-    bindValues.clear();
-  }
-
-  @Override
   public String toString() {
     return "ExecutePacket{" + "sql='" + sql + '\'' + '}';
   }

@@ -4,9 +4,7 @@
 package org.mariadb.r2dbc.integration;
 
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
@@ -68,35 +66,39 @@ public class BatchTest extends BaseConnectionTest {
   }
 
   private void batchTest(MariadbConnectionConfiguration conf) throws Exception {
-    MariadbConnection multiConn = new MariadbConnectionFactory(conf).create().block();
-    multiConn
-        .createStatement("CREATE TEMPORARY TABLE multiBatch (id int, test varchar(10))")
+    sharedConn.createStatement("DROP TABLE IF EXISTS multiBatch").execute().blockLast();
+    sharedConn
+        .createStatement("CREATE TABLE multiBatch (id int, test varchar(10))")
         .execute()
         .blockLast();
-    multiConn.beginTransaction().block(); // if MAXSCALE ensure using WRITER
-    MariadbBatch batch = multiConn.createBatch();
-    int[] res = new int[20];
-    for (int i = 0; i < 20; i++) {
-      batch.add("INSERT INTO multiBatch VALUES (" + i + ", 'test" + i + "')");
-      res[i] = i;
+    MariadbConnection multiConn = new MariadbConnectionFactory(conf).create().block();
+    try {
+      multiConn.beginTransaction().block(); // if MAXSCALE ensure using WRITER
+      MariadbBatch batch = multiConn.createBatch();
+      int[] res = new int[20];
+      for (int i = 0; i < 20; i++) {
+        batch.add("INSERT INTO multiBatch VALUES (" + i + ", 'test" + i + "')");
+        res[i] = i;
+      }
+      batch
+          .execute()
+          .flatMap(it -> it.getRowsUpdated())
+          .as(StepVerifier::create)
+          .expectNext(1L, 1L, 1L, 1L, 1L)
+          .expectNextCount(15)
+          .verifyComplete();
+      multiConn
+          .createStatement("SELECT id FROM multiBatch")
+          .execute()
+          .flatMap(r -> r.map((row, metadata) -> row.get(0)))
+          .as(StepVerifier::create)
+          .expectNext(0, 1, 2, 3, 4)
+          .expectNextCount(15)
+          .verifyComplete();
+      multiConn.commitTransaction().block();
+    } finally {
+      multiConn.close().block();
     }
-    batch
-        .execute()
-        .flatMap(it -> it.getRowsUpdated())
-        .as(StepVerifier::create)
-        .expectNext(1L, 1L, 1L, 1L, 1L)
-        .expectNextCount(15)
-        .verifyComplete();
-    multiConn
-        .createStatement("SELECT id FROM multiBatch")
-        .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(0)))
-        .as(StepVerifier::create)
-        .expectNext(0, 1, 2, 3, 4)
-        .expectNextCount(15)
-        .verifyComplete();
-    multiConn.commitTransaction();
-    multiConn.close().block();
   }
 
   @Test

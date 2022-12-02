@@ -167,6 +167,7 @@ public class SimpleClient implements Client {
   private void handleConnectionError(Throwable throwable) {
     R2dbcNonTransientResourceException error;
     if (AbortedException.isConnectionReset(throwable) && !isConnected()) {
+      closeChannelIfNeeded();
       error =
           new R2dbcNonTransientResourceException(
               "Cannot execute command since connection is already closed", "08000", throwable);
@@ -605,11 +606,12 @@ public class SimpleClient implements Client {
       }
 
       SimpleClient.this.requestSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
-      this.close.set(true);
-
-      logger.error("Connection error", t);
       handleConnectionError(t);
       SimpleClient.this.closeAll().subscribe();
+      // in case race condition for onNext, filling cache
+      while (!this.receiverQueue.isEmpty()) {
+        ReferenceCountUtil.release(this.receiverQueue.poll());
+      }
     }
 
     @Override
@@ -620,6 +622,11 @@ public class SimpleClient implements Client {
                   "Connection error", SimpleClient.this.closeChannelIfNeeded() ? "unexpected" : ""),
               "08000");
       close(error);
+      SimpleClient.this.closeAll().subscribe();
+      // in case race condition for onNext, filling cache
+      while (!this.receiverQueue.isEmpty()) {
+        ReferenceCountUtil.release(this.receiverQueue.poll());
+      }
     }
 
     @Override

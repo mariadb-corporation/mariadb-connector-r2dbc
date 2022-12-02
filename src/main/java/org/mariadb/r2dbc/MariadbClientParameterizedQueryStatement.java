@@ -71,14 +71,16 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
                   bindingParameterResults(binding, getExpectedSize())
                       .flatMapMany(
                           values ->
-                              this.client.sendCommand(
-                                  new QueryWithParametersPacket(
-                                      prepareResult,
-                                      values,
-                                      client.getVersion().supportReturning()
-                                          ? generatedColumns
-                                          : null),
-                                  false));
+                              this.client
+                                  .sendCommand(
+                                      new QueryWithParametersPacket(
+                                          prepareResult,
+                                          values,
+                                          client.getVersion().supportReturning()
+                                              ? generatedColumns
+                                              : null),
+                                      false)
+                                  .doFinally(s -> values.stream().forEach(bind -> bind.release())));
               return toResult(
                   Protocol.TEXT, client, messages, factory, null, generatedColumns, configuration);
             }
@@ -95,14 +97,17 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
                           bindingParameterResults(it, getExpectedSize())
                               .flatMapMany(
                                   values ->
-                                      this.client.sendCommand(
-                                          new QueryWithParametersPacket(
-                                              prepareResult,
-                                              values,
-                                              client.getVersion().supportReturning()
-                                                  ? generatedColumns
-                                                  : null),
-                                          false))
+                                      this.client
+                                          .sendCommand(
+                                              new QueryWithParametersPacket(
+                                                  prepareResult,
+                                                  values,
+                                                  client.getVersion().supportReturning()
+                                                      ? generatedColumns
+                                                      : null),
+                                              false)
+                                          .doFinally(
+                                              s -> values.stream().forEach(bind -> bind.release())))
                               .doOnComplete(() -> tryNextBinding(iterator, bindingSink, canceled));
 
                       return toResult(

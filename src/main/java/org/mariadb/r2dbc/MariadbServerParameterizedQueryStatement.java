@@ -16,10 +16,7 @@ import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.ExecutePacket;
 import org.mariadb.r2dbc.message.client.PreparePacket;
 import org.mariadb.r2dbc.message.client.QueryPacket;
-import org.mariadb.r2dbc.util.Assert;
-import org.mariadb.r2dbc.util.Binding;
-import org.mariadb.r2dbc.util.ServerNamedParamParser;
-import org.mariadb.r2dbc.util.ServerPrepareResult;
+import org.mariadb.r2dbc.util.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -120,11 +117,14 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
                       bindingParameterResults(binding, getExpectedSize())
                           .flatMapMany(
                               values ->
-                                  this.client.sendCommand(
-                                      new ExecutePacket(sql, prepareResult.get(), values),
-                                      DecoderState.QUERY_RESPONSE,
-                                      sql,
-                                      false))
+                                  this.client
+                                      .sendCommand(
+                                          new ExecutePacket(sql, prepareResult.get(), values),
+                                          DecoderState.QUERY_RESPONSE,
+                                          sql,
+                                          false)
+                                      .doFinally(
+                                          s -> values.stream().forEach(bind -> bind.release())))
                           .doFinally(s -> prepareResult.get().decrementUse(client));
                   return toResult(
                       Protocol.BINARY,
@@ -147,10 +147,13 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
                     bindingParameterResults(binding, getExpectedSize())
                         .flatMapMany(
                             values ->
-                                this.client.sendCommand(
-                                    new PreparePacket(sql),
-                                    new ExecutePacket(sql, null, values),
-                                    false));
+                                this.client
+                                    .sendCommand(
+                                        new PreparePacket(sql),
+                                        new ExecutePacket(sql, null, values),
+                                        false)
+                                    .doFinally(
+                                        s -> values.stream().forEach(bind -> bind.release())));
               } else {
                 messages =
                     client
@@ -161,11 +164,17 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
                               return bindingParameterResults(binding, getExpectedSize())
                                   .flatMapMany(
                                       values ->
-                                          this.client.sendCommand(
-                                              new ExecutePacket(sql, prepareResult.get(), values),
-                                              DecoderState.QUERY_RESPONSE,
-                                              sql,
-                                              false));
+                                          this.client
+                                              .sendCommand(
+                                                  new ExecutePacket(
+                                                      sql, prepareResult.get(), values),
+                                                  DecoderState.QUERY_RESPONSE,
+                                                  sql,
+                                                  false)
+                                              .doFinally(
+                                                  s ->
+                                                      values.stream()
+                                                          .forEach(bind -> bind.release())));
                             });
               }
               return toResult(
@@ -197,10 +206,15 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
                                   bindingParameterResults(binding, getExpectedSize())
                                       .flatMapMany(
                                           values ->
-                                              this.client.sendCommand(
-                                                  new ExecutePacket(
-                                                      sql, prepareResult.get(), values),
-                                                  false))
+                                              this.client
+                                                  .sendCommand(
+                                                      new ExecutePacket(
+                                                          sql, prepareResult.get(), values),
+                                                      false)
+                                                  .doFinally(
+                                                      s ->
+                                                          values.stream()
+                                                              .forEach(bind -> bind.release())))
                                       .doOnComplete(
                                           () -> tryNextBinding(iterator, bindingSink, canceled));
 

@@ -80,8 +80,10 @@ public class TransactionTest extends BaseConnectionTest {
   @Test
   void createSavepoint() {
     // must issue multiple savepoints
-    sharedConn.createSavepoint("t").thenMany(sharedConn.createSavepoint("t")).blockLast();
-    sharedConn.createSavepoint("t").block();
+    MariadbConnection conn = factory.create().block();
+    conn.createSavepoint("t").thenMany(conn.createSavepoint("t2")).blockLast();
+    conn.createSavepoint("t3").block();
+    conn.close().block();
   }
 
   @Test

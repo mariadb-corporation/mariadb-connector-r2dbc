@@ -66,15 +66,19 @@ public class Exchange {
     }
 
     demand.decrementAndGet();
-    this.sink.next(srvMsg);
-
-    if (srvMsg.ending()) {
-      if (!this.sink.isCancelled()) {
-        this.sink.complete();
+    try {
+      this.sink.next(srvMsg);
+      if (srvMsg.ending()) {
+        if (!this.sink.isCancelled()) {
+          this.sink.complete();
+        }
+        return true;
       }
-      return true;
+      return false;
+    } catch (Throwable t) {
+      ReferenceCountUtil.release(srvMsg);
+      return false;
     }
-    return false;
   }
 
   public void incrementDemand(long n) {

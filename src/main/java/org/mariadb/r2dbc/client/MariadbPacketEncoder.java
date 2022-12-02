@@ -41,7 +41,6 @@ public class MariadbPacketEncoder {
     }
 
     context.saveRedo(msg, buf, initialReaderIndex);
-    msg.releaseEncodedBinds();
     buf.release();
     return out;
   }

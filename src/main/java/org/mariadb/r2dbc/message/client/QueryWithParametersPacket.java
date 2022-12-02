@@ -72,15 +72,6 @@ public final class QueryWithParametersPacket implements ClientMessage {
     savedBuf = buf.readerIndex(initialReaderIndex).retain();
   }
 
-  @Override
-  public void releaseEncodedBinds() {
-    bindValues.forEach(
-        b -> {
-          if (b.getValue() != null) b.getValue().release();
-        });
-    bindValues.clear();
-  }
-
   public void resetSequencer() {
     sequencer.reset();
   }

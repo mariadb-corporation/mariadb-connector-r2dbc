@@ -192,7 +192,7 @@ public class MariadbResult extends AbstractReferenceCounted
                   rowConstructor.get().create(((RowPacket) message).getRaw(), meta.get(), factory);
               sink.next(f.apply(row, meta.get()));
             } finally {
-              ReferenceCountUtil.release(message);
+              message.release();
             }
           }
         });
