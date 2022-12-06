@@ -27,6 +27,7 @@ public final class ExecutePacket implements ClientMessage {
   public ExecutePacket(
       String sql, ServerPrepareResult prepareResult, List<BindEncodedValue> bindValues) {
     this.sql = sql;
+    bindValues.stream().forEach(bind -> bind.retain());
     this.bindValues = bindValues;
     this.statementId = prepareResult == null ? -1 : prepareResult.getStatementId();
     this.parameterCount = prepareResult == null ? bindValues.size() : prepareResult.getNumParams();
@@ -66,7 +67,7 @@ public final class ExecutePacket implements ClientMessage {
         buf.writeBytes(param);
       }
     }
-
+    bindValues.stream().forEach(bind -> bind.release());
     return buf;
   }
 
