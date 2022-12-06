@@ -612,6 +612,7 @@ public class SimpleClient implements Client {
                   "Connection %s",
                   SimpleClient.this.closeChannelIfNeeded() ? "unexpected error" : "error"),
               "08000"));
+      SimpleClient.this.quitOrClose().subscribe();
     }
 
     @Override
