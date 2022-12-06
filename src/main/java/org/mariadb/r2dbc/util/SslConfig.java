@@ -6,19 +6,10 @@ package org.mariadb.r2dbc.util;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
-import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GenericFutureListener;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.io.*;
-import java.security.cert.Certificate;
-import java.security.cert.X509Certificate;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
-import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
-import javax.net.ssl.SSLSession;
 import org.mariadb.r2dbc.SslMode;
 
 public class SslConfig {
@@ -152,44 +143,6 @@ public class SslConfig {
       inStream = new FileInputStream(path);
     }
     return inStream;
-  }
-
-  @SuppressWarnings("static")
-  public GenericFutureListener<Future<? super io.netty.channel.Channel>> getHostNameVerifier(
-      CompletableFuture<Void> result,
-      String host,
-      long threadId,
-      SSLEngine engine,
-      Supplier<Boolean> closeChannelIfNeeded) {
-    return future -> {
-      if (!future.isSuccess()) {
-        closeChannelIfNeeded.get();
-        result.completeExceptionally(future.cause());
-        return;
-      }
-      if (sslMode == SslMode.VERIFY_FULL) {
-        try {
-          DefaultHostnameVerifier hostnameVerifier = new DefaultHostnameVerifier();
-          SSLSession session = engine.getSession();
-          if (!hostnameVerifier.verify(host, session, threadId)) {
-
-            // Use proprietary verify method in order to have an exception with a better description
-            // of error.
-            Certificate[] certs = session.getPeerCertificates();
-            X509Certificate cert = (X509Certificate) certs[0];
-
-            DefaultHostnameVerifier.verify(host, cert, threadId);
-          }
-        } catch (SSLException ex) {
-          closeChannelIfNeeded.get();
-          result.completeExceptionally(
-              new R2dbcNonTransientResourceException(
-                  "SSL hostname verification failed : " + ex.getMessage(), "08006"));
-          return;
-        }
-      }
-      result.complete(null);
-    };
   }
 
   @Override

@@ -4,6 +4,7 @@
 package org.mariadb.r2dbc.integration;
 
 import io.r2dbc.spi.R2dbcNonTransientException;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.io.File;
 import java.io.IOException;
@@ -12,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -309,8 +309,8 @@ public class TlsTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcNonTransientException
-                    && throwable.getMessage().contains("SSL hostname verification failed "))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().contains("No name matching"))
         .verify();
   }
 
@@ -370,10 +370,7 @@ public class TlsTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientException
-                    && throwable
-                        .getMessage()
-                        .contains(
-                            "SSL hostname verification failed : DNS host \"mariadb2.example.com\" doesn't correspond to certificate CN \"mariadb.example.com"))
+                    && throwable.getMessage().contains("No name matching"))
         .verify();
   }
 
@@ -394,15 +391,15 @@ public class TlsTest extends BaseConnectionTest {
             .serverSslCert(serverSslCert)
             .clientSslKey(clientSslKey)
             .build();
-    try {
-      new MariadbConnectionFactory(conf).create().block();
-      Assertions.fail();
-    } catch (Throwable throwable) {
-      throwable.printStackTrace();
-      Assertions.assertTrue(
-          throwable instanceof R2dbcNonTransientException
-              && throwable.getMessage().contains("Access denied"));
-    }
+
+    new MariadbConnectionFactory(conf)
+        .create()
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientException
+                    && throwable.getMessage().contains("Access denied"))
+        .verify();
   }
 
   @Test
