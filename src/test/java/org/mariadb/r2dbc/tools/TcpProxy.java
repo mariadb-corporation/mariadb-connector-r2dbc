@@ -6,11 +6,8 @@ package org.mariadb.r2dbc.tools;
 import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TcpProxy {
-  private static final Logger logger = LoggerFactory.getLogger(TcpProxy.class);
 
   private final String host;
   private final TcpProxySocket socket;
@@ -47,44 +44,20 @@ public class TcpProxy {
    */
   public void restart(long sleepTime) {
     socket.kill();
-    logger.trace("host proxy port " + socket.getLocalport() + " for " + host + " started");
     Executors.newSingleThreadScheduledExecutor().schedule(socket, sleepTime, TimeUnit.MILLISECONDS);
   }
 
   public void forceClose() {
     socket.sendRst();
-    try {
-      Thread.sleep(5);
-    } catch (InterruptedException e) {
-      // eat Exception
-    }
-    socket.kill();
-  }
-
-  public void restartForce() {
-    socket.sendRst();
-    Executors.newSingleThreadExecutor().execute(socket);
-    try {
-      Thread.sleep(5);
-    } catch (InterruptedException e) {
-      // eat Exception
-    }
   }
 
   /** Restart proxy. */
   public void restart() {
     Executors.newSingleThreadExecutor().execute(socket);
     try {
-      Thread.sleep(5);
+      Thread.sleep(10);
     } catch (InterruptedException e) {
       // eat Exception
-    }
-  }
-
-  /** Assure that proxy is in a stable status. */
-  public void assureProxyOk() {
-    if (socket.isClosed()) {
-      restart();
     }
   }
 

@@ -89,7 +89,7 @@ public class BaseConnectionTest extends BaseTest {
             .execute()
             .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
             .blockLast();
-    if (finalConnectionNumber - initialConnectionNumber > 0) {
+    if (finalConnectionNumber - initialConnectionNumber != 0) {
       System.err.println(
           String.format(
               "Error connection not ended : changed=%s (initial:%s ended:%s)",

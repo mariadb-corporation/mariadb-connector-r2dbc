@@ -27,12 +27,12 @@ public class BindEncodedValue implements ReferenceCounted {
 
   @Override
   public int refCnt() {
-    return value.refCnt();
+    return value != null ? value.refCnt() : 0;
   }
 
   @Override
   public ReferenceCounted retain() {
-    return value.retain();
+    return value != null ? value.retain() : null;
   }
 
   @Override

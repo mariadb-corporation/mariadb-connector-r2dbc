@@ -7,11 +7,8 @@ import java.io.*;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TcpProxySocket implements Runnable {
-  private static final Logger logger = LoggerFactory.getLogger(TcpProxySocket.class);
 
   private final String host;
   private final int remoteport;
@@ -53,7 +50,6 @@ public class TcpProxySocket implements Runnable {
     stop = true;
     try {
       if (server != null) {
-        client.setSoLinger(true, 0);
         server.close();
       }
     } catch (IOException e) {
@@ -61,7 +57,6 @@ public class TcpProxySocket implements Runnable {
     }
     try {
       if (client != null) {
-        client.setSoLinger(true, 0);
         client.close();
       }
     } catch (IOException e) {
@@ -78,7 +73,7 @@ public class TcpProxySocket implements Runnable {
 
     try {
       if (client != null) {
-        // send a RST, not FIN
+        // send an RST, not FIN
         client.setSoLinger(true, 0);
         client.close();
       }
@@ -103,7 +98,6 @@ public class TcpProxySocket implements Runnable {
   @Override
   public void run() {
 
-    logger.trace("host proxy port " + this.localport + " for " + host + " started");
     stop = false;
     try {
       try {
