@@ -9,12 +9,19 @@ import io.r2dbc.spi.*;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.tools.TcpProxy;
 import org.mariadb.r2dbc.util.HostAddress;
+import reactor.test.StepVerifier;
 
 public class FailoverConnectionTest extends BaseConnectionTest {
 
@@ -52,8 +59,7 @@ public class FailoverConnectionTest extends BaseConnectionTest {
   @Test
   @Timeout(20)
   void multipleCommandStack() throws Exception {
-    Assumptions.assumeTrue(System.getenv("local") == null || "1".equals(System.getenv("local")));
-    ;
+    Assumptions.assumeTrue(System.getenv("TRAVIS") == null);
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
@@ -75,193 +81,188 @@ public class FailoverConnectionTest extends BaseConnectionTest {
       Thread.sleep(50);
     }
   }
-  //
-  //  @Test
-  //  void transactionReplayFalse() throws Exception {
-  //    Assumptions.assumeTrue(System.getenv("local") == null ||
-  // "1".equals(System.getenv("local")));
-  //    Assumptions.assumeTrue(
-  //        !"maxscale".equals(System.getenv("srv"))
-  //            && !"skysql".equals(System.getenv("srv"))
-  //            && !"skysql-ha".equals(System.getenv("srv")));
-  //
-  //    MariadbConnection connection = createFailoverProxyConnection(HaMode.SEQUENTIAL, false,
-  // false);
-  //    try {
-  //      connection.setAutoCommit(false).block();
-  //      connection.beginTransaction().block();
-  //      connection.createStatement("SET @con=1").execute().blockLast();
-  //
-  //      proxy.restartForce();
-  //      try {
-  //        connection.createStatement("SELECT @con").execute().blockLast();
-  //        fail();
-  //      } catch (R2dbcException e) {
-  //        assertTrue(e.getMessage().contains("In progress transaction was lost"));
-  //      }
-  //    } finally {
-  //      proxy.forceClose();
-  //      Thread.sleep(50);
-  //    }
-  //  }
-  //
-  //  @Test
-  //  void transactionReplayFailingBetweenCmds() throws Exception {
-  //    Assumptions.assumeTrue(System.getenv("local") == null ||
-  // "1".equals(System.getenv("local")));
-  //    Assumptions.assumeTrue(
-  //        !"maxscale".equals(System.getenv("srv"))
-  //            && !"skysql".equals(System.getenv("srv"))
-  //            && !"skysql-ha".equals(System.getenv("srv")));
-  //    try {
-  //      transactionReplayFailingBetweenCmds(
-  //          createFailoverProxyConnection(HaMode.SEQUENTIAL, true, false));
-  //      transactionReplayFailingBetweenCmds(
-  //          createFailoverProxyConnection(HaMode.SEQUENTIAL, true, true));
-  //    } finally {
-  //      Thread.sleep(50);
-  //    }
-  //  }
-  //
-  //  private void transactionReplayFailingBetweenCmds(MariadbConnection connection) throws
-  // Exception {
-  //    Assumptions.assumeTrue(System.getenv("local") == null ||
-  // "1".equals(System.getenv("local")));
-  //    try {
-  //      connection.createStatement("SET @con=1").execute().blockLast();
-  //
-  //      //      proxy.restartForce();
-  //
-  //      Optional<Object> res =
-  //          connection
-  //              .createStatement("SELECT @con")
-  //              .execute()
-  //              .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
-  //              .blockLast();
-  //      assertTrue(res.isPresent());
-  //      assertEquals(1L, res.get());
-  //
-  //      connection.createStatement("DROP TABLE IF EXISTS testReplay").execute().blockLast();
-  //      connection.createStatement("CREATE TABLE testReplay(id INT)").execute().blockLast();
-  //      connection.createStatement("INSERT INTO testReplay VALUE (1)").execute().blockLast();
-  //      connection.setAutoCommit(false).block();
-  //      connection.beginTransaction().block();
-  //
-  //      connection.createStatement("INSERT INTO testReplay VALUE (2)").execute().blockLast();
-  //      connection
-  //          .createStatement("INSERT INTO testReplay VALUE (?)")
-  //          .bind(0, 3)
-  //          .execute()
-  //          .blockLast();
-  //
-  //      connection
-  //          .createStatement("INSERT INTO testReplay VALUE (?)")
-  //          .bind(0, 4)
-  //          .execute()
-  //          .blockLast();
-  //
-  //      proxy.restartForce();
-  //
-  //      connection
-  //          .createStatement("INSERT INTO testReplay VALUE (?)")
-  //          .bind(0, 5)
-  //          .execute()
-  //          .blockLast();
-  //
-  //      connection
-  //          .createStatement("SELECT id from testReplay")
-  //          .execute()
-  //          .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.class)))
-  //          .as(StepVerifier::create)
-  //          .expectNext(1, 2, 3, 4, 5)
-  //          .verifyComplete();
-  //      connection.createStatement("DROP TABLE IF EXISTS testReplay").execute().blockLast();
-  //
-  //    } finally {
-  //      connection.close().block();
-  //      proxy.forceClose();
-  //    }
-  //  }
-  //
-  //  @Test
-  //  void transactionReplayFailingDuringCmd() throws Exception {
-  //    Assumptions.assumeTrue(System.getenv("local") == null ||
-  // "1".equals(System.getenv("local")));
-  //    Assumptions.assumeTrue(
-  //        !"maxscale".equals(System.getenv("srv"))
-  //            && !"skysql".equals(System.getenv("srv"))
-  //            && !"skysql-ha".equals(System.getenv("srv")));
-  //
-  //    transactionReplayFailingDuringCmd(
-  //        createFailoverProxyConnection(HaMode.SEQUENTIAL, true, false));
-  //    transactionReplayFailingDuringCmd(createFailoverProxyConnection(HaMode.SEQUENTIAL, true,
-  // true));
-  //    Thread.sleep(50);
-  //  }
-  //
-  //  private void transactionReplayFailingDuringCmd(MariadbConnection connection) throws Exception
-  // {
-  //    connection.setAutoCommit(false).block();
-  //    connection.beginTransaction().block();
-  //
-  //    AtomicInteger expectedResult = new AtomicInteger(1);
-  //    AtomicBoolean endedByError = new AtomicBoolean(false);
-  //    AtomicReference<Throwable> resultingError = new AtomicReference<>();
-  //    connection
-  //        .createStatement("SELECT * from sequence_1_to_10000")
-  //        .execute()
-  //        .flatMap(
-  //            r ->
-  //                r.map(
-  //                    (row, metadata) -> {
-  //                      int i = row.get(0, Integer.class);
-  //                      assertEquals(expectedResult.getAndIncrement(), i);
-  //                      return i;
-  //                    }))
-  //        .doOnError(
-  //            t -> {
-  //              endedByError.set(true);
-  //              resultingError.set(t);
-  //            })
-  //        .subscribe();
-  //
-  //    Thread.sleep(10);
-  //    proxy.restartForce();
-  //
-  //    ScheduledThreadPoolExecutor waitingExecutor = new ScheduledThreadPoolExecutor(1);
-  //    Runnable runnable =
-  //        () -> {
-  //          while (true) {
-  //            if (expectedResult.get() >= 10000 || endedByError.get()) {
-  //
-  //              assertNotNull(resultingError.get());
-  //              assertTrue(
-  //                  resultingError
-  //                          .get()
-  //                          .getMessage()
-  //                          .contains(
-  //                              "Driver has reconnect connection after a communications link
-  // failure with")
-  //                      && resultingError.get().getMessage().contains("during command."));
-  //
-  //              return;
-  //            }
-  //            try {
-  //              Thread.sleep(250);
-  //            } catch (Throwable e) {
-  //            }
-  //          }
-  //        };
-  //
-  //    waitingExecutor.execute(runnable);
-  //    waitingExecutor.shutdown();
-  //    waitingExecutor.awaitTermination(2, TimeUnit.MINUTES);
-  //    Thread.sleep(100);
-  //    connection.close().block();
-  //    proxy.forceClose();
-  //    Thread.sleep(50);
-  //  }
-  //
+
+    @Test
+    void transactionReplayFalse() throws Exception {
+      Assumptions.assumeTrue(System.getenv("TRAVIS") == null);
+      Assumptions.assumeTrue(
+          !"maxscale".equals(System.getenv("srv"))
+              && !"skysql".equals(System.getenv("srv"))
+              && !"skysql-ha".equals(System.getenv("srv")));
+
+      MariadbConnection connection = createFailoverProxyConnection(HaMode.SEQUENTIAL, false,
+   false);
+      try {
+        connection.setAutoCommit(false).block();
+        connection.beginTransaction().block();
+        connection.createStatement("SET @con=1").execute().blockLast();
+
+        proxy.restartForce();
+        try {
+          connection.createStatement("SELECT @con").execute().blockLast();
+          fail();
+        } catch (R2dbcException e) {
+          assertTrue(e.getMessage().contains("In progress transaction was lost"));
+        }
+      } finally {
+        proxy.forceClose();
+        Thread.sleep(50);
+      }
+    }
+
+    @Test
+    void transactionReplayFailingBetweenCmds() throws Exception {
+      Assumptions.assumeTrue(System.getenv("TRAVIS") == null);
+      Assumptions.assumeTrue(
+          !"maxscale".equals(System.getenv("srv"))
+              && !"skysql".equals(System.getenv("srv"))
+              && !"skysql-ha".equals(System.getenv("srv")));
+      try {
+        transactionReplayFailingBetweenCmds(
+            createFailoverProxyConnection(HaMode.SEQUENTIAL, true, false));
+        transactionReplayFailingBetweenCmds(
+            createFailoverProxyConnection(HaMode.SEQUENTIAL, true, true));
+      } finally {
+        Thread.sleep(50);
+      }
+    }
+
+    private void transactionReplayFailingBetweenCmds(MariadbConnection connection) throws
+   Exception {
+      Assumptions.assumeTrue(System.getenv("TRAVIS") == null);
+      try {
+        connection.createStatement("SET @con=1").execute().blockLast();
+
+        //      proxy.restartForce();
+
+        Optional<Object> res =
+            connection
+                .createStatement("SELECT @con")
+                .execute()
+                .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
+                .blockLast();
+        assertTrue(res.isPresent());
+        assertEquals(1L, res.get());
+
+        connection.createStatement("DROP TABLE IF EXISTS testReplay").execute().blockLast();
+        connection.createStatement("CREATE TABLE testReplay(id INT)").execute().blockLast();
+        connection.createStatement("INSERT INTO testReplay VALUE (1)").execute().blockLast();
+        connection.setAutoCommit(false).block();
+        connection.beginTransaction().block();
+
+        connection.createStatement("INSERT INTO testReplay VALUE (2)").execute().blockLast();
+        connection
+            .createStatement("INSERT INTO testReplay VALUE (?)")
+            .bind(0, 3)
+            .execute()
+            .blockLast();
+
+        connection
+            .createStatement("INSERT INTO testReplay VALUE (?)")
+            .bind(0, 4)
+            .execute()
+            .blockLast();
+
+        proxy.restart();
+
+        connection
+            .createStatement("INSERT INTO testReplay VALUE (?)")
+            .bind(0, 5)
+            .execute()
+            .blockLast();
+
+        connection
+            .createStatement("SELECT id from testReplay")
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.class)))
+            .as(StepVerifier::create)
+            .expectNext(1, 2, 3, 4, 5)
+            .verifyComplete();
+        connection.createStatement("DROP TABLE IF EXISTS testReplay").execute().blockLast();
+
+      } finally {
+        connection.close().block();
+        proxy.forceClose();
+      }
+    }
+
+    @Test
+    void transactionReplayFailingDuringCmd() throws Exception {
+      Assumptions.assumeTrue(System.getenv("TRAVIS") == null);
+      Assumptions.assumeTrue(
+          !"maxscale".equals(System.getenv("srv"))
+              && !"skysql".equals(System.getenv("srv"))
+              && !"skysql-ha".equals(System.getenv("srv")));
+
+      transactionReplayFailingDuringCmd(
+          createFailoverProxyConnection(HaMode.SEQUENTIAL, true, false));
+      transactionReplayFailingDuringCmd(createFailoverProxyConnection(HaMode.SEQUENTIAL, true,
+   true));
+      Thread.sleep(50);
+    }
+
+    private void transactionReplayFailingDuringCmd(MariadbConnection connection) throws Exception
+   {
+      connection.setAutoCommit(false).block();
+      connection.beginTransaction().block();
+
+      AtomicInteger expectedResult = new AtomicInteger(1);
+      AtomicBoolean endedByError = new AtomicBoolean(false);
+      AtomicReference<Throwable> resultingError = new AtomicReference<>();
+      connection
+          .createStatement("SELECT * from sequence_1_to_10000")
+          .execute()
+          .flatMap(
+              r ->
+                  r.map(
+                      (row, metadata) -> {
+                        int i = row.get(0, Integer.class);
+                        assertEquals(expectedResult.getAndIncrement(), i);
+                        return i;
+                      }))
+          .doOnError(
+              t -> {
+                endedByError.set(true);
+                resultingError.set(t);
+              })
+          .subscribe();
+
+      Thread.sleep(10);
+      proxy.restart();
+
+      ScheduledThreadPoolExecutor waitingExecutor = new ScheduledThreadPoolExecutor(1);
+      Runnable runnable =
+          () -> {
+            while (true) {
+              if (expectedResult.get() >= 10000 || endedByError.get()) {
+
+                assertNotNull(resultingError.get());
+                assertTrue(
+                    resultingError
+                            .get()
+                            .getMessage()
+                            .contains(
+                                "Driver has reconnect connection after a communications link failure with")
+                        && resultingError.get().getMessage().contains("during command."));
+
+                return;
+              }
+              try {
+                Thread.sleep(250);
+              } catch (Throwable e) {
+              }
+            }
+          };
+
+      waitingExecutor.execute(runnable);
+      waitingExecutor.shutdown();
+      waitingExecutor.awaitTermination(2, TimeUnit.MINUTES);
+      Thread.sleep(100);
+      connection.close().block();
+      proxy.forceClose();
+      Thread.sleep(50);
+    }
+
   private MariadbConnection createFailoverProxyConnection(
       HaMode haMode, boolean transactionReplay, boolean usePrepare) throws Exception {
 

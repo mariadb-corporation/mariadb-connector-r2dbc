@@ -60,7 +60,7 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void connectionError() throws Exception {
-    Assumptions.assumeTrue(System.getenv("local") == null || "1".equals(System.getenv("local")));
+    Assumptions.assumeTrue(System.getenv("TRAVIS") == null);
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
@@ -90,6 +90,7 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void multipleCommandStack() throws Exception {
+    Assumptions.assumeTrue(System.getenv("TRAVIS") == null);
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
