@@ -11,19 +11,17 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
-import io.netty.util.ReferenceCountUtil;
-import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GenericFutureListener;
 import io.r2dbc.spi.*;
 import java.net.SocketAddress;
 import java.util.Queue;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.SSLParameters;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
@@ -94,8 +92,7 @@ public class SimpleClient implements Client {
     this.decoder = new ServerMsgDecoder(this, configuration);
     this.encoder = new MariadbPacketEncoder();
     this.byteBufAllocator = connection.outbound().alloc();
-    this.messageSubscriber =
-        new ServerMessageSubscriber(this.lock, this.isClosed, exchangeQueue, receiverQueue);
+    this.messageSubscriber = new ServerMessageSubscriber(this.lock, exchangeQueue, receiverQueue);
     connection.addHandlerFirst(new MariadbFrameDecoder());
 
     if (logger.isTraceEnabled()) {
@@ -104,11 +101,7 @@ public class SimpleClient implements Client {
           new LoggingHandler(SimpleClient.class, LogLevel.TRACE));
     }
 
-    connection
-        .inbound()
-        .receive()
-        .doOnComplete(this::handleConnectionEnd)
-        .subscribe(messageSubscriber);
+    connection.inbound().receive().subscribe(messageSubscriber);
 
     Mono<Void> request =
         this.requestSink
@@ -167,26 +160,37 @@ public class SimpleClient implements Client {
   private void handleConnectionError(Throwable throwable) {
     R2dbcNonTransientResourceException error;
     if (AbortedException.isConnectionReset(throwable) && !isConnected()) {
-      closeChannelIfNeeded();
       error =
           new R2dbcNonTransientResourceException(
               "Cannot execute command since connection is already closed", "08000", throwable);
+      this.messageSubscriber.close(error);
     } else {
-      error =
-          new R2dbcNonTransientResourceException(
-              String.format("Connection error", closeChannelIfNeeded() ? "unexpected" : ""),
-              "08000",
-              throwable);
-      logger.error(error.getMessage(), throwable);
+      if (throwable instanceof SSLHandshakeException) {
+        error = new R2dbcNonTransientResourceException(throwable.getMessage(), "08000", throwable);
+        this.messageSubscriber.close(error);
+        closeChannelIfNeeded();
+      } else {
+        error = new R2dbcNonTransientResourceException("Connection error", "08000", throwable);
+        if (this.isClosed.compareAndSet(false, true)) {
+          Channel channel = this.connection.channel();
+          if (channel.isOpen()) {
+            error =
+                new R2dbcNonTransientResourceException(
+                    "Connection unexpected error", "08000", throwable);
+            this.messageSubscriber.close(error);
+            this.connection.dispose();
+          }
+        } else {
+          this.messageSubscriber.close(error);
+        }
+      }
     }
-    messageSubscriber.close(error);
   }
 
   private Mono<Void> sendResumeError(Throwable throwable) {
     handleConnectionError(throwable);
     this.requestSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
-    logger.debug("Connection error", throwable);
-    return closeAll();
+    return quitOrClose();
   }
 
   private void handleConnectionEnd() {
@@ -209,14 +213,14 @@ public class SimpleClient implements Client {
   @Override
   public Mono<Void> close() {
     this.closeRequested = true;
-    return closeAll();
+    this.messageSubscriber.close(
+        new R2dbcNonTransientResourceException("Connection closed", "08000"));
+    return quitOrClose();
   }
 
-  private Mono<Void> closeAll() {
+  private Mono<Void> quitOrClose() {
     return Mono.defer(
         () -> {
-          this.messageSubscriber.close(
-              new R2dbcNonTransientResourceException("Connection closed", "08000"));
           if (this.isClosed.compareAndSet(false, true)) {
             Channel channel = this.connection.channel();
             if (!channel.isOpen()) {
@@ -242,40 +246,35 @@ public class SimpleClient implements Client {
   @Override
   public Mono<Void> sendSslRequest(
       SslRequestPacket sslRequest, MariadbConnectionConfiguration configuration) {
-    CompletableFuture<Void> result = new CompletableFuture<>();
     try {
       SslContext sslContext = configuration.getSslConfig().getSslContext();
-      SSLEngine engine;
-      if (this.hostAddress == null) {
-        engine =
-            sslContext.newEngine(
+
+      SslHandler sslHandler;
+      if (this.hostAddress != null) {
+        sslHandler =
+            sslContext.newHandler(
                 connection.channel().alloc(),
                 this.hostAddress.getHost(),
                 this.hostAddress.getPort());
+        if (configuration.getSslConfig().getSslMode() == SslMode.VERIFY_FULL) {
+          SSLEngine sslEngine = sslHandler.engine();
+          SSLParameters sslParameters = sslEngine.getSSLParameters();
+          sslParameters.setEndpointIdentificationAlgorithm("HTTPS");
+          sslEngine.setSSLParameters(sslParameters);
+        }
       } else {
-        engine = sslContext.newEngine(connection.channel().alloc());
+        sslHandler = sslContext.newHandler(connection.channel().alloc());
       }
-      final SslHandler sslHandler = new SslHandler(engine);
 
-      final GenericFutureListener<Future<? super Channel>> listener =
-          configuration
-              .getSslConfig()
-              .getHostNameVerifier(
-                  result,
-                  this.hostAddress == null ? null : this.hostAddress.getHost(),
-                  context.getThreadId(),
-                  engine,
-                  this::closeChannelIfNeeded);
-
-      sslHandler.handshakeFuture().addListener(listener);
       // send SSL request in clear
       this.sendClientMsgs(Mono.just(sslRequest));
       // add SSL handler
       connection.addHandlerFirst(sslHandler);
     } catch (Throwable e) {
-      result.completeExceptionally(e);
+      this.closeChannelIfNeeded();
+      return Mono.error(e);
     }
-    return Mono.fromFuture(result);
+    return Mono.empty();
   }
 
   private Flux<ServerMessage> execute(Consumer<FluxSink<ServerMessage>> s) {
@@ -577,19 +576,15 @@ public class SimpleClient implements Client {
 
   protected class ServerMessageSubscriber implements CoreSubscriber<ByteBuf> {
     private Subscription upstream;
-    private AtomicBoolean close;
+    private volatile boolean close;
     private final AtomicLong receiverDemands = new AtomicLong(0);
     private final ReentrantLock lock;
     private final Queue<Exchange> exchangeQueue;
     private final Queue<ServerMessage> receiverQueue;
 
     public ServerMessageSubscriber(
-        ReentrantLock lock,
-        AtomicBoolean close,
-        Queue<Exchange> exchangeQueue,
-        Queue<ServerMessage> receiverQueue) {
+        ReentrantLock lock, Queue<Exchange> exchangeQueue, Queue<ServerMessage> receiverQueue) {
       this.lock = lock;
-      this.close = close;
       this.receiverQueue = receiverQueue;
       this.exchangeQueue = exchangeQueue;
     }
@@ -600,39 +595,28 @@ public class SimpleClient implements Client {
     }
 
     public void onError(Throwable t) {
-      if (this.close.get()) {
+      if (this.close) {
         Operators.onErrorDropped(t, currentContext());
         return;
       }
-
-      SimpleClient.this.requestSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
-      handleConnectionError(t);
-      SimpleClient.this.closeAll().subscribe();
-      // in case race condition for onNext, filling cache
-      while (!this.receiverQueue.isEmpty()) {
-        ReferenceCountUtil.release(this.receiverQueue.poll());
-      }
+      SimpleClient.this.handleConnectionError(t);
+      requestSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
+      SimpleClient.this.quitOrClose().subscribe();
     }
 
     @Override
     public void onComplete() {
-      R2dbcNonTransientResourceException error =
+      close(
           new R2dbcNonTransientResourceException(
               String.format(
-                  "Connection error", SimpleClient.this.closeChannelIfNeeded() ? "unexpected" : ""),
-              "08000");
-      close(error);
-      SimpleClient.this.closeAll().subscribe();
-      // in case race condition for onNext, filling cache
-      while (!this.receiverQueue.isEmpty()) {
-        ReferenceCountUtil.release(this.receiverQueue.poll());
-      }
+                  "Connection %s",
+                  SimpleClient.this.closeChannelIfNeeded() ? "unexpected error" : "error"),
+              "08000"));
     }
 
     @Override
     public void onNext(ByteBuf message) {
-      if (this.close.get()) {
-        message.release();
+      if (this.close) {
         Operators.onNextDropped(message, currentContext());
         return;
       }
@@ -651,8 +635,8 @@ public class SimpleClient implements Client {
 
       // queue message
       if (!this.receiverQueue.offer(srvMsg)) {
-        message.release();
-        Operators.onNextDropped(message, currentContext());
+        srvMsg.release();
+        Operators.onNextDropped(srvMsg, currentContext());
         onError(
             new R2dbcNonTransientResourceException("unexpected : server message queue is full"));
         return;
@@ -696,12 +680,13 @@ public class SimpleClient implements Client {
     }
 
     public void close(R2dbcException error) {
+      this.close = true;
       Exchange exchange;
       while ((exchange = this.exchangeQueue.poll()) != null) {
         exchange.onError(error);
       }
       while (!this.receiverQueue.isEmpty()) {
-        ReferenceCountUtil.release(this.receiverQueue.poll());
+        this.receiverQueue.poll().release();
       }
     }
   }
