@@ -34,7 +34,12 @@ public final class QueryWithParametersPacket implements ClientMessage {
 
   @Override
   public ByteBuf encode(Context context, ByteBufAllocator byteBufAllocator) {
-    if (savedBuf != null) return savedBuf;
+    if (savedBuf != null) {
+      ByteBuf tmp = savedBuf;
+      this.savedBuf = null;
+      return tmp;
+    }
+
     Assert.requireNonNull(byteBufAllocator, "byteBufAllocator must not be null");
     String additionalReturningPart = null;
     if (generatedColumns != null) {
@@ -74,6 +79,12 @@ public final class QueryWithParametersPacket implements ClientMessage {
 
   public void resetSequencer() {
     sequencer.reset();
+  }
+
+  public void releaseSave() {
+    if (savedBuf != null) {
+      savedBuf.release();
+    }
   }
 
   public MessageSequence getSequencer() {

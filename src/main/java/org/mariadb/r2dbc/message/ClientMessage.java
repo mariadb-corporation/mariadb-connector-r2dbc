@@ -16,5 +16,7 @@ public interface ClientMessage {
 
   default void save(ByteBuf buf, int initialReaderIndex) {}
 
+  default void releaseSave() {}
+
   default void resetSequencer() {}
 }

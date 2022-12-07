@@ -111,9 +111,13 @@ public class ConnectionTest extends BaseConnectionTest {
                 .flatMap(r -> r.map((row, metadata) -> row.get(0)))
                 .onErrorResume(
                     t -> {
-                      t.printStackTrace();
                       assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
-                      assertTrue(t.getMessage().contains("Connection error"));
+                      assertTrue(
+                          t.getMessage().contains("Connection error")
+                              || t.getMessage()
+                                  .contains(
+                                      "Cannot execute command since connection is already closed"),
+                          t.getMessage());
                       return Mono.just(1);
                     })
                 .single()

@@ -372,13 +372,14 @@ public class FailoverClient implements Client {
                                             } else {
                                               clientMsg2 = Mono.just(req);
                                             }
-                                            return clientMsg.flatMapMany(
+                                            return clientMsg2.flatMapMany(
                                                 req2 ->
                                                     c.sendCommand(
-                                                        req2,
-                                                        initialState,
-                                                        sql,
-                                                        canSafelyBeReExecuted));
+                                                            req2,
+                                                            initialState,
+                                                            sql,
+                                                            canSafelyBeReExecuted)
+                                                        .doOnTerminate(() -> req2.releaseSave()));
                                           })
                                       .flatMapMany(flux -> flux)));
             });
@@ -442,7 +443,8 @@ public class FailoverClient implements Client {
                                       preparePacket.resetSequencer();
                                       executePacket.resetSequencer();
                                       return c.sendCommand(
-                                          preparePacket, executePacket, canSafelyBeReExecuted);
+                                              preparePacket, executePacket, canSafelyBeReExecuted)
+                                          .doOnTerminate(() -> executePacket.releaseSave());
                                     })
                                 .flatMapMany(flux -> flux)));
   }

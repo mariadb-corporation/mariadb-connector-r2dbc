@@ -35,7 +35,11 @@ public final class ExecutePacket implements ClientMessage {
 
   @Override
   public ByteBuf encode(Context context, ByteBufAllocator allocator) {
-    if (savedBuf != null) return savedBuf;
+    if (savedBuf != null) {
+      ByteBuf tmp = savedBuf;
+      this.savedBuf = null;
+      return tmp;
+    }
     ByteBuf buf = allocator.ioBuffer();
     buf.writeByte(0x17);
     buf.writeIntLE(statementId);
@@ -88,6 +92,12 @@ public final class ExecutePacket implements ClientMessage {
 
   public void save(ByteBuf buf, int initialReaderIndex) {
     savedBuf = buf.readerIndex(initialReaderIndex).retain();
+  }
+
+  public void releaseSave() {
+    if (savedBuf != null) {
+      savedBuf.release();
+    }
   }
 
   public void forceStatementId(int statementId) {
