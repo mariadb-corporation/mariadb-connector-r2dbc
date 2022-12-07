@@ -344,6 +344,13 @@ public class StatementTest extends BaseConnectionTest {
                       r.map(
                           (row, metadata) -> {
                             d2.set(connection.createStatement("COMMIT").execute().subscribe());
+                            while (d.get() == null) {
+                              try {
+                                Thread.sleep(50);
+                              } catch (InterruptedException i) {
+                                i.printStackTrace();
+                              }
+                            }
                             d.get().dispose();
                             return row.get(0, Integer.class);
                           }));

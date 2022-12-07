@@ -292,6 +292,11 @@ public class FailoverClient implements Client {
   }
 
   @Override
+  public void handleConnectionError(Throwable throwable) {
+    client.get().handleConnectionError(throwable);
+  }
+
+  @Override
   public void sendCommandWithoutResult(ClientMessage requests) {
     client.get().sendCommandWithoutResult(requests);
   }

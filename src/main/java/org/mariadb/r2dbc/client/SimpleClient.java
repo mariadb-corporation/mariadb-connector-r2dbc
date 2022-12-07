@@ -11,6 +11,7 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
+import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.*;
 import java.net.SocketAddress;
 import java.util.Queue;
@@ -114,7 +115,7 @@ public class SimpleClient implements Client {
 
     request
         .onErrorResume(this::sendResumeError)
-        .doAfterTerminate(this::handleConnectionEnd)
+        .doAfterTerminate(this::closeChannelIfNeeded)
         .subscribe();
   }
 
@@ -157,33 +158,20 @@ public class SimpleClient implements Client {
     this.requestSink.emitNext(it, Sinks.EmitFailureHandler.FAIL_FAST);
   }
 
-  private void handleConnectionError(Throwable throwable) {
-    R2dbcNonTransientResourceException error;
+  public void handleConnectionError(Throwable throwable) {
     if (AbortedException.isConnectionReset(throwable) && !isConnected()) {
-      error =
+      this.messageSubscriber.close(
           new R2dbcNonTransientResourceException(
-              "Cannot execute command since connection is already closed", "08000", throwable);
-      this.messageSubscriber.close(error);
+              "Cannot execute command since connection is already closed", "08000", throwable));
     } else {
+      R2dbcNonTransientResourceException error;
       if (throwable instanceof SSLHandshakeException) {
         error = new R2dbcNonTransientResourceException(throwable.getMessage(), "08000", throwable);
-        this.messageSubscriber.close(error);
-        closeChannelIfNeeded();
       } else {
         error = new R2dbcNonTransientResourceException("Connection error", "08000", throwable);
-        if (this.isClosed.compareAndSet(false, true)) {
-          Channel channel = this.connection.channel();
-          if (channel.isOpen()) {
-            error =
-                new R2dbcNonTransientResourceException(
-                    "Connection unexpected error", "08000", throwable);
-            this.messageSubscriber.close(error);
-            this.connection.dispose();
-          }
-        } else {
-          this.messageSubscriber.close(error);
-        }
       }
+      this.messageSubscriber.close(error);
+      closeChannelIfNeeded();
     }
   }
 
@@ -193,15 +181,11 @@ public class SimpleClient implements Client {
     return quitOrClose();
   }
 
-  private void handleConnectionEnd() {
-    messageSubscriber.close(
-        new R2dbcNonTransientResourceException(
-            "Connection " + (closeChannelIfNeeded() ? "unexpectedly " : "") + "closed", "08000"));
-  }
-
   public boolean closeChannelIfNeeded() {
     if (this.isClosed.compareAndSet(false, true)) {
       Channel channel = this.connection.channel();
+      messageSubscriber.close(
+          new R2dbcNonTransientResourceException("Connection unexpectedly closed", "08000"));
       if (channel.isOpen()) {
         this.connection.dispose();
       }
@@ -214,16 +198,21 @@ public class SimpleClient implements Client {
   public Mono<Void> close() {
     this.closeRequested = true;
     this.messageSubscriber.close(
-        new R2dbcNonTransientResourceException("Connection closed", "08000"));
+        new R2dbcNonTransientResourceException("Connection has been closed", "08000"));
     return quitOrClose();
   }
 
   private Mono<Void> quitOrClose() {
+
+    // expect message subscriber to be closed already
+    this.messageSubscriber.close(
+        new R2dbcNonTransientResourceException("Connection closed", "08000"));
+
     return Mono.defer(
         () -> {
           if (this.isClosed.compareAndSet(false, true)) {
             Channel channel = this.connection.channel();
-            if (!channel.isOpen()) {
+            if (channel.isOpen()) {
               this.connection.dispose();
               return this.connection.onDispose();
             }
@@ -599,8 +588,10 @@ public class SimpleClient implements Client {
         Operators.onErrorDropped(t, currentContext());
         return;
       }
-      SimpleClient.this.handleConnectionError(t);
       requestSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
+      SimpleClient.this.handleConnectionError(t);
+
+      // is really needed ?
       SimpleClient.this.quitOrClose().subscribe();
     }
 
@@ -618,6 +609,7 @@ public class SimpleClient implements Client {
     @Override
     public void onNext(ByteBuf message) {
       if (this.close) {
+        ReferenceCountUtil.release(message);
         Operators.onNextDropped(message, currentContext());
         return;
       }
@@ -625,6 +617,8 @@ public class SimpleClient implements Client {
       this.receiverDemands.decrementAndGet();
       Exchange exchange = this.exchangeQueue.peek();
       ServerMessage srvMsg = decoder.decode(message, exchange);
+      ReferenceCountUtil.release(message);
+
       // nothing buffered => directly emit message
       if (this.receiverQueue.isEmpty() && exchange != null && exchange.hasDemand()) {
         if (exchange.emit(srvMsg)) this.exchangeQueue.poll();

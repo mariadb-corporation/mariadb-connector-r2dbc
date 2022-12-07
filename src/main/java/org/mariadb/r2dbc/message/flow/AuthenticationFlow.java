@@ -82,9 +82,8 @@ public final class AuthenticationFlow {
             })
         .doOnError(
             e -> {
-              logger.error("Authentication failed", e);
-              flow.client.closeChannelIfNeeded();
-              flow.client.close().subscribe();
+              logger.warn("Authentication failed", e);
+              flow.client.handleConnectionError(e);
             })
         .doFinally(
             c -> {

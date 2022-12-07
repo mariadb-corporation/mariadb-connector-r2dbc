@@ -47,7 +47,6 @@ public class TcpProxy {
     Executors.newSingleThreadScheduledExecutor().schedule(socket, sleepTime, TimeUnit.MILLISECONDS);
   }
 
-
   public void forceClose() {
     socket.sendRst();
   }
@@ -61,6 +60,7 @@ public class TcpProxy {
       // eat Exception
     }
   }
+
   public void restartForce() {
     socket.kill();
     Executors.newSingleThreadExecutor().execute(socket);

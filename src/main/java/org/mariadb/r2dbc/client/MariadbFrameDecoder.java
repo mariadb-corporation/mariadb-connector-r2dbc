@@ -53,7 +53,7 @@ public class MariadbFrameDecoder extends ByteToMessageDecoder {
         multipart.addComponent(true, 0, Unpooled.wrappedBuffer(new byte[] {buf.readByte()}));
         // add data
         multipart.addComponent(true, buf.readRetainedSlice(length));
-        out.add(multipart);
+        out.add(multipart.retain());
         multipart = null;
         continue;
       }
@@ -61,7 +61,7 @@ public class MariadbFrameDecoder extends ByteToMessageDecoder {
       // create Object from packet
       ByteBuf packet = buf.readRetainedSlice(4 + length);
       packet.skipBytes(3); // skip length
-      out.add(packet);
+      out.add(packet.retain());
     }
   }
 }

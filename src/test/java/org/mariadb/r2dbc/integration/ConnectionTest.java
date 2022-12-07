@@ -17,9 +17,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
-import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.netty.resources.LoopResources;
 import reactor.test.StepVerifier;
 
@@ -89,6 +89,7 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
+  @Timeout(10)
   void multipleCommandStack() throws Exception {
     Assumptions.assumeTrue(System.getenv("TRAVIS") == null);
     Assumptions.assumeTrue(
@@ -96,31 +97,44 @@ public class ConnectionTest extends BaseConnectionTest {
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
 
-    // disableLog();
     MariadbConnection connection = createProxyCon();
     Runnable runnable = () -> proxy.stop();
     Thread th = new Thread(runnable);
+    AtomicInteger completeResults = new AtomicInteger();
+    AtomicInteger errorResult = new AtomicInteger();
 
     try {
-      List<Flux<MariadbResult>> results = new ArrayList<>();
+      List<Mono<Void>> results = new ArrayList<>();
       for (int i = 0; i < 100; i++) {
-        results.add(connection.createStatement("SELECT * from mysql.user").execute());
+        results.add(
+            connection
+                .createStatement("SELECT 0")
+                .execute()
+                .flatMap(r -> r.map((row, metadata) -> row.get(0)))
+                .onErrorResume(
+                    t -> {
+                      t.printStackTrace();
+                      assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
+                      assertTrue(t.getMessage().contains("Connection error"));
+                      return Mono.just(1);
+                    })
+                .single()
+                .handle(
+                    (o, s) -> {
+                      completeResults.incrementAndGet();
+                      if (o.equals(Integer.valueOf(1))) errorResult.incrementAndGet();
+                    }));
       }
+
       for (int i = 0; i < 50; i++) {
         results.get(i).subscribe();
       }
       th.start();
 
-    } catch (Throwable t) {
-      Assertions.assertNotNull(t.getCause());
-      Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getCause().getClass());
-      Assertions.assertTrue(
-          t.getCause().getMessage().contains("Connection is close. Cannot send anything")
-              || t.getMessage()
-                  .contains("Cannot execute command since connection is already closed")
-              || t.getCause().getMessage().contains("Connection unexpectedly closed")
-              || t.getCause().getMessage().contains("Connection unexpected error"),
-          "real msg:" + t.getCause().getMessage());
+      while (completeResults.get() < 50) {
+        Thread.sleep(100);
+      }
+      assertTrue(errorResult.get() > 0, "errorResult:" + errorResult.get());
     } finally {
       Thread.sleep(100);
       // reInitLog();
