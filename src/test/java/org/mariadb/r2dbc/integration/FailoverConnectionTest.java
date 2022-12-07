@@ -58,7 +58,6 @@ public class FailoverConnectionTest extends BaseConnectionTest {
   @Test
   @Timeout(20)
   void multipleCommandStack() throws Exception {
-    Assumptions.assumeTrue(System.getenv("TRAVIS") == null);
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
@@ -83,7 +82,6 @@ public class FailoverConnectionTest extends BaseConnectionTest {
 
   @Test
   void transactionReplayFalse() throws Exception {
-    Assumptions.assumeTrue(System.getenv("TRAVIS") == null);
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
@@ -110,7 +108,6 @@ public class FailoverConnectionTest extends BaseConnectionTest {
 
   @Test
   void transactionReplayFailingBetweenCmds() throws Exception {
-    Assumptions.assumeTrue(System.getenv("TRAVIS") == null);
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
@@ -126,7 +123,6 @@ public class FailoverConnectionTest extends BaseConnectionTest {
   }
 
   private void transactionReplayFailingBetweenCmds(MariadbConnection connection) throws Exception {
-    Assumptions.assumeTrue(System.getenv("TRAVIS") == null);
     try {
       connection.createStatement("SET @con=1").execute().blockLast();
 
@@ -185,7 +181,6 @@ public class FailoverConnectionTest extends BaseConnectionTest {
 
   @Test
   void transactionReplayFailingDuringCmd() throws Exception {
-    Assumptions.assumeTrue(System.getenv("TRAVIS") == null);
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
