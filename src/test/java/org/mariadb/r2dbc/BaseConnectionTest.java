@@ -6,10 +6,7 @@ package org.mariadb.r2dbc;
 import io.r2dbc.spi.ValidationDepth;
 import java.io.IOException;
 import java.util.Random;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.function.Executable;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
@@ -82,7 +79,7 @@ public class BaseConnectionTest extends BaseTest {
   }
 
   @AfterEach
-  public void afterEach1() {
+  public void afterEach1(TestInfo testInfo) {
     int finalConnectionNumber =
         sharedConn
             .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
@@ -92,7 +89,8 @@ public class BaseConnectionTest extends BaseTest {
     if (finalConnectionNumber - initialConnectionNumber != 0) {
       System.err.println(
           String.format(
-              "Error connection not ended : changed=%s (initial:%s ended:%s)",
+              "%s: Error connection not ended : changed=%s (initial:%s ended:%s)",
+              testInfo.getTestMethod().get(),
               (finalConnectionNumber - initialConnectionNumber),
               initialConnectionNumber,
               finalConnectionNumber));

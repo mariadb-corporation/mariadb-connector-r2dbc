@@ -142,67 +142,65 @@ public class ConnectionTest extends BaseConnectionTest {
     }
   }
 
-  //  @Test
-  //  void connectionWithoutErrorOnClose() throws Exception {
-  //    Assumptions.assumeTrue(System.getenv("local") == null ||
-  // "1".equals(System.getenv("local")));
-  //
-  //    Assumptions.assumeTrue(
-  //        !"maxscale".equals(System.getenv("srv"))
-  //            && !"skysql".equals(System.getenv("srv"))
-  //            && !"skysql-ha".equals(System.getenv("srv")));
-  //    //    disableLog();
-  //    MariadbConnection connection = createProxyCon();
-  //    proxy.stop();
-  //    connection.close().block();
-  //    //    reInitLog();
-  //  }
+  @Test
+  void connectionWithoutErrorOnClose() throws Exception {
+    Assumptions.assumeTrue(System.getenv("local") == null || "1".equals(System.getenv("local")));
 
-  //  @Test
-  //  @Timeout(5)
-  //  void connectionDuringError() throws Exception {
-  //    Assumptions.assumeTrue(System.getenv("local") == null ||
-  // "1".equals(System.getenv("local")));
-  //
-  //    Assumptions.assumeTrue(
-  //        !"maxscale".equals(System.getenv("srv"))
-  //            && !"skysql".equals(System.getenv("srv"))
-  //            && !"skysql-ha".equals(System.getenv("srv")));
-  //    MariadbConnection connection = createProxyCon();
-  //    new Timer()
-  //        .schedule(
-  //            new TimerTask() {
-  //              @Override
-  //              public void run() {
-  //                proxy.stop();
-  //              }
-  //            },
-  //            200);
-  //
-  //    try {
-  //      connection
-  //          .createStatement(
-  //              "select * from information_schema.columns as c1, "
-  //                  + "information_schema.tables, information_schema.tables as t2")
-  //          .execute()
-  //          .flatMap(r -> r.map((rows, meta) -> ""))
-  //          .blockLast();
-  //      Assertions.fail("must have throw exception");
-  //    } catch (Throwable t) {
-  //      Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
-  //      Assertions.assertTrue(
-  //          t.getMessage().contains("Connection is close. Cannot send anything")
-  //              || t.getMessage().contains("Connection unexpectedly closed")
-  //              || t.getMessage().contains("Connection unexpected error")
-  //              || t.getMessage().contains("Connection error"),
-  //          "real msg:" + t.getMessage());
-  //      connection
-  //          .validate(ValidationDepth.LOCAL)
-  //          .as(StepVerifier::create)
-  //          .expectNext(Boolean.FALSE)
-  //          .verifyComplete();
-  //    }
-  //  }
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
+    //    disableLog();
+    MariadbConnection connection = createProxyCon();
+    proxy.stop();
+    connection.close().block();
+    //    reInitLog();
+  }
+
+  @Test
+  @Timeout(5)
+  void connectionDuringError() throws Exception {
+    Assumptions.assumeTrue(System.getenv("local") == null || "1".equals(System.getenv("local")));
+
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
+    MariadbConnection connection = createProxyCon();
+    new Timer()
+        .schedule(
+            new TimerTask() {
+              @Override
+              public void run() {
+                proxy.stop();
+              }
+            },
+            200);
+
+    try {
+      connection
+          .createStatement(
+              "select * from information_schema.columns as c1, "
+                  + "information_schema.tables, information_schema.tables as t2")
+          .execute()
+          .flatMap(r -> r.map((rows, meta) -> ""))
+          .blockLast();
+      Assertions.fail("must have throw exception");
+    } catch (Throwable t) {
+      Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
+      Assertions.assertTrue(
+          t.getMessage().contains("Connection is close. Cannot send anything")
+              || t.getMessage().contains("Connection unexpectedly closed")
+              || t.getMessage().contains("Connection unexpected error")
+              || t.getMessage().contains("Connection error"),
+          "real msg:" + t.getMessage());
+      connection
+          .validate(ValidationDepth.LOCAL)
+          .as(StepVerifier::create)
+          .expectNext(Boolean.FALSE)
+          .verifyComplete();
+    }
+  }
 
   @Test
   void remoteValidation() {
@@ -994,45 +992,45 @@ public class ConnectionTest extends BaseConnectionTest {
         .blockLast();
   }
 
-  //  @Test
-  //  public void errorOnConnection() throws Throwable {
-  //    Assumptions.assumeTrue(
-  //        !"maxscale".equals(System.getenv("srv"))
-  //            && !"skysql-ha".equals(System.getenv("srv"))
-  //            && !"skysql".equals(System.getenv("srv")));
-  //
-  //    BigInteger maxConn =
-  //        sharedConn
-  //            .createStatement("select @@max_connections")
-  //            .execute()
-  //            .flatMap(r -> r.map((row, metadata) -> row.get(0, BigInteger.class)))
-  //            .blockLast();
-  //    Assumptions.assumeTrue(maxConn.intValue() < 600);
-  //
-  //    Throwable expected = null;
-  //    Mono<?>[] cons = new Mono<?>[maxConn.intValue()];
-  //    for (int i = 0; i < maxConn.intValue(); i++) {
-  //      cons[i] = new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create();
-  //    }
-  //    MariadbConnection[] connections = new MariadbConnection[maxConn.intValue()];
-  //    for (int i = 0; i < maxConn.intValue(); i++) {
-  //      try {
-  //        connections[i] = (MariadbConnection) cons[i].block();
-  //      } catch (Throwable e) {
-  //        expected = e;
-  //      }
-  //    }
-  //
-  //    for (int i = 0; i < maxConn.intValue(); i++) {
-  //      if (connections[i] != null) {
-  //        connections[i].close().block();
-  //      }
-  //    }
-  //    Assertions.assertNotNull(expected);
-  //    Assertions.assertTrue(expected.getMessage().contains("Fail to establish connection to"));
-  //    Assertions.assertTrue(expected.getCause().getMessage().contains("Too many connections"));
-  //    Thread.sleep(1000);
-  //  }
+  @Test
+  public void errorOnConnection() throws Throwable {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv")));
+
+    BigInteger maxConn =
+        sharedConn
+            .createStatement("select @@max_connections")
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> row.get(0, BigInteger.class)))
+            .blockLast();
+    Assumptions.assumeTrue(maxConn.intValue() < 600);
+
+    Throwable expected = null;
+    Mono<?>[] cons = new Mono<?>[maxConn.intValue()];
+    for (int i = 0; i < maxConn.intValue(); i++) {
+      cons[i] = new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create();
+    }
+    MariadbConnection[] connections = new MariadbConnection[maxConn.intValue()];
+    for (int i = 0; i < maxConn.intValue(); i++) {
+      try {
+        connections[i] = (MariadbConnection) cons[i].block();
+      } catch (Throwable e) {
+        expected = e;
+      }
+    }
+
+    for (int i = 0; i < maxConn.intValue(); i++) {
+      if (connections[i] != null) {
+        connections[i].close().block();
+      }
+    }
+    Assertions.assertNotNull(expected);
+    Assertions.assertTrue(expected.getMessage().contains("Fail to establish connection to"));
+    Assertions.assertTrue(expected.getCause().getMessage().contains("Too many connections"));
+    Thread.sleep(1000);
+  }
 
   @Test
   void killedConnection() {
