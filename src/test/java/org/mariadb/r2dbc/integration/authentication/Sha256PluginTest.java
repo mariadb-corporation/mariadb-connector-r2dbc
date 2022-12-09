@@ -19,8 +19,6 @@ public class Sha256PluginTest extends BaseConnectionTest {
 
   private static String rsaPublicKey;
   private static String cachingRsaPublicKey;
-  private static final boolean isWindows =
-      System.getProperty("os.name").toLowerCase().contains("win");
 
   private static boolean validPath(String path) {
     if (path == null) return false;
@@ -250,7 +248,9 @@ public class Sha256PluginTest extends BaseConnectionTest {
   @Test
   public void sha256PluginTestWithoutServerRsaKey() throws Exception {
     Assumptions.assumeTrue(
-        !isWindows && !isMariaDBServer() && (minVersion(8, 0, 0) && !minVersion(8, 0, 31)));
+        !isWindows && !isMariaDBServer() && (minVersion(8, 0, 0)));
+    // mysql 8.0.31 broken public key retrieval, so avoid FLUSHING for now
+    Assumptions.assumeTrue(!isMariaDBServer() && !exactVersion(8, 0, 31));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
@@ -288,6 +288,9 @@ public class Sha256PluginTest extends BaseConnectionTest {
   @Test
   public void sha256PluginTestSsl() throws Exception {
     Assumptions.assumeTrue(haveSsl(sharedConn));
+    // mysql 8.0.31 broken public key retrieval, so avoid FLUSHING for now
+    Assumptions.assumeTrue(!isMariaDBServer() && !exactVersion(8, 0, 31));
+
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
@@ -333,6 +336,8 @@ public class Sha256PluginTest extends BaseConnectionTest {
   @Test
   public void cachingSha256PluginTestWithoutServerRsaKey() throws Exception {
     Assumptions.assumeTrue(!isWindows && rsaPublicKey != null && minVersion(8, 0, 0));
+    // mysql 8.0.31 broken public key retrieval, so avoid FLUSHING for now
+    Assumptions.assumeTrue(!isMariaDBServer() && !exactVersion(8, 0, 31));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
@@ -348,6 +353,8 @@ public class Sha256PluginTest extends BaseConnectionTest {
   @Test
   public void WrongUserCachingSha256PluginTestWithoutServerRsaKey() throws Exception {
     Assumptions.assumeTrue(!isWindows && minVersion(8, 0, 0));
+    // mysql 8.0.31 broken public key retrieval, so avoid FLUSHING for now
+    Assumptions.assumeTrue(!isMariaDBServer() && !exactVersion(8, 0, 31));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder

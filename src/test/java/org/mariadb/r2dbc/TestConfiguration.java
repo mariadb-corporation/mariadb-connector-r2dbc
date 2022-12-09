@@ -30,7 +30,7 @@ public class TestConfiguration {
     String defaultOther = null;
 
     try (InputStream inputStream =
-        BaseTest.class.getClassLoader().getResourceAsStream("conf.properties")) {
+        BaseConnectionTest.class.getClassLoader().getResourceAsStream("conf.properties")) {
       Properties prop = new Properties();
       prop.load(inputStream);
 

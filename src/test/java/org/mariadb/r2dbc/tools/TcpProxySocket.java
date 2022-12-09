@@ -46,7 +46,7 @@ public class TcpProxySocket implements Runnable {
   }
 
   /** Kill proxy. */
-  public void kill() {
+  public void kill() throws InterruptedException {
     stop = true;
     try {
       if (server != null) {
@@ -62,11 +62,13 @@ public class TcpProxySocket implements Runnable {
     } catch (IOException e) {
       // eat Exception
     }
+    Thread.sleep(10);
     try {
       ss.close();
     } catch (IOException e) {
       // eat Exception
     }
+    stop = false;
   }
 
   public void sendRst() {
@@ -93,6 +95,7 @@ public class TcpProxySocket implements Runnable {
     } catch (IOException e) {
       // eat Exception
     }
+    stop = false;
   }
 
   @Override

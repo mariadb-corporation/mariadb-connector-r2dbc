@@ -26,6 +26,8 @@ public class TransactionSaver {
 
   /** Transaction finished, clearing cache */
   public void clear() {
+    ClientMessage clientMessage;
+    while ((clientMessage = messages.poll()) != null) clientMessage.releaseSave();
     messages.clear();
     dirty = false;
   }

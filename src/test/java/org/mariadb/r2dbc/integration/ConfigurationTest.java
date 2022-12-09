@@ -19,7 +19,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class ConfigurationTest extends BaseTest {
+public class ConfigurationTest extends BaseConnectionTest {
 
   @Test
   void usingOption() {
