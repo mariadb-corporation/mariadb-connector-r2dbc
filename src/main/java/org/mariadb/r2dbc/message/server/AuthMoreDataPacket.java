@@ -33,22 +33,26 @@ public class AuthMoreDataPacket implements AuthMoreData, ServerMessage, Referenc
 
   @Override
   public ReferenceCounted retain() {
-    return buf.retain();
+    buf.retain();
+    return this;
   }
 
   @Override
   public ReferenceCounted retain(int increment) {
-    return buf.retain(increment);
+    buf.retain(increment);
+    return this;
   }
 
   @Override
   public ReferenceCounted touch() {
-    return buf.touch();
+    buf.touch();
+    return this;
   }
 
   @Override
   public ReferenceCounted touch(Object hint) {
-    return buf.touch(hint);
+    buf.touch(hint);
+    return this;
   }
 
   public boolean release() {

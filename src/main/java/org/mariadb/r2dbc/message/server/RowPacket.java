@@ -26,22 +26,26 @@ public final class RowPacket implements ServerMessage, ReferenceCounted {
 
   @Override
   public ReferenceCounted retain() {
-    return raw.retain();
+    raw.retain();
+    return this;
   }
 
   @Override
   public ReferenceCounted retain(int increment) {
-    return raw.retain(increment);
+    raw.retain(increment);
+    return this;
   }
 
   @Override
   public ReferenceCounted touch() {
-    return raw.touch();
+    raw.touch();
+    return this;
   }
 
   @Override
   public ReferenceCounted touch(Object hint) {
-    return raw.touch(hint);
+    raw.touch(hint);
+    return this;
   }
 
   public boolean release() {

@@ -84,6 +84,7 @@ public final class QueryWithParametersPacket implements ClientMessage {
   public void releaseSave() {
     if (savedBuf != null) {
       savedBuf.release();
+      savedBuf = null;
     }
   }
 

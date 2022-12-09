@@ -13,11 +13,11 @@ public interface DecoderStateInterface {
     return (DecoderState) this;
   }
 
-  default ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+  default ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
     throw new IllegalArgumentException("unexpected state");
   }
 
-  default DecoderState next(ServerMsgDecoder decoder) {
+  default DecoderState next(MariadbFrameDecoder decoder) {
     return null;
   }
 }

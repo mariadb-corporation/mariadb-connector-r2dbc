@@ -40,7 +40,9 @@ public class RedoContext extends SimpleContext {
    */
   public void setServerStatus(short serverStatus) {
     super.setServerStatus(serverStatus);
-    if ((serverStatus & ServerStatus.IN_TRANSACTION) == 0) transactionSaver.clear();
+    if ((serverStatus & ServerStatus.IN_TRANSACTION) == 0) {
+      transactionSaver.clear();
+    }
   }
 
   /**

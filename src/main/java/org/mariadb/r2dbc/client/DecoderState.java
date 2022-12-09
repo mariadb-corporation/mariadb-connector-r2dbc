@@ -23,26 +23,26 @@ public enum DecoderState implements DecoderStateInterface {
     }
 
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       return InitialHandshakePacket.decode(sequencer, body);
     }
   },
 
   OK_PACKET {
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       return OkPacket.decode(sequencer, body, decoder.getContext());
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       return QUERY_RESPONSE;
     }
   },
 
   AUTHENTICATION_SWITCH {
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       return AuthSwitchPacket.decode(sequencer, body, decoder.getContext());
     }
   },
@@ -65,7 +65,7 @@ public enum DecoderState implements DecoderStateInterface {
 
   AUTHENTICATION_MORE_DATA {
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       return AuthMoreDataPacket.decode(sequencer, body, decoder.getContext());
     }
   },
@@ -87,7 +87,7 @@ public enum DecoderState implements DecoderStateInterface {
   COLUMN_COUNT {
 
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       ColumnCountPacket columnCountPacket =
           ColumnCountPacket.decode(sequencer, body, decoder.getContext());
       decoder.setStateCounter(columnCountPacket.getColumnCount());
@@ -96,7 +96,7 @@ public enum DecoderState implements DecoderStateInterface {
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       if (decoder.isMetaFollows()) {
         return COLUMN_DEFINITION;
       }
@@ -111,14 +111,14 @@ public enum DecoderState implements DecoderStateInterface {
   COLUMN_DEFINITION {
 
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       decoder.decrementStateCounter();
       return ColumnDefinitionPacket.decode(
           sequencer, body, decoder.getContext(), false, decoder.getConf());
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       if (decoder.getStateCounter() <= 0) {
         return EOF_INTERMEDIATE_RESPONSE;
       }
@@ -128,14 +128,14 @@ public enum DecoderState implements DecoderStateInterface {
 
   EOF_INTERMEDIATE_RESPONSE {
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       EofPacket eof = EofPacket.decode(sequencer, body, decoder.getContext(), false);
       decoder.setStateCounter((eof.getServerStatus() & ServerStatus.PS_OUT_PARAMETERS) > 0 ? 1 : 0);
       return eof;
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       // mysql has a broken protocol for output parameter, then driver need to know state
       if (decoder.getStateCounter() > 0) {
         decoder.setStateCounter(0);
@@ -147,12 +147,12 @@ public enum DecoderState implements DecoderStateInterface {
 
   EOF_END {
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       return EofPacket.decode(sequencer, body, decoder.getContext(), true);
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       return QUERY_RESPONSE;
     }
   },
@@ -160,7 +160,7 @@ public enum DecoderState implements DecoderStateInterface {
   EOF_END_OUT_PARAM {
 
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       // specific for mysql that break protocol, forgetting sometime to set PS_OUT_PARAMETERS and
       // more importantly MORE_RESULTS_EXISTS
       // breaking protocol
@@ -168,7 +168,7 @@ public enum DecoderState implements DecoderStateInterface {
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       return QUERY_RESPONSE;
     }
   },
@@ -213,24 +213,24 @@ public enum DecoderState implements DecoderStateInterface {
 
   ROW {
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       return new RowPacket(body);
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       return ROW_RESPONSE;
     }
   },
 
   ROW_OUTPUT_PARAM {
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       return new RowPacket(body);
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       return ROW_RESPONSE_OUT_PARAM;
     }
   },
@@ -248,7 +248,7 @@ public enum DecoderState implements DecoderStateInterface {
     }
 
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       decoder.setPrepare(PrepareResultPacket.decode(sequencer, body, decoder.getContext(), false));
       if (decoder.getPrepare().getNumParams() == 0 && decoder.getPrepare().getNumColumns() == 0) {
         ServerPrepareResult serverPrepareResult = decoder.endPrepare();
@@ -258,7 +258,7 @@ public enum DecoderState implements DecoderStateInterface {
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       if (decoder.getPrepare().getNumParams() == 0) {
         if (decoder.getPrepare().getNumColumns() == 0) {
           decoder.setPrepare(null);
@@ -286,7 +286,7 @@ public enum DecoderState implements DecoderStateInterface {
     }
 
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       decoder.setPrepare(PrepareResultPacket.decode(sequencer, body, decoder.getContext(), true));
       if (decoder.getPrepare().getNumParams() == 0 && decoder.getPrepare().getNumColumns() == 0) {
         ServerPrepareResult serverPrepareResult = decoder.endPrepare();
@@ -296,7 +296,7 @@ public enum DecoderState implements DecoderStateInterface {
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       if (decoder.getPrepare().getNumParams() == 0) {
         if (decoder.getPrepare().getNumColumns() == 0) {
           decoder.setPrepare(null);
@@ -314,13 +314,13 @@ public enum DecoderState implements DecoderStateInterface {
   PREPARE_PARAMETER {
 
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       decoder.decrementStateCounter();
       return SkipPacket.decode(false);
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       if (decoder.getStateCounter() == 0) {
         return PREPARE_PARAMETER_EOF;
       }
@@ -331,7 +331,7 @@ public enum DecoderState implements DecoderStateInterface {
   PREPARE_PARAMETER_EOF {
 
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       if (decoder.getPrepare().getNumColumns() == 0) {
         ServerPrepareResult serverPrepareResult = decoder.endPrepare();
         return new CompletePrepareResult(
@@ -341,7 +341,7 @@ public enum DecoderState implements DecoderStateInterface {
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       if (decoder.getPrepare().getNumColumns() > 0) {
         decoder.setStateCounter(decoder.getPrepare().getNumColumns());
         return PREPARE_COLUMN;
@@ -354,7 +354,7 @@ public enum DecoderState implements DecoderStateInterface {
   PREPARE_COLUMN {
 
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       ColumnDefinitionPacket columnDefinitionPacket =
           ColumnDefinitionPacket.decode(
               sequencer, body, decoder.getContext(), false, decoder.getConf());
@@ -367,7 +367,7 @@ public enum DecoderState implements DecoderStateInterface {
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       if (decoder.getStateCounter() <= 0) {
         return PREPARE_COLUMN_EOF;
       }
@@ -378,14 +378,14 @@ public enum DecoderState implements DecoderStateInterface {
   PREPARE_COLUMN_EOF {
 
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       boolean continueOnEnd = decoder.getPrepare().isContinueOnEnd();
       ServerPrepareResult prepareResult = decoder.endPrepare();
       return new CompletePrepareResult(prepareResult, continueOnEnd);
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       return QUERY_RESPONSE;
     }
   },
@@ -393,12 +393,12 @@ public enum DecoderState implements DecoderStateInterface {
   ERROR {
 
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       return ErrorPacket.decode(sequencer, body, true);
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       throw new IllegalArgumentException("unexpected state");
     }
   },
@@ -406,12 +406,12 @@ public enum DecoderState implements DecoderStateInterface {
   ERROR_AND_EXECUTE_RESPONSE {
 
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       return ErrorPacket.decode(sequencer, body, false);
     }
 
     @Override
-    public DecoderState next(ServerMsgDecoder decoder) {
+    public DecoderState next(MariadbFrameDecoder decoder) {
       return SKIP_EXECUTE;
     }
   },
@@ -419,7 +419,7 @@ public enum DecoderState implements DecoderStateInterface {
   SKIP_EXECUTE {
 
     @Override
-    public ServerMessage decode(ByteBuf body, Sequencer sequencer, ServerMsgDecoder decoder) {
+    public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       decoder.decrementStateCounter();
       return SkipPacket.decode(true);
     }

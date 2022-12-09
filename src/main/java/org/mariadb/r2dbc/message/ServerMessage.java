@@ -13,6 +13,10 @@ public interface ServerMessage {
     return false;
   }
 
+  default int refCnt() {
+    return -1000;
+  }
+
   default boolean release() {
     return true;
   }

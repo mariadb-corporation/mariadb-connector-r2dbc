@@ -3,7 +3,6 @@
 
 package org.mariadb.r2dbc.client;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
@@ -60,7 +59,7 @@ public class SimpleClient implements Client {
       Queues.<ServerMessage>get(Queues.SMALL_BUFFER_SIZE).get();
 
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
-  private final ServerMsgDecoder decoder;
+  private final MariadbFrameDecoder decoder;
   private final MariadbPacketEncoder encoder;
   private final PrepareCache prepareCache;
   private final ByteBufAllocator byteBufAllocator;
@@ -90,11 +89,11 @@ public class SimpleClient implements Client {
         new PrepareCache(
             this.configuration.useServerPrepStmts() ? this.configuration.getPrepareCacheSize() : 0,
             this);
-    this.decoder = new ServerMsgDecoder(this, configuration);
+    this.decoder = new MariadbFrameDecoder(exchangeQueue, this, configuration);
     this.encoder = new MariadbPacketEncoder();
     this.byteBufAllocator = connection.outbound().alloc();
     this.messageSubscriber = new ServerMessageSubscriber(this.lock, exchangeQueue, receiverQueue);
-    connection.addHandlerFirst(new MariadbFrameDecoder());
+    connection.addHandlerFirst(this.decoder);
 
     if (logger.isTraceEnabled()) {
       connection.addHandlerFirst(
@@ -102,18 +101,17 @@ public class SimpleClient implements Client {
           new LoggingHandler(SimpleClient.class, LogLevel.TRACE));
     }
 
-    connection.inbound().receive().subscribe(messageSubscriber);
+    connection.inbound().receiveObject()
+            .cast(ServerMessage.class)
+            .onErrorResume(this::receiveResumeError)
+            .subscribe(messageSubscriber);
 
-    Mono<Void> request =
-        this.requestSink
-            .asFlux()
-            .concatMap(Function.identity())
-            .cast(ClientMessage.class)
-            .map(encoder::encodeFlux)
-            .flatMap(b -> connection.outbound().send(Mono.just(b)), 1)
-            .then();
-
-    request
+    this.requestSink
+        .asFlux()
+        .concatMap(Function.identity())
+        .cast(ClientMessage.class)
+        .map(encoder::encodeFlux)
+        .flatMap(b -> connection.outbound().send(Mono.just(b)), 1)
         .onErrorResume(this::sendResumeError)
         .doAfterTerminate(this::closeChannelIfNeeded)
         .subscribe();
@@ -176,9 +174,15 @@ public class SimpleClient implements Client {
   }
 
   private Mono<Void> sendResumeError(Throwable throwable) {
+
     handleConnectionError(throwable);
     this.requestSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
     return quitOrClose();
+  }
+
+  private Mono<ServerMessage> receiveResumeError(Throwable throwable) {
+    Mono<ServerMessage> empty = Mono.empty();
+    return sendResumeError(throwable).then(empty);
   }
 
   public boolean closeChannelIfNeeded() {
@@ -197,19 +201,17 @@ public class SimpleClient implements Client {
   @Override
   public Mono<Void> close() {
     this.closeRequested = true;
-    this.messageSubscriber.close(
-        new R2dbcNonTransientResourceException("Connection has been closed", "08000"));
     return quitOrClose();
   }
 
   private Mono<Void> quitOrClose() {
-
-    // expect message subscriber to be closed already
-    this.messageSubscriber.close(
-        new R2dbcNonTransientResourceException("Connection closed", "08000"));
-
     return Mono.defer(
         () -> {
+          // expect message subscriber to be closed already
+          this.messageSubscriber.close(
+              new R2dbcNonTransientResourceException(
+                  closeRequested ? "Connection has been closed" : "Connection closed", "08000"));
+
           if (this.isClosed.compareAndSet(false, true)) {
             Channel channel = this.connection.channel();
             if (channel.isOpen()) {
@@ -563,7 +565,7 @@ public class SimpleClient implements Client {
     return this.closeRequested;
   }
 
-  protected class ServerMessageSubscriber implements CoreSubscriber<ByteBuf> {
+  protected class ServerMessageSubscriber implements CoreSubscriber<ServerMessage> {
     private Subscription upstream;
     private volatile boolean close;
     private final AtomicLong receiverDemands = new AtomicLong(0);
@@ -584,6 +586,7 @@ public class SimpleClient implements Client {
     }
 
     public void onError(Throwable t) {
+      t.printStackTrace();
       if (this.close) {
         Operators.onErrorDropped(t, currentContext());
         return;
@@ -607,21 +610,19 @@ public class SimpleClient implements Client {
     }
 
     @Override
-    public void onNext(ByteBuf message) {
+    public void onNext(ServerMessage message) {
       if (this.close) {
-        ReferenceCountUtil.release(message);
         Operators.onNextDropped(message, currentContext());
         return;
       }
 
+      ReferenceCountUtil.retain(message);
       this.receiverDemands.decrementAndGet();
       Exchange exchange = this.exchangeQueue.peek();
-      ServerMessage srvMsg = decoder.decode(message, exchange);
-      ReferenceCountUtil.release(message);
 
       // nothing buffered => directly emit message
       if (this.receiverQueue.isEmpty() && exchange != null && exchange.hasDemand()) {
-        if (exchange.emit(srvMsg)) this.exchangeQueue.poll();
+        if (exchange.emit(message)) this.exchangeQueue.poll();
         if (exchange.hasDemand() || exchange.isCancelled()) {
           requestQueueFilling();
         }
@@ -629,9 +630,9 @@ public class SimpleClient implements Client {
       }
 
       // queue message
-      if (!this.receiverQueue.offer(srvMsg)) {
-        srvMsg.release();
-        Operators.onNextDropped(srvMsg, currentContext());
+      if (!this.receiverQueue.offer(message)) {
+        message.release();
+        Operators.onNextDropped(message, currentContext());
         onError(
             new R2dbcNonTransientResourceException("unexpected : server message queue is full"));
         return;

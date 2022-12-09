@@ -97,6 +97,7 @@ public final class ExecutePacket implements ClientMessage {
   public void releaseSave() {
     if (savedBuf != null) {
       savedBuf.release();
+      savedBuf = null;
     }
   }
 
