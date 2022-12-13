@@ -13,21 +13,19 @@ import org.mariadb.r2dbc.message.MessageSequence;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.BindEncodedValue;
-import org.mariadb.r2dbc.util.ClientPrepareResult;
+import org.mariadb.r2dbc.util.ClientParser;
 
 public final class QueryWithParametersPacket implements ClientMessage {
 
-  private final ClientPrepareResult prepareResult;
+  private final ClientParser parser;
   private final List<BindEncodedValue> bindValues;
   private final MessageSequence sequencer = new Sequencer((byte) 0xff);
   private final String[] generatedColumns;
   private ByteBuf savedBuf = null;
 
   public QueryWithParametersPacket(
-      ClientPrepareResult prepareResult,
-      List<BindEncodedValue> bindValues,
-      String[] generatedColumns) {
-    this.prepareResult = prepareResult;
+      ClientParser parser, List<BindEncodedValue> bindValues, String[] generatedColumns) {
+    this.parser = parser;
     this.bindValues = bindValues;
     this.generatedColumns = generatedColumns;
   }
@@ -52,20 +50,25 @@ public final class QueryWithParametersPacket implements ClientMessage {
     ByteBuf out = byteBufAllocator.ioBuffer();
     out.writeByte(0x03);
 
-    if (prepareResult.getParamCount() == 0) {
-      out.writeBytes(prepareResult.getQueryParts().get(0));
+    if (parser.getParamCount() == 0) {
+      out.writeBytes(parser.getQuery());
       if (additionalReturningPart != null)
         out.writeCharSequence(additionalReturningPart, StandardCharsets.UTF_8);
     } else {
-      out.writeBytes(prepareResult.getQueryParts().get(0));
-      for (int i = 0; i < prepareResult.getParamCount(); i++) {
+      int currentPos = 0;
+      for (int i = 0; i < parser.getParamCount(); i++) {
+        out.writeBytes(
+            parser.getQuery(), currentPos, parser.getParamPositions().get(i * 2) - currentPos);
+        currentPos = parser.getParamPositions().get(i * 2 + 1);
         BindEncodedValue param = bindValues.get(i);
         if (param.getValue() == null) {
           out.writeBytes("null".getBytes(StandardCharsets.US_ASCII));
         } else {
           out.writeBytes(param.getValue());
         }
-        out.writeBytes(prepareResult.getQueryParts().get(i + 1));
+      }
+      if (currentPos < parser.getQuery().length) {
+        out.writeBytes(parser.getQuery(), currentPos, parser.getQuery().length - currentPos);
       }
       if (additionalReturningPart != null)
         out.writeCharSequence(additionalReturningPart, StandardCharsets.UTF_8);

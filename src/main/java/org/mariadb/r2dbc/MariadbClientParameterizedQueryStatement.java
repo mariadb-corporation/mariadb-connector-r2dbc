@@ -13,35 +13,34 @@ import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.message.client.QueryWithParametersPacket;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.Binding;
-import org.mariadb.r2dbc.util.ClientPrepareResult;
+import org.mariadb.r2dbc.util.ClientParser;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
 final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatement {
 
-  private final ClientPrepareResult prepareResult;
+  private ClientParser parser;
 
   MariadbClientParameterizedQueryStatement(
       Client client, String sql, MariadbConnectionConfiguration configuration) {
     super(client, sql, configuration, Protocol.TEXT);
-    this.prepareResult =
-        ClientPrepareResult.parameterParts(this.initialSql, this.client.noBackslashEscapes());
-    this.expectedSize = this.prepareResult.getParamCount();
+    this.parser = ClientParser.parameterParts(this.initialSql, this.client.noBackslashEscapes());
+    this.expectedSize = this.parser.getParamCount();
   }
 
   protected int getColumnIndex(String name) {
     Assert.requireNonNull(name, "identifier cannot be null");
-    for (int i = 0; i < this.prepareResult.getParamNameList().size(); i++) {
-      if (name.equals(this.prepareResult.getParamNameList().get(i))) return i;
+    for (int i = 0; i < this.parser.getParamNameList().size(); i++) {
+      if (name.equals(this.parser.getParamNameList().get(i))) return i;
     }
-    if (prepareResult.getParamCount() <= 0) {
+    if (parser.getParamCount() <= 0) {
       throw new IndexOutOfBoundsException(
           String.format("Binding parameters is not supported for the statement '%s'", initialSql));
     }
     throw new NoSuchElementException(
         String.format(
             "No parameter with name '%s' found (possible values %s)",
-            name, this.prepareResult.getParamNameList().toString()));
+            name, this.parser.getParamNameList()));
   }
 
   @Override
@@ -74,7 +73,7 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
                               this.client
                                   .sendCommand(
                                       new QueryWithParametersPacket(
-                                          prepareResult,
+                                          parser,
                                           values,
                                           client.getVersion().supportReturning()
                                               ? generatedColumns
@@ -100,7 +99,7 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
                                       this.client
                                           .sendCommand(
                                               new QueryWithParametersPacket(
-                                                  prepareResult,
+                                                  parser,
                                                   values,
                                                   client.getVersion().supportReturning()
                                                       ? generatedColumns
@@ -141,12 +140,13 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
   @Override
   public MariadbClientParameterizedQueryStatement returnGeneratedValues(String... columns) {
     Assert.requireNonNull(columns, "columns must not be null");
-
     if (!client.getVersion().supportReturning() && columns.length > 1) {
       throw new IllegalArgumentException(
           "returnGeneratedValues can have only one column before MariaDB 10.5.1");
     }
-    prepareResult.validateAddingReturning();
+    if (parser.supportAddingReturning() == null)
+      parser = ClientParser.parameterParts(this.initialSql, this.client.noBackslashEscapes());
+    parser.validateAddingReturning();
     this.generatedColumns = columns;
     return this;
   }
@@ -159,8 +159,6 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
         + ", sql='"
         + initialSql
         + '\''
-        + ", prepareResult="
-        + prepareResult
         + ", bindings="
         + Arrays.toString(bindings.toArray())
         + ", configuration="

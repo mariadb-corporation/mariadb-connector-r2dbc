@@ -20,6 +20,7 @@ import reactor.test.StepVerifier;
 public class BigIntegerParameterTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    after2();
     sharedConn
         .createStatement("CREATE TABLE BigIntParam (t1 BIGINT, t2 BIGINT, t3 BIGINT)")
         .execute()
@@ -28,7 +29,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
 
   @AfterAll
   public static void after2() {
-    sharedConn.createStatement("DROP TABLE BigIntParam").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS BigIntParam").execute().blockLast();
   }
 
   @Test

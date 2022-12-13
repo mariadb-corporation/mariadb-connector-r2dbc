@@ -68,7 +68,6 @@ public final class Codecs {
       if (parameterValue == null) {
         if (parameter.getType() instanceof R2dbcType) {
           codec = codecFromR2dbcType((R2dbcType) parameter.getType());
-          return new BindValue(codec, BindValue.NULL_VALUE);
         }
         return new BindValue(codec, BindValue.NULL_VALUE);
       }

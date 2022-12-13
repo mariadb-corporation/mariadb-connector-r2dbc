@@ -13,7 +13,7 @@ import org.mariadb.r2dbc.message.Protocol;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.util.Assert;
-import org.mariadb.r2dbc.util.ClientPrepareResult;
+import org.mariadb.r2dbc.util.ClientParser;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
@@ -35,7 +35,7 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
 
     // ensure commands doesn't have parameters
     if (sql.contains("?") || sql.contains(":")) {
-      if (ClientPrepareResult.hasParameter(sql, client.noBackslashEscapes())) {
+      if (ClientParser.hasParameter(sql, client.noBackslashEscapes())) {
         throw new IllegalArgumentException(
             String.format("Statement with parameters cannot be batched (sql:'%s')", sql));
       }
