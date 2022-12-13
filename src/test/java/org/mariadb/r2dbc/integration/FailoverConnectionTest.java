@@ -9,9 +9,6 @@ import io.r2dbc.spi.*;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.*;
@@ -97,15 +94,15 @@ public class FailoverConnectionTest extends BaseConnectionTest {
       connection.createStatement("SET @con=1").execute().blockLast();
 
       proxy.restart();
-      connection.createStatement("SELECT @con").execute()
-              .as(StepVerifier::create)
-              .expectErrorMatches(
-                      throwable ->
-                              throwable instanceof R2dbcTransientResourceException
-                                      && throwable
-                                      .getMessage()
-                                      .contains("In progress transaction was lost"))
-              .verify();
+      connection
+          .createStatement("SELECT @con")
+          .execute()
+          .as(StepVerifier::create)
+          .expectErrorMatches(
+              throwable ->
+                  throwable instanceof R2dbcTransientResourceException
+                      && throwable.getMessage().contains("In progress transaction was lost"))
+          .verify();
     } finally {
       proxy.forceClose();
       Thread.sleep(50);
@@ -209,7 +206,8 @@ public class FailoverConnectionTest extends BaseConnectionTest {
     AtomicInteger expectedResult = new AtomicInteger(0);
     AtomicReference<Throwable> resultingError = new AtomicReference<>();
     connection
-        .createStatement("SELECT * from sequence_0_to_999 as tab1, sequence_0_to_999 tab2 order by tab2.t1 ASC, tab1.t1 ASC")
+        .createStatement(
+            "SELECT * from sequence_0_to_999 as tab1, sequence_0_to_999 tab2 order by tab2.t1 ASC, tab1.t1 ASC")
         .execute()
         .flatMap(
             r ->
@@ -219,14 +217,13 @@ public class FailoverConnectionTest extends BaseConnectionTest {
                       assertEquals(expectedResult.getAndIncrement() % 1000, i);
                       return i;
                     }))
-        .doOnError(
-            t -> resultingError.set(t))
+        .doOnError(t -> resultingError.set(t))
         .subscribe();
 
     while (expectedResult.get() == 0) Thread.sleep(0, 10000);
     proxy.restart();
 
-    int maxTime=100;
+    int maxTime = 100;
     while (maxTime-- > 0) {
       if (expectedResult.get() >= 1_000_000) break;
       if (resultingError.get() != null) {

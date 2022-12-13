@@ -3,7 +3,6 @@
 
 package org.mariadb.r2dbc;
 
-import io.r2dbc.spi.ValidationDepth;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
@@ -23,7 +22,7 @@ public class BaseConnectionTest {
   public static MariadbConnection sharedConn;
   public static MariadbConnection sharedConnPrepare;
   public static final boolean isWindows =
-          System.getProperty("os.name").toLowerCase().contains("win");
+      System.getProperty("os.name").toLowerCase().contains("win");
 
   public static int initialConnectionNumber = -1;
   public static TcpProxy proxy;
@@ -34,13 +33,12 @@ public class BaseConnectionTest {
           : false;
 
   public void assertThrows(
-          Class<? extends Exception> expectedType, Executable executable, String expected) {
+      Class<? extends Exception> expectedType, Executable executable, String expected) {
     Exception e = Assertions.assertThrows(expectedType, executable);
     Assertions.assertTrue(e.getMessage().contains(expected), "real message:" + e.getMessage());
   }
 
-  @RegisterExtension
-  public Extension watcher = new BaseConnectionTest.Follow();
+  @RegisterExtension public Extension watcher = new BaseConnectionTest.Follow();
 
   private static Instant initialTest;
 
@@ -48,73 +46,74 @@ public class BaseConnectionTest {
     @Override
     public void beforeEach(ExtensionContext extensionContext) throws Exception {
       initialConnectionNumber =
-              sharedConn
-                      .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
-                      .execute()
-                      .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
-                      .blockLast();
+          sharedConn
+              .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
+              .execute()
+              .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
+              .blockLast();
       initialTest = Instant.now();
       System.out.println(
-              "       test : " + extensionContext.getTestMethod().get().getName() + " begin");
+          "       test : " + extensionContext.getTestMethod().get().getName() + " begin");
     }
 
     @AfterEach
     public void afterEach(ExtensionContext extensionContext) throws Exception {
       int finalConnectionNumber =
-              sharedConn
-                      .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
-                      .execute()
-                      .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
-                      .onErrorResume(t -> {
-                        t.printStackTrace();
-                        return Mono.just(-999999);
-                      })
-                      .blockLast();
+          sharedConn
+              .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
+              .execute()
+              .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
+              .onErrorResume(
+                  t -> {
+                    t.printStackTrace();
+                    return Mono.just(-999999);
+                  })
+              .blockLast();
       if (finalConnectionNumber - initialConnectionNumber != 0) {
         int retry = 5;
         do {
           Thread.sleep(50);
           finalConnectionNumber =
-                  sharedConn
-                          .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
-                          .execute()
-                          .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
-                          .onErrorResume(t -> {
-                            t.printStackTrace();
-                            return Mono.just(-999999);
-                          })
-                          .blockLast();
+              sharedConn
+                  .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
+                  .execute()
+                  .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
+                  .onErrorResume(
+                      t -> {
+                        t.printStackTrace();
+                        return Mono.just(-999999);
+                      })
+                  .blockLast();
         } while (retry-- > 0 && finalConnectionNumber != initialConnectionNumber);
 
         if (finalConnectionNumber - initialConnectionNumber != 0) {
           System.err.println(
-                  String.format(
-                          "%s: Error connection not ended : changed=%s (initial:%s ended:%s)",
-                          extensionContext.getTestMethod().get(),
-                          (finalConnectionNumber - initialConnectionNumber),
-                          initialConnectionNumber,
-                          finalConnectionNumber));
+              String.format(
+                  "%s: Error connection not ended : changed=%s (initial:%s ended:%s)",
+                  extensionContext.getTestMethod().get(),
+                  (finalConnectionNumber - initialConnectionNumber),
+                  initialConnectionNumber,
+                  finalConnectionNumber));
         }
       }
 
       System.out.println(
-              "       test : "
-                      + extensionContext.getTestMethod().get().getName()
-                      + " "
-                      + Duration.between(initialTest, Instant.now()).toString());
+          "       test : "
+              + extensionContext.getTestMethod().get().getName()
+              + " "
+              + Duration.between(initialTest, Instant.now()).toString());
 
       int j = rand.nextInt();
       sharedConnPrepare
-              .createStatement("SELECT " + j + ", 'b'")
-              .execute()
-              .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
-              .as(StepVerifier::create)
-              .expectNext(j)
-              .verifyComplete();
+          .createStatement("SELECT " + j + ", 'b'")
+          .execute()
+          .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
+          .as(StepVerifier::create)
+          .expectNext(j)
+          .verifyComplete();
     }
-
-
   }
+
   @BeforeAll
   public static void beforeAll() throws Exception {
 
@@ -161,7 +160,6 @@ public class BaseConnectionTest {
     return new MariadbConnectionFactory(confProxy).create().block();
   }
 
-
   @AfterAll
   public static void afterEAll() {
     sharedConn.close().block();
@@ -195,8 +193,8 @@ public class BaseConnectionTest {
   public static boolean exactVersion(int major, int minor, int patch) {
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     return meta.getMajorVersion() == major
-            && meta.getMinorVersion() == minor
-            && meta.getPatchVersion() == patch;
+        && meta.getMinorVersion() == minor
+        && meta.getPatchVersion() == patch;
   }
 
   public static Integer maxAllowedPacket() {

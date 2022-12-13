@@ -247,8 +247,7 @@ public class Sha256PluginTest extends BaseConnectionTest {
 
   @Test
   public void sha256PluginTestWithoutServerRsaKey() throws Exception {
-    Assumptions.assumeTrue(
-        !isWindows && !isMariaDBServer() && (minVersion(8, 0, 0)));
+    Assumptions.assumeTrue(!isWindows && !isMariaDBServer() && (minVersion(8, 0, 0)));
     // mysql 8.0.31 broken public key retrieval, so avoid FLUSHING for now
     Assumptions.assumeTrue(!isMariaDBServer() && !exactVersion(8, 0, 31));
 

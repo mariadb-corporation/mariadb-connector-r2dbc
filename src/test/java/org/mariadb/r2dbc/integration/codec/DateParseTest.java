@@ -149,7 +149,9 @@ public class DateParseTest extends BaseConnectionTest {
         .createStatement("SELECT t1 FROM DateTable WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BaseConnectionTest.class))))
+        .flatMap(
+            r ->
+                r.map((row, metadata) -> Optional.ofNullable(row.get(0, BaseConnectionTest.class))))
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->

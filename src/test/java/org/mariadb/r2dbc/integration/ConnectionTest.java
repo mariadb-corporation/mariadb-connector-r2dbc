@@ -74,7 +74,8 @@ public class ConnectionTest extends BaseConnectionTest {
         .verifyErrorSatisfies(
             t -> {
               assertTrue(t instanceof R2dbcNonTransientResourceException);
-              assertTrue(t.getMessage().contains("Connection is close. Cannot send anything")
+              assertTrue(
+                  t.getMessage().contains("Connection is close. Cannot send anything")
                       || t.getMessage()
                           .contains("Cannot execute command since connection is already closed")
                       || t.getMessage().contains("Connection error")

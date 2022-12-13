@@ -3,13 +3,11 @@
 
 package org.mariadb.r2dbc.integration;
 
-import java.net.URL;
 import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 public class TransactionTest extends BaseConnectionTest {
   private static final String insertCmd =
@@ -165,9 +163,10 @@ public class TransactionTest extends BaseConnectionTest {
   }
 
   private void checkInserted(MariadbConnection conn, int expectedValue) {
-    Integer res = conn.createStatement("SELECT count(*) FROM `users`")
-        .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.class)))
+    Integer res =
+        conn.createStatement("SELECT count(*) FROM `users`")
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.class)))
             .blockLast();
     Assertions.assertEquals(expectedValue, res);
   }
