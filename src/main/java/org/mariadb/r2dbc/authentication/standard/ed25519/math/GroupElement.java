@@ -4,6 +4,7 @@ package org.mariadb.r2dbc.authentication.standard.ed25519.math;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Objects;
 import org.mariadb.r2dbc.authentication.standard.ed25519.Utils;
 
 /**
@@ -242,7 +243,7 @@ public class GroupElement implements Serializable {
     int i;
     // Radix 16 notation
     for (i = 0; i < 32; i++) {
-      e[2 * i + 0] = (byte) (a[i] & 15);
+      e[2 * i] = (byte) (a[i] & 15);
       e[2 * i + 1] = (byte) ((a[i] >> 4) & 15);
     }
     /* each e[i] is between 0 and 15 */
@@ -433,12 +434,10 @@ public class GroupElement implements Serializable {
   private GroupElement toRep(final Representation repr) {
     switch (this.repr) {
       case P2:
-        switch (repr) {
-          case P2:
-            return p2(this.curve, this.X, this.Y, this.Z);
-          default:
-            throw new IllegalArgumentException();
+        if (Objects.requireNonNull(repr) == Representation.P2) {
+          return p2(this.curve, this.X, this.Y, this.Z);
         }
+        throw new IllegalArgumentException();
       case P3:
         switch (repr) {
           case P2:
@@ -473,19 +472,15 @@ public class GroupElement implements Serializable {
             throw new IllegalArgumentException();
         }
       case PRECOMP:
-        switch (repr) {
-          case PRECOMP:
-            return precomp(this.curve, this.X, this.Y, this.Z);
-          default:
-            throw new IllegalArgumentException();
+        if (Objects.requireNonNull(repr) == Representation.PRECOMP) {
+          return precomp(this.curve, this.X, this.Y, this.Z);
         }
+        throw new IllegalArgumentException();
       case CACHED:
-        switch (repr) {
-          case CACHED:
-            return cached(this.curve, this.X, this.Y, this.Z, this.T);
-          default:
-            throw new IllegalArgumentException();
+        if (Objects.requireNonNull(repr) == Representation.CACHED) {
+          return cached(this.curve, this.X, this.Y, this.Z, this.T);
         }
+        throw new IllegalArgumentException();
       default:
         throw new UnsupportedOperationException();
     }

@@ -3,11 +3,8 @@
 
 package org.mariadb.r2dbc;
 
+import org.mariadb.r2dbc.api.MariadbStatement;
 import org.openjdk.jmh.annotations.Benchmark;
-import reactor.core.publisher.Flux;
-
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 
 public class Select_100_cols extends Common {
 
@@ -21,12 +18,12 @@ public class Select_100_cols extends Common {
     return consumePrepare(state.r2dbcPrepare);
   }
 
-  private int[] consume(io.r2dbc.spi.Connection connection) {
+  private int[] consume(MariadbConnection connection) {
 
-    io.r2dbc.spi.Statement statement =
+    MariadbStatement statement =
         connection.createStatement("select * FROM test100");
     return
-        Flux.from(statement.execute())
+        statement.execute()
             .flatMap(
                 it ->
                     it.map(
@@ -40,12 +37,12 @@ public class Select_100_cols extends Common {
             .blockLast();
   }
 
-    private int[] consumePrepare(io.r2dbc.spi.Connection connection) {
+    private int[] consumePrepare(MariadbConnection connection) {
 
-        io.r2dbc.spi.Statement statement =
+        MariadbStatement statement =
                 connection.createStatement("select * FROM test100 WHERE 1 = ?").bind(0,1);
         return
-                Flux.from(statement.execute())
+                statement.execute()
                         .flatMap(
                                 it ->
                                         it.map(

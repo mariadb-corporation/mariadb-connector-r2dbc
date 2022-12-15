@@ -3,7 +3,9 @@
 
 package org.mariadb.r2dbc.api;
 
-import io.r2dbc.spi.*;
+import io.r2dbc.spi.Result;
+import io.r2dbc.spi.Row;
+import io.r2dbc.spi.RowMetadata;
 import java.util.function.BiFunction;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

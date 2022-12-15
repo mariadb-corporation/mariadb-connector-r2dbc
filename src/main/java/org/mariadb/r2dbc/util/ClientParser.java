@@ -29,11 +29,7 @@ public final class ClientParser implements PrepareResult {
 
     this.paramPositions = paramPositions;
     this.paramNameList = paramNameList;
-    if (paramNameList.isEmpty()) {
-      this.paramCount = paramPositions.size() / 2;
-    } else {
-      this.paramCount = paramNameList.size();
-    }
+    this.paramCount = paramPositions.size() / 2;
     this.isReturning = isReturning;
     this.supportAddingReturning = supportAddingReturning;
   }

@@ -72,8 +72,7 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
                           binding.getBindResultParameters(getExpectedSize()),
                           client.getVersion().supportReturning() ? generatedColumns : null),
                       false);
-              return toResult(
-                  Protocol.TEXT, client, messages, factory, null, generatedColumns, configuration);
+              return toResult(Protocol.TEXT, messages, factory, null);
             }
 
             // batch
@@ -99,14 +98,7 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
                                   false)
                               .doOnComplete(() -> tryNextBinding(iterator, bindingSink, canceled));
 
-                      return toResult(
-                          Protocol.TEXT,
-                          this.client,
-                          messages,
-                          factory,
-                          null,
-                          generatedColumns,
-                          configuration);
+                      return toResult(Protocol.TEXT, messages, factory, null);
                     })
                 .flatMap(mariadbResultFlux -> mariadbResultFlux)
                 .doOnCancel(() -> clearBindings(iterator, canceled))
@@ -121,8 +113,7 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
             Flux<ServerMessage> messages =
                 this.client.sendCommand(
                     new QueryPacket(sql), DecoderState.QUERY_RESPONSE, sql, false);
-            return toResult(
-                Protocol.TEXT, client, messages, factory, null, generatedColumns, configuration);
+            return toResult(Protocol.TEXT, messages, factory, null);
           });
     }
   }

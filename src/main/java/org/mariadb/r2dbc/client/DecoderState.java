@@ -14,12 +14,10 @@ public enum DecoderState implements DecoderStateInterface {
   INIT_HANDSHAKE {
     @Override
     public DecoderState decoder(short val, int len) {
-      switch (val) {
-        case 255: // 0xFF
-          return ERROR;
-        default:
-          return this;
+      if (val == 255) { // 0xFF
+        return ERROR;
       }
+      return this;
     }
 
     @Override
@@ -239,12 +237,10 @@ public enum DecoderState implements DecoderStateInterface {
 
     @Override
     public DecoderState decoder(short val, int len) {
-      switch (val) {
-        case 255: // 0xFF
-          return ERROR;
-        default:
-          return this;
+      if (val == 255) { // 0xFF
+        return ERROR;
       }
+      return this;
     }
 
     @Override
@@ -277,12 +273,10 @@ public enum DecoderState implements DecoderStateInterface {
 
     @Override
     public DecoderState decoder(short val, int len) {
-      switch (val) {
-        case 255: // 0xFF
-          return ERROR_AND_EXECUTE_RESPONSE;
-        default:
-          return this;
+      if (val == 255) { // 0xFF
+        return ERROR_AND_EXECUTE_RESPONSE;
       }
+      return this;
     }
 
     @Override

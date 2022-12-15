@@ -5,7 +5,6 @@ package org.mariadb.r2dbc;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.infra.Blackhole;
-import reactor.core.publisher.Flux;
 
 public class Select_1000_Rows extends Common {
   private static final String sql =
@@ -21,8 +20,8 @@ public class Select_1000_Rows extends Common {
     return consumePrepare(state.r2dbcPrepare, blackhole);
   }
 
-  private Integer consume(io.r2dbc.spi.Connection connection, Blackhole blackhole) {
-      return Flux.from(connection.createStatement(sql).execute())
+  private Integer consume(MariadbConnection connection, Blackhole blackhole) {
+      return connection.createStatement(sql).execute()
         .flatMap(it -> it.map((row, rowMetadata) -> {
           Integer i = row.get(0, Integer.class);
           row.get(1, String.class);
@@ -30,8 +29,8 @@ public class Select_1000_Rows extends Common {
         })).blockLast();
   }
 
-    private Integer consumePrepare(io.r2dbc.spi.Connection connection, Blackhole blackhole) {
-        return Flux.from(connection.createStatement(sql + "WHERE 1 = ?").bind(0,1).execute())
+    private Integer consumePrepare(MariadbConnection connection, Blackhole blackhole) {
+        return connection.createStatement(sql + "WHERE 1 = ?").bind(0,1).execute()
                 .flatMap(it -> it.map((row, rowMetadata) -> {
                     Integer i = row.get(0, Integer.class);
                     row.get(1, String.class);

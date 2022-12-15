@@ -3,12 +3,10 @@
 
 package org.mariadb.r2dbc;
 
+import org.mariadb.r2dbc.api.MariadbStatement;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.infra.Blackhole;
-import reactor.core.publisher.Flux;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -40,17 +38,17 @@ public class Insert_batch extends Common {
     return consume(state.r2dbcPrepare, blackhole);
   }
 
-  private Long consume(io.r2dbc.spi.Connection connection, Blackhole blackhole) {
+  private Long consume(MariadbConnection connection, Blackhole blackhole) {
     String s = randomString(100);
 
-    io.r2dbc.spi.Statement statement = connection.createStatement("INSERT INTO perfTestTextBatch(t0) VALUES (?)");
+    MariadbStatement statement = connection.createStatement("INSERT INTO perfTestTextBatch(t0) VALUES (?)");
     for (int i = 0; i < 100; i++) {
       if (i != 0) statement.add();
       statement.bind(0, s);
     }
 
     return
-        Flux.from(statement.execute())
+        statement.execute()
             .flatMap(it -> it.getRowsUpdated())
             .blockLast();
   }

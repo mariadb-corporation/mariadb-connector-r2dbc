@@ -12,8 +12,9 @@ import org.mariadb.r2dbc.client.MariadbResult;
 import org.mariadb.r2dbc.codec.Codecs;
 import org.mariadb.r2dbc.message.Protocol;
 import org.mariadb.r2dbc.message.ServerMessage;
-import org.mariadb.r2dbc.message.server.RowPacket;
-import org.mariadb.r2dbc.util.*;
+import org.mariadb.r2dbc.util.Assert;
+import org.mariadb.r2dbc.util.Binding;
+import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
@@ -89,8 +90,7 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
           String.format("wrong index value %d, index must be positive", index));
     }
 
-    getCurrentBinding()
-        .add(index, Codecs.encode(value, index));
+    getCurrentBinding().add(index, Codecs.encode(value, index));
     return this;
   }
 
@@ -117,14 +117,11 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
         sql, generatedColumns.length == 0 ? "*" : String.join(", ", generatedColumns));
   }
 
-  public static Flux<org.mariadb.r2dbc.api.MariadbResult> toResult(
+  public Flux<org.mariadb.r2dbc.api.MariadbResult> toResult(
       final Protocol protocol,
-      Client client,
       Flux<ServerMessage> messages,
       ExceptionFactory factory,
-      AtomicReference<ServerPrepareResult> prepareResult,
-      String[] generatedColumns,
-      MariadbConnectionConfiguration configuration) {
+      AtomicReference<ServerPrepareResult> prepareResult) {
     return messages
         .windowUntil(it -> it.resultSetEnd())
         .map(
@@ -136,9 +133,9 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
                     factory,
                     generatedColumns,
                     client.getVersion().supportReturning(),
-                    configuration))
-        .cast(org.mariadb.r2dbc.api.MariadbResult.class);
-        //.doOnDiscard(RowPacket.class, r -> RowPacket::release);
+                    configuration));
+    //        .cast(org.mariadb.r2dbc.api.MariadbResult.class);
+    // .doOnDiscard(RowPacket.class, r -> RowPacket::release);
   }
 
   protected static void tryNextBinding(

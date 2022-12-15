@@ -3,7 +3,8 @@
 
 package org.mariadb.r2dbc.client;
 
-import io.r2dbc.spi.*;
+import io.r2dbc.spi.OutParameterMetadata;
+import io.r2dbc.spi.OutParametersMetadata;
 import java.util.*;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.util.Assert;
@@ -38,7 +39,7 @@ public final class MariadbOutParametersMetadata implements OutParametersMetadata
     return Collections.unmodifiableList(this.metadataList);
   }
 
-  protected int getIndex(String name) throws NoSuchElementException {
+  int getIndex(String name) throws NoSuchElementException {
     Assert.requireNonNull(name, "name must not be null");
 
     if (mapper == null) {

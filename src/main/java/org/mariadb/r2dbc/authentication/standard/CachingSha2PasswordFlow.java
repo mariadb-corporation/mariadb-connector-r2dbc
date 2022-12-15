@@ -13,7 +13,10 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.SslMode;
 import org.mariadb.r2dbc.message.AuthMoreData;
 import org.mariadb.r2dbc.message.ClientMessage;
-import org.mariadb.r2dbc.message.client.*;
+import org.mariadb.r2dbc.message.client.AuthMoreRawPacket;
+import org.mariadb.r2dbc.message.client.ClearPasswordPacket;
+import org.mariadb.r2dbc.message.client.Sha256PasswordPacket;
+import org.mariadb.r2dbc.message.client.Sha2PublicKeyRequestPacket;
 import org.mariadb.r2dbc.message.server.Sequencer;
 
 public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {

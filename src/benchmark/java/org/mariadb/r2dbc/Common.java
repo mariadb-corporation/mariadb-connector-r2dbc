@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 @Warmup(iterations = 10, timeUnit = TimeUnit.SECONDS, time = 1)
 @Measurement(iterations = 10, timeUnit = TimeUnit.SECONDS, time = 1)
 @Fork(value = 5)
-@Threads(value = 1) // detecting CPU count
+@Threads(value = 1)
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @Timeout(timeUnit = TimeUnit.SECONDS, time = 2)
@@ -36,10 +36,11 @@ public class Common {
   @State(Scope.Thread)
   public static class MyState {
 
-    protected io.r2dbc.spi.Connection r2dbc;
-    protected io.r2dbc.spi.Connection r2dbcPrepare;
+    protected MariadbConnection r2dbc;
+    protected MariadbConnection r2dbcPrepare;
 
     @Setup(Level.Trial)
+    @SuppressWarnings("unchecked")
     public void doSetup() throws Exception {
       String url =
           String.format(
@@ -49,8 +50,8 @@ public class Common {
               String.format(
                       "r2dbc:mariadb://%s:%s@%s:%s/%s?useServerPrepStmts=true", username, password, host, port, database);
 
-      r2dbc = ((Mono<io.r2dbc.spi.Connection>)ConnectionFactories.get(url).create()).block();
-      r2dbcPrepare = ((Mono<io.r2dbc.spi.Connection>)ConnectionFactories.get(urlPrepare).create()).block();
+      r2dbc = ((Mono<org.mariadb.r2dbc.MariadbConnection>)ConnectionFactories.get(url).create()).block();
+      r2dbcPrepare = ((Mono<org.mariadb.r2dbc.MariadbConnection>)ConnectionFactories.get(urlPrepare).create()).block();
     }
 
     @TearDown(Level.Trial)

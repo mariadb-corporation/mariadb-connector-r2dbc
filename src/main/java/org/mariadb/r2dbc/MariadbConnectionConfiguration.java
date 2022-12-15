@@ -24,7 +24,7 @@ public final class MariadbConnectionConfiguration {
   public static final int DEFAULT_PORT = 3306;
   private final String database;
   private final List<HostAddress> hostAddresses;
-  private HaMode haMode;
+  private final HaMode haMode;
   private final Duration connectTimeout;
   private final boolean tcpKeepAlive;
   private final boolean tcpAbortiveClose;
@@ -327,7 +327,7 @@ public final class MariadbConnectionConfiguration {
     return isolationLevel;
   }
 
-  protected void setIsolationLevel(IsolationLevel isolationLevel) {
+  private void setIsolationLevel(IsolationLevel isolationLevel) {
     this.isolationLevel = isolationLevel;
   }
 

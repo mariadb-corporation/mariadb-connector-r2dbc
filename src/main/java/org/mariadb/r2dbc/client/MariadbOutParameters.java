@@ -190,9 +190,8 @@ public class MariadbOutParameters implements org.mariadb.r2dbc.api.MariadbOutPar
             return;
 
           default:
-            // length is encoded on 1 bytes (is then less than 251)
+            // length is encoded on 1 byte (is then less than 251)
             length = len;
-            return;
         }
     }
   }

@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.mariadb.r2dbc.api.MariadbResult;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.message.Protocol;
-import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.ClientParser;
@@ -48,17 +47,19 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
   @Override
   public Flux<MariadbResult> execute() {
     if (configuration.allowMultiQueries()) {
-      Flux<ServerMessage> messages =
-          this.client.sendCommand(new QueryPacket(String.join(";", this.statements)), true);
-      return MariadbCommonStatement.toResult(
-          Protocol.TEXT,
-          this.client,
-          messages,
-          ExceptionFactory.INSTANCE,
-          null,
-          null,
-          configuration);
-
+      return this.client
+          .sendCommand(new QueryPacket(String.join(";", this.statements)), true)
+          .windowUntil(it -> it.resultSetEnd())
+          .map(
+              dataRow ->
+                  new org.mariadb.r2dbc.client.MariadbResult(
+                      Protocol.TEXT,
+                      null,
+                      dataRow,
+                      ExceptionFactory.INSTANCE,
+                      null,
+                      client.getVersion().supportReturning(),
+                      configuration));
     } else {
       Iterator<String> iterator = this.statements.iterator();
       Sinks.Many<String> commandsSink = Sinks.many().unicast().onBackpressureBuffer();
@@ -66,21 +67,22 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
       return commandsSink
           .asFlux()
           .map(
-              sql -> {
-                Flux<ServerMessage> messages =
-                    this.client
-                        .sendCommand(new QueryPacket(sql), false)
-                        .doOnComplete(() -> tryNextCommand(iterator, commandsSink, canceled));
-
-                return MariadbCommonStatement.toResult(
-                    Protocol.TEXT,
-                    this.client,
-                    messages,
-                    ExceptionFactory.INSTANCE,
-                    null,
-                    null,
-                    configuration);
-              })
+              sql ->
+                  this.client
+                      .sendCommand(new QueryPacket(sql), false)
+                      .doOnComplete(() -> tryNextCommand(iterator, commandsSink, canceled))
+                      .windowUntil(it -> it.resultSetEnd())
+                      .map(
+                          dataRow ->
+                              new org.mariadb.r2dbc.client.MariadbResult(
+                                  Protocol.TEXT,
+                                  null,
+                                  dataRow,
+                                  ExceptionFactory.INSTANCE,
+                                  null,
+                                  client.getVersion().supportReturning(),
+                                  configuration))
+                      .cast(org.mariadb.r2dbc.api.MariadbResult.class))
           .flatMap(mariadbResultFlux -> mariadbResultFlux)
           .doOnCancel(() -> canceled.set(true))
           .doOnSubscribe(
@@ -88,7 +90,7 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
     }
   }
 
-  protected static void tryNextCommand(
+  private static void tryNextCommand(
       Iterator<String> iterator, Sinks.Many<String> bindingSink, AtomicBoolean canceled) {
 
     if (canceled.get()) {

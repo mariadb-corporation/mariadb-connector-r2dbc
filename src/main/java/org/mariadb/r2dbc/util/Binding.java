@@ -3,7 +3,8 @@
 
 package org.mariadb.r2dbc.util;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Objects;
 import org.mariadb.r2dbc.MariadbCommonStatement;
 import reactor.util.Logger;
 import reactor.util.Loggers;

@@ -3,7 +3,10 @@
 
 package org.mariadb.r2dbc.codec;
 
-import io.r2dbc.spi.*;
+import io.r2dbc.spi.Blob;
+import io.r2dbc.spi.Clob;
+import io.r2dbc.spi.Parameter;
+import io.r2dbc.spi.R2dbcType;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -15,10 +18,7 @@ import java.time.LocalTime;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
-import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.list.*;
-import org.mariadb.r2dbc.message.Context;
-import org.mariadb.r2dbc.message.Protocol;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.BindValue;
 
@@ -56,8 +56,7 @@ public final class Codecs {
     return new BindValue(codecFromClass(type, index), null);
   }
 
-  public static BindValue encode(
-      Object value, int index) {
+  public static BindValue encode(Object value, int index) {
 
     Codec<?> codec = StringCodec.INSTANCE;
     Object parameterValue = value;

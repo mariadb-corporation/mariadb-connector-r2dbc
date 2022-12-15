@@ -14,7 +14,10 @@ import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.ExecutePacket;
 import org.mariadb.r2dbc.message.client.PreparePacket;
 import org.mariadb.r2dbc.message.client.QueryPacket;
-import org.mariadb.r2dbc.util.*;
+import org.mariadb.r2dbc.util.Assert;
+import org.mariadb.r2dbc.util.Binding;
+import org.mariadb.r2dbc.util.ServerNamedParamParser;
+import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -121,14 +124,7 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
                               sql,
                               false)
                           .doFinally(s -> prepareResult.get().decrementUse(client));
-                  return toResult(
-                      Protocol.BINARY,
-                      client,
-                      messages,
-                      factory,
-                      prepareResult,
-                      generatedColumns,
-                      configuration);
+                  return toResult(Protocol.BINARY, messages, factory, prepareResult);
                 } else {
                   // prepare is closing
                   prepareResult.set(null);
@@ -161,14 +157,7 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
                                   false);
                             });
               }
-              return toResult(
-                      Protocol.BINARY,
-                      client,
-                      messages,
-                      factory,
-                      prepareResult,
-                      generatedColumns,
-                      configuration)
+              return toResult(Protocol.BINARY, messages, factory, prepareResult)
                   .doFinally(
                       s -> {
                         if (prepareResult.get() != null) {
@@ -201,14 +190,7 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
                                       .doOnComplete(
                                           () -> tryNextBinding(iterator, bindingSink, canceled));
 
-                              return toResult(
-                                  Protocol.BINARY,
-                                  this.client,
-                                  messages,
-                                  factory,
-                                  prepareResult,
-                                  generatedColumns,
-                                  configuration);
+                              return toResult(Protocol.BINARY, messages, factory, prepareResult);
                             })
                         .doOnSubscribe(
                             it ->
@@ -231,8 +213,7 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
             Flux<ServerMessage> messages =
                 this.client.sendCommand(
                     new QueryPacket(sql), DecoderState.QUERY_RESPONSE, sql, false);
-            return toResult(
-                Protocol.TEXT, client, messages, factory, null, generatedColumns, configuration);
+            return toResult(Protocol.TEXT, messages, factory, null);
           });
     }
   }

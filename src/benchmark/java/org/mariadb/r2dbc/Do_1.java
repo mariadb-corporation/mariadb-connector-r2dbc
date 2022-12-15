@@ -4,7 +4,6 @@
 package org.mariadb.r2dbc;
 
 import org.openjdk.jmh.annotations.Benchmark;
-import reactor.core.publisher.Flux;
 
 public class Do_1 extends Common {
 
@@ -18,10 +17,8 @@ public class Do_1 extends Common {
     return consume(state.r2dbcPrepare);
   }
 
-  private Long consume(io.r2dbc.spi.Connection connection) {
-    io.r2dbc.spi.Statement statement = connection.createStatement("DO 1");
-    return
-        Flux.from(statement.execute())
+  private Long consume(MariadbConnection connection) {
+    return connection.createStatement("DO 1").execute()
             .flatMap(it -> it.getRowsUpdated())
             .blockLast();
   }

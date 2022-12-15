@@ -3,7 +3,10 @@
 
 package org.mariadb.r2dbc.api;
 
-import io.r2dbc.spi.*;
+import io.r2dbc.spi.Connection;
+import io.r2dbc.spi.IsolationLevel;
+import io.r2dbc.spi.TransactionDefinition;
+import io.r2dbc.spi.ValidationDepth;
 import java.time.Duration;
 import reactor.core.publisher.Mono;
 

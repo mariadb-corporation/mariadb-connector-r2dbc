@@ -11,7 +11,10 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.ReferenceCountUtil;
-import io.r2dbc.spi.*;
+import io.r2dbc.spi.R2dbcException;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.r2dbc.spi.R2dbcTransientResourceException;
+import io.r2dbc.spi.TransactionDefinition;
 import java.net.SocketAddress;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -150,10 +153,6 @@ public class SimpleClient implements Client {
     return tcpClient;
   }
 
-  private void sendClientMsgs(ClientMessage it) {
-    this.requestSink.emitNext(it, Sinks.EmitFailureHandler.FAIL_FAST);
-  }
-
   public void handleConnectionError(Throwable throwable) {
     if (AbortedException.isConnectionReset(throwable) && !isConnected()) {
       this.messageSubscriber.close(
@@ -256,7 +255,7 @@ public class SimpleClient implements Client {
       }
 
       // send SSL request in clear
-      this.sendClientMsgs(sslRequest);
+      this.requestSink.emitNext(sslRequest, Sinks.EmitFailureHandler.FAIL_FAST);
       // add SSL handler
       connection.addHandlerFirst(sslHandler);
     } catch (Throwable e) {
@@ -303,7 +302,8 @@ public class SimpleClient implements Client {
                     || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
                   Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, "BEGIN");
                   if (this.exchangeQueue.offer(exchange)) {
-                    sendClientMsgs(new QueryPacket("BEGIN"));
+                    this.requestSink.emitNext(
+                        new QueryPacket("BEGIN"), Sinks.EmitFailureHandler.FAIL_FAST);
                     sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
                   } else {
                     sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
@@ -349,7 +349,8 @@ public class SimpleClient implements Client {
                     || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
                   Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
                   if (this.exchangeQueue.offer(exchange)) {
-                    sendClientMsgs(new QueryPacket(sql));
+                    this.requestSink.emitNext(
+                        new QueryPacket(sql), Sinks.EmitFailureHandler.FAIL_FAST);
                     sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
                   } else {
                     sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
@@ -389,7 +390,7 @@ public class SimpleClient implements Client {
         Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
         if (this.exchangeQueue.offer(exchange)) {
           sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
-          sendClientMsgs(new QueryPacket(sql));
+          this.requestSink.emitNext(new QueryPacket(sql), Sinks.EmitFailureHandler.FAIL_FAST);
         } else {
           sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
         }
@@ -455,7 +456,8 @@ public class SimpleClient implements Client {
                     Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
                     if (this.exchangeQueue.offer(exchange)) {
                       sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
-                      sendClientMsgs(new QueryPacket(sql));
+                      this.requestSink.emitNext(
+                          new QueryPacket(sql), Sinks.EmitFailureHandler.FAIL_FAST);
                     } else {
                       sink.error(
                           new R2dbcTransientResourceException("Request queue limit reached"));
@@ -614,11 +616,11 @@ public class SimpleClient implements Client {
         return;
       }
 
-      ReferenceCountUtil.retain(message);
       this.receiverDemands.decrementAndGet();
       Exchange exchange = this.exchangeQueue.peek();
 
       // nothing buffered => directly emit message
+      ReferenceCountUtil.retain(message);
       if (this.receiverQueue.isEmpty() && exchange != null && exchange.hasDemand()) {
         if (exchange.emit(message)) this.exchangeQueue.poll();
         if (exchange.hasDemand() || exchange.isCancelled()) {
@@ -688,7 +690,7 @@ public class SimpleClient implements Client {
   public void sendCommandWithoutResult(ClientMessage message) {
     try {
       lock.lock();
-      sendClientMsgs(message);
+      this.requestSink.emitNext(message, Sinks.EmitFailureHandler.FAIL_FAST);
     } finally {
       lock.unlock();
     }
@@ -721,7 +723,7 @@ public class SimpleClient implements Client {
                 decoder.addPrepare(((PreparePacket) message).getSql());
               }
               sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
-              sendClientMsgs(message);
+              this.requestSink.emitNext(message, Sinks.EmitFailureHandler.FAIL_FAST);
             } else {
               sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
             }
@@ -771,11 +773,10 @@ public class SimpleClient implements Client {
             if (this.exchangeQueue.offer(exchange)) {
               sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
               decoder.addPrepare(preparePacket.getSql());
-              sendClientMsgs(preparePacket);
-              sendClientMsgs(executePacket);
+              this.requestSink.emitNext(preparePacket, Sinks.EmitFailureHandler.FAIL_FAST);
+              this.requestSink.emitNext(executePacket, Sinks.EmitFailureHandler.FAIL_FAST);
             } else {
               sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
-              return;
             }
           } catch (Throwable t) {
             t.printStackTrace();

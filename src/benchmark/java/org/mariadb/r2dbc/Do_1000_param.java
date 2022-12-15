@@ -3,8 +3,8 @@
 
 package org.mariadb.r2dbc;
 
+import org.mariadb.r2dbc.api.MariadbStatement;
 import org.openjdk.jmh.annotations.Benchmark;
-import reactor.core.publisher.Flux;
 
 public class Do_1000_param extends Common {
   private static final String sql;
@@ -26,12 +26,11 @@ public class Do_1000_param extends Common {
     return consume(state.r2dbcPrepare);
   }
 
-  private Long consume(io.r2dbc.spi.Connection connection) {
-    io.r2dbc.spi.Statement statement = connection.createStatement(sql);
+  private Long consume(MariadbConnection connection) {
+    MariadbStatement statement = connection.createStatement(sql);
     for (int i = 0; i < 1000; i++)
       statement.bind(i,i);
-    return
-        Flux.from(statement.execute())
+    return statement.execute()
             .flatMap(it -> it.getRowsUpdated())
             .blockLast();
   }

@@ -18,8 +18,8 @@ public class ServerPrepareResultTest {
     Assertions.assertNotEquals(
         prepare, new ServerPrepareResult(2, 2, new ColumnDefinitionPacket[0]));
     Assertions.assertEquals(32, prepare.hashCode());
-    Assertions.assertFalse(prepare.equals(null));
-    Assertions.assertFalse(prepare.equals("dd"));
+    Assertions.assertNotEquals(null, prepare);
+    Assertions.assertNotEquals("dd", prepare);
   }
 
   @Test

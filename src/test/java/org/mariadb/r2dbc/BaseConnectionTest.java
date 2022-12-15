@@ -7,7 +7,10 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Random;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.*;
 import org.junit.jupiter.api.function.Executable;
 import org.mariadb.r2dbc.api.MariadbConnection;
@@ -87,13 +90,12 @@ public class BaseConnectionTest {
         } while (retry-- > 0 && finalConnectionNumber != initialConnectionNumber);
 
         if (finalConnectionNumber - initialConnectionNumber != 0) {
-          System.err.println(
-              String.format(
-                  "%s: Error connection not ended : changed=%s (initial:%s ended:%s)",
-                  extensionContext.getTestMethod().get(),
-                  (finalConnectionNumber - initialConnectionNumber),
-                  initialConnectionNumber,
-                  finalConnectionNumber));
+          System.err.printf(
+              "%s: Error connection not ended : changed=%s (initial:%s ended:%s)%n",
+              extensionContext.getTestMethod().get(),
+              (finalConnectionNumber - initialConnectionNumber),
+              initialConnectionNumber,
+              finalConnectionNumber);
         }
       }
 

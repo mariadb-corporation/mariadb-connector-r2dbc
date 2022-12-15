@@ -165,13 +165,13 @@ public class ConnectionTest extends BaseConnectionTest {
   //      }
   //    }
 
-//  @Test
-//  void perf() {
-//    for (int ii = 0; ii < 1000000; ii++) {
-//      io.r2dbc.spi.Statement statement = sharedConn.createStatement("DO 1");
-//      Flux.from(statement.execute()).flatMap(it -> it.getRowsUpdated()).blockLast();
-//    }
-//  }
+  //  @Test
+  //  void perf() {
+  //    for (int ii = 0; ii < 1000000; ii++) {
+  //      io.r2dbc.spi.Statement statement = sharedConn.createStatement("DO 1");
+  //      Flux.from(statement.execute()).flatMap(it -> it.getRowsUpdated()).blockLast();
+  //    }
+  //  }
 
   @Test
   void remoteValidation() {
@@ -1120,7 +1120,10 @@ public class ConnectionTest extends BaseConnectionTest {
 
     threadSet = Thread.getAllStackTraces().keySet();
     for (Thread thread : threadSet) {
-      if (thread.getName().contains("mariadb")) hasMariaDbThreads = true;
+      if (thread.getName().contains("mariadb")) {
+        hasMariaDbThreads = true;
+        break;
+      }
     }
     assertTrue(hasMariaDbThreads);
 

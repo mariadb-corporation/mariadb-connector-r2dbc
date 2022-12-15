@@ -51,9 +51,7 @@ public final class MariadbRowMetadata implements RowMetadata {
     if (this.columnNames == null) {
       this.columnNames = getColumnNames(this.metadataList);
     }
-    StringBuilder sb = new StringBuilder("MariadbRowMetadata{");
-    sb.append("columnNames=").append(columnNames).append("}");
-    return sb.toString();
+    return "MariadbRowMetadata{columnNames=" + columnNames + "}";
   }
 
   @Override
@@ -68,11 +66,11 @@ public final class MariadbRowMetadata implements RowMetadata {
     return this.metadataList.size();
   }
 
-  protected ColumnDefinitionPacket get(int index) {
+  ColumnDefinitionPacket get(int index) {
     return this.metadataList.get(index);
   }
 
-  protected int getIndex(String name) throws NoSuchElementException {
+  int getIndex(String name) throws NoSuchElementException {
     Assert.requireNonNull(name, "name must not be null");
 
     if (mapper == null) {

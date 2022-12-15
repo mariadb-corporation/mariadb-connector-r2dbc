@@ -5,7 +5,7 @@ package org.mariadb.r2dbc.client;
 
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcTransientResourceException;
-import java.util.*;
+import java.util.EnumSet;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;

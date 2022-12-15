@@ -232,7 +232,7 @@ public class ConfigurationTest extends BaseConnectionTest {
         MariadbConnectionConfiguration.fromOptions(options).build();
     Assertions.assertEquals("someHost", conf.getHostAddresses().get(0).getHost());
     Assertions.assertEquals(43306, conf.getPort());
-    Assertions.assertEquals(true, conf.allowMultiQueries());
+    Assertions.assertTrue(conf.allowMultiQueries());
 
     final ConnectionFactoryOptions optionsWithoutUser =
         ConnectionFactoryOptions.builder()

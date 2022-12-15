@@ -69,7 +69,6 @@ public class MariadbResult extends AbstractReferenceCounted
     return this.messages
         .<Long>handle(
             (serverMessage, sink) -> {
-
               if (serverMessage instanceof OkPacket) {
                 OkPacket okPacket = ((OkPacket) serverMessage);
                 sink.next(okPacket.value());
