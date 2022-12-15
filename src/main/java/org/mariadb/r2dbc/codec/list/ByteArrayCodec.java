@@ -11,7 +11,6 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class ByteArrayCodec implements Codec<byte[]> {
@@ -65,18 +64,19 @@ public class ByteArrayCodec implements Codec<byte[]> {
   }
 
   @Override
-  public BindValue encodeText(
-      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
-    return createEncodedValue(
-        () ->
-            BufferUtils.encodeEscapedBytes(
-                allocator, BufferUtils.BINARY_PREFIX, (byte[]) value, context));
+  public void encodeDirectText(ByteBuf out, Object value, Context context) {
+    byte[] b = (byte[]) value;
+    out.writeBytes(BufferUtils.BINARY_PREFIX);
+    BufferUtils.escapedBytes(out, b, b.length, context);
+    out.writeByte('\'');
   }
 
   @Override
-  public BindValue encodeBinary(
-      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
-    return createEncodedValue(() -> BufferUtils.encodeLengthBytes(allocator, (byte[]) value));
+  public void encodeDirectBinary(
+      ByteBufAllocator allocator, ByteBuf out, Object value, Context context) {
+    byte[] b = (byte[]) value;
+    out.writeBytes(BufferUtils.encodeLength(b.length));
+    out.writeBytes(b);
   }
 
   public DataType getBinaryEncodeType() {

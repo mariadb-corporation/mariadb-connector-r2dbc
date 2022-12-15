@@ -185,7 +185,8 @@ public class BatchTest extends BaseConnectionTest {
                 .bind(1, "dd")
                 .add()
                 .bind(1, "dd")
-                .add(),
+                .add()
+                .execute(),
         "Parameter at position 0 is not set");
   }
 }

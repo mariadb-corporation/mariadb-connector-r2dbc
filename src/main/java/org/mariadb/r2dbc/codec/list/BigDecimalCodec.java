@@ -14,7 +14,6 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class BigDecimalCodec implements Codec<BigDecimal> {
@@ -163,17 +162,16 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
   }
 
   @Override
-  public BindValue encodeText(
-      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> BufferUtils.encodeAscii(allocator, ((BigDecimal) value).toPlainString()));
+  public void encodeDirectText(ByteBuf out, Object value, Context context) {
+    out.writeCharSequence(((BigDecimal) value).toPlainString(), StandardCharsets.US_ASCII);
   }
 
   @Override
-  public BindValue encodeBinary(
-      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> BufferUtils.encodeLengthAscii(allocator, ((BigDecimal) value).toPlainString()));
+  public void encodeDirectBinary(
+      ByteBufAllocator allocator, ByteBuf out, Object value, Context context) {
+    String v = ((BigDecimal) value).toPlainString();
+    out.writeBytes(BufferUtils.encodeLength(v.length()));
+    out.writeCharSequence(v, StandardCharsets.US_ASCII);
   }
 
   public DataType getBinaryEncodeType() {

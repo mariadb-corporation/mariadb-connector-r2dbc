@@ -131,7 +131,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
                 .execute()
                 .flatMap(r -> r.getRowsUpdated())
                 .blockLast(),
-        "No parameters have been set");
+        "Parameter at position 0 is not set");
   }
 
   @Test
@@ -464,8 +464,8 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IllegalStateException.class,
         () -> stmt.execute().blockLast(),
-        "No parameters have been set");
-    Assertions.assertThrows(IllegalArgumentException.class, () -> stmt.add());
+        "Parameter at position 0 is not set");
+    Assertions.assertThrows(IllegalStateException.class, () -> stmt.add());
   }
 
   @Test
@@ -573,7 +573,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IllegalStateException.class,
         () -> stmt.execute().blockLast(),
-        "No parameters have been set");
+        "Parameter at position 0 is not set");
   }
 
   private List<String> prepareInfo(MariadbConnection connection) {

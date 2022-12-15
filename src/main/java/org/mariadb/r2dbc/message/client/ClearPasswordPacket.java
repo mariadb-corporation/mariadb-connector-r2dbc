@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.MessageSequence;
+import reactor.core.publisher.Mono;
 
 public final class ClearPasswordPacket implements ClientMessage {
 
@@ -21,12 +22,12 @@ public final class ClearPasswordPacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
-    if (password == null) return allocator.ioBuffer(0);
+  public Mono<ByteBuf> encode(Context context, ByteBufAllocator allocator) {
+    if (password == null) return Mono.just(allocator.ioBuffer(0));
     ByteBuf buf = allocator.ioBuffer(password.length() * 4);
     buf.writeCharSequence(password, StandardCharsets.UTF_8);
     buf.writeByte(0);
-    return buf;
+    return Mono.just(buf);
   }
 
   @Override

@@ -14,7 +14,6 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -97,37 +96,35 @@ public class BlobCodec implements Codec<Blob> {
   }
 
   @Override
-  public BindValue encodeText(
-      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
-    return createEncodedValue(
-        Flux.from(((Blob) value).stream())
-            .reduce(
-                allocator.compositeBuffer(),
-                (a, b) -> a.addComponent(true, Unpooled.wrappedBuffer(b)))
-            .map(
-                b -> {
-                  ByteBuf returnedBuf = BufferUtils.encodeEscapedBuffer(allocator, b, context);
-                  b.release();
-                  return returnedBuf;
-                })
-            .doOnSubscribe(e -> ((Blob) value).discard()));
+  public Mono<ByteBuf> encodeText(ByteBufAllocator allocator, Object value, Context context) {
+    return Flux.from(((Blob) value).stream())
+        .reduce(
+            allocator.compositeBuffer(), (a, b) -> a.addComponent(true, Unpooled.wrappedBuffer(b)))
+        .map(
+            b -> {
+              ByteBuf returnedBuf = BufferUtils.encodeEscapedBuffer(allocator, b, context);
+              b.release();
+              return returnedBuf;
+            })
+        .cast(ByteBuf.class)
+        .doOnSubscribe(e -> ((Blob) value).discard());
   }
 
   @Override
-  public BindValue encodeBinary(
-      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
-    return createEncodedValue(
-        Flux.from(((Blob) value).stream())
-            .reduce(
-                allocator.compositeBuffer(),
-                (a, b) -> a.addComponent(true, Unpooled.wrappedBuffer(b)))
-            .map(
-                c ->
-                    c.addComponent(
-                        true,
-                        0,
-                        Unpooled.wrappedBuffer(BufferUtils.encodeLength(c.readableBytes()))))
-            .doOnSubscribe(e -> ((Blob) value).discard()));
+  public Mono<ByteBuf> encodeBinary(ByteBufAllocator allocator, Object value) {
+    return Flux.from(((Blob) value).stream())
+        .reduce(
+            allocator.compositeBuffer(), (a, b) -> a.addComponent(true, Unpooled.wrappedBuffer(b)))
+        .map(
+            c ->
+                c.addComponent(
+                    true, 0, Unpooled.wrappedBuffer(BufferUtils.encodeLength(c.readableBytes()))))
+        .cast(ByteBuf.class)
+        .doAfterTerminate(() -> ((Blob) value).discard());
+  }
+
+  public boolean isDirect() {
+    return false;
   }
 
   private class MariaDbBlob implements Blob {

@@ -52,11 +52,12 @@ public final class Codecs {
       };
 
   public static BindValue encodeNull(Class<?> type, int index) {
-    return new BindValue(codecFromClass(type, index), BindValue.NULL_VALUE);
+    if (type == null) return new BindValue(StringCodec.INSTANCE, null);
+    return new BindValue(codecFromClass(type, index), null);
   }
 
   public static BindValue encode(
-      Object value, int index, Protocol protocol, ExceptionFactory factory, Context context) {
+      Object value, int index) {
 
     Codec<?> codec = StringCodec.INSTANCE;
     Object parameterValue = value;
@@ -69,27 +70,21 @@ public final class Codecs {
         if (parameter.getType() instanceof R2dbcType) {
           codec = codecFromR2dbcType((R2dbcType) parameter.getType());
         }
-        return new BindValue(codec, BindValue.NULL_VALUE);
+        return new BindValue(codec, null);
       }
     }
 
-    codec = codecFromClass(parameterValue.getClass(), index);
-
     if (parameterValue == null) {
-      return new BindValue(codec, BindValue.NULL_VALUE);
+      return new BindValue(codec, null);
     }
-
-    if (protocol == Protocol.TEXT)
-      return codec.encodeText(context.getByteBufAllocator(), parameterValue, context, factory);
-    return codec.encodeBinary(context.getByteBufAllocator(), parameterValue, factory);
+    codec = codecFromClass(parameterValue.getClass(), index);
+    return new BindValue(codec, parameterValue);
   }
 
   public static Codec<?> codecFromClass(Class<?> javaType, int index) {
-    if (javaType == null) return StringCodec.INSTANCE;
-    Codec<?> codec = codecMapper.get(javaType);
-    if (codec != null) return codec;
-    codec = codecByClass(javaType, index);
-    if (codec != null) return codec;
+    Codec<?> codec;
+    if ((codec = codecMapper.get(javaType)) != null) return codec;
+    if ((codec = codecByClass(javaType, index)) != null) return codec;
     return StringCodec.INSTANCE;
   }
 

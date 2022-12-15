@@ -7,6 +7,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
+import reactor.core.publisher.Mono;
 
 /**
  * COM_STMT_CLOSE packet. See
@@ -21,10 +22,10 @@ public final class ClosePreparePacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
+  public Mono<ByteBuf> encode(Context context, ByteBufAllocator allocator) {
     ByteBuf buf = allocator.ioBuffer();
     buf.writeByte(0x19);
     buf.writeIntLE(statementId);
-    return buf;
+    return Mono.just(buf);
   }
 }

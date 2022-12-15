@@ -5,11 +5,9 @@ package org.mariadb.r2dbc.codec;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import java.util.function.Supplier;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BindValue;
 import reactor.core.publisher.Mono;
 
 public interface Codec<T> {
@@ -32,18 +30,26 @@ public interface Codec<T> {
       Class<? extends T> type,
       ExceptionFactory factory);
 
-  BindValue encodeText(
-      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory);
+  default Mono<ByteBuf> encodeText(ByteBufAllocator allocator, Object value, Context context) {
+    throw new IllegalCallerException("Not expected to be use");
+  }
 
-  BindValue encodeBinary(ByteBufAllocator allocator, Object value, ExceptionFactory factory);
+  default Mono<ByteBuf> encodeBinary(ByteBufAllocator allocator, Object value) {
+    throw new IllegalCallerException("Not expected to be use");
+  }
+
+  default void encodeDirectText(ByteBuf out, Object value, Context context) {
+    throw new IllegalCallerException("Not expected to be use");
+  }
+
+  default void encodeDirectBinary(
+      ByteBufAllocator allocator, ByteBuf out, Object value, Context context) {
+    throw new IllegalCallerException("Not expected to be use");
+  }
 
   DataType getBinaryEncodeType();
 
-  default BindValue createEncodedValue(Supplier<? extends ByteBuf> bufferSupplier) {
-    return new BindValue(this, Mono.fromSupplier(bufferSupplier));
-  }
-
-  default BindValue createEncodedValue(Mono<? extends ByteBuf> value) {
-    return new BindValue(this, value);
+  default boolean isDirect() {
+    return true;
   }
 }

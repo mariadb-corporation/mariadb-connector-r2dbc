@@ -15,8 +15,6 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BindValue;
-import org.mariadb.r2dbc.util.BufferUtils;
 
 public class LongCodec implements Codec<Long> {
 
@@ -211,20 +209,14 @@ public class LongCodec implements Codec<Long> {
   }
 
   @Override
-  public BindValue encodeText(
-      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
-    return createEncodedValue(() -> BufferUtils.encodeAscii(allocator, String.valueOf(value)));
+  public void encodeDirectText(ByteBuf out, Object value, Context context) {
+    out.writeCharSequence(value.toString(), StandardCharsets.US_ASCII);
   }
 
   @Override
-  public BindValue encodeBinary(
-      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> {
-          ByteBuf buf = allocator.buffer(8, 8);
-          buf.writeLongLE((Long) value);
-          return buf;
-        });
+  public void encodeDirectBinary(
+      ByteBufAllocator allocator, ByteBuf out, Object value, Context context) {
+    out.writeLongLE((Long) value);
   }
 
   public DataType getBinaryEncodeType() {

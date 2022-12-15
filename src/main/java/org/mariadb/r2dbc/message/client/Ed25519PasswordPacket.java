@@ -17,6 +17,7 @@ import org.mariadb.r2dbc.authentication.standard.ed25519.spec.EdDSAParameterSpec
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.MessageSequence;
+import reactor.core.publisher.Mono;
 
 public final class Ed25519PasswordPacket implements ClientMessage {
 
@@ -79,11 +80,11 @@ public final class Ed25519PasswordPacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
-    if (password == null) return allocator.ioBuffer(0);
+  public Mono<ByteBuf> encode(Context context, ByteBufAllocator allocator) {
+    if (password == null) return Mono.just(allocator.ioBuffer(0));
     ByteBuf buf = allocator.ioBuffer(64);
     buf.writeBytes(ed25519SignWithPassword(password, seed));
-    return buf;
+    return Mono.just(buf);
   }
 
   @Override

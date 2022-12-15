@@ -5,8 +5,6 @@ package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.CompositeByteBuf;
-import io.netty.buffer.Unpooled;
 import java.nio.ByteBuffer;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.ExceptionFactory;
@@ -14,7 +12,6 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class ByteBufferCodec implements Codec<ByteBuffer> {
@@ -86,37 +83,25 @@ public class ByteBufferCodec implements Codec<ByteBuffer> {
   }
 
   @Override
-  public BindValue encodeText(
-      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> {
-          ByteBuffer val = (ByteBuffer) value;
-          ByteBuf byteBuf = allocator.buffer();
-          if (val.hasArray()) {
-            BufferUtils.escapedBytes(byteBuf, val.array(), val.remaining(), context);
-          } else {
-            byte[] arr = new byte[val.remaining()];
-            val.get(arr);
-            BufferUtils.escapedBytes(byteBuf, arr, arr.length, context);
-          }
-          byteBuf.writeByte('\'');
-          return byteBuf;
-        });
+  public void encodeDirectText(ByteBuf out, Object value, Context context) {
+    out.writeBytes(BufferUtils.BINARY_PREFIX);
+    ByteBuffer val = (ByteBuffer) value;
+    if (val.hasArray()) {
+      BufferUtils.escapedBytes(out, val.array(), val.remaining(), context);
+    } else {
+      byte[] arr = new byte[val.remaining()];
+      val.get(arr);
+      BufferUtils.escapedBytes(out, arr, arr.length, context);
+    }
+    out.writeByte('\'');
   }
 
   @Override
-  public BindValue encodeBinary(
-      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> {
-          ByteBuffer val = (ByteBuffer) value;
-          CompositeByteBuf compositeByteBuf = allocator.compositeBuffer();
-          ByteBuf buf = Unpooled.wrappedBuffer(val);
-          compositeByteBuf.addComponent(
-              true, Unpooled.wrappedBuffer(BufferUtils.encodeLength(val.remaining())));
-          compositeByteBuf.addComponent(true, buf);
-          return compositeByteBuf;
-        });
+  public void encodeDirectBinary(
+      ByteBufAllocator allocator, ByteBuf out, Object value, Context context) {
+    ByteBuffer val = (ByteBuffer) value;
+    BufferUtils.encodeLength(val.remaining());
+    out.writeBytes(val);
   }
 
   public DataType getBinaryEncodeType() {

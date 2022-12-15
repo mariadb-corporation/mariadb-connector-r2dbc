@@ -17,7 +17,7 @@ public class ClientPrepareResultTest {
       boolean returning,
       boolean supportReturningAddition,
       String[] partsMulti) {
-    ClientParser res = ClientParser.parameterParts(sql, false);
+    ClientParser res = ClientParser.parameterPartsCheckReturning(sql, false);
     Assertions.assertEquals(paramNumber, res.getParamCount());
     Assertions.assertEquals(returning, res.isReturning());
     Assertions.assertEquals(supportReturningAddition, res.supportAddingReturning());
@@ -35,7 +35,22 @@ public class ClientPrepareResultTest {
         beginPos = res.getParamPositions().get(i * 2 + 1);
     }
 
-    res = ClientParser.parameterParts(sql, true);
+    res = ClientParser.parameterParts(sql, false);
+    Assertions.assertEquals(paramNumber, res.getParamCount());
+
+    sqlBytes = sql.getBytes(StandardCharsets.UTF_8);
+    beginPos = 0;
+    for (int i = 0; i < partsMulti.length; i++) {
+      endPos =
+          res.getParamPositions().size() <= i * 2
+              ? sqlBytes.length
+              : res.getParamPositions().get(i * 2);
+      Assertions.assertEquals(partsMulti[i], new String(sqlBytes, beginPos, endPos - beginPos));
+      if (res.getParamPositions().size() > i * 2 + 1)
+        beginPos = res.getParamPositions().get(i * 2 + 1);
+    }
+
+    res = ClientParser.parameterPartsCheckReturning(sql, true);
     Assertions.assertEquals(paramNumber, res.getParamCount());
     Assertions.assertEquals(returning, res.isReturning());
     Assertions.assertEquals(supportReturningAddition, res.supportAddingReturning());
@@ -50,7 +65,8 @@ public class ClientPrepareResultTest {
       boolean supportReturningAddition,
       String[] partsMulti,
       String[] partsMultiBackSlash) {
-    ClientParser res = ClientParser.parameterParts(sql, false);
+
+    ClientParser res = ClientParser.parameterPartsCheckReturning(sql, false);
     Assertions.assertEquals(paramNumber, res.getParamCount());
     Assertions.assertEquals(returning, res.isReturning());
     Assertions.assertEquals(supportReturningAddition, res.supportAddingReturning());
@@ -68,10 +84,40 @@ public class ClientPrepareResultTest {
         beginPos = res.getParamPositions().get(i * 2 + 1);
     }
 
-    res = ClientParser.parameterParts(sql, true);
+    res = ClientParser.parameterParts(sql, false);
+    Assertions.assertEquals(paramNumber, res.getParamCount());
+
+    sqlBytes = sql.getBytes(StandardCharsets.UTF_8);
+    beginPos = 0;
+    for (int i = 0; i < partsMulti.length; i++) {
+      endPos =
+          res.getParamPositions().size() <= i * 2
+              ? sqlBytes.length
+              : res.getParamPositions().get(i * 2);
+      Assertions.assertEquals(partsMulti[i], new String(sqlBytes, beginPos, endPos - beginPos));
+      if (res.getParamPositions().size() > i * 2 + 1)
+        beginPos = res.getParamPositions().get(i * 2 + 1);
+    }
+
+    res = ClientParser.parameterPartsCheckReturning(sql, true);
     Assertions.assertEquals(paramNumberBackSlash, res.getParamCount());
     Assertions.assertEquals(returning, res.isReturning());
     Assertions.assertEquals(supportReturningAddition, res.supportAddingReturning());
+
+    beginPos = 0;
+    for (int i = 0; i < partsMultiBackSlash.length; i++) {
+      endPos =
+          res.getParamPositions().size() <= i * 2
+              ? sqlBytes.length
+              : res.getParamPositions().get(i * 2);
+      Assertions.assertEquals(
+          partsMultiBackSlash[i], new String(sqlBytes, beginPos, endPos - beginPos));
+      if (res.getParamPositions().size() > i * 2 + 1)
+        beginPos = res.getParamPositions().get(i * 2 + 1);
+    }
+
+    res = ClientParser.parameterParts(sql, true);
+    Assertions.assertEquals(paramNumberBackSlash, res.getParamCount());
 
     beginPos = 0;
     for (int i = 0; i < partsMultiBackSlash.length; i++) {

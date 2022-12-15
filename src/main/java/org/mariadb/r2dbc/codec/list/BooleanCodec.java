@@ -13,8 +13,6 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BindValue;
-import org.mariadb.r2dbc.util.BufferUtils;
 
 public class BooleanCodec implements Codec<Boolean> {
 
@@ -124,16 +122,14 @@ public class BooleanCodec implements Codec<Boolean> {
   }
 
   @Override
-  public BindValue encodeText(
-      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> BufferUtils.encodeAscii(allocator, ((Boolean) value) ? "1" : "0"));
+  public void encodeDirectText(ByteBuf out, Object value, Context context) {
+    out.writeCharSequence(((Boolean) value) ? "1" : "0", StandardCharsets.US_ASCII);
   }
 
   @Override
-  public BindValue encodeBinary(
-      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
-    return createEncodedValue(() -> BufferUtils.encodeByte(allocator, ((Boolean) value) ? 1 : 0));
+  public void encodeDirectBinary(
+      ByteBufAllocator allocator, ByteBuf out, Object value, Context context) {
+    out.writeByte(((Boolean) value) ? 1 : 0);
   }
 
   public DataType getBinaryEncodeType() {

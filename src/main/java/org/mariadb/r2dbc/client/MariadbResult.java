@@ -20,6 +20,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.message.Protocol;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.server.*;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
@@ -30,7 +31,7 @@ import reactor.core.publisher.Mono;
 public class MariadbResult extends AbstractReferenceCounted
     implements org.mariadb.r2dbc.api.MariadbResult {
 
-  private final boolean protocolType;
+  private final Protocol protocol;
 
   private final Flux<ServerMessage> messages;
 
@@ -42,14 +43,14 @@ public class MariadbResult extends AbstractReferenceCounted
   private final AtomicReference<ServerPrepareResult> prepareResult;
 
   public MariadbResult(
-      boolean text,
+      Protocol protocol,
       AtomicReference<ServerPrepareResult> prepareResult,
       Flux<ServerMessage> messages,
       ExceptionFactory factory,
       String[] generatedColumns,
       boolean supportReturning,
       MariadbConnectionConfiguration conf) {
-    this.protocolType = text;
+    this.protocol = protocol;
     this.messages = messages;
     this.factory = factory;
     this.generatedColumns = generatedColumns;
@@ -68,14 +69,15 @@ public class MariadbResult extends AbstractReferenceCounted
     return this.messages
         .<Long>handle(
             (serverMessage, sink) -> {
-              if (serverMessage instanceof ErrorPacket) {
-                sink.error(this.factory.from((ErrorPacket) serverMessage));
-                return;
-              }
 
               if (serverMessage instanceof OkPacket) {
                 OkPacket okPacket = ((OkPacket) serverMessage);
                 sink.next(okPacket.value());
+                return;
+              }
+
+              if (serverMessage instanceof ErrorPacket) {
+                sink.error(this.factory.from((ErrorPacket) serverMessage));
                 return;
               }
 
@@ -175,7 +177,8 @@ public class MariadbResult extends AbstractReferenceCounted
             EofPacket eof = (EofPacket) message;
             if (!eof.ending()) {
 
-              rowConstructor.set(protocolType ? MariadbRowText::new : MariadbRowBinary::new);
+              rowConstructor.set(
+                  protocol == Protocol.TEXT ? MariadbRowText::new : MariadbRowBinary::new);
               meta.set(new MariadbRowMetadata(columns));
 
               // in case metadata follows and prepared statement, update meta
@@ -209,13 +212,7 @@ public class MariadbResult extends AbstractReferenceCounted
   @Override
   public org.mariadb.r2dbc.api.MariadbResult filter(Predicate<Segment> filter) {
     return MariadbSegmentResult.toResult(
-            protocolType,
-            prepareResult,
-            messages,
-            factory,
-            generatedColumns,
-            supportReturning,
-            conf)
+            protocol, prepareResult, messages, factory, generatedColumns, supportReturning, conf)
         .filter(filter);
   }
 
@@ -223,13 +220,7 @@ public class MariadbResult extends AbstractReferenceCounted
   public <T> Publisher<T> flatMap(
       Function<Segment, ? extends Publisher<? extends T>> mappingFunction) {
     return MariadbSegmentResult.toResult(
-            protocolType,
-            prepareResult,
-            messages,
-            factory,
-            generatedColumns,
-            supportReturning,
-            conf)
+            protocol, prepareResult, messages, factory, generatedColumns, supportReturning, conf)
         .flatMap(mappingFunction);
   }
 

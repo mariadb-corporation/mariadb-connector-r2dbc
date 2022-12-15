@@ -17,6 +17,7 @@ import java.util.function.Predicate;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.api.MariadbResult;
+import org.mariadb.r2dbc.message.Protocol;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.server.*;
 import org.mariadb.r2dbc.util.Assert;
@@ -35,7 +36,7 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
   }
 
   MariadbSegmentResult(
-      boolean text,
+      Protocol protocol,
       AtomicReference<ServerPrepareResult> prepareResult,
       Flux<ServerMessage> messages,
       ExceptionFactory factory,
@@ -73,7 +74,8 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
               if (message instanceof EofPacket) {
                 EofPacket eof = (EofPacket) message;
                 if (!eof.ending()) {
-                  rowConstructor.set(text ? MariadbRowText::new : MariadbRowBinary::new);
+                  rowConstructor.set(
+                      protocol == Protocol.TEXT ? MariadbRowText::new : MariadbRowBinary::new);
                   meta.set(new MariadbRowMetadata(columns));
 
                   // in case metadata follows and prepared statement, update meta
@@ -247,7 +249,7 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
   }
 
   static MariadbSegmentResult toResult(
-      boolean text,
+      Protocol protocol,
       AtomicReference<ServerPrepareResult> prepareResult,
       Flux<ServerMessage> messages,
       ExceptionFactory factory,
@@ -255,7 +257,7 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
       boolean supportReturning,
       MariadbConnectionConfiguration conf) {
     return new MariadbSegmentResult(
-        text, prepareResult, messages, factory, generatedColumns, supportReturning, conf);
+        protocol, prepareResult, messages, factory, generatedColumns, supportReturning, conf);
   }
 
   static class MariadbRowSegment extends AbstractReferenceCounted implements Result.RowSegment {

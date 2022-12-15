@@ -78,7 +78,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=BigIntegerCodec}, 1=BindValue{codec=BigIntegerCodec}, 2=BindValue{codec=BigIntegerCodec}}}]"),
+                "bindings=[[BindValue{codec=BigIntegerCodec}, BindValue{codec=BigIntegerCodec}, BindValue{codec=BigIntegerCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
@@ -108,7 +108,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=StringCodec}, 1=BindValue{codec=StringCodec}, 2=BindValue{codec=StringCodec}}}]"),
+                "bindings=[[BindValue{codec=StringCodec}, BindValue{codec=StringCodec}, BindValue{codec=StringCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
@@ -140,7 +140,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=BigDecimalCodec}, 1=BindValue{codec=BigDecimalCodec}, 2=BindValue{codec=BigDecimalCodec}}}]"),
+                "bindings=[[BindValue{codec=BigDecimalCodec}, BindValue{codec=BigDecimalCodec}, BindValue{codec=BigDecimalCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
@@ -170,7 +170,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=IntCodec}, 1=BindValue{codec=IntCodec}, 2=BindValue{codec=IntCodec}}}]"),
+                "bindings=[[BindValue{codec=IntCodec}, BindValue{codec=IntCodec}, BindValue{codec=IntCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
@@ -202,7 +202,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=ByteCodec}, 1=BindValue{codec=ByteCodec}, 2=BindValue{codec=ByteCodec}}}]"),
+                "bindings=[[BindValue{codec=ByteCodec}, BindValue{codec=ByteCodec}, BindValue{codec=ByteCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
@@ -232,7 +232,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=FloatCodec}, 1=BindValue{codec=FloatCodec}, 2=BindValue{codec=FloatCodec}}}]"),
+                "bindings=[[BindValue{codec=FloatCodec}, BindValue{codec=FloatCodec}, BindValue{codec=FloatCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
@@ -265,7 +265,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=DoubleCodec}, 1=BindValue{codec=DoubleCodec}, 2=BindValue{codec=DoubleCodec}}}]"),
+                "bindings=[[BindValue{codec=DoubleCodec}, BindValue{codec=DoubleCodec}, BindValue{codec=DoubleCodec}]]"),
         stmt.toString());
     stmt.execute().blockLast();
     validate(connection, Optional.of("127"), Optional.of("-128"), Optional.of("0"));
@@ -294,7 +294,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=ShortCodec}, 1=BindValue{codec=ShortCodec}, 2=BindValue{codec=ShortCodec}}}]"),
+                "bindings=[[BindValue{codec=ShortCodec}, BindValue{codec=ShortCodec}, BindValue{codec=ShortCodec}]]"),
         stmt.toString());
     stmt.execute().blockLast();
     validate(connection, Optional.of("1"), Optional.of("-1"), Optional.of("0"));
@@ -323,7 +323,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=LongCodec}, 1=BindValue{codec=LongCodec}, 2=BindValue{codec=LongCodec}}}]"),
+                "bindings=[[BindValue{codec=LongCodec}, BindValue{codec=LongCodec}, BindValue{codec=LongCodec}]]"),
         stmt.toString());
     stmt.execute().blockLast();
     validate(connection, Optional.of("1"), Optional.of("-1"), Optional.of("0"));
@@ -352,7 +352,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=LongCodec}, 1=BindValue{codec=LongCodec}, 2=BindValue{codec=LongCodec}}}]"),
+                "bindings=[[BindValue{codec=LongCodec}, BindValue{codec=LongCodec}, BindValue{codec=LongCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
@@ -377,7 +377,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=LocalDateTimeCodec}, 1=BindValue{codec=LocalDateTimeCodec}, 2=BindValue{codec=LocalDateTimeCodec}}}]"),
+                "bindings=[[BindValue{codec=LocalDateTimeCodec}, BindValue{codec=LocalDateTimeCodec}, BindValue{codec=LocalDateTimeCodec}]]"),
         stmt.toString());
     stmt.execute()
         .flatMap(r -> r.getRowsUpdated())
@@ -436,7 +436,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=LocalDateCodec}, 1=BindValue{codec=LocalDateCodec}, 2=BindValue{codec=LocalDateCodec}}}]"),
+                "bindings=[[BindValue{codec=LocalDateCodec}, BindValue{codec=LocalDateCodec}, BindValue{codec=LocalDateCodec}]]"),
         stmt.toString());
     stmt.execute()
         .flatMap(r -> r.getRowsUpdated())
@@ -467,7 +467,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=LocalTimeCodec}, 1=BindValue{codec=LocalTimeCodec}, 2=BindValue{codec=LocalTimeCodec}}}]"),
+                "bindings=[[BindValue{codec=LocalTimeCodec}, BindValue{codec=LocalTimeCodec}, BindValue{codec=LocalTimeCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();

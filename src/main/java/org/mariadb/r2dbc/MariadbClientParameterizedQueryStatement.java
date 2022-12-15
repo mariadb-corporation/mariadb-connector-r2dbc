@@ -26,6 +26,7 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
     super(client, sql, configuration, Protocol.TEXT);
     this.parser = ClientParser.parameterParts(this.initialSql, this.client.noBackslashEscapes());
     this.expectedSize = this.parser.getParamCount();
+    initializeBinding();
   }
 
   protected int getColumnIndex(String name) {
@@ -56,57 +57,46 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
     }
 
     if (this.getExpectedSize() != 0) {
-      if (this.bindings.size() == 0) {
-        throw new IllegalStateException("No parameters have been set");
-      }
-      this.bindings.forEach(b -> b.validate(this.getExpectedSize()));
+      this.getCurrentBinding().validate(this.getExpectedSize());
       return Flux.defer(
           () -> {
-            if (this.bindings.size() == 1) {
+            if (this.bindings.size() == 0) {
               // single query
-              Binding binding = this.bindings.pollFirst();
+              Binding binding = this.getCurrentBinding();
+              this.initializeBinding();
 
               Flux<ServerMessage> messages =
-                  bindingParameterResults(binding, getExpectedSize())
-                      .flatMapMany(
-                          values ->
-                              this.client
-                                  .sendCommand(
-                                      new QueryWithParametersPacket(
-                                          parser,
-                                          values,
-                                          client.getVersion().supportReturning()
-                                              ? generatedColumns
-                                              : null),
-                                      false)
-                                  .doFinally(s -> values.stream().forEach(bind -> bind.release())));
+                  this.client.sendCommand(
+                      new QueryWithParametersPacket(
+                          parser,
+                          binding.getBindResultParameters(getExpectedSize()),
+                          client.getVersion().supportReturning() ? generatedColumns : null),
+                      false);
               return toResult(
                   Protocol.TEXT, client, messages, factory, null, generatedColumns, configuration);
             }
 
             // batch
+            bindings.add(getCurrentBinding());
+            this.initializeBinding();
             Iterator<Binding> iterator = this.bindings.iterator();
             Sinks.Many<Binding> bindingSink = Sinks.many().unicast().onBackpressureBuffer();
             AtomicBoolean canceled = new AtomicBoolean();
             return bindingSink
                 .asFlux()
+                .doOnComplete(() -> clearBindings(iterator, canceled))
                 .map(
                     it -> {
                       Flux<ServerMessage> messages =
-                          bindingParameterResults(it, getExpectedSize())
-                              .flatMapMany(
-                                  values ->
-                                      this.client
-                                          .sendCommand(
-                                              new QueryWithParametersPacket(
-                                                  parser,
-                                                  values,
-                                                  client.getVersion().supportReturning()
-                                                      ? generatedColumns
-                                                      : null),
-                                              false)
-                                          .doFinally(
-                                              s -> values.stream().forEach(bind -> bind.release())))
+                          this.client
+                              .sendCommand(
+                                  new QueryWithParametersPacket(
+                                      parser,
+                                      it.getBindResultParameters(getExpectedSize()),
+                                      client.getVersion().supportReturning()
+                                          ? generatedColumns
+                                          : null),
+                                  false)
                               .doOnComplete(() -> tryNextBinding(iterator, bindingSink, canceled));
 
                       return toResult(
@@ -140,12 +130,14 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
   @Override
   public MariadbClientParameterizedQueryStatement returnGeneratedValues(String... columns) {
     Assert.requireNonNull(columns, "columns must not be null");
+    if (parser.supportAddingReturning() == null)
+      parser =
+          ClientParser.parameterPartsCheckReturning(
+              this.initialSql, this.client.noBackslashEscapes());
     if (!client.getVersion().supportReturning() && columns.length > 1) {
       throw new IllegalArgumentException(
           "returnGeneratedValues can have only one column before MariaDB 10.5.1");
     }
-    if (parser.supportAddingReturning() == null)
-      parser = ClientParser.parameterParts(this.initialSql, this.client.noBackslashEscapes());
     parser.validateAddingReturning();
     this.generatedColumns = columns;
     return this;
@@ -153,6 +145,10 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
 
   @Override
   public String toString() {
+    List<Binding> tmpBindings = new ArrayList<>();
+    tmpBindings.addAll(bindings);
+    tmpBindings.add(getCurrentBinding());
+
     return "MariadbClientParameterizedQueryStatement{"
         + "client="
         + client
@@ -160,7 +156,7 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
         + initialSql
         + '\''
         + ", bindings="
-        + Arrays.toString(bindings.toArray())
+        + Arrays.toString(tmpBindings.toArray())
         + ", configuration="
         + configuration
         + ", generatedColumns="

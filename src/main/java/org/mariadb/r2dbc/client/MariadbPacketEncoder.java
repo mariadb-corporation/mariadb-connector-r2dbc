@@ -9,40 +9,45 @@ import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
+import reactor.core.publisher.Mono;
 
 public class MariadbPacketEncoder {
   private Context context = null;
 
-  public CompositeByteBuf encodeFlux(ClientMessage msg) {
+  public Mono<CompositeByteBuf> encodeFlux(ClientMessage msg) {
     ByteBufAllocator allocator = context.getByteBufAllocator();
-    CompositeByteBuf out = allocator.compositeBuffer();
 
-    ByteBuf buf = msg.encode(context, allocator);
-    int initialReaderIndex = buf.readerIndex();
-    int packetLength;
-    do {
-      packetLength = Math.min(0xffffff, buf.readableBytes());
+    return msg.encode(context, allocator)
+        .map(
+            buf -> {
+              CompositeByteBuf out = allocator.compositeDirectBuffer();
 
-      ByteBuf header = Unpooled.buffer(4, 4);
-      header.writeMediumLE(packetLength);
-      header.writeByte(msg.getSequencer().next());
+              int initialReaderIndex = buf.readerIndex();
+              int packetLength;
+              do {
+                packetLength = Math.min(0xffffff, buf.readableBytes());
 
-      out.addComponent(true, header);
-      out.addComponent(true, buf.retainedSlice(buf.readerIndex(), packetLength));
-      buf.skipBytes(packetLength);
-    } while (buf.readableBytes() > 0);
+                ByteBuf header = Unpooled.buffer(4, 4);
+                header.writeMediumLE(packetLength);
+                header.writeByte(msg.getSequencer().next());
 
-    if (packetLength == 0xffffff) {
-      // in case last packet is full, sending an empty packet to indicate that command is complete
-      ByteBuf header = Unpooled.buffer(4, 4);
-      header.writeMediumLE(0);
-      header.writeByte(msg.getSequencer().next());
-      out.addComponent(true, header);
-    }
+                out.addComponent(true, header);
+                out.addComponent(true, buf.readSlice(packetLength));
 
-    context.saveRedo(msg, buf, initialReaderIndex);
-    buf.release();
-    return out;
+              } while (buf.readableBytes() > 0);
+
+              if (packetLength == 0xffffff) {
+                // in case last packet is full, sending an empty packet to indicate that command is
+                // complete
+                ByteBuf header = Unpooled.buffer(4, 4);
+                header.writeMediumLE(0);
+                header.writeByte(msg.getSequencer().next());
+                out.addComponent(true, header);
+              }
+
+              context.saveRedo(msg, buf, initialReaderIndex);
+              return out;
+            });
   }
 
   public void setContext(Context context) {

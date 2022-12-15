@@ -109,7 +109,7 @@ public class SimpleClient implements Client {
     this.requestSink
         .asFlux()
         .map(encoder::encodeFlux)
-        .flatMap(b -> connection.outbound().send(Mono.just(b)), 1)
+        .flatMap(b -> connection.outbound().send(b), 1)
         .onErrorResume(this::sendResumeError)
         .doAfterTerminate(this::closeChannelIfNeeded)
         .subscribe();

@@ -1,6 +1,6 @@
 package org.mariadb.r2dbc;
 
-import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -15,12 +15,12 @@ import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.server.RowPacket;
 import org.mariadb.r2dbc.util.*;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
 public abstract class MariadbCommonStatement implements MariadbStatement {
   public static final int UNKNOWN_SIZE = -1;
-  protected final ArrayDeque<Binding> bindings = new ArrayDeque<>();
+  protected final List<Binding> bindings = new ArrayList<>();
+  private Binding currentBinding;
   protected int expectedSize;
   protected final Client client;
   protected final String initialSql;
@@ -41,15 +41,14 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
     this.factory = ExceptionFactory.withSql(sql);
   }
 
+  protected void initializeBinding() {
+    currentBinding = new Binding(getExpectedSize());
+  }
+
   public MariadbStatement add() {
-    Binding binding = this.bindings.peekLast();
-    if (binding != null) {
-      binding.validate(getExpectedSize());
-    } else if (getExpectedSize() > 0) {
-      throw new IllegalArgumentException(
-          String.format("No parameter have been bind, but expect %s values", getExpectedSize()));
-    }
-    this.bindings.add(new Binding(getExpectedSize()));
+    currentBinding.validate(getExpectedSize());
+    this.bindings.add(currentBinding);
+    currentBinding = new Binding(getExpectedSize());
     return this;
   }
 
@@ -78,7 +77,7 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
               : String.format(
                   "Cannot bind parameter %d, statement has %d parameters", index, expectedSize));
     }
-    getCurrentOrFirstBinding().add(index, Codecs.encodeNull(type, index));
+    getCurrentBinding().add(index, Codecs.encodeNull(type, index));
     return this;
   }
 
@@ -90,23 +89,16 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
           String.format("wrong index value %d, index must be positive", index));
     }
 
-    getCurrentOrFirstBinding()
-        .add(index, Codecs.encode(value, index, defaultProtocol, factory, client.getContext()));
+    getCurrentBinding()
+        .add(index, Codecs.encode(value, index));
     return this;
   }
 
   protected abstract int getColumnIndex(String name);
 
   @Nonnull
-  protected Binding getCurrentOrFirstBinding() {
-    Binding binding = this.bindings.peekLast();
-    if (binding == null) {
-      Binding newBinding = new Binding(getExpectedSize());
-      this.bindings.add(newBinding);
-      return newBinding;
-    } else {
-      return binding;
-    }
+  protected Binding getCurrentBinding() {
+    return currentBinding;
   }
   /**
    * Augments an SQL statement with a {@code RETURNING} statement and column names. If the
@@ -125,19 +117,6 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
         sql, generatedColumns.length == 0 ? "*" : String.join(", ", generatedColumns));
   }
 
-  static Mono<List<BindEncodedValue>> bindingParameterResults(Binding binding, int expectedSize) {
-    return Flux.fromIterable(binding.getBindResultParameters(expectedSize))
-        .flatMap(
-            f -> {
-              if (f.isNull()) {
-                return Mono.just(new BindEncodedValue(f.getCodec(), null));
-              } else {
-                return f.getValue().map(b -> new BindEncodedValue(f.getCodec(), b));
-              }
-            })
-        .collectList();
-  }
-
   public static Flux<org.mariadb.r2dbc.api.MariadbResult> toResult(
       final Protocol protocol,
       Client client,
@@ -151,15 +130,15 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
         .map(
             dataRow ->
                 new MariadbResult(
-                    protocol == Protocol.TEXT,
+                    protocol,
                     prepareResult,
                     dataRow,
                     factory,
                     generatedColumns,
                     client.getVersion().supportReturning(),
                     configuration))
-        .cast(org.mariadb.r2dbc.api.MariadbResult.class)
-        .doOnDiscard(RowPacket.class, RowPacket::release);
+        .cast(org.mariadb.r2dbc.api.MariadbResult.class);
+        //.doOnDiscard(RowPacket.class, r -> RowPacket::release);
   }
 
   protected static void tryNextBinding(
@@ -183,7 +162,7 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
   protected void clearBindings(Iterator<Binding> iterator, AtomicBoolean canceled) {
     canceled.set(true);
     while (iterator.hasNext()) {
-      iterator.next();
+      iterator.next().clear();
     }
     this.bindings.forEach(Binding::clear);
   }

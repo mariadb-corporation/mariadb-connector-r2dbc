@@ -145,6 +145,34 @@ public class ConnectionTest extends BaseConnectionTest {
     Thread.sleep(100);
   }
 
+  private static final String sql;
+
+  static {
+    StringBuilder sb = new StringBuilder("do ?");
+    for (int i = 1; i < 1000; i++) {
+      sb.append(",?");
+    }
+    sql = sb.toString();
+  }
+
+  //    @Test
+  //    void perf() {
+  //      for (int ii = 0; ii < 1000000; ii++) {
+  //        io.r2dbc.spi.Statement statement = sharedConn.createStatement(sql);
+  //        for (int i = 0; i < 1000; i++) statement.bind(i, i);
+  //
+  //        Flux.from(statement.execute()).flatMap(it -> it.getRowsUpdated()).blockLast();
+  //      }
+  //    }
+
+//  @Test
+//  void perf() {
+//    for (int ii = 0; ii < 1000000; ii++) {
+//      io.r2dbc.spi.Statement statement = sharedConn.createStatement("DO 1");
+//      Flux.from(statement.execute()).flatMap(it -> it.getRowsUpdated()).blockLast();
+//    }
+//  }
+
   @Test
   void remoteValidation() {
     sharedConn

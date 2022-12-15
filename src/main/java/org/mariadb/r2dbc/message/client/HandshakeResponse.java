@@ -21,6 +21,7 @@ import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.constants.Capabilities;
+import reactor.core.publisher.Mono;
 
 public final class HandshakeResponse implements ClientMessage {
 
@@ -69,7 +70,7 @@ public final class HandshakeResponse implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
+  public Mono<ByteBuf> encode(Context context, ByteBufAllocator allocator) {
 
     byte exchangeCharset =
         decideLanguage(
@@ -145,7 +146,7 @@ public final class HandshakeResponse implements ClientMessage {
       bufAttributes.release();
     }
 
-    return buf;
+    return Mono.just(buf);
   }
 
   @Override
