@@ -20,7 +20,7 @@ public class MariadbPacketEncoder {
     return msg.encode(context, allocator)
         .map(
             buf -> {
-              CompositeByteBuf out = allocator.compositeDirectBuffer();
+              CompositeByteBuf out = allocator.compositeBuffer();
 
               int initialReaderIndex = buf.readerIndex();
               int packetLength;
@@ -32,7 +32,7 @@ public class MariadbPacketEncoder {
                 header.writeByte(msg.getSequencer().next());
 
                 out.addComponent(true, header);
-                out.addComponent(true, buf.readSlice(packetLength));
+                out.addComponent(true, buf.readRetainedSlice(packetLength));
 
               } while (buf.readableBytes() > 0);
 
@@ -46,6 +46,7 @@ public class MariadbPacketEncoder {
               }
 
               context.saveRedo(msg, buf, initialReaderIndex);
+              buf.release();
               return out;
             });
   }

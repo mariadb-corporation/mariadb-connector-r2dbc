@@ -1,5 +1,7 @@
 package org.mariadb.r2dbc;
 
+import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -123,6 +125,7 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
       ExceptionFactory factory,
       AtomicReference<ServerPrepareResult> prepareResult) {
     return messages
+        .doOnDiscard(ReferenceCounted.class, ReferenceCountUtil::release)
         .windowUntil(it -> it.resultSetEnd())
         .map(
             dataRow ->
@@ -134,8 +137,6 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
                     generatedColumns,
                     client.getVersion().supportReturning(),
                     configuration));
-    //        .cast(org.mariadb.r2dbc.api.MariadbResult.class);
-    // .doOnDiscard(RowPacket.class, r -> RowPacket::release);
   }
 
   protected static void tryNextBinding(

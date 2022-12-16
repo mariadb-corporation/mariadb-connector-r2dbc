@@ -4,6 +4,8 @@
 package org.mariadb.r2dbc;
 
 import io.netty.channel.unix.DomainSocketAddress;
+import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.*;
 import java.net.SocketAddress;
 import java.util.Iterator;
@@ -121,6 +123,7 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
     }
     return client
         .sendCommand(new QueryPacket(sql.toString()), true)
+        .doOnDiscard(ReferenceCounted.class, ReferenceCountUtil::release)
         .windowUntil(it -> it.resultSetEnd())
         .map(
             dataRow ->

@@ -3,6 +3,8 @@
 
 package org.mariadb.r2dbc;
 
+import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -49,6 +51,7 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
     if (configuration.allowMultiQueries()) {
       return this.client
           .sendCommand(new QueryPacket(String.join(";", this.statements)), true)
+          .doOnDiscard(ReferenceCounted.class, ReferenceCountUtil::release)
           .windowUntil(it -> it.resultSetEnd())
           .map(
               dataRow ->

@@ -112,7 +112,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   @Test
   void validateParam() {
     // disabling with maxscale due to MXS-3956
-    // to be re-enable when > 6.1.1
+    // to be re-enabled when > 6.1.1
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     Assertions.assertThrows(
@@ -137,6 +137,10 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   @Test
   void parameterLengthEncoded() {
     Assumptions.assumeTrue(maxAllowedPacket() >= 17 * 1024 * 1024);
+    Assumptions.assumeTrue(
+        !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
+            && !"maxscale".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeTrue(runLongTest());
     char[] arr1024 = new char[1024];
     for (int i = 0; i < arr1024.length; i++) {
@@ -216,6 +220,10 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   @Test
   void parameterLengthEncodedLong() {
     Assumptions.assumeTrue(maxAllowedPacket() >= 20 * 1024 * 1024 + 500);
+    Assumptions.assumeTrue(
+        !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
+            && !"maxscale".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
     // out of memory on travis and 10.1
     Assumptions.assumeFalse(
         "mariadb:10.1".equals(System.getenv("DB")) || "mysql:5.6".equals(System.getenv("DB")));
