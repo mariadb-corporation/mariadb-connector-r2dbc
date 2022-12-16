@@ -14,7 +14,7 @@ public class Exchange {
   private final FluxSink<ServerMessage> sink;
   private final DecoderState initialState;
   private final String sql;
-  private final long demand = 0L;
+  private volatile long demand = 0L;
 
   public Exchange(FluxSink<ServerMessage> sink, DecoderState initialState) {
     this.sink = sink;

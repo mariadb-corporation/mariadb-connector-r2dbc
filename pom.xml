@@ -24,10 +24,10 @@
     <junit.version>5.9.1</junit.version>
     <jmh.version>1.36</jmh.version>
     <logback.version>1.2.10</logback.version>
-    <netty.version>4.1.85.Final</netty.version>
+    <netty.version>4.1.86.Final</netty.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <r2dbc-spi.version>1.0.0.RELEASE</r2dbc-spi.version>
-    <reactor.version>2022.0.0</reactor.version>
+    <reactor.version>2022.0.1</reactor.version>
     <mariadb-jdbc.version>3.0.9</mariadb-jdbc.version>
     <uberjar.name>benchmarks</uberjar.name>
   </properties>
