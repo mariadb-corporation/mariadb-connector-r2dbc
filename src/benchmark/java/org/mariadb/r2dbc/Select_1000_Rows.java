@@ -30,7 +30,7 @@ public class Select_1000_Rows extends Common {
   }
 
     private Integer consumePrepare(MariadbConnection connection, Blackhole blackhole) {
-        return connection.createStatement(sql + "WHERE 1 = ?").bind(0,1).execute()
+        return connection.createStatement(sql + " WHERE 1 = ?").bind(0,1).execute()
                 .flatMap(it -> it.map((row, rowMetadata) -> {
                     Integer i = row.get(0, Integer.class);
                     row.get(1, String.class);

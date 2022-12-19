@@ -7,7 +7,6 @@ import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.*;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -76,11 +75,14 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
                 if (!eof.ending()) {
                   rowConstructor.set(
                       protocol == Protocol.TEXT ? MariadbRowText::new : MariadbRowBinary::new);
-                  meta.set(new MariadbRowMetadata(columns));
+                  ColumnDefinitionPacket[] columnsArray =
+                      columns.toArray(new ColumnDefinitionPacket[0]);
+
+                  meta.set(new MariadbRowMetadata(columnsArray));
 
                   // in case metadata follows and prepared statement, update meta
                   if (prepareResult != null && prepareResult.get() != null && metaFollows.get()) {
-                    prepareResult.get().setColumns(columns.toArray(new ColumnDefinitionPacket[0]));
+                    prepareResult.get().setColumns(columnsArray);
                   }
 
                   isOutputParameter.set(
@@ -100,8 +102,9 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
                   String colName = generatedColumns.length > 0 ? generatedColumns[0] : "ID";
                   MariadbRowMetadata tmpMeta =
                       new MariadbRowMetadata(
-                          Collections.singletonList(
-                              ColumnDefinitionPacket.fromGeneratedId(colName, conf)));
+                          new ColumnDefinitionPacket[] {
+                            ColumnDefinitionPacket.fromGeneratedId(colName, conf)
+                          });
                   if (((OkPacket) message).value() > 1) {
                     sink.error(
                         factory.createException(

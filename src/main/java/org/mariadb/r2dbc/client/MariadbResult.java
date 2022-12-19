@@ -10,7 +10,6 @@ import io.r2dbc.spi.RowMetadata;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -148,8 +147,9 @@ public class MariadbResult extends AbstractReferenceCounted
               String colName = generatedColumns.length > 0 ? generatedColumns[0] : "ID";
               MariadbRowMetadata tmpMeta =
                   new MariadbRowMetadata(
-                      Collections.singletonList(
-                          ColumnDefinitionPacket.fromGeneratedId(colName, conf)));
+                      new ColumnDefinitionPacket[] {
+                        ColumnDefinitionPacket.fromGeneratedId(colName, conf)
+                      });
               if (okPacket.value() > 1) {
                 sink.error(
                     this.factory.createException(
@@ -178,11 +178,14 @@ public class MariadbResult extends AbstractReferenceCounted
 
               rowConstructor.set(
                   protocol == Protocol.TEXT ? MariadbRowText::new : MariadbRowBinary::new);
-              meta.set(new MariadbRowMetadata(columns));
+              ColumnDefinitionPacket[] columnsArray =
+                  columns.toArray(new ColumnDefinitionPacket[0]);
+
+              meta.set(new MariadbRowMetadata(columnsArray));
 
               // in case metadata follows and prepared statement, update meta
               if (prepareResult != null && prepareResult.get() != null && metaFollows.get()) {
-                prepareResult.get().setColumns(columns.toArray(new ColumnDefinitionPacket[0]));
+                prepareResult.get().setColumns(columnsArray);
               }
             }
             return;

@@ -10,35 +10,35 @@ import org.mariadb.r2dbc.util.Assert;
 
 public final class MariadbRowMetadata implements RowMetadata {
 
-  private final List<ColumnDefinitionPacket> metadataList;
+  private final ColumnDefinitionPacket[] metadataList;
   private volatile Collection<String> columnNames;
   private Map<String, Integer> mapper = null;
 
-  public MariadbRowMetadata(List<ColumnDefinitionPacket> metadataList) {
+  public MariadbRowMetadata(ColumnDefinitionPacket[] metadataList) {
     this.metadataList = metadataList;
   }
 
   @Override
   public ColumnDefinitionPacket getColumnMetadata(int index) {
-    if (index < 0 || index >= this.metadataList.size()) {
+    if (index < 0 || index >= this.metadataList.length) {
       throw new IndexOutOfBoundsException(
           String.format(
-              "Column index %d is not in permit range[0,%s]", index, this.metadataList.size() - 1));
+              "Column index %d is not in permit range[0,%s]", index, this.metadataList.length - 1));
     }
-    return this.metadataList.get(index);
+    return this.metadataList[index];
   }
 
   @Override
   public ColumnDefinitionPacket getColumnMetadata(String name) {
-    return metadataList.get(getIndex(name));
+    return metadataList[getIndex(name)];
   }
 
   @Override
   public List<ColumnDefinitionPacket> getColumnMetadatas() {
-    return Collections.unmodifiableList(this.metadataList);
+    return Arrays.asList(this.metadataList);
   }
 
-  private Collection<String> getColumnNames(List<ColumnDefinitionPacket> columnMetadatas) {
+  private Collection<String> getColumnNames(ColumnDefinitionPacket[] columnMetadatas) {
     List<String> columnNames = new ArrayList<>();
     for (ColumnDefinitionPacket columnMetadata : columnMetadatas) {
       columnNames.add(columnMetadata.getName());
@@ -63,11 +63,11 @@ public final class MariadbRowMetadata implements RowMetadata {
   }
 
   public int size() {
-    return this.metadataList.size();
+    return this.metadataList.length;
   }
 
   ColumnDefinitionPacket get(int index) {
-    return this.metadataList.get(index);
+    return this.metadataList[index];
   }
 
   int getIndex(String name) throws NoSuchElementException {
@@ -75,8 +75,8 @@ public final class MariadbRowMetadata implements RowMetadata {
 
     if (mapper == null) {
       Map<String, Integer> tmpmapper = new HashMap<>();
-      for (int i = 0; i < metadataList.size(); i++) {
-        ColumnDefinitionPacket ci = metadataList.get(i);
+      for (int i = 0; i < metadataList.length; i++) {
+        ColumnDefinitionPacket ci = metadataList[i];
         String columnAlias = ci.getName();
         if (columnAlias == null || columnAlias.isEmpty()) {
           String columnName = ci.getColumn();

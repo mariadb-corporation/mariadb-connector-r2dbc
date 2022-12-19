@@ -53,9 +53,15 @@ public class MariadbRowBinary extends MariadbRow implements org.mariadb.r2dbc.ap
       return null;
     }
 
+    Codec<T> defaultCodec;
     // type generic, return "natural" java type
     if (Object.class == type || type == null) {
-      Codec<T> defaultCodec = ((Codec<T>) column.getType().getDefaultCodec());
+      defaultCodec = ((Codec<T>) column.getType().getDefaultCodec());
+      return defaultCodec.decodeBinary(buf, length, column, type, factory);
+    }
+
+    // fast path checking default codec
+    if ((defaultCodec = (Codec<T>) Codecs.typeMapper.get(type)) != null && defaultCodec.canDecode(column, type)) {
       return defaultCodec.decodeBinary(buf, length, column, type, factory);
     }
 

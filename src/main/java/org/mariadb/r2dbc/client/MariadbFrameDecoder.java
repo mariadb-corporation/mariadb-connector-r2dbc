@@ -100,14 +100,6 @@ public class MariadbFrameDecoder extends ByteToMessageDecoder {
     Exchange exchange = this.exchangeQueue.peek();
     if (state == null)
       state = exchange == null ? DecoderState.QUERY_RESPONSE : exchange.getInitialState();
-    //    System.out.println("DECODE ! state init:" + state);
-    //    byte[] b = new byte[packet.readableBytes()];
-    //    ByteBuf bb = packet.readSlice(b.length);
-    //    packet.readBytes(bb);
-    //
-    //    packet.readerIndex(packet.readerIndex() - b.length);
-    //    System.out.println(LoggerHelper.hex(b, 0, b.length));
-
     state = state.decoder(packet.getUnsignedByte(packet.readerIndex()), packet.readableBytes());
     ServerMessage msg = state.decode(packet, sequencer, this);
     state = msg.ending() ? null : state.next(this);

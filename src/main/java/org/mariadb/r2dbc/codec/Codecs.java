@@ -18,6 +18,7 @@ import java.time.LocalTime;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.mariadb.r2dbc.codec.list.*;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.BindValue;
@@ -26,6 +27,7 @@ public final class Codecs {
 
   private static final Map<R2dbcType, Codec<?>> r2dbcTypeMapper = r2dbcTypeToDataTypeMap();
   private static final Map<Class<?>, Codec<?>> codecMapper = classToCodecMap();
+  public static final Map<Object, Codec<?>> typeMapper = typeToCodec();
 
   public static final Codec<?>[] LIST =
       new Codec<?>[] {
@@ -92,6 +94,31 @@ public final class Codecs {
     Codec<?> codec = r2dbcTypeMapper.get(type);
     if (codec != null) return codec;
     return StringCodec.INSTANCE;
+  }
+
+  private static Map<Object, Codec<?>> typeToCodec() {
+    Map<Object, Codec<?>> myMap = new HashMap<>();
+    myMap.put(BigDecimal.class, BigDecimalCodec.INSTANCE);
+    myMap.put(BigInteger.class, BigIntegerCodec.INSTANCE);
+    myMap.put(BitSet.class, BitSetCodec.INSTANCE);
+    myMap.put(Blob.class, BlobCodec.INSTANCE);
+    myMap.put(Boolean.class, BooleanCodec.INSTANCE);
+    myMap.put(byte[].class, ByteArrayCodec.INSTANCE);
+    myMap.put(ByteBuffer.class, ByteBufferCodec.INSTANCE);
+    myMap.put(Byte.class, ByteCodec.INSTANCE);
+    myMap.put(Clob.class, ClobCodec.INSTANCE);
+    myMap.put(Double.class, DoubleCodec.INSTANCE);
+    myMap.put(Duration.class, DurationCodec.INSTANCE);
+    myMap.put(Float.class, FloatCodec.INSTANCE);
+    myMap.put(Integer.class, IntCodec.INSTANCE);
+    myMap.put(LocalDate.class, LocalDateCodec.INSTANCE);
+    myMap.put(LocalDateTime.class, LocalDateTimeCodec.INSTANCE);
+    myMap.put(LocalTime.class, LocalTimeCodec.INSTANCE);
+    myMap.put(Long.class, LongCodec.INSTANCE);
+    myMap.put(Short.class, ShortCodec.INSTANCE);
+    myMap.put(Stream.class, StreamCodec.INSTANCE);
+    myMap.put(String.class, StringCodec.INSTANCE);
+    return myMap;
   }
 
   private static Map<R2dbcType, Codec<?>> r2dbcTypeToDataTypeMap() {

@@ -38,9 +38,15 @@ public class MariadbRowText extends MariadbRow implements org.mariadb.r2dbc.api.
       return null;
     }
 
+    Codec<T> defaultCodec;
     // type generic, return "natural" java type
     if (Object.class == type || type == null) {
-      Codec<T> defaultCodec = ((Codec<T>) column.getType().getDefaultCodec());
+      defaultCodec = ((Codec<T>) column.getType().getDefaultCodec());
+      return defaultCodec.decodeText(buf, length, column, type, factory);
+    }
+
+    // fast path checking default codec
+    if ((defaultCodec = (Codec<T>) Codecs.typeMapper.get(type)) != null && defaultCodec.canDecode(column, type)) {
       return defaultCodec.decodeText(buf, length, column, type, factory);
     }
 
