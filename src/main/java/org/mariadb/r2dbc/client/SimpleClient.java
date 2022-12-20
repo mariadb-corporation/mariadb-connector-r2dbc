@@ -685,6 +685,10 @@ public class SimpleClient implements Client {
         this.receiverQueue.poll().release();
       }
     }
+
+    public boolean isClose() {
+      return close;
+    }
   }
 
   public void sendCommandWithoutResult(ClientMessage message) {
@@ -709,7 +713,7 @@ public class SimpleClient implements Client {
       ClientMessage message, DecoderState initialState, String sql, boolean canSafelyBeReExecuted) {
     return Flux.create(
         sink -> {
-          if (!isConnected()) {
+          if (!isConnected() || messageSubscriber.isClose()) {
             sink.error(
                 new R2dbcNonTransientResourceException(
                     "Connection is close. Cannot send anything"));
@@ -759,7 +763,7 @@ public class SimpleClient implements Client {
       PreparePacket preparePacket, ExecutePacket executePacket, boolean canSafelyBeReExecuted) {
     return Flux.create(
         sink -> {
-          if (!isConnected()) {
+          if (!isConnected() || messageSubscriber.isClose()) {
             sink.error(
                 new R2dbcNonTransientResourceException(
                     "Connection is close. Cannot send anything"));

@@ -46,7 +46,11 @@ public class MariadbRowText extends MariadbRow implements org.mariadb.r2dbc.api.
     }
 
     // fast path checking default codec
-    if ((defaultCodec = (Codec<T>) Codecs.typeMapper.get(type)) != null && defaultCodec.canDecode(column, type)) {
+    if ((defaultCodec = (Codec<T>) Codecs.typeMapper.get(type)) != null) {
+      if (!defaultCodec.canDecode(column, type)) {
+        buf.skipBytes(length);
+        throw MariadbRow.noDecoderException(column, type);
+      }
       return defaultCodec.decodeText(buf, length, column, type, factory);
     }
 
@@ -57,7 +61,6 @@ public class MariadbRowText extends MariadbRow implements org.mariadb.r2dbc.api.
     }
 
     buf.skipBytes(length);
-
     throw MariadbRow.noDecoderException(column, type);
   }
 
