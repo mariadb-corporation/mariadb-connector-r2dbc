@@ -82,7 +82,7 @@ public class MariadbFrameDecoder extends ByteToMessageDecoder {
         // add data
         multipart.addComponent(true, buf.readRetainedSlice(length));
         out.add(decode(multipart));
-        //        multipart.release();
+        multipart.release();
         multipart = null;
         continue;
       }
