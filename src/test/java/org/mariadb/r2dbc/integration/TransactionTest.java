@@ -42,7 +42,6 @@ public class TransactionTest extends BaseConnectionTest {
   @Test
   void commit() {
     MariadbConnection conn = factory.create().block();
-
     conn.beginTransaction()
         .thenMany(conn.createStatement(insertCmd).execute())
         .concatWith(Flux.from(conn.commitTransaction()).then(Mono.empty()))
@@ -64,15 +63,19 @@ public class TransactionTest extends BaseConnectionTest {
   @Test
   void commitWithoutTransaction() {
     // must issue no commit command
-    sharedConn.commitTransaction().thenMany(sharedConn.commitTransaction()).blockLast();
-    sharedConn.commitTransaction().block();
+    MariadbConnection conn = factory.create().block();
+    conn.commitTransaction().thenMany(conn.commitTransaction()).blockLast();
+    conn.commitTransaction().block();
+    conn.close().block();
   }
 
   @Test
   void rollbackWithoutTransaction() {
     // must issue no commit command
-    sharedConn.rollbackTransaction().thenMany(sharedConn.rollbackTransaction()).blockLast();
-    sharedConn.rollbackTransaction().block();
+    MariadbConnection conn = factory.create().block();
+    conn.rollbackTransaction().thenMany(conn.rollbackTransaction()).blockLast();
+    conn.rollbackTransaction().block();
+    conn.close().block();
   }
 
   @Test
@@ -87,7 +90,6 @@ public class TransactionTest extends BaseConnectionTest {
   @Test
   void rollback() {
     MariadbConnection conn = factory.create().block();
-
     conn.beginTransaction()
         .thenMany(conn.createStatement(insertCmd).execute())
         .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
@@ -100,7 +102,6 @@ public class TransactionTest extends BaseConnectionTest {
   @Test
   void rollbackPipelining() {
     MariadbConnection conn = factory.create().block();
-
     conn.beginTransaction()
         .thenMany(conn.createStatement(insertCmd).execute())
         .concatWith(Flux.from(conn.rollbackTransaction()).then(Mono.empty()))

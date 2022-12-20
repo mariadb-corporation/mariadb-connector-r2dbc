@@ -256,7 +256,7 @@ public class ResultsetTest extends BaseConnectionTest {
     Random random = new Random();
 
     for (int i = 0; i < len; i++) {
-      sb.appendCodePoint(leftLimit + random.nextInt(rightLimit - leftLimit));
+      sb.append((char) (leftLimit + random.nextInt(rightLimit - leftLimit)));
     }
     return sb.toString();
   }
