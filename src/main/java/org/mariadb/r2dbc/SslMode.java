@@ -15,7 +15,10 @@ public enum SslMode {
   VERIFY_CA("verify-ca", new String[] {"VERIFY_CA", "ENABLE_WITHOUT_HOSTNAME_VERIFICATION"}),
 
   // Standard SSL use: Encryption, certificate validation and hostname validation
-  VERIFY_FULL("verify-full", new String[] {"VERIFY_IDENTITY", "1", "true", "enable"});
+  VERIFY_FULL("verify-full", new String[] {"VERIFY_IDENTITY", "1", "true", "enable"}),
+
+  // Connect over a pre-created SSL tunnel
+  TUNNEL("tunnel", new String[]{"TUNNEL"});
 
   private final String value;
   private final String[] aliases;

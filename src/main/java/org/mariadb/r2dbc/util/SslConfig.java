@@ -9,6 +9,7 @@ import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.io.*;
 import java.util.List;
+import java.util.function.UnaryOperator;
 import javax.net.ssl.SSLException;
 import org.mariadb.r2dbc.SslMode;
 
@@ -23,6 +24,7 @@ public class SslConfig {
   private CharSequence clientSslPassword;
   private List<String> tlsProtocol;
   private SslContextBuilder sslContextBuilder;
+  private UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer;
 
   public SslConfig(
       SslMode sslMode,
@@ -30,14 +32,16 @@ public class SslConfig {
       String clientSslCert,
       String clientSslKey,
       CharSequence clientSslPassword,
-      List<String> tlsProtocol)
+      List<String> tlsProtocol,
+      UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer)
       throws R2dbcTransientResourceException {
     this.sslMode = sslMode;
     this.serverSslCert = serverSslCert;
-    this.tlsProtocol = tlsProtocol;
     this.clientSslCert = clientSslCert;
+    this.tlsProtocol = tlsProtocol;
     this.clientSslKey = clientSslKey;
     this.clientSslPassword = clientSslPassword;
+    this.sslContextBuilderCustomizer = sslContextBuilderCustomizer;
     if (sslMode != SslMode.DISABLE) {
       this.sslContextBuilder = getSslContextBuilder();
     }
@@ -54,7 +58,7 @@ public class SslConfig {
   private SslContextBuilder getSslContextBuilder() throws R2dbcTransientResourceException {
     final SslContextBuilder sslCtxBuilder = SslContextBuilder.forClient();
 
-    if (sslMode == SslMode.TRUST) {
+    if (sslMode == SslMode.TRUST || sslMode == SslMode.TUNNEL) {
       sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE);
     } else {
 
@@ -123,7 +127,11 @@ public class SslConfig {
     if (tlsProtocol != null) {
       sslCtxBuilder.protocols(tlsProtocol.toArray(new String[tlsProtocol.size()]));
     }
-    return sslCtxBuilder;
+
+    if (sslContextBuilderCustomizer == null) {
+      return sslCtxBuilder;
+    }
+    return sslContextBuilderCustomizer.apply(sslCtxBuilder);
   }
 
   public SslContext getSslContext() throws R2dbcTransientResourceException, SSLException {

@@ -5,9 +5,11 @@ package org.mariadb.r2dbc;
 
 import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
 
+import io.netty.handler.ssl.SslContextBuilder;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryProvider;
 import io.r2dbc.spi.Option;
+import java.util.function.UnaryOperator;
 import org.mariadb.r2dbc.util.Assert;
 import reactor.netty.resources.LoopResources;
 
@@ -36,6 +38,8 @@ public final class MariadbConnectionFactoryProvider implements ConnectionFactory
   public static final Option<Boolean> TCP_ABORTIVE_CLOSE = Option.valueOf("tcpAbortiveClose");
   public static final Option<String> SESSION_VARIABLES = Option.valueOf("sessionVariables");
   public static final Option<LoopResources> LOOP_RESOURCES = Option.valueOf("loopResources");
+  public static final Option<UnaryOperator<SslContextBuilder>>
+      SSL_CONTEXT_BUILDER_CUSTOMIZER = Option.valueOf("sslContextBuilderCustomizer");
 
   static MariadbConnectionConfiguration createConfiguration(
       ConnectionFactoryOptions connectionFactoryOptions) {

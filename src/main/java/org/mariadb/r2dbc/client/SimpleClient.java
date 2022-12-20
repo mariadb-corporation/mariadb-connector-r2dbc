@@ -10,6 +10,8 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
@@ -22,6 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLParameters;
 import org.mariadb.r2dbc.*;
@@ -95,6 +98,27 @@ public class SimpleClient implements Client {
     this.byteBufAllocator = connection.outbound().alloc();
     this.messageSubscriber = new ServerMessageSubscriber(this.lock, exchangeQueue, receiverQueue);
     connection.addHandlerFirst(this.decoder);
+
+    if (configuration.getSslConfig().getSslMode() == SslMode.TUNNEL) {
+      SSLEngine engine;
+      try {
+        SslContext sslContext = configuration.getSslConfig().getSslContext();
+        if (hostAddress != null) {
+          engine = sslContext.newEngine(
+              connection.channel().alloc(),
+              hostAddress.getHost(),
+              hostAddress.getPort());
+          SSLParameters sslParameters = engine.getSSLParameters();
+          sslParameters.setEndpointIdentificationAlgorithm("HTTPS");
+          engine.setSSLParameters(sslParameters);
+        } else {
+          engine = sslContext.newEngine(connection.channel().alloc());
+        }
+        connection.addHandlerFirst(new SslHandler(engine));
+      } catch (SSLException e) {
+        handleConnectionError(e);
+      }
+    }
 
     if (logger.isTraceEnabled()) {
       connection.addHandlerFirst(
