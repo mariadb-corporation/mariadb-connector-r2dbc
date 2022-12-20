@@ -38,8 +38,8 @@ public final class MariadbConnectionFactoryProvider implements ConnectionFactory
   public static final Option<Boolean> TCP_ABORTIVE_CLOSE = Option.valueOf("tcpAbortiveClose");
   public static final Option<String> SESSION_VARIABLES = Option.valueOf("sessionVariables");
   public static final Option<LoopResources> LOOP_RESOURCES = Option.valueOf("loopResources");
-  public static final Option<UnaryOperator<SslContextBuilder>>
-      SSL_CONTEXT_BUILDER_CUSTOMIZER = Option.valueOf("sslContextBuilderCustomizer");
+  public static final Option<UnaryOperator<SslContextBuilder>> SSL_CONTEXT_BUILDER_CUSTOMIZER =
+      Option.valueOf("sslContextBuilderCustomizer");
 
   static MariadbConnectionConfiguration createConfiguration(
       ConnectionFactoryOptions connectionFactoryOptions) {

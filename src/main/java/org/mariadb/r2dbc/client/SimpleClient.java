@@ -10,8 +10,6 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
-import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GenericFutureListener;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
@@ -104,10 +102,9 @@ public class SimpleClient implements Client {
       try {
         SslContext sslContext = configuration.getSslConfig().getSslContext();
         if (hostAddress != null) {
-          engine = sslContext.newEngine(
-              connection.channel().alloc(),
-              hostAddress.getHost(),
-              hostAddress.getPort());
+          engine =
+              sslContext.newEngine(
+                  connection.channel().alloc(), hostAddress.getHost(), hostAddress.getPort());
           SSLParameters sslParameters = engine.getSSLParameters();
           sslParameters.setEndpointIdentificationAlgorithm("HTTPS");
           engine.setSSLParameters(sslParameters);

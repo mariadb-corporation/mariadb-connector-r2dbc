@@ -163,6 +163,7 @@ public final class MariadbConnectionConfiguration {
     return Integer.parseInt(value.toString());
   }
 
+  @SuppressWarnings("unchecked")
   public static Builder fromOptions(ConnectionFactoryOptions connectionFactoryOptions) {
     Builder builder = new Builder();
     builder.database((String) connectionFactoryOptions.getValue(DATABASE));
@@ -323,12 +324,11 @@ public final class MariadbConnectionConfiguration {
     }
 
     if (connectionFactoryOptions.hasOption(
-        MariadbConnectionFactoryProvider.SSL_CONTEXT_BUILDER_CUSTOMIZER
-    )) {
+        MariadbConnectionFactoryProvider.SSL_CONTEXT_BUILDER_CUSTOMIZER)) {
       builder.sslContextBuilderCustomizer(
           (UnaryOperator<SslContextBuilder>)
-              connectionFactoryOptions
-                  .getValue(MariadbConnectionFactoryProvider.SSL_CONTEXT_BUILDER_CUSTOMIZER));
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.SSL_CONTEXT_BUILDER_CUSTOMIZER));
     }
 
     return builder;

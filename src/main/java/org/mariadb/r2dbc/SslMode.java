@@ -18,7 +18,7 @@ public enum SslMode {
   VERIFY_FULL("verify-full", new String[] {"VERIFY_IDENTITY", "1", "true", "enable"}),
 
   // Connect over a pre-created SSL tunnel
-  TUNNEL("tunnel", new String[]{"TUNNEL"});
+  TUNNEL("tunnel", new String[] {"TUNNEL"});
 
   private final String value;
   private final String[] aliases;
