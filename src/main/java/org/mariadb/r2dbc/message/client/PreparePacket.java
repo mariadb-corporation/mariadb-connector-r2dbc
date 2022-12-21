@@ -11,6 +11,7 @@ import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.MessageSequence;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.Assert;
+import reactor.core.publisher.Mono;
 
 public final class PreparePacket implements ClientMessage {
   private final String sql;
@@ -33,10 +34,10 @@ public final class PreparePacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
+  public Mono<ByteBuf> encode(Context context, ByteBufAllocator allocator) {
     ByteBuf buf = allocator.ioBuffer(this.sql.length() + 1);
     buf.writeByte(0x16);
     buf.writeCharSequence(this.sql, StandardCharsets.UTF_8);
-    return buf;
+    return Mono.just(buf);
   }
 }

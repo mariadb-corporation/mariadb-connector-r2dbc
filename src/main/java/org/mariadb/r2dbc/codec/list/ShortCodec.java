@@ -14,8 +14,6 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BindValue;
-import org.mariadb.r2dbc.util.BufferUtils;
 
 public class ShortCodec implements Codec<Short> {
 
@@ -163,21 +161,14 @@ public class ShortCodec implements Codec<Short> {
   }
 
   @Override
-  public BindValue encodeText(
-      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> BufferUtils.encodeAscii(allocator, Integer.toString((Short) value)));
+  public void encodeDirectText(ByteBuf out, Object value, Context context) {
+    out.writeCharSequence(value.toString(), StandardCharsets.US_ASCII);
   }
 
   @Override
-  public BindValue encodeBinary(
-      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> {
-          ByteBuf buf = allocator.buffer(2, 2);
-          buf.writeShortLE((Short) value);
-          return buf;
-        });
+  public void encodeDirectBinary(
+      ByteBufAllocator allocator, ByteBuf out, Object value, Context context) {
+    out.writeShortLE((Short) value);
   }
 
   public DataType getBinaryEncodeType() {

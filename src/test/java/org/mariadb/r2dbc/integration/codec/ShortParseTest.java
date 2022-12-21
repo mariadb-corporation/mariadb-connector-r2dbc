@@ -19,6 +19,8 @@ import reactor.test.StepVerifier;
 public class ShortParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("CREATE TABLE ShortTable (t1 SMALLINT, t2 SMALLINT ZEROFILL)")
         .execute()
@@ -36,12 +38,13 @@ public class ShortParseTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE ShortTable").execute().blockLast();
-    sharedConn.createStatement("DROP TABLE ShortUnsignedTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS ShortTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS ShortUnsignedTable").execute().blockLast();
   }
 
   @Test

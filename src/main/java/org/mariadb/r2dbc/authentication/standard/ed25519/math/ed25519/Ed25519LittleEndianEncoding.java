@@ -191,14 +191,14 @@ public class Ed25519LittleEndianEncoding extends Encoding {
    */
   public FieldElement decode(byte[] in) {
     long h0 = load_4(in, 0);
-    long h1 = load_3(in, 4) << 6;
-    long h2 = load_3(in, 7) << 5;
-    long h3 = load_3(in, 10) << 3;
-    long h4 = load_3(in, 13) << 2;
+    long h1 = (long) load_3(in, 4) << 6;
+    long h2 = (long) load_3(in, 7) << 5;
+    long h3 = (long) load_3(in, 10) << 3;
+    long h4 = (long) load_3(in, 13) << 2;
     long h5 = load_4(in, 16);
-    long h6 = load_3(in, 20) << 7;
-    long h7 = load_3(in, 23) << 5;
-    long h8 = load_3(in, 26) << 4;
+    long h6 = (long) load_3(in, 20) << 7;
+    long h7 = (long) load_3(in, 23) << 5;
+    long h8 = (long) load_3(in, 26) << 4;
     long h9 = (load_3(in, 29) & 0x7FFFFF) << 2;
     long carry0;
     long carry1;

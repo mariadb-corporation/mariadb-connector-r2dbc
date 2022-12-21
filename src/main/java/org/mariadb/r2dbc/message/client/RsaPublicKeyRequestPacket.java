@@ -8,6 +8,7 @@ import io.netty.buffer.ByteBufAllocator;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.MessageSequence;
+import reactor.core.publisher.Mono;
 
 public final class RsaPublicKeyRequestPacket implements ClientMessage {
 
@@ -18,10 +19,10 @@ public final class RsaPublicKeyRequestPacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
+  public Mono<ByteBuf> encode(Context context, ByteBufAllocator allocator) {
     ByteBuf buf = allocator.ioBuffer(1);
     buf.writeByte(0x01);
-    return buf;
+    return Mono.just(buf);
   }
 
   @Override

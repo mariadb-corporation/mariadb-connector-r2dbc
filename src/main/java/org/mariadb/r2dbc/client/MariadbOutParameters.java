@@ -1,47 +1,66 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2020-2022 MariaDB Corporation Ab
 
-package org.mariadb.r2dbc.codec;
+package org.mariadb.r2dbc.client;
 
 import io.netty.buffer.ByteBuf;
-import java.util.List;
+import io.r2dbc.spi.R2dbcTransientResourceException;
 import org.mariadb.r2dbc.ExceptionFactory;
-import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.codec.Codec;
+import org.mariadb.r2dbc.codec.Codecs;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
+import org.mariadb.r2dbc.util.Assert;
+import reactor.util.annotation.Nullable;
 
-public class BinaryRowDecoder extends RowDecoder {
-
+public class MariadbOutParameters implements org.mariadb.r2dbc.api.MariadbOutParameters {
   private final int columnNumber;
-  private final List<ColumnDefinitionPacket> columns;
   private final byte[] nullBitmap;
+  protected static final int NULL_LENGTH = -1;
+  protected int length;
+  protected int index = -1;
 
-  public BinaryRowDecoder(
-      List<ColumnDefinitionPacket> columns,
-      MariadbConnectionConfiguration conf,
-      ExceptionFactory factory) {
-    super(conf, factory);
-    this.columns = columns;
-    this.columnNumber = columns.size();
+  protected final MariadbOutParametersMetadata meta;
+  protected final ByteBuf buf;
+  protected final ExceptionFactory factory;
+
+  public MariadbOutParameters(
+      ByteBuf buf, MariadbOutParametersMetadata meta, ExceptionFactory factory) {
+    this.buf = buf;
+    this.meta = meta;
+    this.factory = factory;
+    columnNumber = meta.getParameterMetadatas().size();
     nullBitmap = new byte[(columnNumber + 9) / 8];
+    buf.skipBytes(1); // skip 0x00 header
+    buf.readBytes(nullBitmap);
+    buf.markReaderIndex();
   }
 
+  @Nullable
+  @Override
   @SuppressWarnings("unchecked")
-  public <T> T get(int index, ColumnDefinitionPacket column, Class<T> type)
-      throws IllegalArgumentException {
+  public <T> T get(int index, Class<T> type) {
 
     // check NULL-Bitmap that indicate if field is null
     if ((nullBitmap[(index + 2) / 8] & (1 << ((index + 2) % 8))) != 0) {
       if (type != null && type.isPrimitive()) {
-        throw new IllegalArgumentException(
+        throw new R2dbcTransientResourceException(
             String.format("Cannot return null for primitive %s", type.getName()));
       }
       return null;
     }
 
-    setPosition(index);
+    ColumnDefinitionPacket column = meta.getParameterMetadata(index);
+    this.setPosition(index);
+    if (length == NULL_LENGTH) {
+      if (type.isPrimitive()) {
+        throw new R2dbcTransientResourceException(
+            String.format("Cannot return null for primitive %s", type.getName()));
+      }
+      return null;
+    }
 
     // type generic, return "natural" java type
-    if (Object.class == type) {
+    if (Object.class == type || type == null) {
       Codec<T> defaultCodec = ((Codec<T>) column.getType().getDefaultCodec());
       return defaultCodec.decodeBinary(buf, length, column, type, factory);
     }
@@ -54,14 +73,14 @@ public class BinaryRowDecoder extends RowDecoder {
 
     buf.skipBytes(length);
 
-    throw noDecoderException(column, type);
+    throw MariadbRow.noDecoderException(column, type);
   }
 
+  @Nullable
   @Override
-  public void resetRow(ByteBuf buf) {
-    buf.skipBytes(1); // skip 0x00 header
-    buf.readBytes(nullBitmap);
-    super.resetRow(buf);
+  public <T> T get(String name, Class<T> type) {
+    Assert.requireNonNull(name, "name must not be null");
+    return get(this.meta.getIndex(name), type);
   }
 
   /**
@@ -81,7 +100,7 @@ public class BinaryRowDecoder extends RowDecoder {
     for (; index < newIndex; index++) {
       if ((nullBitmap[(index + 2) / 8] & (1 << ((index + 2) % 8))) == 0) {
         // skip bytes
-        switch (columns.get(index).getDataType()) {
+        switch (meta.getParameterMetadata(index).getDataType()) {
           case BIGINT:
           case DOUBLE:
             buf.skipBytes(8);
@@ -130,7 +149,7 @@ public class BinaryRowDecoder extends RowDecoder {
     }
 
     // read asked field position and length
-    switch (columns.get(index).getDataType()) {
+    switch (meta.getParameterMetadata(index).getDataType()) {
       case BIGINT:
       case DOUBLE:
         length = 8;
@@ -171,10 +190,14 @@ public class BinaryRowDecoder extends RowDecoder {
             return;
 
           default:
-            // length is encoded on 1 bytes (is then less than 251)
+            // length is encoded on 1 byte (is then less than 251)
             length = len;
-            return;
         }
     }
+  }
+
+  @Override
+  public MariadbOutParametersMetadata getMetadata() {
+    return meta;
   }
 }

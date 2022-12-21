@@ -4,19 +4,20 @@
 package org.mariadb.r2dbc.util;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import java.util.Objects;
 import org.mariadb.r2dbc.codec.Codec;
+import org.mariadb.r2dbc.message.Context;
 import reactor.core.publisher.Mono;
 
 public class BindValue {
 
-  public static final Mono<? extends ByteBuf> NULL_VALUE = Mono.empty();
   private final Codec<?> codec;
-  private final Mono<? extends ByteBuf> value;
+  private final Object value;
 
-  public BindValue(Codec<?> codec, Mono<? extends ByteBuf> value) {
+  public BindValue(Codec<?> codec, Object value) {
     this.codec = codec;
-    this.value = Assert.requireNonNull(value, "value must not be null");
+    this.value = value;
   }
 
   @Override
@@ -46,10 +47,26 @@ public class BindValue {
   }
 
   public boolean isNull() {
-    return this.value == NULL_VALUE;
+    return this.value == null;
   }
 
-  public Mono<? extends ByteBuf> getValue() {
+  public void encodeDirectText(ByteBuf out, Context context) {
+    this.codec.encodeDirectText(out, this.value, context);
+  }
+
+  public void encodeDirectBinary(ByteBufAllocator allocator, ByteBuf out, Context context) {
+    this.codec.encodeDirectBinary(allocator, out, this.value, context);
+  }
+
+  public Mono<ByteBuf> encodeText(ByteBufAllocator allocator, Context context) {
+    return this.codec.encodeText(allocator, this.value, context);
+  }
+
+  public Mono<ByteBuf> encodeBinary(ByteBufAllocator allocator) {
+    return this.codec.encodeBinary(allocator, this.value);
+  }
+
+  public Object getValue() {
     return this.value;
   }
 }

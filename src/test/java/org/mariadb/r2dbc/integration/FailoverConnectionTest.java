@@ -3,18 +3,22 @@
 
 package org.mariadb.r2dbc.integration;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.r2dbc.spi.*;
+import io.r2dbc.spi.R2dbcTransientResourceException;
+import io.r2dbc.spi.ValidationDepth;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.*;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbStatement;
@@ -26,28 +30,27 @@ public class FailoverConnectionTest extends BaseConnectionTest {
 
   @BeforeAll
   public static void before2() {
-
     sharedConn
-        .createStatement("CREATE TABLE IF NOT EXISTS sequence_1_to_10000 (t1 int)")
+        .createStatement("CREATE TABLE IF NOT EXISTS sequence_0_to_999 (t1 int)")
         .execute()
         .blockLast();
     if (sharedConn
-            .createStatement("SELECT COUNT(*) FROM sequence_1_to_10000")
+            .createStatement("SELECT COUNT(*) FROM sequence_0_to_999")
             .execute()
             .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.class)))
             .blockLast()
-        != 10000) {
-      sharedConn.createStatement("TRUNCATE TABLE sequence_1_to_10000").execute().blockLast();
+        != 1000) {
+      sharedConn.createStatement("TRUNCATE TABLE sequence_0_to_999").execute().blockLast();
       if (isMariaDBServer()) {
         sharedConn
-            .createStatement("INSERT INTO sequence_1_to_10000 SELECT * from seq_1_to_10000")
+            .createStatement("INSERT INTO sequence_0_to_999 SELECT * from seq_0_to_999")
             .execute()
             .blockLast();
       } else {
         MariadbStatement stmt =
-            sharedConn.createStatement("INSERT INTO sequence_1_to_10000 VALUES (?)");
-        stmt.bind(0, 1);
-        for (int i = 2; i <= 10_000; i++) {
+            sharedConn.createStatement("INSERT INTO sequence_0_to_999 VALUES (?)");
+        stmt.bind(0, 0);
+        for (int i = 1; i < 1000; i++) {
           stmt.add();
           stmt.bind(0, i);
         }
@@ -57,7 +60,9 @@ public class FailoverConnectionTest extends BaseConnectionTest {
   }
 
   @Test
+  @Timeout(20)
   void multipleCommandStack() throws Exception {
+    Assumptions.assumeFalse(System.getenv("TRAVIS") != null && isWindows);
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
@@ -67,9 +72,9 @@ public class FailoverConnectionTest extends BaseConnectionTest {
     try {
       connection.createStatement("SET @con=1").execute().blockLast();
       assertTrue(connection.validate(ValidationDepth.REMOTE).block());
-      proxy.restart(11000);
+      proxy.restart(5000);
       Thread.sleep(200);
-      assertFalse(connection.validate(ValidationDepth.REMOTE).block());
+      assertTrue(connection.validate(ValidationDepth.REMOTE).block());
       Thread.sleep(200);
 
       assertTrue(connection.validate(ValidationDepth.REMOTE).block());
@@ -81,7 +86,9 @@ public class FailoverConnectionTest extends BaseConnectionTest {
   }
 
   @Test
+  @Timeout(5)
   void transactionReplayFalse() throws Exception {
+    Assumptions.assumeFalse(System.getenv("TRAVIS") != null && isWindows);
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
@@ -93,13 +100,16 @@ public class FailoverConnectionTest extends BaseConnectionTest {
       connection.beginTransaction().block();
       connection.createStatement("SET @con=1").execute().blockLast();
 
-      proxy.restartForce();
-      try {
-        connection.createStatement("SELECT @con").execute().blockLast();
-        fail();
-      } catch (R2dbcException e) {
-        assertTrue(e.getMessage().contains("In progress transaction was lost"));
-      }
+      proxy.restart();
+      connection
+          .createStatement("SELECT @con")
+          .execute()
+          .as(StepVerifier::create)
+          .expectErrorMatches(
+              throwable ->
+                  throwable instanceof R2dbcTransientResourceException
+                      && throwable.getMessage().contains("In progress transaction was lost"))
+          .verify();
     } finally {
       proxy.forceClose();
       Thread.sleep(50);
@@ -107,7 +117,9 @@ public class FailoverConnectionTest extends BaseConnectionTest {
   }
 
   @Test
+  @Timeout(50)
   void transactionReplayFailingBetweenCmds() throws Exception {
+    Assumptions.assumeFalse(System.getenv("TRAVIS") != null && isWindows);
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
@@ -124,8 +136,6 @@ public class FailoverConnectionTest extends BaseConnectionTest {
 
   private void transactionReplayFailingBetweenCmds(MariadbConnection connection) throws Exception {
     try {
-      connection.setAutoCommit(false).block();
-      connection.beginTransaction().block();
       connection.createStatement("SET @con=1").execute().blockLast();
 
       //      proxy.restartForce();
@@ -158,14 +168,14 @@ public class FailoverConnectionTest extends BaseConnectionTest {
           .execute()
           .blockLast();
 
-      proxy.restartForce();
+      proxy.restart();
 
       connection
           .createStatement("INSERT INTO testReplay VALUE (?)")
           .bind(0, 5)
           .execute()
           .blockLast();
-
+      connection.commitTransaction().block();
       connection
           .createStatement("SELECT id from testReplay")
           .execute()
@@ -178,11 +188,14 @@ public class FailoverConnectionTest extends BaseConnectionTest {
     } finally {
       connection.close().block();
       proxy.forceClose();
+      Thread.sleep(100);
     }
   }
 
   @Test
+  @Timeout(60)
   void transactionReplayFailingDuringCmd() throws Exception {
+    Assumptions.assumeFalse(System.getenv("TRAVIS") != null && isWindows);
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
@@ -191,65 +204,50 @@ public class FailoverConnectionTest extends BaseConnectionTest {
     transactionReplayFailingDuringCmd(
         createFailoverProxyConnection(HaMode.SEQUENTIAL, true, false));
     transactionReplayFailingDuringCmd(createFailoverProxyConnection(HaMode.SEQUENTIAL, true, true));
-    Thread.sleep(50);
   }
 
   private void transactionReplayFailingDuringCmd(MariadbConnection connection) throws Exception {
     connection.setAutoCommit(false).block();
     connection.beginTransaction().block();
 
-    AtomicInteger expectedResult = new AtomicInteger(1);
-    AtomicBoolean endedByError = new AtomicBoolean(false);
+    AtomicInteger expectedResult = new AtomicInteger(0);
     AtomicReference<Throwable> resultingError = new AtomicReference<>();
     connection
-        .createStatement("SELECT * from sequence_1_to_10000")
+        .createStatement(
+            "SELECT * from sequence_0_to_999 as tab1, sequence_0_to_999 tab2 order by tab2.t1 ASC, tab1.t1 ASC")
         .execute()
         .flatMap(
             r ->
                 r.map(
                     (row, metadata) -> {
                       int i = row.get(0, Integer.class);
-                      assertEquals(expectedResult.getAndIncrement(), i);
+                      assertEquals(expectedResult.getAndIncrement() % 1000, i);
                       return i;
                     }))
-        .doOnError(
-            t -> {
-              endedByError.set(true);
-              resultingError.set(t);
-            })
+        .doOnError(t -> resultingError.set(t))
         .subscribe();
 
-    Thread.sleep(10);
-    proxy.restartForce();
+    while (expectedResult.get() == 0) Thread.sleep(0, 10000);
+    proxy.restart();
 
-    ScheduledThreadPoolExecutor waitingExecutor = new ScheduledThreadPoolExecutor(1);
-    Runnable runnable =
-        () -> {
-          while (true) {
-            if (expectedResult.get() >= 10000 || endedByError.get()) {
+    int maxTime = 100;
+    while (maxTime-- > 0) {
+      if (expectedResult.get() >= 1_000_000) break;
+      if (resultingError.get() != null) {
 
-              assertNotNull(resultingError.get());
-              assertTrue(
-                  resultingError
-                          .get()
-                          .getMessage()
-                          .contains(
-                              "Driver has reconnect connection after a communications link failure with")
-                      && resultingError.get().getMessage().contains("during command."));
+        resultingError.get().printStackTrace();
+        assertTrue(
+            resultingError
+                    .get()
+                    .getMessage()
+                    .contains(
+                        "Driver has reconnect connection after a communications link failure with")
+                && resultingError.get().getMessage().contains("during command."));
+        break;
+      }
+      Thread.sleep(100);
+    }
 
-              return;
-            }
-            try {
-              Thread.sleep(250);
-            } catch (Throwable e) {
-            }
-          }
-        };
-
-    waitingExecutor.execute(runnable);
-    waitingExecutor.shutdown();
-    waitingExecutor.awaitTermination(2, TimeUnit.MINUTES);
-    Thread.sleep(100);
     connection.close().block();
     proxy.forceClose();
     Thread.sleep(50);

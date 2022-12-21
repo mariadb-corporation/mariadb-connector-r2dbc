@@ -3,7 +3,8 @@
 
 package org.mariadb.r2dbc.integration;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.r2dbc.spi.ConnectionFactoryMetadata;
 import io.r2dbc.spi.ConnectionMetadata;
@@ -16,7 +17,7 @@ public class ConnectionMetadataTest extends BaseConnectionTest {
   @Test
   void connectionMeta() {
     ConnectionMetadata meta = sharedConn.getMetadata();
-    assertTrue(meta.getDatabaseProductName().equals(isMariaDBServer() ? "MariaDB" : "MySQL"));
+    assertEquals(meta.getDatabaseProductName(), isMariaDBServer() ? "MariaDB" : "MySQL");
     if (isMariaDBServer()) {
       assertTrue(meta.getDatabaseVersion().contains("10."));
     } else {
@@ -25,7 +26,7 @@ public class ConnectionMetadataTest extends BaseConnectionTest {
     }
     String type = System.getenv("srv");
     String version = System.getenv("v");
-    if (type != null && System.getenv("TRAVIS") != null) {
+    if (type != null && version != null && System.getenv("TRAVIS") != null) {
       if ("mariadb".equals(type) || "mysql".equals(type)) {
         assertTrue(
             meta.getDatabaseVersion().contains(version),

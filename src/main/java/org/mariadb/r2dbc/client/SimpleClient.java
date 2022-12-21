@@ -3,26 +3,28 @@
 
 package org.mariadb.r2dbc.client;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
-import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GenericFutureListener;
-import io.r2dbc.spi.*;
+import io.netty.util.ReferenceCountUtil;
+import io.r2dbc.spi.R2dbcException;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.r2dbc.spi.R2dbcTransientResourceException;
+import io.r2dbc.spi.TransactionDefinition;
 import java.net.SocketAddress;
 import java.util.Queue;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.SSLParameters;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
@@ -35,11 +37,11 @@ import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.*;
 import reactor.netty.Connection;
+import reactor.netty.channel.AbortedException;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
 import reactor.util.Logger;
@@ -51,7 +53,7 @@ public class SimpleClient implements Client {
   private static final Logger logger = Loggers.getLogger(SimpleClient.class);
   protected final MariadbConnectionConfiguration configuration;
   private final ServerMessageSubscriber messageSubscriber;
-  private final Sinks.Many<Publisher<ClientMessage>> requestSink =
+  private final Sinks.Many<ClientMessage> requestSink =
       Sinks.many().unicast().onBackpressureBuffer();
   private final Queue<Exchange> exchangeQueue =
       Queues.<Exchange>get(Queues.SMALL_BUFFER_SIZE).get();
@@ -59,7 +61,7 @@ public class SimpleClient implements Client {
       Queues.<ServerMessage>get(Queues.SMALL_BUFFER_SIZE).get();
 
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
-  private final ServerMsgDecoder decoder;
+  private final MariadbFrameDecoder decoder;
   private final MariadbPacketEncoder encoder;
   private final PrepareCache prepareCache;
   private final ByteBufAllocator byteBufAllocator;
@@ -89,12 +91,31 @@ public class SimpleClient implements Client {
         new PrepareCache(
             this.configuration.useServerPrepStmts() ? this.configuration.getPrepareCacheSize() : 0,
             this);
-    this.decoder = new ServerMsgDecoder(this, configuration);
+    this.decoder = new MariadbFrameDecoder(exchangeQueue, this, configuration);
     this.encoder = new MariadbPacketEncoder();
     this.byteBufAllocator = connection.outbound().alloc();
-    this.messageSubscriber =
-        new ServerMessageSubscriber(this.lock, this.isClosed, exchangeQueue, receiverQueue);
-    connection.addHandler(new MariadbFrameDecoder());
+    this.messageSubscriber = new ServerMessageSubscriber(this.lock, exchangeQueue, receiverQueue);
+    connection.addHandlerFirst(this.decoder);
+
+    if (configuration.getSslConfig().getSslMode() == SslMode.TUNNEL) {
+      SSLEngine engine;
+      try {
+        SslContext sslContext = configuration.getSslConfig().getSslContext();
+        if (hostAddress != null) {
+          engine =
+              sslContext.newEngine(
+                  connection.channel().alloc(), hostAddress.getHost(), hostAddress.getPort());
+          SSLParameters sslParameters = engine.getSSLParameters();
+          sslParameters.setEndpointIdentificationAlgorithm("HTTPS");
+          engine.setSSLParameters(sslParameters);
+        } else {
+          engine = sslContext.newEngine(connection.channel().alloc());
+        }
+        connection.addHandlerFirst(new SslHandler(engine));
+      } catch (SSLException e) {
+        handleConnectionError(e);
+      }
+    }
 
     if (logger.isTraceEnabled()) {
       connection.addHandlerFirst(
@@ -104,21 +125,18 @@ public class SimpleClient implements Client {
 
     connection
         .inbound()
-        .receive()
-        .doOnError(this::handleConnectionError)
-        .doOnComplete(this::handleConnectionEnd)
+        .receiveObject()
+        .cast(ServerMessage.class)
+        .onErrorResume(this::receiveResumeError)
         .subscribe(messageSubscriber);
 
-    Mono<Void> request =
-        this.requestSink
-            .asFlux()
-            .concatMap(Function.identity())
-            .cast(ClientMessage.class)
-            .map(encoder::encodeFlux)
-            .flatMap(b -> connection.outbound().send(Mono.just(b)), 1)
-            .then();
-
-    request.doAfterTerminate(this::handleConnectionEnd).subscribe();
+    this.requestSink
+        .asFlux()
+        .map(encoder::encodeFlux)
+        .flatMap(b -> connection.outbound().send(b), 1)
+        .onErrorResume(this::sendResumeError)
+        .doAfterTerminate(this::closeChannelIfNeeded)
+        .subscribe();
   }
 
   public static Mono<SimpleClient> connect(
@@ -156,32 +174,40 @@ public class SimpleClient implements Client {
     return tcpClient;
   }
 
-  private void sendClientMsgs(Publisher<ClientMessage> it) {
-    this.requestSink.emitNext(it, Sinks.EmitFailureHandler.FAIL_FAST);
-  }
-
-  private void handleConnectionError(Throwable throwable) {
-    if (closeChannelIfNeeded()) {
-      logger.error("Connection unexpected error", throwable);
-      messageSubscriber.endExchanges(
+  public void handleConnectionError(Throwable throwable) {
+    if (AbortedException.isConnectionReset(throwable) && !isConnected()) {
+      this.messageSubscriber.close(
           new R2dbcNonTransientResourceException(
-              "Connection unexpected error", "08000", throwable));
+              "Cannot execute command since connection is already closed", "08000", throwable));
     } else {
-      logger.error("Connection error", throwable);
-      messageSubscriber.endExchanges(
-          new R2dbcNonTransientResourceException("Connection error", "08000", throwable));
+      R2dbcNonTransientResourceException error;
+      if (throwable instanceof SSLHandshakeException) {
+        error = new R2dbcNonTransientResourceException(throwable.getMessage(), "08000", throwable);
+      } else {
+        error = new R2dbcNonTransientResourceException("Connection error", "08000", throwable);
+      }
+      this.messageSubscriber.close(error);
+      closeChannelIfNeeded();
     }
   }
 
-  private void handleConnectionEnd() {
-    messageSubscriber.endExchanges(
-        new R2dbcNonTransientResourceException(
-            "Connection " + (closeChannelIfNeeded() ? "unexpectedly " : "") + "closed", "08000"));
+  private Mono<Void> sendResumeError(Throwable throwable) {
+
+    handleConnectionError(throwable);
+    this.requestSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
+    return quitOrClose();
   }
 
-  private boolean closeChannelIfNeeded() {
+  private Mono<ServerMessage> receiveResumeError(Throwable throwable) {
+    Mono<ServerMessage> empty = Mono.empty();
+    return sendResumeError(throwable).then(empty);
+  }
+
+  public boolean closeChannelIfNeeded() {
     if (this.isClosed.compareAndSet(false, true)) {
       Channel channel = this.connection.channel();
+      messageSubscriber.close(
+          new R2dbcNonTransientResourceException("Connection unexpectedly closed", "08000"));
       if (channel.isOpen()) {
         this.connection.dispose();
       }
@@ -192,19 +218,31 @@ public class SimpleClient implements Client {
 
   @Override
   public Mono<Void> close() {
-    closeRequested = true;
+    this.closeRequested = true;
+    return quitOrClose();
+  }
+
+  private Mono<Void> quitOrClose() {
     return Mono.defer(
         () -> {
-          if (this.isClosed.compareAndSet(false, true)) {
+          // expect message subscriber to be closed already
+          this.messageSubscriber.close(
+              new R2dbcNonTransientResourceException(
+                  closeRequested ? "Connection has been closed" : "Connection closed", "08000"));
 
+          if (this.isClosed.compareAndSet(false, true)) {
             Channel channel = this.connection.channel();
-            if (!channel.isOpen()) {
+            if (channel.isOpen()) {
               this.connection.dispose();
               return this.connection.onDispose();
             }
 
             return Flux.just(QuitPacket.INSTANCE)
-                .doOnNext(message -> connection.channel().writeAndFlush(message))
+                .doOnNext(
+                    message ->
+                        connection
+                            .channel()
+                            .writeAndFlush(message.encode(context, context.getByteBufAllocator())))
                 .then()
                 .doOnSuccess(v -> this.connection.dispose())
                 .then(this.connection.onDispose());
@@ -217,33 +255,35 @@ public class SimpleClient implements Client {
   @Override
   public Mono<Void> sendSslRequest(
       SslRequestPacket sslRequest, MariadbConnectionConfiguration configuration) {
-    CompletableFuture<Void> result = new CompletableFuture<>();
     try {
-      SSLEngine engine =
-          configuration.getSslConfig().getSslContext().newEngine(connection.channel().alloc());
-      final SslHandler sslHandler = new SslHandler(engine);
+      SslContext sslContext = configuration.getSslConfig().getSslContext();
 
-      final GenericFutureListener<Future<? super Channel>> listener =
-          configuration
-              .getSslConfig()
-              .getHostNameVerifier(
-                  result,
-                  this.hostAddress == null ? null : this.hostAddress.getHost(),
-                  context.getThreadId(),
-                  engine);
+      SslHandler sslHandler;
+      if (this.hostAddress != null) {
+        sslHandler =
+            sslContext.newHandler(
+                connection.channel().alloc(),
+                this.hostAddress.getHost(),
+                this.hostAddress.getPort());
+        if (configuration.getSslConfig().getSslMode() == SslMode.VERIFY_FULL) {
+          SSLEngine sslEngine = sslHandler.engine();
+          SSLParameters sslParameters = sslEngine.getSSLParameters();
+          sslParameters.setEndpointIdentificationAlgorithm("HTTPS");
+          sslEngine.setSSLParameters(sslParameters);
+        }
+      } else {
+        sslHandler = sslContext.newHandler(connection.channel().alloc());
+      }
 
-      sslHandler.handshakeFuture().addListener(listener);
       // send SSL request in clear
-      this.sendClientMsgs(Mono.just(sslRequest));
-
+      this.requestSink.emitNext(sslRequest, Sinks.EmitFailureHandler.FAIL_FAST);
       // add SSL handler
       connection.addHandlerFirst(sslHandler);
-      return Mono.fromFuture(result);
-
-    } catch (SSLException | R2dbcTransientResourceException e) {
-      result.completeExceptionally(e);
-      return Mono.fromFuture(result);
+    } catch (Throwable e) {
+      this.closeChannelIfNeeded();
+      return Mono.error(e);
     }
+    return Mono.empty();
   }
 
   private Flux<ServerMessage> execute(Consumer<FluxSink<ServerMessage>> s) {
@@ -283,7 +323,8 @@ public class SimpleClient implements Client {
                     || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
                   Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, "BEGIN");
                   if (this.exchangeQueue.offer(exchange)) {
-                    sendClientMsgs(Mono.just(new QueryPacket("BEGIN")));
+                    this.requestSink.emitNext(
+                        new QueryPacket("BEGIN"), Sinks.EmitFailureHandler.FAIL_FAST);
                     sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
                   } else {
                     sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
@@ -329,7 +370,8 @@ public class SimpleClient implements Client {
                     || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
                   Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
                   if (this.exchangeQueue.offer(exchange)) {
-                    sendClientMsgs(Mono.just(new QueryPacket(sql)));
+                    this.requestSink.emitNext(
+                        new QueryPacket(sql), Sinks.EmitFailureHandler.FAIL_FAST);
                     sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
                   } else {
                     sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
@@ -369,7 +411,7 @@ public class SimpleClient implements Client {
         Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
         if (this.exchangeQueue.offer(exchange)) {
           sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
-          sendClientMsgs(Mono.just(new QueryPacket(sql)));
+          this.requestSink.emitNext(new QueryPacket(sql), Sinks.EmitFailureHandler.FAIL_FAST);
         } else {
           sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
         }
@@ -435,7 +477,8 @@ public class SimpleClient implements Client {
                     Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
                     if (this.exchangeQueue.offer(exchange)) {
                       sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
-                      sendClientMsgs(Mono.just(new QueryPacket(sql)));
+                      this.requestSink.emitNext(
+                          new QueryPacket(sql), Sinks.EmitFailureHandler.FAIL_FAST);
                     } else {
                       sink.error(
                           new R2dbcTransientResourceException("Request queue limit reached"));
@@ -543,21 +586,17 @@ public class SimpleClient implements Client {
     return this.closeRequested;
   }
 
-  protected class ServerMessageSubscriber implements CoreSubscriber<ByteBuf> {
+  protected class ServerMessageSubscriber implements CoreSubscriber<ServerMessage> {
     private Subscription upstream;
-    private AtomicBoolean close;
+    private volatile boolean close;
     private final AtomicLong receiverDemands = new AtomicLong(0);
     private final ReentrantLock lock;
     private final Queue<Exchange> exchangeQueue;
     private final Queue<ServerMessage> receiverQueue;
 
     public ServerMessageSubscriber(
-        ReentrantLock lock,
-        AtomicBoolean close,
-        Queue<Exchange> exchangeQueue,
-        Queue<ServerMessage> receiverQueue) {
+        ReentrantLock lock, Queue<Exchange> exchangeQueue, Queue<ServerMessage> receiverQueue) {
       this.lock = lock;
-      this.close = close;
       this.receiverQueue = receiverQueue;
       this.exchangeQueue = exchangeQueue;
     }
@@ -567,31 +606,52 @@ public class SimpleClient implements Client {
       this.upstream = subscription;
     }
 
-    public void onError(Throwable t) {}
+    public void onError(Throwable t) {
+      t.printStackTrace();
+      if (this.close) {
+        Operators.onErrorDropped(t, currentContext());
+        return;
+      }
+      requestSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
+      SimpleClient.this.handleConnectionError(t);
 
-    public void onComplete() {}
+      // is really needed ?
+      SimpleClient.this.quitOrClose().subscribe();
+    }
 
     @Override
-    public void onNext(ByteBuf message) {
-      if (this.close.get()) {
-        message.release();
+    public void onComplete() {
+      close(
+          new R2dbcNonTransientResourceException(
+              String.format(
+                  "Connection %s",
+                  SimpleClient.this.closeChannelIfNeeded() ? "unexpected error" : "error"),
+              "08000"));
+      SimpleClient.this.quitOrClose().subscribe();
+    }
+
+    @Override
+    public void onNext(ServerMessage message) {
+      if (this.close) {
         Operators.onNextDropped(message, currentContext());
         return;
       }
 
       this.receiverDemands.decrementAndGet();
       Exchange exchange = this.exchangeQueue.peek();
-      ServerMessage srvMsg = decoder.decode(message, exchange);
 
+      // nothing buffered => directly emit message
+      ReferenceCountUtil.retain(message);
       if (this.receiverQueue.isEmpty() && exchange != null && exchange.hasDemand()) {
-        // nothing buffered => directly emit message
-        if (srvMsg.ending()) this.exchangeQueue.poll();
-        exchange.emit(srvMsg);
+        if (exchange.emit(message)) this.exchangeQueue.poll();
+        if (exchange.hasDemand() || exchange.isCancelled()) {
+          requestQueueFilling();
+        }
         return;
       }
 
       // queue message
-      if (!this.receiverQueue.offer(srvMsg)) {
+      if (!this.receiverQueue.offer(message)) {
         message.release();
         Operators.onNextDropped(message, currentContext());
         onError(
@@ -624,8 +684,7 @@ public class SimpleClient implements Client {
           while (!this.receiverQueue.isEmpty()) {
             if ((exchange = this.exchangeQueue.peek()) == null || !exchange.hasDemand()) return;
             if ((srvMsg = this.receiverQueue.poll()) == null) return;
-            if (srvMsg.ending()) this.exchangeQueue.poll();
-            exchange.emit(srvMsg);
+            if (exchange.emit(srvMsg)) this.exchangeQueue.poll();
           }
         } finally {
           lock.unlock();
@@ -637,18 +696,26 @@ public class SimpleClient implements Client {
       }
     }
 
-    public void endExchanges(Throwable exception) {
+    public void close(R2dbcException error) {
+      this.close = true;
       Exchange exchange;
       while ((exchange = this.exchangeQueue.poll()) != null) {
-        exchange.getSink().error(exception);
+        exchange.onError(error);
       }
+      while (!this.receiverQueue.isEmpty()) {
+        this.receiverQueue.poll().release();
+      }
+    }
+
+    public boolean isClose() {
+      return close;
     }
   }
 
   public void sendCommandWithoutResult(ClientMessage message) {
     try {
       lock.lock();
-      sendClientMsgs(Mono.just(message));
+      this.requestSink.emitNext(message, Sinks.EmitFailureHandler.FAIL_FAST);
     } finally {
       lock.unlock();
     }
@@ -667,7 +734,7 @@ public class SimpleClient implements Client {
       ClientMessage message, DecoderState initialState, String sql, boolean canSafelyBeReExecuted) {
     return Flux.create(
         sink -> {
-          if (!isConnected()) {
+          if (!isConnected() || messageSubscriber.isClose()) {
             sink.error(
                 new R2dbcNonTransientResourceException(
                     "Connection is close. Cannot send anything"));
@@ -681,7 +748,7 @@ public class SimpleClient implements Client {
                 decoder.addPrepare(((PreparePacket) message).getSql());
               }
               sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
-              sendClientMsgs(Mono.just(message));
+              this.requestSink.emitNext(message, Sinks.EmitFailureHandler.FAIL_FAST);
             } else {
               sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
             }
@@ -717,7 +784,7 @@ public class SimpleClient implements Client {
       PreparePacket preparePacket, ExecutePacket executePacket, boolean canSafelyBeReExecuted) {
     return Flux.create(
         sink -> {
-          if (!isConnected()) {
+          if (!isConnected() || messageSubscriber.isClose()) {
             sink.error(
                 new R2dbcNonTransientResourceException(
                     "Connection is close. Cannot send anything"));
@@ -731,10 +798,10 @@ public class SimpleClient implements Client {
             if (this.exchangeQueue.offer(exchange)) {
               sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
               decoder.addPrepare(preparePacket.getSql());
-              sendClientMsgs(Flux.just(preparePacket, executePacket));
+              this.requestSink.emitNext(preparePacket, Sinks.EmitFailureHandler.FAIL_FAST);
+              this.requestSink.emitNext(executePacket, Sinks.EmitFailureHandler.FAIL_FAST);
             } else {
               sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
-              return;
             }
           } catch (Throwable t) {
             t.printStackTrace();

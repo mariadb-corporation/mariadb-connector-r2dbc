@@ -13,6 +13,7 @@ import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 public class Ed25519PluginTest extends BaseConnectionTest {
   static AtomicBoolean ed25519PluginEnabled = new AtomicBoolean(true);
@@ -32,7 +33,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
             .onErrorResume(
                 e -> {
                   ed25519PluginEnabled.set(false);
-                  return Flux.just(1);
+                  return Flux.just(1L);
                 })
             .blockLast();
 
@@ -46,7 +47,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
             .onErrorResume(
                 e -> {
                   ed25519PluginEnabled.set(false);
-                  return Flux.just(1);
+                  return Flux.just(1L);
                 })
             .blockLast();
       }
@@ -60,7 +61,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
           .onErrorResume(
               e -> {
                 ed25519PluginEnabled.set(false);
-                return Flux.just(1);
+                return Flux.just(1L);
               })
           .blockLast();
       sharedConn.createStatement("FLUSH PRIVILEGES").execute().blockLast();
@@ -73,7 +74,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
         .createStatement("DROP USER IF EXISTS verificationEd25519AuthPlugin")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
   }
 
@@ -93,7 +94,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
             .password("MySup8%rPassw@ord")
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
-    connection.close();
+    connection.close().block();
   }
 
   @Test

@@ -12,15 +12,13 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
-import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class Sha256PluginTest extends BaseConnectionTest {
 
   private static String rsaPublicKey;
   private static String cachingRsaPublicKey;
-  private static final boolean isWindows =
-      System.getProperty("os.name").toLowerCase().contains("win");
 
   private static boolean validPath(String path) {
     if (path == null) return false;
@@ -154,6 +152,15 @@ public class Sha256PluginTest extends BaseConnectionTest {
             .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User4'")
             .execute()
             .blockLast();
+        sharedConn
+            .createStatement(
+                "CREATE USER 'userWithWrongPassword'  IDENTIFIED WITH caching_sha2_password BY 'blabla'")
+            .execute()
+            .blockLast();
+        sharedConn
+            .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'userWithWrongPassword'")
+            .execute()
+            .blockLast();
       }
     }
   }
@@ -165,43 +172,43 @@ public class Sha256PluginTest extends BaseConnectionTest {
         .createStatement("DROP USER sha256User")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER sha256User2")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER sha256User3")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User2")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User3")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
     sharedConn
         .createStatement("DROP USER cachingSha256User4")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
   }
 
@@ -240,7 +247,9 @@ public class Sha256PluginTest extends BaseConnectionTest {
 
   @Test
   public void sha256PluginTestWithoutServerRsaKey() throws Exception {
-    Assumptions.assumeTrue(!isWindows && !isMariaDBServer() && minVersion(8, 0, 0));
+    Assumptions.assumeTrue(!isWindows && !isMariaDBServer() && (minVersion(8, 0, 0)));
+    // mysql 8.0.31 broken public key retrieval, so avoid FLUSHING for now
+    Assumptions.assumeTrue(!isMariaDBServer() && !exactVersion(8, 0, 31));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
@@ -278,6 +287,9 @@ public class Sha256PluginTest extends BaseConnectionTest {
   @Test
   public void sha256PluginTestSsl() throws Exception {
     Assumptions.assumeTrue(haveSsl(sharedConn));
+    // mysql 8.0.31 broken public key retrieval, so avoid FLUSHING for now
+    Assumptions.assumeTrue(!isMariaDBServer() && !exactVersion(8, 0, 31));
+
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
@@ -323,6 +335,8 @@ public class Sha256PluginTest extends BaseConnectionTest {
   @Test
   public void cachingSha256PluginTestWithoutServerRsaKey() throws Exception {
     Assumptions.assumeTrue(!isWindows && rsaPublicKey != null && minVersion(8, 0, 0));
+    // mysql 8.0.31 broken public key retrieval, so avoid FLUSHING for now
+    Assumptions.assumeTrue(!isMariaDBServer() && !exactVersion(8, 0, 31));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
@@ -333,6 +347,30 @@ public class Sha256PluginTest extends BaseConnectionTest {
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();
+  }
+
+  @Test
+  public void WrongUserCachingSha256PluginTestWithoutServerRsaKey() throws Exception {
+    Assumptions.assumeTrue(!isWindows && minVersion(8, 0, 0));
+    // mysql 8.0.31 broken public key retrieval, so avoid FLUSHING for now
+    Assumptions.assumeTrue(!isMariaDBServer() && !exactVersion(8, 0, 31));
+
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .username("userWithWrongPassword")
+            .password("WRONG")
+            .allowPublicKeyRetrieval(true)
+            .build();
+    new MariadbConnectionFactory(conf)
+        .create()
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable -> {
+              return throwable instanceof R2dbcNonTransientResourceException
+                  && throwable.getMessage().contains("Access denied");
+            })
+        .verify();
   }
 
   @Test

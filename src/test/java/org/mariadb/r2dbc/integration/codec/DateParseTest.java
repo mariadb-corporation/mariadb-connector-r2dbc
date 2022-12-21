@@ -14,7 +14,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
-import org.mariadb.r2dbc.BaseTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.util.MariadbType;
 import reactor.test.StepVerifier;
@@ -22,17 +21,20 @@ import reactor.test.StepVerifier;
 public class DateParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn.createStatement("CREATE TABLE DateTable (t1 DATE, t2 int)").execute().blockLast();
     sharedConn
         .createStatement("INSERT INTO DateTable VALUES('2010-01-12',1), ('2011-2-28',2), (null,3)")
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE DateTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS DateTable").execute().blockLast();
   }
 
   @Test
@@ -147,7 +149,9 @@ public class DateParseTest extends BaseConnectionTest {
         .createStatement("SELECT t1 FROM DateTable WHERE 1 = ? LIMIT 1")
         .bind(0, 1)
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, BaseTest.class))))
+        .flatMap(
+            r ->
+                r.map((row, metadata) -> Optional.ofNullable(row.get(0, BaseConnectionTest.class))))
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
@@ -155,7 +159,7 @@ public class DateParseTest extends BaseConnectionTest {
                     && throwable
                         .getMessage()
                         .equals(
-                            "No decoder for type org.mariadb.r2dbc.BaseTest and column type DATE"))
+                            "No decoder for type org.mariadb.r2dbc.BaseConnectionTest and column type DATE"))
         .verify();
   }
 

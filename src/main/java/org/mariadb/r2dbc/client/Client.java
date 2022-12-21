@@ -23,6 +23,10 @@ public interface Client {
 
   Mono<Void> close();
 
+  boolean closeChannelIfNeeded();
+
+  void handleConnectionError(Throwable throwable);
+
   void sendCommandWithoutResult(ClientMessage requests);
 
   Flux<ServerMessage> sendCommand(ClientMessage requests, boolean canSafelyBeReExecuted);

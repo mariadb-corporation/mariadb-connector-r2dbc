@@ -9,6 +9,7 @@ import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.MessageSequence;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
+import reactor.core.publisher.Mono;
 
 public final class SslRequestPacket implements ClientMessage {
 
@@ -21,7 +22,7 @@ public final class SslRequestPacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
+  public Mono<ByteBuf> encode(Context context, ByteBufAllocator allocator) {
 
     byte exchangeCharset =
         HandshakeResponse.decideLanguage(
@@ -37,7 +38,7 @@ public final class SslRequestPacket implements ClientMessage {
 
     buf.writeZero(19); // 19  bytes
     buf.writeIntLE((int) (clientCapabilities >> 32)); // Maria extended flag
-    return buf;
+    return Mono.just(buf);
   }
 
   @Override

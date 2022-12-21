@@ -20,6 +20,8 @@ import reactor.test.StepVerifier;
 public class IntParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("CREATE TABLE IntTable (t1 INT, t2 INT ZEROFILL)")
         .execute()
@@ -38,12 +40,13 @@ public class IntParseTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE IntTable").execute().blockLast();
-    sharedConn.createStatement("DROP TABLE IntUnsignedTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS IntTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS IntUnsignedTable").execute().blockLast();
   }
 
   @Test

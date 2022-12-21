@@ -3,16 +3,18 @@
 
 package org.mariadb.r2dbc.client;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import org.mariadb.r2dbc.message.ServerMessage;
 import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.Operators;
 
 public class Exchange {
-
+  private static final AtomicLongFieldUpdater<Exchange> DEMAND_UPDATER =
+      AtomicLongFieldUpdater.newUpdater(Exchange.class, "demand");
   private final FluxSink<ServerMessage> sink;
   private final DecoderState initialState;
   private final String sql;
-  private final AtomicLong demand = new AtomicLong();
+  private volatile long demand = 0L;
 
   public Exchange(FluxSink<ServerMessage> sink, DecoderState initialState) {
     this.sink = sink;
@@ -26,10 +28,6 @@ public class Exchange {
     this.sql = sql;
   }
 
-  public FluxSink<ServerMessage> getSink() {
-    return sink;
-  }
-
   public DecoderState getInitialState() {
     return initialState;
   }
@@ -39,21 +37,43 @@ public class Exchange {
   }
 
   public boolean hasDemand() {
-    return demand.get() > 0;
+    return demand > 0;
   }
 
-  public void emit(ServerMessage srvMsg) {
-    demand.decrementAndGet();
-    if (this.sink.isCancelled()) {
-      return;
+  public boolean isCancelled() {
+    return sink.isCancelled();
+  }
+
+  public void onError(Throwable throwable) {
+    if (!this.sink.isCancelled()) {
+      this.sink.error(throwable);
     }
+  }
+
+  /**
+   * Emit server message.
+   *
+   * @param srvMsg message to emit
+   * @return true if ending message
+   */
+  public boolean emit(ServerMessage srvMsg) {
+    if (this.sink.isCancelled()) {
+      srvMsg.release();
+      return srvMsg.ending();
+    }
+
+    Operators.addCap(DEMAND_UPDATER, this, -1);
     this.sink.next(srvMsg);
     if (srvMsg.ending()) {
-      this.sink.complete();
+      if (!this.sink.isCancelled()) {
+        this.sink.complete();
+      }
+      return true;
     }
+    return false;
   }
 
   public void incrementDemand(long n) {
-    demand.addAndGet(n);
+    Operators.addCap(DEMAND_UPDATER, this, n);
   }
 }

@@ -11,6 +11,7 @@ import java.security.NoSuchAlgorithmException;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.MessageSequence;
+import reactor.core.publisher.Mono;
 
 public final class NativePasswordPacket implements ClientMessage {
 
@@ -55,11 +56,11 @@ public final class NativePasswordPacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
-    if (password == null) return allocator.ioBuffer(0);
+  public Mono<ByteBuf> encode(Context context, ByteBufAllocator allocator) {
+    if (password == null) return Mono.just(allocator.ioBuffer(0));
     ByteBuf buf = allocator.ioBuffer(32);
     buf.writeBytes(encrypt(password, seed));
-    return buf;
+    return Mono.just(buf);
   }
 
   @Override

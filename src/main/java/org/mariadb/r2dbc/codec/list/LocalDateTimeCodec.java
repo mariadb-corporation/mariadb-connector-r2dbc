@@ -17,7 +17,6 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BindValue;
 
 public class LocalDateTimeCodec implements Codec<LocalDateTime> {
 
@@ -206,51 +205,38 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
   }
 
   @Override
-  public BindValue encodeText(
-      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> {
-          LocalDateTime val = (LocalDateTime) value;
-          ByteBuf buf = allocator.buffer();
-          buf.writeByte('\'');
-          buf.writeCharSequence(
-              val.format(val.getNano() != 0 ? TIMESTAMP_FORMAT : TIMESTAMP_FORMAT_NO_FRACTIONAL),
-              StandardCharsets.US_ASCII);
-          buf.writeByte('\'');
-          return buf;
-        });
+  public void encodeDirectText(ByteBuf out, Object value, Context context) {
+    LocalDateTime val = (LocalDateTime) value;
+    out.writeByte('\'');
+    out.writeCharSequence(
+        val.format(val.getNano() != 0 ? TIMESTAMP_FORMAT : TIMESTAMP_FORMAT_NO_FRACTIONAL),
+        StandardCharsets.US_ASCII);
+    out.writeByte('\'');
   }
 
   @Override
-  public BindValue encodeBinary(
-      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> {
-          ByteBuf buf;
-          LocalDateTime val = (LocalDateTime) value;
-          int nano = val.getNano();
-          if (nano > 0) {
-            buf = allocator.buffer(12, 12);
-            buf.writeByte((byte) 11);
-            buf.writeShortLE((short) val.get(ChronoField.YEAR));
-            buf.writeByte(val.get(ChronoField.MONTH_OF_YEAR));
-            buf.writeByte(val.get(ChronoField.DAY_OF_MONTH));
-            buf.writeByte(val.get(ChronoField.HOUR_OF_DAY));
-            buf.writeByte(val.get(ChronoField.MINUTE_OF_HOUR));
-            buf.writeByte(val.get(ChronoField.SECOND_OF_MINUTE));
-            buf.writeIntLE(nano / 1000);
-          } else {
-            buf = allocator.buffer(8, 8);
-            buf.writeByte((byte) 7);
-            buf.writeShortLE((short) val.get(ChronoField.YEAR));
-            buf.writeByte(val.get(ChronoField.MONTH_OF_YEAR));
-            buf.writeByte(val.get(ChronoField.DAY_OF_MONTH));
-            buf.writeByte(val.get(ChronoField.HOUR_OF_DAY));
-            buf.writeByte(val.get(ChronoField.MINUTE_OF_HOUR));
-            buf.writeByte(val.get(ChronoField.SECOND_OF_MINUTE));
-          }
-          return buf;
-        });
+  public void encodeDirectBinary(
+      ByteBufAllocator allocator, ByteBuf out, Object value, Context context) {
+    LocalDateTime val = (LocalDateTime) value;
+    int nano = val.getNano();
+    if (nano > 0) {
+      out.writeByte((byte) 11);
+      out.writeShortLE((short) val.get(ChronoField.YEAR));
+      out.writeByte(val.get(ChronoField.MONTH_OF_YEAR));
+      out.writeByte(val.get(ChronoField.DAY_OF_MONTH));
+      out.writeByte(val.get(ChronoField.HOUR_OF_DAY));
+      out.writeByte(val.get(ChronoField.MINUTE_OF_HOUR));
+      out.writeByte(val.get(ChronoField.SECOND_OF_MINUTE));
+      out.writeIntLE(nano / 1000);
+    } else {
+      out.writeByte((byte) 7);
+      out.writeShortLE((short) val.get(ChronoField.YEAR));
+      out.writeByte(val.get(ChronoField.MONTH_OF_YEAR));
+      out.writeByte(val.get(ChronoField.DAY_OF_MONTH));
+      out.writeByte(val.get(ChronoField.HOUR_OF_DAY));
+      out.writeByte(val.get(ChronoField.MINUTE_OF_HOUR));
+      out.writeByte(val.get(ChronoField.SECOND_OF_MINUTE));
+    }
   }
 
   public DataType getBinaryEncodeType() {

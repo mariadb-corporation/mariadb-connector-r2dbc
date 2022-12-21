@@ -13,7 +13,7 @@ import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
-import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class ErrorTest extends BaseConnectionTest {
@@ -42,7 +42,7 @@ public class ErrorTest extends BaseConnectionTest {
 
   @Test
   void permissionDenied() throws Exception {
-    sharedConn.createStatement("CREATE USER userWithoutRight").execute().blockLast();
+    sharedConn.createStatement("CREATE USER IF NOT EXISTS userWithoutRight").execute().blockLast();
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
@@ -103,12 +103,14 @@ public class ErrorTest extends BaseConnectionTest {
   @Test
   void rollbackException() {
     Assumptions.assumeTrue(
-        !"skysql".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
-
+        !"maxscale".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnection connection = null;
     MariadbConnection connection2 = null;
     try {
       connection2 = factory.create().block();
+      connection2.createStatement("DROP TABLE IF EXISTS deadlock").execute().blockLast();
       connection2
           .createStatement("CREATE TABLE deadlock(a int primary key) engine=innodb")
           .execute()
@@ -118,13 +120,12 @@ public class ErrorTest extends BaseConnectionTest {
 
       connection2.beginTransaction().block();
       connection2.createStatement("update deadlock set a = 2 where a <> 0").execute().blockLast();
-
       connection = factory.create().block();
       connection
           .createStatement("SET SESSION innodb_lock_wait_timeout=1")
           .execute()
           .map(res -> res.getRowsUpdated())
-          .onErrorReturn(Flux.empty())
+          .onErrorReturn(Mono.empty())
           .blockLast();
       connection.beginTransaction().block();
       connection
@@ -141,8 +142,15 @@ public class ErrorTest extends BaseConnectionTest {
           .verify();
 
     } finally {
-      connection.close().block();
-      connection2.close().block();
+      try {
+        if (connection != null) connection.close().block();
+      } catch (Throwable e) {
+      } finally {
+        try {
+          if (connection2 != null) connection2.close().block();
+        } catch (Throwable e) {
+        }
+      }
     }
   }
 

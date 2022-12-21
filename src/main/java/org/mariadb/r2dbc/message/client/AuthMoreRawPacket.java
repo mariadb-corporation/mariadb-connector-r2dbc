@@ -8,6 +8,7 @@ import io.netty.buffer.ByteBufAllocator;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.MessageSequence;
+import reactor.core.publisher.Mono;
 
 public final class AuthMoreRawPacket implements ClientMessage {
 
@@ -20,10 +21,10 @@ public final class AuthMoreRawPacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
+  public Mono<ByteBuf> encode(Context context, ByteBufAllocator allocator) {
     ByteBuf buf = allocator.ioBuffer(raw.length);
     buf.writeBytes(raw);
-    return buf;
+    return Mono.just(buf);
   }
 
   @Override

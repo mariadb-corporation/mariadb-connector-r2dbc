@@ -5,13 +5,13 @@ package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 
 public class BitSetCodec implements Codec<BitSet> {
@@ -67,31 +67,25 @@ public class BitSetCodec implements Codec<BitSet> {
   }
 
   @Override
-  public BindValue encodeText(
-      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> {
-          byte[] bytes = ((BitSet) value).toByteArray();
-          revertOrder(bytes);
+  public void encodeDirectText(ByteBuf out, Object value, Context context) {
+    byte[] bytes = ((BitSet) value).toByteArray();
+    revertOrder(bytes);
 
-          StringBuilder sb = new StringBuilder(bytes.length * Byte.SIZE + 3);
-          sb.append("b'");
-          for (int i = 0; i < Byte.SIZE * bytes.length; i++)
-            sb.append((bytes[i / Byte.SIZE] << i % Byte.SIZE & 0x80) == 0 ? '0' : '1');
-          sb.append("'");
-          return BufferUtils.encodeAscii(allocator, sb.toString());
-        });
+    StringBuilder sb = new StringBuilder(bytes.length * Byte.SIZE + 3);
+    sb.append("b'");
+    for (int i = 0; i < Byte.SIZE * bytes.length; i++)
+      sb.append((bytes[i / Byte.SIZE] << i % Byte.SIZE & 0x80) == 0 ? '0' : '1');
+    sb.append("'");
+    out.writeCharSequence(sb.toString(), StandardCharsets.US_ASCII);
   }
 
   @Override
-  public BindValue encodeBinary(
-      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> {
-          byte[] bytes = ((BitSet) value).toByteArray();
-          revertOrder(bytes);
-          return BufferUtils.encodeLengthBytes(allocator, bytes);
-        });
+  public void encodeDirectBinary(
+      ByteBufAllocator allocator, ByteBuf out, Object value, Context context) {
+    byte[] bytes = ((BitSet) value).toByteArray();
+    revertOrder(bytes);
+    out.writeBytes(BufferUtils.encodeLength(bytes.length));
+    out.writeBytes(bytes);
   }
 
   public DataType getBinaryEncodeType() {

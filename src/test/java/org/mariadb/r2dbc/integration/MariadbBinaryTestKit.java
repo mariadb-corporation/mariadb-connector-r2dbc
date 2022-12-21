@@ -86,6 +86,9 @@ public class MariadbBinaryTestKit implements TestKit<String> {
       case INSERT_VALUE200:
         return "INSERT INTO test(test_value) VALUES (200)";
       default:
+        if (statement.getSql().startsWith("CREATE TABLE ")) {
+          return "CREATE TABLE IF NOT EXISTS " + statement.getSql().substring(13);
+        }
         return statement.getSql();
     }
   }

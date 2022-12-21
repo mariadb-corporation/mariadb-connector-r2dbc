@@ -12,6 +12,7 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.SslMode;
 import org.mariadb.r2dbc.authentication.AuthenticationFlowPluginLoader;
 import org.mariadb.r2dbc.authentication.AuthenticationPlugin;
+import org.mariadb.r2dbc.authentication.standard.CachingSha2PasswordFlow;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.client.DecoderState;
 import org.mariadb.r2dbc.client.SimpleClient;
@@ -23,7 +24,9 @@ import org.mariadb.r2dbc.message.server.*;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.constants.Capabilities;
-import reactor.core.publisher.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.Mono;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
@@ -33,7 +36,8 @@ public final class AuthenticationFlow {
   private final MariadbConnectionConfiguration configuration;
   private InitialHandshakePacket initialHandshakePacket;
   private AuthenticationPlugin pluginHandler;
-  private AuthSwitchPacket authSwitchPacket;
+  private byte[] seed;
+  private Sequencer sequencer;
   private AuthMoreDataPacket authMoreDataPacket;
   private final SimpleClient client;
   private FluxSink<State> sink;
@@ -60,7 +64,10 @@ public final class AuthenticationFlow {
         .doOnNext(
             state -> {
               if (State.COMPLETED == state) {
-                if (flow.authMoreDataPacket != null) flow.authMoreDataPacket.release();
+                if (flow.authMoreDataPacket != null) {
+                  flow.authMoreDataPacket.release();
+                  flow.authMoreDataPacket = null;
+                }
                 flow.sink.complete();
               } else {
                 if (logger.isTraceEnabled()) {
@@ -77,8 +84,15 @@ public final class AuthenticationFlow {
             })
         .doOnError(
             e -> {
-              logger.error("Authentication failed", e);
-              flow.client.close().subscribe();
+              logger.warn("Authentication failed", e);
+              flow.client.handleConnectionError(e);
+            })
+        .doFinally(
+            c -> {
+              if (flow.authMoreDataPacket != null) {
+                flow.authMoreDataPacket.release();
+                flow.authMoreDataPacket = null;
+              }
             })
         .then(Mono.just(client));
   }
@@ -144,7 +158,8 @@ public final class AuthenticationFlow {
                             flow.initialHandshakePacket.getCapabilities(), flow.configuration);
                     flow.client.setContext(packet, flow.clientCapabilities);
 
-                    if (flow.configuration.getSslConfig().getSslMode() != SslMode.DISABLE) {
+                    SslMode sslMode = flow.configuration.getSslConfig().getSslMode();
+                    if (sslMode != SslMode.DISABLE && sslMode != SslMode.TUNNEL) {
                       if ((packet.getCapabilities() & Capabilities.SSL) == 0) {
                         sink.error(
                             new R2dbcNonTransientResourceException(
@@ -183,6 +198,19 @@ public final class AuthenticationFlow {
     HANDSHAKE {
       @Override
       Mono<State> handle(AuthenticationFlow flow) {
+        flow.seed = flow.initialHandshakePacket.getSeed();
+        flow.sequencer = flow.initialHandshakePacket.getSequencer();
+
+        if (flow.initialHandshakePacket
+            .getAuthenticationPluginType()
+            .equals(CachingSha2PasswordFlow.TYPE)) {
+          AuthenticationPlugin authPlugin =
+              AuthenticationFlowPluginLoader.get(CachingSha2PasswordFlow.TYPE);
+          ((CachingSha2PasswordFlow) authPlugin).setStateFastAuth();
+          flow.authMoreDataPacket = null;
+          flow.pluginHandler = authPlugin;
+        }
+
         return flow.client
             .sendCommand(
                 flow.createHandshakeResponse(flow.clientCapabilities),
@@ -195,8 +223,10 @@ public final class AuthenticationFlow {
                   } else if (message instanceof OkPacket) {
                     sink.next(COMPLETED);
                   } else if (message instanceof AuthSwitchPacket) {
-                    flow.authSwitchPacket = ((AuthSwitchPacket) message);
-                    String plugin = flow.authSwitchPacket.getPlugin();
+                    AuthSwitchPacket authSwitchPacket = ((AuthSwitchPacket) message);
+                    flow.seed = authSwitchPacket.getSeed();
+                    flow.sequencer = authSwitchPacket.getSequencer();
+                    String plugin = authSwitchPacket.getPlugin();
                     if (flow.configuration.getRestrictedAuth() != null
                         && !Arrays.stream(flow.configuration.getRestrictedAuth())
                             .anyMatch(s -> plugin.equals(s))) {
@@ -212,6 +242,9 @@ public final class AuthenticationFlow {
                       flow.pluginHandler = authPlugin;
                       sink.next(AUTH_SWITCH);
                     }
+                  } else if (flow.pluginHandler != null && message instanceof AuthMoreDataPacket) {
+                    flow.authMoreDataPacket = (AuthMoreDataPacket) message;
+                    sink.next(AUTH_SWITCH);
                   } else {
                     sink.error(
                         new IllegalStateException(
@@ -231,7 +264,7 @@ public final class AuthenticationFlow {
         try {
           clientMessage =
               flow.pluginHandler.next(
-                  flow.configuration, flow.authSwitchPacket, flow.authMoreDataPacket);
+                  flow.configuration, flow.seed, flow.sequencer, flow.authMoreDataPacket);
         } catch (R2dbcException ex) {
           return Mono.error(ex);
         }
@@ -246,7 +279,10 @@ public final class AuthenticationFlow {
         } else {
           flux = flow.client.receive(DecoderState.AUTHENTICATION_SWITCH_RESPONSE);
         }
-
+        if (flow.authMoreDataPacket != null) {
+          flow.authMoreDataPacket.release();
+          flow.authMoreDataPacket = null;
+        }
         return flux.<State>handle(
                 (message, sink) -> {
                   if (message instanceof ErrorPacket) {
@@ -255,8 +291,10 @@ public final class AuthenticationFlow {
                   } else if (message instanceof OkPacket) {
                     sink.next(COMPLETED);
                   } else if (message instanceof AuthSwitchPacket) {
-                    flow.authSwitchPacket = ((AuthSwitchPacket) message);
-                    String plugin = flow.authSwitchPacket.getPlugin();
+                    AuthSwitchPacket authSwitchPacket = ((AuthSwitchPacket) message);
+                    flow.seed = authSwitchPacket.getSeed();
+                    flow.sequencer = authSwitchPacket.getSequencer();
+                    String plugin = authSwitchPacket.getPlugin();
                     if (flow.configuration.getRestrictedAuth() != null
                         && !Arrays.stream(flow.configuration.getRestrictedAuth())
                             .anyMatch(s -> plugin.equals(s))) {

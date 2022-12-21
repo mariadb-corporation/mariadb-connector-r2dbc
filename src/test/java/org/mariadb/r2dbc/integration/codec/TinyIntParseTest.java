@@ -22,6 +22,8 @@ import reactor.test.StepVerifier;
 public class TinyIntParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("CREATE TABLE tinyIntTable (t1 TINYINT, t2 TINYINT ZEROFILL)")
         .execute()
@@ -44,13 +46,14 @@ public class TinyIntParseTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE tinyIntTable").execute().blockLast();
-    sharedConn.createStatement("DROP TABLE tinyIntUnsignedTable").execute().blockLast();
-    sharedConn.createStatement("DROP TABLE tinyIntTable1").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS tinyIntTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS tinyIntUnsignedTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS tinyIntTable1").execute().blockLast();
   }
 
   @Test

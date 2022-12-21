@@ -20,6 +20,7 @@ import reactor.test.StepVerifier;
 public class BigIntegerParameterTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    after2();
     sharedConn
         .createStatement("CREATE TABLE BigIntParam (t1 BIGINT, t2 BIGINT, t3 BIGINT)")
         .execute()
@@ -28,12 +29,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
 
   @AfterAll
   public static void after2() {
-    sharedConn.createStatement("DROP TABLE BigIntParam").execute().blockLast();
-  }
-
-  @BeforeEach
-  public void beforeEach() {
-    sharedConn.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS BigIntParam").execute().blockLast();
   }
 
   @Test
@@ -47,6 +43,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
   }
 
   private void nullValue(MariadbConnection connection) {
+    connection.beginTransaction().block();
+    connection.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     connection
         .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
         .bindNull(0, BigInteger.class)
@@ -54,7 +52,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
         .bindNull(2, BigInteger.class)
         .execute()
         .blockLast();
-    validate(Optional.empty(), Optional.empty(), Optional.empty());
+    validate(connection, Optional.empty(), Optional.empty(), Optional.empty());
+    connection.rollbackTransaction().block();
   }
 
   @Test
@@ -68,6 +67,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
   }
 
   private void bigIntValue(MariadbConnection connection) {
+    connection.beginTransaction().block();
+    connection.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
@@ -77,11 +78,12 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=BigIntegerCodec}, 1=BindValue{codec=BigIntegerCodec}, 2=BindValue{codec=BigIntegerCodec}}}]"),
+                "bindings=[[BindValue{codec=BigIntegerCodec}, BindValue{codec=BigIntegerCodec}, BindValue{codec=BigIntegerCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
-    validate(Optional.of("1"), Optional.of("9223372036854775807"), Optional.of("-9"));
+    validate(connection, Optional.of("1"), Optional.of("9223372036854775807"), Optional.of("-9"));
+    connection.rollbackTransaction().block();
   }
 
   @Test
@@ -95,6 +97,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
   }
 
   private void stringValue(MariadbConnection connection) {
+    connection.beginTransaction().block();
+    connection.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
@@ -104,12 +108,13 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=StringCodec}, 1=BindValue{codec=StringCodec}, 2=BindValue{codec=StringCodec}}}]"),
+                "bindings=[[BindValue{codec=StringCodec}, BindValue{codec=StringCodec}, BindValue{codec=StringCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
 
-    validate(Optional.of("1"), Optional.of("9223372036854775807"), Optional.of("-9"));
+    validate(connection, Optional.of("1"), Optional.of("9223372036854775807"), Optional.of("-9"));
+    connection.rollbackTransaction().block();
   }
 
   @Test
@@ -123,6 +128,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
   }
 
   private void decimalValue(MariadbConnection connection) {
+    connection.beginTransaction().block();
+    connection.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
@@ -133,11 +140,12 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=BigDecimalCodec}, 1=BindValue{codec=BigDecimalCodec}, 2=BindValue{codec=BigDecimalCodec}}}]"),
+                "bindings=[[BindValue{codec=BigDecimalCodec}, BindValue{codec=BigDecimalCodec}, BindValue{codec=BigDecimalCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
-    validate(Optional.of("1"), Optional.of("9223372036854775807"), Optional.of("-9"));
+    validate(connection, Optional.of("1"), Optional.of("9223372036854775807"), Optional.of("-9"));
+    connection.rollbackTransaction().block();
   }
 
   @Test
@@ -151,6 +159,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
   }
 
   private void intValue(MariadbConnection connection) {
+    connection.beginTransaction().block();
+    connection.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
@@ -160,11 +170,12 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=IntCodec}, 1=BindValue{codec=IntCodec}, 2=BindValue{codec=IntCodec}}}]"),
+                "bindings=[[BindValue{codec=IntCodec}, BindValue{codec=IntCodec}, BindValue{codec=IntCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
-    validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
+    validate(connection, Optional.of("1"), Optional.of("-1"), Optional.of("0"));
+    connection.rollbackTransaction().block();
   }
 
   @Test
@@ -179,6 +190,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
   }
 
   private void byteValue(MariadbConnection connection) {
+    connection.beginTransaction().block();
+    connection.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
@@ -189,11 +202,12 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=ByteCodec}, 1=BindValue{codec=ByteCodec}, 2=BindValue{codec=ByteCodec}}}]"),
+                "bindings=[[BindValue{codec=ByteCodec}, BindValue{codec=ByteCodec}, BindValue{codec=ByteCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
-    validate(Optional.of("127"), Optional.of("-128"), Optional.of("0"));
+    validate(connection, Optional.of("127"), Optional.of("-128"), Optional.of("0"));
+    connection.rollbackTransaction().block();
   }
 
   @Test
@@ -207,6 +221,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
   }
 
   private void floatValue(MariadbConnection connection) {
+    connection.beginTransaction().block();
+    connection.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
@@ -216,11 +232,12 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=FloatCodec}, 1=BindValue{codec=FloatCodec}, 2=BindValue{codec=FloatCodec}}}]"),
+                "bindings=[[BindValue{codec=FloatCodec}, BindValue{codec=FloatCodec}, BindValue{codec=FloatCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
-    validate(Optional.of("127"), Optional.of("-128"), Optional.of("0"));
+    validate(connection, Optional.of("127"), Optional.of("-128"), Optional.of("0"));
+    connection.rollbackTransaction().block();
   }
 
   @Test
@@ -235,6 +252,9 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
   }
 
   private void doubleValue(MariadbConnection connection) {
+    connection.beginTransaction().block();
+    connection.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
+
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
@@ -245,10 +265,11 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=DoubleCodec}, 1=BindValue{codec=DoubleCodec}, 2=BindValue{codec=DoubleCodec}}}]"),
+                "bindings=[[BindValue{codec=DoubleCodec}, BindValue{codec=DoubleCodec}, BindValue{codec=DoubleCodec}]]"),
         stmt.toString());
     stmt.execute().blockLast();
-    validate(Optional.of("127"), Optional.of("-128"), Optional.of("0"));
+    validate(connection, Optional.of("127"), Optional.of("-128"), Optional.of("0"));
+    connection.rollbackTransaction().block();
   }
 
   @Test
@@ -262,6 +283,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
   }
 
   private void shortValue(MariadbConnection connection) {
+    connection.beginTransaction().block();
+    connection.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
@@ -271,10 +294,11 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=ShortCodec}, 1=BindValue{codec=ShortCodec}, 2=BindValue{codec=ShortCodec}}}]"),
+                "bindings=[[BindValue{codec=ShortCodec}, BindValue{codec=ShortCodec}, BindValue{codec=ShortCodec}]]"),
         stmt.toString());
     stmt.execute().blockLast();
-    validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
+    validate(connection, Optional.of("1"), Optional.of("-1"), Optional.of("0"));
+    connection.rollbackTransaction().block();
   }
 
   @Test
@@ -288,6 +312,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
   }
 
   private void longValue(MariadbConnection connection) {
+    connection.beginTransaction().block();
+    connection.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
@@ -297,10 +323,11 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=LongCodec}, 1=BindValue{codec=LongCodec}, 2=BindValue{codec=LongCodec}}}]"),
+                "bindings=[[BindValue{codec=LongCodec}, BindValue{codec=LongCodec}, BindValue{codec=LongCodec}]]"),
         stmt.toString());
     stmt.execute().blockLast();
-    validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
+    validate(connection, Optional.of("1"), Optional.of("-1"), Optional.of("0"));
+    connection.rollbackTransaction().block();
   }
 
   @Test
@@ -314,6 +341,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
   }
 
   private void LongValue(MariadbConnection connection) {
+    connection.beginTransaction().block();
+    connection.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
@@ -323,11 +352,12 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=LongCodec}, 1=BindValue{codec=LongCodec}, 2=BindValue{codec=LongCodec}}}]"),
+                "bindings=[[BindValue{codec=LongCodec}, BindValue{codec=LongCodec}, BindValue{codec=LongCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
-    validate(Optional.of("1"), Optional.of("-1"), Optional.of("0"));
+    validate(connection, Optional.of("1"), Optional.of("-1"), Optional.of("0"));
+    connection.rollbackTransaction().block();
   }
 
   @Test
@@ -336,6 +366,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
   }
 
   private void localDateTimeValue(MariadbConnection connection) {
+    connection.beginTransaction().block();
+    connection.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
@@ -345,7 +377,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=LocalDateTimeCodec}, 1=BindValue{codec=LocalDateTimeCodec}, 2=BindValue{codec=LocalDateTimeCodec}}}]"),
+                "bindings=[[BindValue{codec=LocalDateTimeCodec}, BindValue{codec=LocalDateTimeCodec}, BindValue{codec=LocalDateTimeCodec}]]"),
         stmt.toString());
     stmt.execute()
         .flatMap(r -> r.getRowsUpdated())
@@ -355,10 +387,13 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
                 throwable instanceof R2dbcTransientResourceException
                     && ((R2dbcTransientResourceException) throwable).getSqlState().equals("01000"))
         .verify();
+    connection.rollbackTransaction().block();
   }
 
   @Test
   void localDateTimeValuePrepare() {
+    sharedConnPrepare.beginTransaction().block();
+    sharedConnPrepare.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     sharedConnPrepare
         .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
         .bind(0, LocalDateTime.now())
@@ -366,6 +401,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
         .bind(2, LocalDateTime.now())
         .execute()
         .blockLast();
+    sharedConnPrepare.rollbackTransaction().block();
   }
 
   @Test
@@ -375,6 +411,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
 
   @Test
   void localDateValuePrepare() {
+    sharedConnPrepare.beginTransaction().block();
+    sharedConnPrepare.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     sharedConnPrepare
         .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
         .bind(0, LocalDate.now())
@@ -382,9 +420,12 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
         .bind(2, LocalDate.now())
         .execute()
         .blockLast();
+    sharedConnPrepare.rollbackTransaction().block();
   }
 
   private void localDateValue(MariadbConnection connection) {
+    connection.beginTransaction().block();
+    connection.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     MariadbStatement stmt =
         connection
             .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
@@ -395,7 +436,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=LocalDateCodec}, 1=BindValue{codec=LocalDateCodec}, 2=BindValue{codec=LocalDateCodec}}}]"),
+                "bindings=[[BindValue{codec=LocalDateCodec}, BindValue{codec=LocalDateCodec}, BindValue{codec=LocalDateCodec}]]"),
         stmt.toString());
     stmt.execute()
         .flatMap(r -> r.getRowsUpdated())
@@ -405,6 +446,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
                 throwable instanceof R2dbcTransientResourceException
                     && ((R2dbcTransientResourceException) throwable).getSqlState().equals("01000"))
         .verify();
+    connection.rollbackTransaction().block();
   }
 
   @Test
@@ -414,6 +456,8 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
 
   @Test
   void localTimeValuePrepare() {
+    sharedConnPrepare.beginTransaction().block();
+    sharedConnPrepare.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     MariadbStatement stmt =
         sharedConnPrepare
             .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
@@ -423,13 +467,16 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[Binding{binds={0=BindValue{codec=LocalTimeCodec}, 1=BindValue{codec=LocalTimeCodec}, 2=BindValue{codec=LocalTimeCodec}}}]"),
+                "bindings=[[BindValue{codec=LocalTimeCodec}, BindValue{codec=LocalTimeCodec}, BindValue{codec=LocalTimeCodec}]]"),
         stmt.toString());
 
     stmt.execute().blockLast();
+    sharedConnPrepare.rollbackTransaction().block();
   }
 
   private void localTimeValue(MariadbConnection connection) {
+    connection.beginTransaction().block();
+    connection.createStatement("TRUNCATE TABLE BigIntParam").execute().blockLast();
     connection
         .createStatement("INSERT INTO BigIntParam VALUES (?,?,?)")
         .bind(0, LocalTime.now())
@@ -443,10 +490,12 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
                 throwable instanceof R2dbcTransientResourceException
                     && ((R2dbcTransientResourceException) throwable).getSqlState().equals("01000"))
         .verify();
+    connection.rollbackTransaction().block();
   }
 
-  private void validate(Optional<String> t1, Optional<String> t2, Optional<String> t3) {
-    sharedConn
+  private void validate(
+      MariadbConnection connection, Optional<String> t1, Optional<String> t2, Optional<String> t3) {
+    connection
         .createStatement("SELECT * FROM BigIntParam")
         .execute()
         .flatMap(

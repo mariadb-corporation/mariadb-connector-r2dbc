@@ -26,7 +26,7 @@ public class StatementBatchingTest extends BaseConnectionTest {
             "CREATE TEMPORARY TABLE batchStatement (id int not null primary key auto_increment, test varchar(10))")
         .execute()
         .blockLast();
-
+    connection.beginTransaction().block();
     connection
         .createStatement("INSERT INTO batchStatement values (?, ?)")
         .bind(0, 1)
@@ -44,6 +44,7 @@ public class StatementBatchingTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext("1test", "2test2")
         .verifyComplete();
+    connection.rollbackTransaction().block();
   }
 
   @Test
@@ -62,6 +63,7 @@ public class StatementBatchingTest extends BaseConnectionTest {
             "CREATE TEMPORARY TABLE batchStatementResultSet (id int not null primary key auto_increment, test varchar(10))")
         .execute()
         .blockLast();
+    connection.beginTransaction().block();
     connection
         .createStatement("INSERT INTO batchStatementResultSet values (1, 'test1'), (2, 'test2')")
         .execute()
@@ -79,5 +81,6 @@ public class StatementBatchingTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext("test1", "test2", "test1")
         .verifyComplete();
+    connection.rollbackTransaction().block();
   }
 }

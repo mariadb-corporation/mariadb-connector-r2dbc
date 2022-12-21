@@ -11,6 +11,7 @@ import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.MessageSequence;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.Assert;
+import reactor.core.publisher.Mono;
 
 public final class QueryPacket implements ClientMessage {
 
@@ -22,12 +23,11 @@ public final class QueryPacket implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(Context context, ByteBufAllocator byteBufAllocator) {
-    Assert.requireNonNull(byteBufAllocator, "byteBufAllocator must not be null");
+  public Mono<ByteBuf> encode(Context context, ByteBufAllocator byteBufAllocator) {
     ByteBuf out = byteBufAllocator.ioBuffer(this.sql.length() + 1);
     out.writeByte(0x03);
     out.writeCharSequence(this.sql, StandardCharsets.UTF_8);
-    return out;
+    return Mono.just(out);
   }
 
   public MessageSequence getSequencer() {

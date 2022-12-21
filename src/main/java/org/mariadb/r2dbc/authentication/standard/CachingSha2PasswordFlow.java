@@ -12,9 +12,12 @@ import java.security.PublicKey;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.SslMode;
 import org.mariadb.r2dbc.message.AuthMoreData;
-import org.mariadb.r2dbc.message.AuthSwitch;
 import org.mariadb.r2dbc.message.ClientMessage;
-import org.mariadb.r2dbc.message.client.*;
+import org.mariadb.r2dbc.message.client.AuthMoreRawPacket;
+import org.mariadb.r2dbc.message.client.ClearPasswordPacket;
+import org.mariadb.r2dbc.message.client.Sha256PasswordPacket;
+import org.mariadb.r2dbc.message.client.Sha2PublicKeyRequestPacket;
+import org.mariadb.r2dbc.message.server.Sequencer;
 
 public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
 
@@ -69,9 +72,14 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
     return TYPE;
   }
 
+  public void setStateFastAuth() {
+    state = State.FAST_AUTH_RESULT;
+  }
+
   public ClientMessage next(
       MariadbConnectionConfiguration configuration,
-      AuthSwitch authSwitch,
+      byte[] seed,
+      Sequencer sequencer,
       AuthMoreData authMoreData)
       throws R2dbcException {
 
@@ -80,9 +88,9 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
     CharSequence password = configuration.getPassword();
     switch (state) {
       case INIT:
-        byte[] fastCryptedPwd = sha256encryptPassword(password, authSwitch.getSeed());
+        byte[] fastCryptedPwd = sha256encryptPassword(password, seed);
         state = State.FAST_AUTH_RESULT;
-        return new AuthMoreRawPacket(authSwitch.getSequencer(), fastCryptedPwd);
+        return new AuthMoreRawPacket(sequencer, fastCryptedPwd);
 
       case FAST_AUTH_RESULT:
         byte fastAuthResult = authMoreData.getBuf().getByte(0);
@@ -105,10 +113,7 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
               state = State.SEND_AUTH;
 
               return new Sha256PasswordPacket(
-                  authMoreData.getSequencer(),
-                  configuration.getPassword(),
-                  authSwitch.getSeed(),
-                  publicKey);
+                  authMoreData.getSequencer(), configuration.getPassword(), seed, publicKey);
             }
 
             if (!configuration.allowPublicKeyRetrieval()) {
@@ -131,10 +136,7 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
         publicKey = readPublicKey(authMoreData.getBuf());
         state = State.SEND_AUTH;
         return new Sha256PasswordPacket(
-            authMoreData.getSequencer(),
-            configuration.getPassword(),
-            authSwitch.getSeed(),
-            publicKey);
+            authMoreData.getSequencer(), configuration.getPassword(), seed, publicKey);
 
       default:
         throw new R2dbcNonTransientResourceException("Wrong state", "S1009");

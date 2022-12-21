@@ -3,52 +3,48 @@
 
 package org.mariadb.r2dbc.util;
 
-import io.netty.util.ReferenceCountUtil;
-import java.util.*;
-import reactor.core.publisher.Flux;
+import java.util.Arrays;
+import java.util.Objects;
+import org.mariadb.r2dbc.MariadbCommonStatement;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
 public final class Binding {
   private static final Logger LOGGER = Loggers.getLogger(Binding.class);
 
+  private BindValue[] binds;
   private final int expectedSize;
-  private final Map<Integer, BindValue> binds;
+  private int currentSize = 0;
 
   public Binding(int expectedSize) {
     this.expectedSize = expectedSize;
-    this.binds = new HashMap<>();
+    this.binds =
+        new BindValue[(expectedSize == MariadbCommonStatement.UNKNOWN_SIZE) ? 10 : expectedSize];
   }
 
   public Binding add(int index, BindValue parameter) {
-    Assert.requireNonNull(parameter, "parameter must not be null");
-
     if (index >= this.expectedSize) {
-      throw new IndexOutOfBoundsException(
-          String.format(
-              "Binding index %d when only %d parameters are expected", index, this.expectedSize));
+      if (expectedSize != MariadbCommonStatement.UNKNOWN_SIZE) {
+        throw new IndexOutOfBoundsException(
+            String.format(
+                "Binding index %d when only %d parameters are expected", index, this.expectedSize));
+      }
+      grow(index + 1);
     }
-
-    this.binds.put(index, parameter);
-
+    if (index >= currentSize) currentSize = index + 1;
+    this.binds[index] = parameter;
     return this;
   }
 
-  public void clear() {
-    this.binds
-        .entrySet()
-        .forEach(
-            entry -> {
-              Flux.from(entry.getValue().getValue())
-                  .doOnNext(ReferenceCountUtil::release)
-                  .subscribe(
-                      ignore -> {},
-                      err ->
-                          LOGGER.warn(
-                              String.format("Cannot release parameter %s", entry.getValue()), err));
-            });
+  private void grow(int minLength) {
+    int currLength = this.binds.length;
+    int newLength = Math.max(currLength + (currLength >> 1), minLength);
+    this.binds = Arrays.copyOf(this.binds, newLength);
+  }
 
-    this.binds.clear();
+  public void clear() {
+    this.binds = new BindValue[expectedSize];
+    this.currentSize = 0;
   }
 
   @Override
@@ -65,43 +61,55 @@ public final class Binding {
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.binds);
-  }
-
-  public boolean isEmpty() {
-    return this.binds.isEmpty();
-  }
-
-  public int size() {
-    return this.binds.size();
+    int result = Objects.hash(expectedSize);
+    result = 31 * result + Arrays.hashCode(binds);
+    return result;
   }
 
   @Override
   public String toString() {
-    return "Binding{binds=" + this.binds + '}';
+    return Arrays.toString(this.binds);
   }
 
   public void validate(int expectedSize) {
     // valid parameters
     for (int i = 0; i < expectedSize; i++) {
-      if (binds.get(i) == null) {
+      if (binds[i] == null) {
         throw new IllegalStateException(String.format("Parameter at position %d is not set", i));
       }
     }
   }
 
-  public List<BindValue> getBindResultParameters(int paramNumber) {
-    if (this.binds.isEmpty() && paramNumber == 0) {
-      return Collections.emptyList();
+  public BindValue[] getBindResultParameters(int paramNumber) {
+    if (paramNumber == 0) {
+      return new BindValue[0];
     }
-    List<BindValue> result = new ArrayList<>(paramNumber);
+
+    if (paramNumber < this.binds.length) {
+      throw new IllegalStateException(
+          String.format("No parameter specified for index %d", this.binds.length));
+    }
+
     for (int i = 0; i < paramNumber; i++) {
-      BindValue parameter = this.binds.get(i);
-      if (parameter == null) {
+      if (this.binds[i] == null) {
         throw new IllegalStateException(String.format("No parameter specified for index %d", i));
       }
-      result.add(parameter);
     }
-    return result;
+    if (paramNumber == expectedSize) return binds;
+    if (paramNumber < expectedSize) {
+      return Arrays.copyOfRange(binds, 0, paramNumber);
+    }
+    throw new IllegalStateException(
+        String.format("No parameter specified for index %d", expectedSize));
+  }
+
+  public BindValue[] getBinds() {
+
+    for (int i = 0; i < currentSize; i++) {
+      if (this.binds[i] == null) {
+        throw new IllegalStateException(String.format("No parameter specified for index %d", i));
+      }
+    }
+    return Arrays.copyOfRange(binds, 0, currentSize);
   }
 }

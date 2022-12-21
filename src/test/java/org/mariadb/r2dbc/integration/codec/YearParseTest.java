@@ -23,6 +23,8 @@ public class YearParseTest extends BaseConnectionTest {
 
   @BeforeAll
   public static void before2() {
+    afterAll2();
+    sharedConn.beginTransaction().block();
     String sqlCreate = "CREATE TABLE YearTable (t1 YEAR(4), t2 YEAR(2))";
     String sqlInsert = "INSERT INTO YearTable VALUES (2060, 60),(2071, 71),(0, 0), (null, null)";
     // mysql doesn't support YEAR(2) anymore
@@ -35,11 +37,12 @@ public class YearParseTest extends BaseConnectionTest {
     sharedConn.createStatement(sqlCreate).execute().blockLast();
     sharedConn.createStatement(sqlInsert).execute().blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE YearTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS YearTable").execute().blockLast();
   }
 
   @Test

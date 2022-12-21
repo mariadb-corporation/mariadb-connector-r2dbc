@@ -112,7 +112,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   @Test
   void validateParam() {
     // disabling with maxscale due to MXS-3956
-    // to be re-enable when > 6.1.1
+    // to be re-enabled when > 6.1.1
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
     Assertions.assertThrows(
@@ -131,12 +131,16 @@ public class PrepareResultSetTest extends BaseConnectionTest {
                 .execute()
                 .flatMap(r -> r.getRowsUpdated())
                 .blockLast(),
-        "No parameters have been set");
+        "Parameter at position 0 is not set");
   }
 
   @Test
   void parameterLengthEncoded() {
     Assumptions.assumeTrue(maxAllowedPacket() >= 17 * 1024 * 1024);
+    Assumptions.assumeTrue(
+        !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
+            && !"maxscale".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeTrue(runLongTest());
     char[] arr1024 = new char[1024];
     for (int i = 0; i < arr1024.length; i++) {
@@ -153,7 +157,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     String arr1024St = String.valueOf(arr1024);
     String arrSt = String.valueOf(arr);
     String arrSt2 = String.valueOf(arr2);
-
+    sharedConnPrepare.beginTransaction().block();
     sharedConnPrepare
         .createStatement("INSERT INTO parameterLengthEncoded VALUES (?, ?)")
         .bind(0, arr1024St)
@@ -210,11 +214,16 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext(String.valueOf(arr1024))
         .verifyComplete();
+    sharedConnPrepare.rollbackTransaction().block();
   }
 
   @Test
   void parameterLengthEncodedLong() {
     Assumptions.assumeTrue(maxAllowedPacket() >= 20 * 1024 * 1024 + 500);
+    Assumptions.assumeTrue(
+        !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
+            && !"maxscale".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
     // out of memory on travis and 10.1
     Assumptions.assumeFalse(
         "mariadb:10.1".equals(System.getenv("DB")) || "mysql:5.6".equals(System.getenv("DB")));
@@ -244,6 +253,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   @Test
   void missingParameter() {
     // missing first parameter
+    sharedConnPrepare.beginTransaction().block();
     MariadbStatement stmt =
         sharedConnPrepare.createStatement("INSERT INTO missingParameter(t1, t2) VALUES (?, ?)");
 
@@ -275,6 +285,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext("test")
         .verifyComplete();
+    sharedConnPrepare.rollbackTransaction().block();
   }
 
   @Test
@@ -461,8 +472,8 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IllegalStateException.class,
         () -> stmt.execute().blockLast(),
-        "No parameters have been set");
-    Assertions.assertThrows(IllegalArgumentException.class, () -> stmt.add());
+        "Parameter at position 0 is not set");
+    Assertions.assertThrows(IllegalStateException.class, () -> stmt.add());
   }
 
   @Test
@@ -494,6 +505,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .createStatement("CREATE TEMPORARY TABLE parameterNull(t varchar(10), t2 varchar(10))")
         .execute()
         .blockLast();
+    sharedConnPrepare.beginTransaction().block();
     sharedConnPrepare
         .createStatement("INSERT INTO parameterNull VALUES ('1', '1'), (null, '2'), (null, null)")
         .execute()
@@ -531,6 +543,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         NoSuchElementException.class,
         () -> stmt.bindNull("fff", String.class),
         "No parameter with name 'fff' found (possible values [null])");
+    sharedConnPrepare.rollbackTransaction().block();
   }
 
   @Test
@@ -568,7 +581,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IllegalStateException.class,
         () -> stmt.execute().blockLast(),
-        "No parameters have been set");
+        "Parameter at position 0 is not set");
   }
 
   private List<String> prepareInfo(MariadbConnection connection) {

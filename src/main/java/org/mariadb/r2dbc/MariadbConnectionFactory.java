@@ -4,6 +4,8 @@
 package org.mariadb.r2dbc;
 
 import io.netty.channel.unix.DomainSocketAddress;
+import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.*;
 import java.net.SocketAddress;
 import java.util.Iterator;
@@ -11,15 +13,14 @@ import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.client.FailoverClient;
+import org.mariadb.r2dbc.client.MariadbResult;
 import org.mariadb.r2dbc.client.SimpleClient;
 import org.mariadb.r2dbc.message.Protocol;
-import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.message.flow.AuthenticationFlow;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.constants.Capabilities;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.resources.ConnectionProvider;
 
@@ -111,15 +112,29 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
       for (int i = 0; i < sessionVariable.size(); i++) {
         String key = keys.next();
         String value = sessionVariable.get(key);
-        if (value == null)
-          throw new IllegalArgumentException(
-              String.format("Session variable '%s' has no value", key));
+        if (value == null) {
+          client.close().subscribe();
+          return Mono.error(
+              new R2dbcNonTransientResourceException(
+                  String.format("Session variable '%s' has no value", key)));
+        }
         sql.append(",").append(key).append("=").append(value);
       }
     }
-    Flux<ServerMessage> messages = client.sendCommand(new QueryPacket(sql.toString()), true);
-    return MariadbCommonStatement.toResult(
-            Protocol.TEXT, client, messages, ExceptionFactory.INSTANCE, null, null, configuration)
+    return client
+        .sendCommand(new QueryPacket(sql.toString()), true)
+        .doOnDiscard(ReferenceCounted.class, ReferenceCountUtil::release)
+        .windowUntil(it -> it.resultSetEnd())
+        .map(
+            dataRow ->
+                new MariadbResult(
+                    Protocol.TEXT,
+                    null,
+                    dataRow,
+                    ExceptionFactory.INSTANCE,
+                    null,
+                    false,
+                    configuration))
         .last()
         .then();
   }

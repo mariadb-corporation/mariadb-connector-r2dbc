@@ -7,150 +7,154 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ClientPrepareResult implements PrepareResult {
+public final class ClientParser implements PrepareResult {
 
-  private final List<byte[]> queryParts;
+  private final String sql;
+  private final byte[] query;
+  private final List<Integer> paramPositions;
   private final List<String> paramNameList;
   private final int paramCount;
-  private final boolean isQueryMultipleRewritable;
-  private final boolean isReturning;
-  private final boolean supportAddingReturning;
+  private final Boolean isReturning;
+  private final Boolean supportAddingReturning;
 
-  private ClientPrepareResult(
-      List<byte[]> queryParts,
-      List<String> paramNameList,
-      boolean isQueryMultipleRewritable,
-      boolean isReturning,
-      boolean supportAddingReturning) {
-    this.queryParts = queryParts;
+  private ClientParser(
+      String sql,
+      byte[] query,
+      Boolean isReturning,
+      Boolean supportAddingReturning,
+      List<Integer> paramPositions,
+      List<String> paramNameList) {
+    this.sql = sql;
+    this.query = query;
+
+    this.paramPositions = paramPositions;
     this.paramNameList = paramNameList;
-    this.isQueryMultipleRewritable = isQueryMultipleRewritable;
-    this.paramCount = queryParts.size() - 1;
+    this.paramCount = paramPositions.size() / 2;
     this.isReturning = isReturning;
     this.supportAddingReturning = supportAddingReturning;
   }
 
   /**
    * Separate query in a String list and set flag isQueryMultipleRewritable. The resulting string
-   * list is separated by ? or :name that are not in comments.
+   * list is separed by ? that are not in comments. isQueryMultipleRewritable flag is set if query
+   * can be rewrite in one query (all case but if using "-- comment"). example for query : "INSERT
+   * INTO tableName(id, name) VALUES (?, ?)" result list will be : {"INSERT INTO tableName(id, name)
+   * VALUES (", ", ", ")"}
    *
    * @param queryString query
    * @param noBackslashEscapes escape mode
    * @return ClientPrepareResult
    */
-  public static ClientPrepareResult parameterParts(String queryString, boolean noBackslashEscapes) {
-    boolean multipleQueriesPrepare = true;
-    List<byte[]> partList = new ArrayList<>();
+  public static ClientParser parameterPartsCheckReturning(
+      String queryString, boolean noBackslashEscapes) {
+
+    List<Integer> paramPositions = new ArrayList<>();
     List<String> paramNameList = new ArrayList<>();
     LexState state = LexState.Normal;
-    char lastChar = '\0';
-    boolean endingSemicolon = false;
+    byte lastChar = 0x00;
+    boolean singleQuotes = false;
     boolean returning = false;
     boolean supportAddingReturning = false;
-
-    boolean singleQuotes = false;
-    int lastParameterPosition = 0;
-
-    char[] query = queryString.toCharArray();
+    byte[] query = queryString.getBytes(StandardCharsets.UTF_8);
     int queryLength = query.length;
+
     for (int i = 0; i < queryLength; i++) {
 
-      char car = query[i];
-      if (state == LexState.Escape) {
+      byte car = query[i];
+      if (state == LexState.Escape
+          && !((car == '\'' && singleQuotes) || (car == '"' && !singleQuotes))) {
         state = LexState.String;
         lastChar = car;
         continue;
       }
-
       switch (car) {
-        case '*':
-          if (state == LexState.Normal && lastChar == '/') {
+        case (byte) '*':
+          if (state == LexState.Normal && lastChar == (byte) '/') {
             state = LexState.SlashStarComment;
           }
           break;
 
-        case '/':
-          if (state == LexState.SlashStarComment && lastChar == '*') {
+        case (byte) '/':
+          if (state == LexState.SlashStarComment && lastChar == (byte) '*') {
             state = LexState.Normal;
-          } else if (state == LexState.Normal && lastChar == '/') {
+          } else if (state == LexState.Normal && lastChar == (byte) '/') {
             state = LexState.EOLComment;
           }
           break;
 
-        case '#':
+        case (byte) '#':
           if (state == LexState.Normal) {
             state = LexState.EOLComment;
           }
           break;
 
-        case '-':
-          if (state == LexState.Normal && lastChar == '-') {
+        case (byte) '-':
+          if (state == LexState.Normal && lastChar == (byte) '-') {
             state = LexState.EOLComment;
-            multipleQueriesPrepare = false;
           }
           break;
 
-        case '\n':
+        case (byte) '\n':
           if (state == LexState.EOLComment) {
-            multipleQueriesPrepare = true;
             state = LexState.Normal;
           }
           break;
 
-        case '"':
+        case (byte) '"':
           if (state == LexState.Normal) {
             state = LexState.String;
             singleQuotes = false;
           } else if (state == LexState.String && !singleQuotes) {
             state = LexState.Normal;
+          } else if (state == LexState.Escape) {
+            state = LexState.String;
           }
           break;
 
-        case '\'':
+        case (byte) '\'':
           if (state == LexState.Normal) {
             state = LexState.String;
             singleQuotes = true;
           } else if (state == LexState.String && singleQuotes) {
             state = LexState.Normal;
+          } else if (state == LexState.Escape) {
+            state = LexState.String;
           }
           break;
-
-        case '\\':
-          if (!noBackslashEscapes && state == LexState.String) {
-            state = LexState.Escape;
-          }
-          break;
-        case ';':
-          if (state == LexState.Normal) {
-            endingSemicolon = true;
-            multipleQueriesPrepare = false;
-          }
-          break;
-        case '?':
-          if (state == LexState.Normal) {
-            partList.add(
-                queryString.substring(lastParameterPosition, i).getBytes(StandardCharsets.UTF_8));
-            lastParameterPosition = i + 1;
-            paramNameList.add(null);
-          }
-          break;
-
         case ':':
           if (state == LexState.Normal) {
-            partList.add(
-                queryString.substring(lastParameterPosition, i).getBytes(StandardCharsets.UTF_8));
-            String placeholderName = "";
+            int beginPos = i;
+            paramPositions.add(i);
             while (++i < queryLength
                 && (car = query[i]) != ' '
                 && ((car >= '0' && car <= '9')
                     || (car >= 'A' && car <= 'Z')
                     || (car >= 'a' && car <= 'z')
                     || car == '-'
-                    || car == '_')) {
-              placeholderName += car;
-            }
-            lastParameterPosition = i;
-            paramNameList.add(placeholderName);
+                    || car == '_')) {}
+            paramNameList.add(new String(query, beginPos + 1, i - (beginPos + 1)));
+            paramPositions.add(i);
+          }
+          break;
+        case (byte) '\\':
+          if (noBackslashEscapes) {
+            break;
+          }
+          if (state == LexState.String) {
+            state = LexState.Escape;
+          }
+          break;
+        case (byte) '?':
+          if (state == LexState.Normal) {
+            paramPositions.add(i);
+            paramPositions.add(i + 1);
+          }
+          break;
+        case (byte) '`':
+          if (state == LexState.Backtick) {
+            state = LexState.Normal;
+          } else if (state == LexState.Normal) {
+            state = LexState.Backtick;
           }
           break;
 
@@ -259,36 +263,139 @@ public class ClientPrepareResult implements PrepareResult {
             i += 6;
           }
           break;
+      }
+      lastChar = car;
+    }
 
-        case '`':
+    return new ClientParser(
+        queryString, query, returning, supportAddingReturning, paramPositions, paramNameList);
+  }
+
+  /**
+   * Separate query in a String list and set flag isQueryMultipleRewritable. The resulting string
+   * list is separed by ? that are not in comments. isQueryMultipleRewritable flag is set if query
+   * can be rewrite in one query (all case but if using "-- comment"). example for query : "INSERT
+   * INTO tableName(id, name) VALUES (?, ?)" result list will be : {"INSERT INTO tableName(id, name)
+   * VALUES (", ", ", ")"}
+   *
+   * @param queryString query
+   * @param noBackslashEscapes escape mode
+   * @return ClientPrepareResult
+   */
+  public static ClientParser parameterParts(String queryString, boolean noBackslashEscapes) {
+
+    List<Integer> paramPositions = new ArrayList<>();
+    List<String> paramNameList = new ArrayList<>();
+    LexState state = LexState.Normal;
+    byte lastChar = 0x00;
+    boolean singleQuotes = false;
+    byte[] query = queryString.getBytes(StandardCharsets.UTF_8);
+    int queryLength = query.length;
+
+    for (int i = 0; i < queryLength; i++) {
+
+      byte car = query[i];
+      if (state == LexState.Escape
+          && !((car == '\'' && singleQuotes) || (car == '"' && !singleQuotes))) {
+        state = LexState.String;
+        lastChar = car;
+        continue;
+      }
+      switch (car) {
+        case (byte) '*':
+          if (state == LexState.Normal && lastChar == (byte) '/') {
+            state = LexState.SlashStarComment;
+          }
+          break;
+
+        case (byte) '/':
+          if (state == LexState.SlashStarComment && lastChar == (byte) '*') {
+            state = LexState.Normal;
+          } else if (state == LexState.Normal && lastChar == (byte) '/') {
+            state = LexState.EOLComment;
+          }
+          break;
+
+        case (byte) '#':
+          if (state == LexState.Normal) {
+            state = LexState.EOLComment;
+          }
+          break;
+
+        case (byte) '-':
+          if (state == LexState.Normal && lastChar == (byte) '-') {
+            state = LexState.EOLComment;
+          }
+          break;
+
+        case (byte) '\n':
+          if (state == LexState.EOLComment) {
+            state = LexState.Normal;
+          }
+          break;
+
+        case (byte) '"':
+          if (state == LexState.Normal) {
+            state = LexState.String;
+            singleQuotes = false;
+          } else if (state == LexState.String && !singleQuotes) {
+            state = LexState.Normal;
+          } else if (state == LexState.Escape) {
+            state = LexState.String;
+          }
+          break;
+
+        case (byte) '\'':
+          if (state == LexState.Normal) {
+            state = LexState.String;
+            singleQuotes = true;
+          } else if (state == LexState.String && singleQuotes) {
+            state = LexState.Normal;
+          } else if (state == LexState.Escape) {
+            state = LexState.String;
+          }
+          break;
+        case ':':
+          if (state == LexState.Normal) {
+            int beginPos = i;
+            paramPositions.add(i);
+            while (++i < queryLength
+                && (car = query[i]) != ' '
+                && ((car >= '0' && car <= '9')
+                    || (car >= 'A' && car <= 'Z')
+                    || (car >= 'a' && car <= 'z')
+                    || car == '-'
+                    || car == '_')) {}
+            paramNameList.add(new String(query, beginPos + 1, i - (beginPos + 1)));
+            paramPositions.add(i);
+          }
+          break;
+        case (byte) '\\':
+          if (noBackslashEscapes) {
+            break;
+          }
+          if (state == LexState.String) {
+            state = LexState.Escape;
+          }
+          break;
+        case (byte) '?':
+          if (state == LexState.Normal) {
+            paramPositions.add(i);
+            paramPositions.add(i + 1);
+          }
+          break;
+        case (byte) '`':
           if (state == LexState.Backtick) {
             state = LexState.Normal;
           } else if (state == LexState.Normal) {
             state = LexState.Backtick;
           }
           break;
-
-        default:
-          // multiple queries
-          if (state == LexState.Normal && endingSemicolon && ((byte) car >= 40)) {
-            endingSemicolon = false;
-            multipleQueriesPrepare = true;
-          }
-          break;
       }
       lastChar = car;
     }
-    if (lastParameterPosition == 0) {
-      partList.add(queryString.getBytes(StandardCharsets.UTF_8));
-    } else {
-      partList.add(
-          queryString
-              .substring(lastParameterPosition, queryLength)
-              .getBytes(StandardCharsets.UTF_8));
-    }
 
-    return new ClientPrepareResult(
-        partList, paramNameList, multipleQueriesPrepare, returning, supportAddingReturning);
+    return new ClientParser(queryString, query, null, null, paramPositions, paramNameList);
   }
 
   /**
@@ -406,53 +513,41 @@ public class ClientPrepareResult implements PrepareResult {
     return false;
   }
 
-  public List<byte[]> getQueryParts() {
-    return queryParts;
+  public String getSql() {
+    return sql;
+  }
+
+  public byte[] getQuery() {
+    return query;
+  }
+
+  public List<Integer> getParamPositions() {
+    return paramPositions;
   }
 
   public List<String> getParamNameList() {
     return paramNameList;
   }
 
-  public boolean isQueryMultipleRewritable() {
-    return isQueryMultipleRewritable;
+  public int getParamCount() {
+    return paramCount;
   }
 
   public boolean isReturning() {
     return isReturning;
   }
 
-  public boolean supportAddingReturning() {
+  public Boolean supportAddingReturning() {
     return supportAddingReturning;
-  }
-
-  public int getParamCount() {
-    return paramCount;
-  }
-
-  @Override
-  public String toString() {
-    StringBuilder sb = new StringBuilder("ClientPrepareResult{queryParts=[");
-    for (int i = 0; i < queryParts.size(); i++) {
-      byte[] part = queryParts.get(i);
-      if (i != 0) sb.append(",");
-      sb.append("'").append(new String(part, StandardCharsets.UTF_8)).append("'");
-    }
-    sb.append("], paramNameList=")
-        .append(String.join(",", paramNameList))
-        .append(", paramCount=")
-        .append(paramCount)
-        .append('}');
-    return sb.toString();
   }
 
   public void validateAddingReturning() {
 
-    if (isReturning()) {
+    if (isReturning) {
       throw new IllegalStateException("Statement already includes RETURNING clause");
     }
 
-    if (!supportAddingReturning()) {
+    if (!supportAddingReturning) {
       throw new IllegalStateException("Cannot add RETURNING clause to query");
     }
   }

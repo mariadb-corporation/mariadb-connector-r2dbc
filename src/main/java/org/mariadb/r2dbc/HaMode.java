@@ -151,8 +151,8 @@ public enum HaMode {
             ExceptionFactory.INSTANCE.createParsingException(
                 String.format(
                     "Fail to establish connection to %s %s: %s",
-                    endingNanoTime == 0L ? "" : ", reaching timeout",
                     availableHosts,
+                    (failFast || endingNanoTime == 0L) ? "" : ", reaching timeout",
                     t.getMessage()),
                 t));
       }

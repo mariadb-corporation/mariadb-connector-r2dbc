@@ -249,10 +249,12 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
 
   @Override
   public Mono<Boolean> validate(ValidationDepth depth) {
-    if (this.client.isCloseRequested()) {
+    if (this.client.isCloseRequested()
+        || (HaMode.NONE.equals(this.configuration.getHaMode()) && !this.client.isConnected())) {
       return Mono.just(false);
     }
-    if (depth == ValidationDepth.LOCAL) {
+
+    if (HaMode.NONE.equals(this.configuration.getHaMode()) && depth == ValidationDepth.LOCAL) {
       return Mono.just(this.client.isConnected());
     }
 

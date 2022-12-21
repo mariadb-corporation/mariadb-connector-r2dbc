@@ -15,7 +15,6 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BindValue;
 
 public class LocalDateCodec implements Codec<LocalDate> {
 
@@ -194,34 +193,22 @@ public class LocalDateCodec implements Codec<LocalDate> {
   }
 
   @Override
-  public BindValue encodeText(
-      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> {
-          ByteBuf buf = allocator.buffer();
-          buf.writeByte('\'');
-          buf.writeCharSequence(
-              ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE),
-              StandardCharsets.US_ASCII);
-          buf.writeByte('\'');
-          return buf;
-        });
+  public void encodeDirectText(ByteBuf out, Object value, Context context) {
+    out.writeByte('\'');
+    out.writeCharSequence(
+        ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE), StandardCharsets.US_ASCII);
+    out.writeByte('\'');
   }
 
   @Override
-  public BindValue encodeBinary(
-      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> {
-          LocalDate val = (LocalDate) value;
-          ByteBuf buf = allocator.buffer(8, 8);
-          buf.writeByte(7); // length
-          buf.writeShortLE((short) val.get(ChronoField.YEAR));
-          buf.writeByte(val.get(ChronoField.MONTH_OF_YEAR));
-          buf.writeByte(val.get(ChronoField.DAY_OF_MONTH));
-          buf.writeBytes(new byte[] {0, 0, 0});
-          return buf;
-        });
+  public void encodeDirectBinary(
+      ByteBufAllocator allocator, ByteBuf out, Object value, Context context) {
+    LocalDate val = (LocalDate) value;
+    out.writeByte(7); // length
+    out.writeShortLE((short) val.get(ChronoField.YEAR));
+    out.writeByte(val.get(ChronoField.MONTH_OF_YEAR));
+    out.writeByte(val.get(ChronoField.DAY_OF_MONTH));
+    out.writeBytes(new byte[] {0, 0, 0});
   }
 
   public DataType getBinaryEncodeType() {

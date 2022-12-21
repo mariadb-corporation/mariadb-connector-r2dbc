@@ -19,6 +19,8 @@ import reactor.test.StepVerifier;
 public class BigIntegerParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
+    afterAll2();
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("CREATE TABLE BigIntTable (t1 BIGINT, t2 BIGINT, t3 BIGINT(4) ZEROFILL)")
         .execute()
@@ -38,12 +40,13 @@ public class BigIntegerParseTest extends BaseConnectionTest {
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    sharedConn.createStatement("DROP TABLE BigIntTable").execute().blockLast();
-    sharedConn.createStatement("DROP TABLE BigIntUnsignedTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS BigIntTable").execute().blockLast();
+    sharedConn.createStatement("DROP TABLE IF EXISTS BigIntUnsignedTable").execute().blockLast();
   }
 
   @Test

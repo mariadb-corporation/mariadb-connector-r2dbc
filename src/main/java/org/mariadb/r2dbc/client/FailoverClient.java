@@ -18,7 +18,10 @@ import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.*;
-import org.mariadb.r2dbc.message.server.*;
+import org.mariadb.r2dbc.message.server.CompletePrepareResult;
+import org.mariadb.r2dbc.message.server.ErrorPacket;
+import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
+import org.mariadb.r2dbc.message.server.RowPacket;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
@@ -287,6 +290,16 @@ public class FailoverClient implements Client {
   }
 
   @Override
+  public boolean closeChannelIfNeeded() {
+    return client.get().closeChannelIfNeeded();
+  }
+
+  @Override
+  public void handleConnectionError(Throwable throwable) {
+    client.get().handleConnectionError(throwable);
+  }
+
+  @Override
   public void sendCommandWithoutResult(ClientMessage requests) {
     client.get().sendCommandWithoutResult(requests);
   }
@@ -362,13 +375,14 @@ public class FailoverClient implements Client {
                                             } else {
                                               clientMsg2 = Mono.just(req);
                                             }
-                                            return clientMsg.flatMapMany(
+                                            return clientMsg2.flatMapMany(
                                                 req2 ->
                                                     c.sendCommand(
-                                                        req2,
-                                                        initialState,
-                                                        sql,
-                                                        canSafelyBeReExecuted));
+                                                            req2,
+                                                            initialState,
+                                                            sql,
+                                                            canSafelyBeReExecuted)
+                                                        .doOnTerminate(() -> req2.releaseSave()));
                                           })
                                       .flatMapMany(flux -> flux)));
             });
@@ -432,7 +446,8 @@ public class FailoverClient implements Client {
                                       preparePacket.resetSequencer();
                                       executePacket.resetSequencer();
                                       return c.sendCommand(
-                                          preparePacket, executePacket, canSafelyBeReExecuted);
+                                              preparePacket, executePacket, canSafelyBeReExecuted)
+                                          .doOnTerminate(() -> executePacket.releaseSave());
                                     })
                                 .flatMapMany(flux -> flux)));
   }

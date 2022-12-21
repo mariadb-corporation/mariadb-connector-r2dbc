@@ -6,9 +6,9 @@ package org.mariadb.r2dbc.authentication.standard;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.authentication.AuthenticationPlugin;
 import org.mariadb.r2dbc.message.AuthMoreData;
-import org.mariadb.r2dbc.message.AuthSwitch;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.client.Ed25519PasswordPacket;
+import org.mariadb.r2dbc.message.server.Sequencer;
 
 public final class Ed25519PasswordPluginFlow implements AuthenticationPlugin {
 
@@ -24,10 +24,10 @@ public final class Ed25519PasswordPluginFlow implements AuthenticationPlugin {
 
   public ClientMessage next(
       MariadbConnectionConfiguration configuration,
-      AuthSwitch authSwitch,
+      byte[] seed,
+      Sequencer sequencer,
       AuthMoreData authMoreData) {
 
-    return new Ed25519PasswordPacket(
-        authSwitch.getSequencer(), configuration.getPassword(), authSwitch.getSeed());
+    return new Ed25519PasswordPacket(sequencer, configuration.getPassword(), seed);
   }
 }

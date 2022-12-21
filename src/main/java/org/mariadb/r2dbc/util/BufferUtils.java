@@ -41,7 +41,6 @@ public final class BufferUtils {
         return;
       default:
         buf.skipBytes(type);
-        return;
     }
   }
 

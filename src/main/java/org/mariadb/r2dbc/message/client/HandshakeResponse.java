@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Properties;
 import org.mariadb.r2dbc.MariadbConnectionFactoryProvider;
 import org.mariadb.r2dbc.authentication.addon.ClearPasswordPluginFlow;
+import org.mariadb.r2dbc.authentication.standard.CachingSha2PasswordFlow;
 import org.mariadb.r2dbc.authentication.standard.NativePasswordPluginFlow;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
@@ -20,6 +21,7 @@ import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.constants.Capabilities;
+import reactor.core.publisher.Mono;
 
 public final class HandshakeResponse implements ClientMessage {
 
@@ -68,7 +70,7 @@ public final class HandshakeResponse implements ClientMessage {
   }
 
   @Override
-  public ByteBuf encode(Context context, ByteBufAllocator allocator) {
+  public Mono<ByteBuf> encode(Context context, ByteBufAllocator allocator) {
 
     byte exchangeCharset =
         decideLanguage(
@@ -85,6 +87,14 @@ public final class HandshakeResponse implements ClientMessage {
         // TODO check that SSL is enable
         authData =
             (password == null) ? new byte[0] : password.toString().getBytes(StandardCharsets.UTF_8);
+        break;
+      case CachingSha2PasswordFlow.TYPE:
+        authenticationPluginType = CachingSha2PasswordFlow.TYPE;
+        authData =
+            (password == null)
+                ? new byte[0]
+                : CachingSha2PasswordFlow.sha256encryptPassword(
+                    password, initialHandshakePacket.getSeed());
         break;
 
       default:
@@ -136,7 +146,7 @@ public final class HandshakeResponse implements ClientMessage {
       bufAttributes.release();
     }
 
-    return buf;
+    return Mono.just(buf);
   }
 
   @Override

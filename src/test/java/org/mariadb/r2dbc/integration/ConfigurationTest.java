@@ -19,7 +19,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class ConfigurationTest extends BaseTest {
+public class ConfigurationTest extends BaseConnectionTest {
 
   @Test
   void usingOption() {
@@ -232,7 +232,7 @@ public class ConfigurationTest extends BaseTest {
         MariadbConnectionConfiguration.fromOptions(options).build();
     Assertions.assertEquals("someHost", conf.getHostAddresses().get(0).getHost());
     Assertions.assertEquals(43306, conf.getPort());
-    Assertions.assertEquals(true, conf.allowMultiQueries());
+    Assertions.assertTrue(conf.allowMultiQueries());
 
     final ConnectionFactoryOptions optionsWithoutUser =
         ConnectionFactoryOptions.builder()

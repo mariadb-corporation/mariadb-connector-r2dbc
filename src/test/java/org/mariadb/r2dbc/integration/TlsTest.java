@@ -4,6 +4,7 @@
 package org.mariadb.r2dbc.integration;
 
 import io.r2dbc.spi.R2dbcNonTransientException;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.io.File;
 import java.io.IOException;
@@ -12,14 +13,13 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
-import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class TlsTest extends BaseConnectionTest {
@@ -63,7 +63,7 @@ public class TlsTest extends BaseConnectionTest {
         .createStatement("DROP USER 'MUTUAL_AUTH'")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .subscribe();
     String create_sql;
     String grant_sql;
@@ -104,12 +104,12 @@ public class TlsTest extends BaseConnectionTest {
             .sslMode(SslMode.TRUST)
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
-    connection.close();
+    connection.close().block();
     sharedConn
         .createStatement("DROP USER IF EXISTS userWithoutPassword")
         .execute()
         .map(res -> res.getRowsUpdated())
-        .onErrorReturn(Flux.empty())
+        .onErrorReturn(Mono.empty())
         .blockLast();
   }
 
@@ -248,6 +248,8 @@ public class TlsTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNextMatches(
             val -> {
+              if ("maxscale".equals(System.getenv("srv"))
+                  && !"skysql-ha".equals(System.getenv("srv"))) return true;
               String[] values = {"TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
               return Arrays.stream(values).anyMatch(val::equals);
             })
@@ -307,8 +309,8 @@ public class TlsTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectErrorMatches(
             throwable ->
-                throwable instanceof R2dbcNonTransientException
-                    && throwable.getMessage().contains("SSL hostname verification failed "))
+                throwable instanceof R2dbcNonTransientResourceException
+                    && throwable.getMessage().contains("No name matching"))
         .verify();
   }
 
@@ -335,6 +337,8 @@ public class TlsTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNextMatches(
             val -> {
+              if ("maxscale".equals(System.getenv("srv"))
+                  && !"skysql-ha".equals(System.getenv("srv"))) return true;
               String[] values = {"TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
               return Arrays.stream(values).anyMatch(val::equals);
             })
@@ -366,10 +370,7 @@ public class TlsTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientException
-                    && throwable
-                        .getMessage()
-                        .contains(
-                            "SSL hostname verification failed : DNS host \"mariadb2.example.com\" doesn't correspond to certificate CN \"mariadb.example.com"))
+                    && throwable.getMessage().contains("No name matching"))
         .verify();
   }
 
@@ -390,19 +391,22 @@ public class TlsTest extends BaseConnectionTest {
             .serverSslCert(serverSslCert)
             .clientSslKey(clientSslKey)
             .build();
-    try {
-      new MariadbConnectionFactory(conf).create().block();
-      Assertions.fail();
-    } catch (Throwable throwable) {
-      throwable.printStackTrace();
-      Assertions.assertTrue(
-          throwable instanceof R2dbcNonTransientException
-              && throwable.getMessage().contains("Access denied"));
-    }
+
+    new MariadbConnectionFactory(conf)
+        .create()
+        .as(StepVerifier::create)
+        .expectErrorMatches(
+            throwable ->
+                throwable instanceof R2dbcNonTransientException
+                    && throwable.getMessage().contains("Access denied"))
+        .verify();
   }
 
   @Test
   void fullMutualAuthentication() throws Exception {
+    Assumptions.assumeTrue(
+        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+
     Assumptions.assumeTrue(haveSsl(sharedConn));
     Assumptions.assumeTrue(serverSslCert != null && clientSslCert != null & clientSslKey != null);
     MariadbConnectionConfiguration conf =
@@ -425,6 +429,8 @@ public class TlsTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNextMatches(
             val -> {
+              if ("maxscale".equals(System.getenv("srv"))
+                  && !"skysql-ha".equals(System.getenv("srv"))) return true;
               String[] values = {"TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
               return Arrays.stream(values).anyMatch(val::equals);
             })

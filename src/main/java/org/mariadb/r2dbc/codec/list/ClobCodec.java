@@ -13,7 +13,6 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BindValue;
 import org.mariadb.r2dbc.util.BufferUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -55,30 +54,30 @@ public class ClobCodec implements Codec<Clob> {
     return Clob.from(Mono.just(rawValue));
   }
 
-  @Override
-  public BindValue encodeText(
-      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
-    return createEncodedValue(
-        Flux.from(((Clob) value).stream())
-            .reduce(new StringBuilder(), (a, b) -> a.append(b))
-            .map(
-                b ->
-                    BufferUtils.encodeEscapedBytes(
-                        allocator,
-                        BufferUtils.STRING_PREFIX,
-                        b.toString().getBytes(StandardCharsets.UTF_8),
-                        context))
-            .doOnSubscribe(e -> ((Clob) value).discard()));
+  public boolean isDirect() {
+    return false;
   }
 
   @Override
-  public BindValue encodeBinary(
-      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
-    return createEncodedValue(
-        Flux.from(((Clob) value).stream())
-            .reduce(new StringBuilder(), (a, b) -> a.append(b))
-            .map(b -> BufferUtils.encodeLengthUtf8(allocator, b.toString()))
-            .doOnSubscribe(e -> ((Clob) value).discard()));
+  public Mono<ByteBuf> encodeText(ByteBufAllocator allocator, Object value, Context context) {
+    return Flux.from(((Clob) value).stream())
+        .reduce(new StringBuilder(), (a, b) -> a.append(b))
+        .map(
+            b ->
+                BufferUtils.encodeEscapedBytes(
+                    allocator,
+                    BufferUtils.STRING_PREFIX,
+                    b.toString().getBytes(StandardCharsets.UTF_8),
+                    context))
+        .doOnSubscribe(e -> ((Clob) value).discard());
+  }
+
+  @Override
+  public Mono<ByteBuf> encodeBinary(ByteBufAllocator allocator, Object value) {
+    return Flux.from(((Clob) value).stream())
+        .reduce(new StringBuilder(), (a, b) -> a.append(b))
+        .map(b -> BufferUtils.encodeLengthUtf8(allocator, b.toString()))
+        .doOnSubscribe(e -> ((Clob) value).discard());
   }
 
   public DataType getBinaryEncodeType() {

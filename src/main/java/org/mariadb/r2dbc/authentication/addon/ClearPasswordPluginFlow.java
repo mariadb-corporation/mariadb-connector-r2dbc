@@ -6,9 +6,9 @@ package org.mariadb.r2dbc.authentication.addon;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.authentication.AuthenticationPlugin;
 import org.mariadb.r2dbc.message.AuthMoreData;
-import org.mariadb.r2dbc.message.AuthSwitch;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.client.ClearPasswordPacket;
+import org.mariadb.r2dbc.message.server.Sequencer;
 
 public final class ClearPasswordPluginFlow implements AuthenticationPlugin {
 
@@ -24,8 +24,9 @@ public final class ClearPasswordPluginFlow implements AuthenticationPlugin {
 
   public ClientMessage next(
       MariadbConnectionConfiguration configuration,
-      AuthSwitch authSwitch,
+      byte[] seed,
+      Sequencer sequencer,
       AuthMoreData authMoreData) {
-    return new ClearPasswordPacket(authSwitch.getSequencer(), configuration.getPassword());
+    return new ClearPasswordPacket(sequencer, configuration.getPassword());
   }
 }

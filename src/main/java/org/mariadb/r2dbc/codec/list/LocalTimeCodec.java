@@ -16,7 +16,6 @@ import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-import org.mariadb.r2dbc.util.BindValue;
 
 public class LocalTimeCodec implements Codec<LocalTime> {
 
@@ -111,7 +110,7 @@ public class LocalTimeCodec implements Codec<LocalTime> {
         if (parts[0] == 1) {
           // negative
 
-          long seconds = (24 * 60 * 60 - (parts[1] * 3600 + parts[2] * 60 + parts[3]));
+          long seconds = (24 * 60 * 60 - (parts[1] * 3600 + parts[2] * 60L + parts[3]));
           return LocalTime.ofNanoOfDay(seconds * 1_000_000_000 - parts[4]);
         }
         return LocalTime.of(parts[1] % 24, parts[2], parts[3], parts[4]);
@@ -202,66 +201,53 @@ public class LocalTimeCodec implements Codec<LocalTime> {
   }
 
   @Override
-  public BindValue encodeText(
-      ByteBufAllocator allocator, Object value, Context context, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> {
-          LocalTime val = (LocalTime) value;
-          ByteBuf buf = allocator.buffer();
-          StringBuilder dateString = new StringBuilder(15);
-          dateString
-              .append(val.getHour() < 10 ? "0" : "")
-              .append(val.getHour())
-              .append(val.getMinute() < 10 ? ":0" : ":")
-              .append(val.getMinute())
-              .append(val.getSecond() < 10 ? ":0" : ":")
-              .append(val.getSecond());
+  public void encodeDirectText(ByteBuf out, Object value, Context context) {
+    LocalTime val = (LocalTime) value;
+    StringBuilder dateString = new StringBuilder(15);
+    dateString
+        .append(val.getHour() < 10 ? "0" : "")
+        .append(val.getHour())
+        .append(val.getMinute() < 10 ? ":0" : ":")
+        .append(val.getMinute())
+        .append(val.getSecond() < 10 ? ":0" : ":")
+        .append(val.getSecond());
 
-          int microseconds = val.getNano() / 1000;
-          if (microseconds > 0) {
-            dateString.append(".");
-            if (microseconds % 1000 == 0) {
-              dateString.append(Integer.toString(microseconds / 1000 + 1000).substring(1));
-            } else {
-              dateString.append(Integer.toString(microseconds + 1000000).substring(1));
-            }
-          }
+    int microseconds = val.getNano() / 1000;
+    if (microseconds > 0) {
+      dateString.append(".");
+      if (microseconds % 1000 == 0) {
+        dateString.append(Integer.toString(microseconds / 1000 + 1000).substring(1));
+      } else {
+        dateString.append(Integer.toString(microseconds + 1000000).substring(1));
+      }
+    }
 
-          buf.writeByte('\'');
-          buf.writeCharSequence(dateString.toString(), StandardCharsets.US_ASCII);
-          buf.writeByte('\'');
-          return buf;
-        });
+    out.writeByte('\'');
+    out.writeCharSequence(dateString.toString(), StandardCharsets.US_ASCII);
+    out.writeByte('\'');
   }
 
   @Override
-  public BindValue encodeBinary(
-      ByteBufAllocator allocator, Object value, ExceptionFactory factory) {
-    return createEncodedValue(
-        () -> {
-          ByteBuf buf;
-          LocalTime val = (LocalTime) value;
-          int nano = val.getNano();
-          if (nano > 0) {
-            buf = allocator.buffer(13, 13);
-            buf.writeByte((byte) 12);
-            buf.writeByte((byte) 0);
-            buf.writeIntLE(0);
-            buf.writeByte((byte) val.get(ChronoField.HOUR_OF_DAY));
-            buf.writeByte((byte) val.get(ChronoField.MINUTE_OF_HOUR));
-            buf.writeByte((byte) val.get(ChronoField.SECOND_OF_MINUTE));
-            buf.writeIntLE(nano / 1000);
-          } else {
-            buf = allocator.buffer(9, 9);
-            buf.writeByte((byte) 8);
-            buf.writeByte((byte) 0);
-            buf.writeIntLE(0);
-            buf.writeByte((byte) val.get(ChronoField.HOUR_OF_DAY));
-            buf.writeByte((byte) val.get(ChronoField.MINUTE_OF_HOUR));
-            buf.writeByte((byte) val.get(ChronoField.SECOND_OF_MINUTE));
-          }
-          return buf;
-        });
+  public void encodeDirectBinary(
+      ByteBufAllocator allocator, ByteBuf out, Object value, Context context) {
+    LocalTime val = (LocalTime) value;
+    int nano = val.getNano();
+    if (nano > 0) {
+      out.writeByte((byte) 12);
+      out.writeByte((byte) 0);
+      out.writeIntLE(0);
+      out.writeByte((byte) val.get(ChronoField.HOUR_OF_DAY));
+      out.writeByte((byte) val.get(ChronoField.MINUTE_OF_HOUR));
+      out.writeByte((byte) val.get(ChronoField.SECOND_OF_MINUTE));
+      out.writeIntLE(nano / 1000);
+    } else {
+      out.writeByte((byte) 8);
+      out.writeByte((byte) 0);
+      out.writeIntLE(0);
+      out.writeByte((byte) val.get(ChronoField.HOUR_OF_DAY));
+      out.writeByte((byte) val.get(ChronoField.MINUTE_OF_HOUR));
+      out.writeByte((byte) val.get(ChronoField.SECOND_OF_MINUTE));
+    }
   }
 
   public DataType getBinaryEncodeType() {

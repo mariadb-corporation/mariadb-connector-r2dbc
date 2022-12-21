@@ -62,13 +62,15 @@ public class RowMetadataTest extends BaseConnectionTest {
                     (row, metadata) -> {
                       List<String> expected =
                           Arrays.asList("t1Alias", "t2", "t3", "t4", "t5", "t6");
-                      assertEquals(expected.size(), metadata.getColumnNames().size());
+                      assertEquals(expected.size(), metadata.getColumnMetadatas().size());
                       assertTrue(metadata.contains("t1Alias"));
                       assertTrue(metadata.contains("T1ALIAS"));
                       assertTrue(metadata.contains("t1alias"));
                       assertFalse(metadata.contains("t1Aliass"));
-
-                      assertArrayEquals(expected.toArray(), metadata.getColumnNames().toArray());
+                      for (int i = 0; i < expected.size(); i++) {
+                        assertEquals(
+                            expected.get(i), metadata.getColumnMetadatas().get(i).getName());
+                      }
                       this.assertThrows(
                           IndexOutOfBoundsException.class,
                           () -> metadata.getColumnMetadata(-1),
@@ -111,7 +113,7 @@ public class RowMetadataTest extends BaseConnectionTest {
                       this.assertThrows(
                           NoSuchElementException.class,
                           () -> metadata.getColumnMetadata("wrongName"),
-                          "Column name 'wrongName' does not exist in column names [t1Alias, t2, t3, t4, t5, t6]");
+                          "Column name 'wrongName' does not exist in column names ");
 
                       colMeta = metadata.getColumnMetadata(1);
                       assertEquals(Long.class, colMeta.getJavaType());

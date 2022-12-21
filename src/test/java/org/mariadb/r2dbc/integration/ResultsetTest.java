@@ -160,6 +160,7 @@ public class ResultsetTest extends BaseConnectionTest {
             "CREATE TEMPORARY TABLE readResultSet (a TEXT, b TEXT, c LONGTEXT, d TEXT)")
         .execute()
         .subscribe();
+    sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("INSERT INTO readResultSet VALUES (?,?,?,?), (?,?,?,?), (?,?,?,?)")
         .bind(0, first[0])
@@ -195,6 +196,7 @@ public class ResultsetTest extends BaseConnectionTest {
             second[3] + second[1] + second[2] + second[0],
             third[3] + third[1] + third[2] + third[0])
         .verifyComplete();
+    sharedConn.rollbackTransaction().block();
   }
 
   @Test
@@ -218,7 +220,7 @@ public class ResultsetTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof IndexOutOfBoundsException
-                    && throwable.getMessage().equals("Column index 5 not in range [0-2]"))
+                    && throwable.getMessage().equals("Column index 5 is not in permit range[0,2]"))
         .verify();
   }
 
@@ -243,7 +245,7 @@ public class ResultsetTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof IndexOutOfBoundsException
-                    && throwable.getMessage().equals("Column index -5 must be positive"))
+                    && throwable.getMessage().equals("Column index -5 is not in permit range[0,2]"))
         .verify();
   }
 
@@ -254,7 +256,7 @@ public class ResultsetTest extends BaseConnectionTest {
     Random random = new Random();
 
     for (int i = 0; i < len; i++) {
-      sb.appendCodePoint(leftLimit + random.nextInt(rightLimit - leftLimit));
+      sb.append((char) (leftLimit + random.nextInt(rightLimit - leftLimit)));
     }
     return sb.toString();
   }
@@ -278,6 +280,7 @@ public class ResultsetTest extends BaseConnectionTest {
   private void skippingRes(
       MariadbConnection con, String longText, String mediumText, String smallIntText) {
     con.createStatement("TRUNCATE prepare3").execute().blockLast();
+    con.beginTransaction().block();
     con.createStatement("INSERT INTO prepare3 values (?,?,?,?,?)")
         .bind(0, longText)
         .bind(1, mediumText)
@@ -303,5 +306,6 @@ public class ResultsetTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNext("expected")
         .verifyComplete();
+    con.rollbackTransaction().block();
   }
 }

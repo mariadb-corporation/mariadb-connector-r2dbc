@@ -3,9 +3,10 @@
 
 package org.mariadb.r2dbc.unit.util;
 
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mariadb.r2dbc.util.ClientPrepareResult;
+import org.mariadb.r2dbc.util.ClientParser;
 
 public class ClientPrepareResultTest {
 
@@ -16,25 +17,43 @@ public class ClientPrepareResultTest {
       boolean returning,
       boolean supportReturningAddition,
       String[] partsMulti) {
-    ClientPrepareResult res = ClientPrepareResult.parameterParts(sql, false);
+    ClientParser res = ClientParser.parameterPartsCheckReturning(sql, false);
     Assertions.assertEquals(paramNumber, res.getParamCount());
     Assertions.assertEquals(returning, res.isReturning());
     Assertions.assertEquals(supportReturningAddition, res.supportAddingReturning());
 
+    byte[] sqlBytes = sql.getBytes(StandardCharsets.UTF_8);
+    int beginPos = 0;
+    int endPos;
     for (int i = 0; i < partsMulti.length; i++) {
-      Assertions.assertEquals(partsMulti[i], new String(res.getQueryParts().get(i)));
+      endPos =
+          res.getParamPositions().size() <= i * 2
+              ? sqlBytes.length
+              : res.getParamPositions().get(i * 2);
+      Assertions.assertEquals(partsMulti[i], new String(sqlBytes, beginPos, endPos - beginPos));
+      if (res.getParamPositions().size() > i * 2 + 1)
+        beginPos = res.getParamPositions().get(i * 2 + 1);
     }
-    Assertions.assertEquals(allowMultiqueries, res.isQueryMultipleRewritable());
 
-    res = ClientPrepareResult.parameterParts(sql, true);
+    res = ClientParser.parameterParts(sql, false);
+    Assertions.assertEquals(paramNumber, res.getParamCount());
+
+    sqlBytes = sql.getBytes(StandardCharsets.UTF_8);
+    beginPos = 0;
+    for (int i = 0; i < partsMulti.length; i++) {
+      endPos =
+          res.getParamPositions().size() <= i * 2
+              ? sqlBytes.length
+              : res.getParamPositions().get(i * 2);
+      Assertions.assertEquals(partsMulti[i], new String(sqlBytes, beginPos, endPos - beginPos));
+      if (res.getParamPositions().size() > i * 2 + 1)
+        beginPos = res.getParamPositions().get(i * 2 + 1);
+    }
+
+    res = ClientParser.parameterPartsCheckReturning(sql, true);
     Assertions.assertEquals(paramNumber, res.getParamCount());
     Assertions.assertEquals(returning, res.isReturning());
     Assertions.assertEquals(supportReturningAddition, res.supportAddingReturning());
-
-    for (int i = 0; i < partsMulti.length; i++) {
-      Assertions.assertEquals(partsMulti[i], new String(res.getQueryParts().get(i)));
-    }
-    Assertions.assertEquals(allowMultiqueries, res.isQueryMultipleRewritable());
   }
 
   private void checkParsing(
@@ -46,23 +65,70 @@ public class ClientPrepareResultTest {
       boolean supportReturningAddition,
       String[] partsMulti,
       String[] partsMultiBackSlash) {
-    ClientPrepareResult res = ClientPrepareResult.parameterParts(sql, false);
+
+    ClientParser res = ClientParser.parameterPartsCheckReturning(sql, false);
     Assertions.assertEquals(paramNumber, res.getParamCount());
     Assertions.assertEquals(returning, res.isReturning());
     Assertions.assertEquals(supportReturningAddition, res.supportAddingReturning());
 
+    byte[] sqlBytes = sql.getBytes(StandardCharsets.UTF_8);
+    int beginPos = 0;
+    int endPos;
     for (int i = 0; i < partsMulti.length; i++) {
-      Assertions.assertEquals(partsMulti[i], new String(res.getQueryParts().get(i)));
+      endPos =
+          res.getParamPositions().size() <= i * 2
+              ? sqlBytes.length
+              : res.getParamPositions().get(i * 2);
+      Assertions.assertEquals(partsMulti[i], new String(sqlBytes, beginPos, endPos - beginPos));
+      if (res.getParamPositions().size() > i * 2 + 1)
+        beginPos = res.getParamPositions().get(i * 2 + 1);
     }
-    Assertions.assertEquals(allowMultiqueries, res.isQueryMultipleRewritable());
 
-    res = ClientPrepareResult.parameterParts(sql, true);
+    res = ClientParser.parameterParts(sql, false);
+    Assertions.assertEquals(paramNumber, res.getParamCount());
+
+    sqlBytes = sql.getBytes(StandardCharsets.UTF_8);
+    beginPos = 0;
+    for (int i = 0; i < partsMulti.length; i++) {
+      endPos =
+          res.getParamPositions().size() <= i * 2
+              ? sqlBytes.length
+              : res.getParamPositions().get(i * 2);
+      Assertions.assertEquals(partsMulti[i], new String(sqlBytes, beginPos, endPos - beginPos));
+      if (res.getParamPositions().size() > i * 2 + 1)
+        beginPos = res.getParamPositions().get(i * 2 + 1);
+    }
+
+    res = ClientParser.parameterPartsCheckReturning(sql, true);
     Assertions.assertEquals(paramNumberBackSlash, res.getParamCount());
     Assertions.assertEquals(returning, res.isReturning());
     Assertions.assertEquals(supportReturningAddition, res.supportAddingReturning());
 
+    beginPos = 0;
     for (int i = 0; i < partsMultiBackSlash.length; i++) {
-      Assertions.assertEquals(partsMultiBackSlash[i], new String(res.getQueryParts().get(i)));
+      endPos =
+          res.getParamPositions().size() <= i * 2
+              ? sqlBytes.length
+              : res.getParamPositions().get(i * 2);
+      Assertions.assertEquals(
+          partsMultiBackSlash[i], new String(sqlBytes, beginPos, endPos - beginPos));
+      if (res.getParamPositions().size() > i * 2 + 1)
+        beginPos = res.getParamPositions().get(i * 2 + 1);
+    }
+
+    res = ClientParser.parameterParts(sql, true);
+    Assertions.assertEquals(paramNumberBackSlash, res.getParamCount());
+
+    beginPos = 0;
+    for (int i = 0; i < partsMultiBackSlash.length; i++) {
+      endPos =
+          res.getParamPositions().size() <= i * 2
+              ? sqlBytes.length
+              : res.getParamPositions().get(i * 2);
+      Assertions.assertEquals(
+          partsMultiBackSlash[i], new String(sqlBytes, beginPos, endPos - beginPos));
+      if (res.getParamPositions().size() > i * 2 + 1)
+        beginPos = res.getParamPositions().get(i * 2 + 1);
     }
   }
 
@@ -486,19 +552,19 @@ public class ClientPrepareResultTest {
 
   @Test
   public void hasParameter() {
-    Assertions.assertTrue(ClientPrepareResult.hasParameter("SELECT ?", false));
-    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT  \n / /* /* / # ? */", false));
-    Assertions.assertTrue(ClientPrepareResult.hasParameter("SELECT :param", false));
-    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT ':param''", false));
-    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT '?\\''", false));
-    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT \"\\\"?\"", false));
-    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT \"?\"", false));
-    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT \"\\?\"", false));
-    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT `?`", false));
-    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT /*? */", false));
-    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT //?\n '?'", false));
-    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT #? \n '?'", false));
-    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT --? \n '?'", false));
-    Assertions.assertFalse(ClientPrepareResult.hasParameter("SELECT '`\\n' from `gg`", true));
+    Assertions.assertTrue(ClientParser.hasParameter("SELECT ?", false));
+    Assertions.assertFalse(ClientParser.hasParameter("SELECT  \n / /* /* / # ? */", false));
+    Assertions.assertTrue(ClientParser.hasParameter("SELECT :param", false));
+    Assertions.assertFalse(ClientParser.hasParameter("SELECT ':param''", false));
+    Assertions.assertFalse(ClientParser.hasParameter("SELECT '?\\''", false));
+    Assertions.assertFalse(ClientParser.hasParameter("SELECT \"\\\"?\"", false));
+    Assertions.assertFalse(ClientParser.hasParameter("SELECT \"?\"", false));
+    Assertions.assertFalse(ClientParser.hasParameter("SELECT \"\\?\"", false));
+    Assertions.assertFalse(ClientParser.hasParameter("SELECT `?`", false));
+    Assertions.assertFalse(ClientParser.hasParameter("SELECT /*? */", false));
+    Assertions.assertFalse(ClientParser.hasParameter("SELECT //?\n '?'", false));
+    Assertions.assertFalse(ClientParser.hasParameter("SELECT #? \n '?'", false));
+    Assertions.assertFalse(ClientParser.hasParameter("SELECT --? \n '?'", false));
+    Assertions.assertFalse(ClientParser.hasParameter("SELECT '`\\n' from `gg`", true));
   }
 }
