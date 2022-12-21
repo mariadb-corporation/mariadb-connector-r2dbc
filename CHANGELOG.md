@@ -3,19 +3,21 @@
 ## [1.1.3](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.1.3) (22 Dec 2022)
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.1.2...1.1.3)
 
-* Notable Changes
-[R2DBC-67] set SPEC version support to 1.0.0-release version
-[R2DBC-69] Add SSL tunnel mode
-[R2DBC-74] Use default netty hostname verifier in place of custom one
+Notable Changes:
+* [R2DBC-67] set SPEC version support to 1.0.0-release version
+* [R2DBC-69] Add SSL tunnel mode
+* [R2DBC-74] Use default netty hostname verifier in place of custom one
  
-* Bugs Fixed
-[R2DBC-68] subscriber cancellation before response end might stall connection #45
-[R2DBC-65] IllegalReferenceCountException exception in TextRowDecoder #24
-[R2DBC-70] SSL host name verification don't properly close socket when failing
-[R2DBC-71] ensuring proper closing of socket, when error occurs
-[R2DBC-73] pipelining PREPARE + EXECUTE might result in buffer leak when prepare fails
-[R2DBC-72] Encoded statement parameter buffer might not be released until garbage
-[R2DBC-75] failover redo buffer race condition not releasing before garbage
+Bugs Fixed:
+
+* [R2DBC-68] subscriber cancellation before response end might stall connection #45
+* [R2DBC-65] IllegalReferenceCountException exception in TextRowDecoder #24
+* [R2DBC-70] SSL host name verification don't properly close socket when failing
+* [R2DBC-71] ensuring proper closing of socket, when error occurs
+* [R2DBC-73] pipelining PREPARE + EXECUTE might result in buffer leak when prepare fails
+* [R2DBC-72] Encoded statement parameter buffer might not be released until garbage
+* [R2DBC-75] failover redo buffer race condition not releasing before garbage
+
 
 ## [1.1.2](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.1.2) (12 Mai 2022)
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.1.1...1.1.2)
