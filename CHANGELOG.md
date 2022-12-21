@@ -6,6 +6,8 @@
 Notable Changes:
 * [R2DBC-67] set SPEC version support to 1.0.0-release version
 * [R2DBC-69] Add SSL tunnel mode
+  * New `sslMode` option “tunnel” to permit to use pre-existing SSL tunnel
+  * New option `sslContextBuilderCustomizer` to permit customizing SSL context Builder
 * [R2DBC-74] Use default netty hostname verifier in place of custom one
  
 Bugs Fixed:
