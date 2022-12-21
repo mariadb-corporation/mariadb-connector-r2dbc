@@ -123,6 +123,25 @@ public class StringParseTest extends BaseConnectionTest {
         .verifyComplete();
   }
 
+
+  @Test
+  void tt() {
+    String b = "0xFFBF0F23485930303054686520636C69656E742077617320646973636F6E6E656374656420627920746865207365727665722062656361757365206F6620696E61637469766974792E2053656520776169745F74696D656F757420616E6420696E7465726163746976655F74696D656F757420666F7220636F6E6669677572696E672074686973206265686176696F722E";
+    byte[] bytes = hexStringToByteArray(b);
+    String st = new String(bytes, StandardCharsets.UTF_8);
+    System.out.println(st);
+
+  }
+
+  public static byte[] hexStringToByteArray(String hex) {
+    int l = hex.length();
+    byte[] data = new byte[l / 2];
+    for (int i = 0; i < l; i += 2) {
+      data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
+              + Character.digit(hex.charAt(i + 1), 16));
+    }
+    return data;
+  }
   @Test
   void defaultValueBinary() {
     defaultValueBinary(sharedConn);
