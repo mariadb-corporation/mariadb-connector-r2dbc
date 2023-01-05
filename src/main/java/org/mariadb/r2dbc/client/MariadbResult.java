@@ -161,7 +161,7 @@ public class MariadbResult extends AbstractReferenceCounted
 
               ByteBuf buf = getLongTextEncoded(okPacket.getLastInsertId());
               org.mariadb.r2dbc.api.MariadbRow row = new MariadbRowText(buf, tmpMeta, factory);
-              sink.next(f.apply(row, meta.get()));
+              sink.next(f.apply(row, row.getMetadata()));
               ReferenceCountUtil.release(row);
             }
             return;
