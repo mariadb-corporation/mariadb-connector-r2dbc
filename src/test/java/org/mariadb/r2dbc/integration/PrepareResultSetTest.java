@@ -394,10 +394,13 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .bind(0, "test1")
         .returnGeneratedValues("id")
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> {
-          Assertions.assertEquals("id", metadata.getColumnMetadata(0).getName());
-          return row.get(0, String.class);
-        }))
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      Assertions.assertEquals("id", metadata.getColumnMetadata(0).getName());
+                      return row.get(0, String.class);
+                    }))
         .as(StepVerifier::create)
         .expectNext("3")
         .verifyComplete();
@@ -407,10 +410,14 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .bind(0, "test3")
         .returnGeneratedValues("TEST_COL_NAME")
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> {
-            Assertions.assertEquals("TEST_COL_NAME", metadata.getColumnMetadata(0).getName());
-            return row.get("TEST_COL_NAME", String.class);
-        }))
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      Assertions.assertEquals(
+                          "TEST_COL_NAME", metadata.getColumnMetadata(0).getName());
+                      return row.get("TEST_COL_NAME", String.class);
+                    }))
         .as(StepVerifier::create)
         .expectNext("4")
         .verifyComplete();
