@@ -102,10 +102,9 @@ public class FloatCodec implements Codec<Float> {
         return (float) buf.readShortLE();
 
       case MEDIUMINT:
-        if (!column.isSigned()) {
-          return (float) buf.readUnsignedMediumLE();
-        }
-        return (float) buf.readMediumLE();
+        float v = column.isSigned() ? buf.readMediumLE() : buf.readUnsignedMediumLE();
+        buf.readByte(); // needed since binary protocol exchange for medium are on 4 bytes
+        return v;
 
       case INTEGER:
         if (!column.isSigned()) {

@@ -112,6 +112,7 @@ public class ShortCodec implements Codec<Short> {
 
       case MEDIUMINT:
         result = column.isSigned() ? buf.readMediumLE() : buf.readUnsignedMediumLE();
+        buf.readByte(); // needed since binary protocol exchange for medium are on 4 bytes
         break;
 
       case INTEGER:
