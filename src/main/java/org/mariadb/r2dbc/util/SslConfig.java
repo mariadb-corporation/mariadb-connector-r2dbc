@@ -35,7 +35,6 @@ public class SslConfig {
   public SslConfig(
       SslMode sslMode,
       String serverSslCert,
-
       String clientSslCert,
       String clientSslKey,
       CharSequence clientSslPassword,
