@@ -96,7 +96,7 @@ public final class MariadbConnectionConfiguration {
       String restrictedAuth,
       @Nullable LoopResources loopResources,
       @Nullable UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer,
-      boolean sslTunnelDisableHostnameVerification) {
+      boolean sslTunnelDisableHostVerification) {
     this.haMode = haMode == null ? HaMode.NONE : HaMode.from(haMode);
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
@@ -129,7 +129,7 @@ public final class MariadbConnectionConfiguration {
               clientSslKey,
               clientSslPassword,
               tlsProtocol,
-              sslTunnelDisableHostnameVerification,
+              sslTunnelDisableHostVerification,
               sslContextBuilderCustomizer);
     }
     this.rsaPublicKey = rsaPublicKey;
