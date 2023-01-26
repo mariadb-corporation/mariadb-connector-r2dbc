@@ -95,7 +95,8 @@ public final class MariadbConnectionConfiguration {
       boolean tinyInt1isBit,
       String restrictedAuth,
       @Nullable LoopResources loopResources,
-      @Nullable UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer) {
+      @Nullable UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer,
+      boolean sslTunnelDisableHostnameVerification) {
     this.haMode = haMode == null ? HaMode.NONE : HaMode.from(haMode);
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
@@ -128,6 +129,7 @@ public final class MariadbConnectionConfiguration {
               clientSslKey,
               clientSslPassword,
               tlsProtocol,
+              sslTunnelDisableHostnameVerification,
               sslContextBuilderCustomizer);
     }
     this.rsaPublicKey = rsaPublicKey;
@@ -321,6 +323,14 @@ public final class MariadbConnectionConfiguration {
           (LoopResources)
               connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.LOOP_RESOURCES);
       builder.loopResources(loopResources);
+    }
+
+    if (connectionFactoryOptions.hasOption(
+        MariadbConnectionFactoryProvider.SSL_TUNNEL_DISABLE_HOST_VERIFICATION)) {
+      builder.sslTunnelDisableHostVerification(
+          boolValue(
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.SSL_TUNNEL_DISABLE_HOST_VERIFICATION)));
     }
 
     if (connectionFactoryOptions.hasOption(
@@ -587,6 +597,8 @@ public final class MariadbConnectionConfiguration {
 
     private Builder() {}
 
+    private boolean sslTunnelDisableHostVerification;
+
     /**
      * Returns a configured {@link MariadbConnectionConfiguration}.
      *
@@ -641,7 +653,8 @@ public final class MariadbConnectionConfiguration {
           this.tinyInt1isBit,
           this.restrictedAuth,
           this.loopResources,
-          this.sslContextBuilderCustomizer);
+          this.sslContextBuilderCustomizer,
+          this.sslTunnelDisableHostVerification);
     }
 
     /**
@@ -976,6 +989,11 @@ public final class MariadbConnectionConfiguration {
       return this;
     }
 
+    public Builder sslTunnelDisableHostVerification(boolean sslTunnelDisableHostVerification) {
+      this.sslTunnelDisableHostVerification = sslTunnelDisableHostVerification;
+      return this;
+    }
+
     @Override
     public Builder clone() throws CloneNotSupportedException {
       return (Builder) super.clone();
@@ -1054,6 +1072,8 @@ public final class MariadbConnectionConfiguration {
           + clientSslPassword
           + ", sslMode="
           + sslMode
+          + ", sslTunnelDisableHostVerification"
+          + sslTunnelDisableHostVerification
           + ", pamOtherPwd="
           + hiddenPamPwd
           + ", tinyInt1isBit="

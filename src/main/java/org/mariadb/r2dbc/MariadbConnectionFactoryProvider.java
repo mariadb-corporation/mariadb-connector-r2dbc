@@ -40,6 +40,8 @@ public final class MariadbConnectionFactoryProvider implements ConnectionFactory
   public static final Option<LoopResources> LOOP_RESOURCES = Option.valueOf("loopResources");
   public static final Option<UnaryOperator<SslContextBuilder>> SSL_CONTEXT_BUILDER_CUSTOMIZER =
       Option.valueOf("sslContextBuilderCustomizer");
+  public static final Option<Boolean> SSL_TUNNEL_DISABLE_HOST_VERIFICATION =
+      Option.valueOf("sslTunnelDisableHostVerification");
 
   static MariadbConnectionConfiguration createConfiguration(
       ConnectionFactoryOptions connectionFactoryOptions) {
