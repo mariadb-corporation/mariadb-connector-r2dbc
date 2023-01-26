@@ -1072,7 +1072,7 @@ public final class MariadbConnectionConfiguration {
           + clientSslPassword
           + ", sslMode="
           + sslMode
-          + ", sslTunnelDisableHostVerification"
+          + ", sslTunnelDisableHostVerification="
           + sslTunnelDisableHostVerification
           + ", pamOtherPwd="
           + hiddenPamPwd
