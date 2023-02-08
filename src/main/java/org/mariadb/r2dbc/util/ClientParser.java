@@ -124,7 +124,6 @@ public final class ClientParser implements PrepareResult {
         case ':':
           if (state == LexState.Normal) {
             int beginPos = i;
-            paramPositions.add(i);
             while (++i < queryLength
                 && (car = query[i]) != ' '
                 && ((car >= '0' && car <= '9')
@@ -132,7 +131,13 @@ public final class ClientParser implements PrepareResult {
                     || (car >= 'a' && car <= 'z')
                     || car == '-'
                     || car == '_')) {}
+            if (beginPos + 1 == i) {
+              // this is a ":" not followed by name or index
+              // so not a parameter
+              break;
+            }
             paramNameList.add(new String(query, beginPos + 1, i - (beginPos + 1)));
+            paramPositions.add(beginPos);
             paramPositions.add(i);
           }
           break;
@@ -358,7 +363,6 @@ public final class ClientParser implements PrepareResult {
         case ':':
           if (state == LexState.Normal) {
             int beginPos = i;
-            paramPositions.add(i);
             while (++i < queryLength
                 && (car = query[i]) != ' '
                 && ((car >= '0' && car <= '9')
@@ -366,7 +370,13 @@ public final class ClientParser implements PrepareResult {
                     || (car >= 'a' && car <= 'z')
                     || car == '-'
                     || car == '_')) {}
+            if (beginPos + 1 == i) {
+              // this is a ":" not followed by name or index
+              // so not a parameter
+              break;
+            }
             paramNameList.add(new String(query, beginPos + 1, i - (beginPos + 1)));
+            paramPositions.add(beginPos);
             paramPositions.add(i);
           }
           break;
@@ -489,6 +499,7 @@ public final class ClientParser implements PrepareResult {
 
         case ':':
           if (state == LexState.Normal) {
+            int beginPos = i;
             while (++i < queryLength
                 && (car = query[i]) != ' '
                 && ((car >= '0' && car <= '9')
@@ -496,6 +507,11 @@ public final class ClientParser implements PrepareResult {
                     || (car >= 'a' && car <= 'z')
                     || car == '-'
                     || car == '_')) {}
+            if (beginPos + 1 == i) {
+              // this is a ":" not followed by name or index
+              // so not a parameter
+              break;
+            }
             return true;
           }
           break;

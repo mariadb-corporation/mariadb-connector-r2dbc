@@ -91,6 +91,17 @@ public class StatementTest extends BaseConnectionTest {
   }
 
   @Test
+  void basicSetter() {
+    sharedConn
+        .createStatement("SELECT @amount := 10")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0)))
+        .as(StepVerifier::create)
+        .expectNext(10)
+        .verifyComplete();
+  }
+
+  @Test
   void bindOnStatementWithoutParameter() {
     Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (1,2)");
     assertThrowsContains(
