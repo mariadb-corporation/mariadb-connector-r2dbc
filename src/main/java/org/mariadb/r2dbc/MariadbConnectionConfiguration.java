@@ -197,6 +197,28 @@ public final class MariadbConnectionConfiguration {
               connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.TCP_KEEP_ALIVE)));
     }
 
+    if (connectionFactoryOptions.hasOption(
+        MariadbConnectionFactoryProvider.ALLOW_PUBLIC_KEY_RETRIEVAL)) {
+      builder.allowPublicKeyRetrieval(
+          boolValue(
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.ALLOW_PUBLIC_KEY_RETRIEVAL)));
+    }
+
+    if (connectionFactoryOptions.hasOption(
+        MariadbConnectionFactoryProvider.CACHING_RSA_PUBLIC_KEY)) {
+      builder.cachingRsaPublicKey(
+          (String)
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.CACHING_RSA_PUBLIC_KEY));
+    }
+
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.RSA_PUBLIC_KEY)) {
+      builder.rsaPublicKey(
+          (String)
+              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.RSA_PUBLIC_KEY));
+    }
+
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TCP_ABORTIVE_CLOSE)) {
       builder.tcpAbortiveClose(
           boolValue(
@@ -318,6 +340,13 @@ public final class MariadbConnectionConfiguration {
       }
       builder.pamOtherPwd(pairs);
     }
+
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.RESTRICTED_AUTH)) {
+      builder.restrictedAuth(
+          (String)
+              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.RESTRICTED_AUTH));
+    }
+
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.LOOP_RESOURCES)) {
       LoopResources loopResources =
           (LoopResources)
@@ -549,7 +578,7 @@ public final class MariadbConnectionConfiguration {
         + ", pamOtherPwd="
         + hiddenPamPwd
         + ", restrictedAuth="
-        + restrictedAuth
+        + (restrictedAuth == null ? "" : Arrays.toString(restrictedAuth))
         + '}';
   }
 
