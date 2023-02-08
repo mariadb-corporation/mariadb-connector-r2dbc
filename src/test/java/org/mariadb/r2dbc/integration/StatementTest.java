@@ -95,9 +95,9 @@ public class StatementTest extends BaseConnectionTest {
     sharedConn
         .createStatement("SELECT @amount := 10")
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(0)))
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
         .as(StepVerifier::create)
-        .expectNext(10)
+        .expectNext("10")
         .verifyComplete();
   }
 
