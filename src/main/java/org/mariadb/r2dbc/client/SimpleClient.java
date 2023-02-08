@@ -106,7 +106,9 @@ public class SimpleClient implements Client {
               sslContext.newEngine(
                   connection.channel().alloc(), hostAddress.getHost(), hostAddress.getPort());
           SSLParameters sslParameters = engine.getSSLParameters();
-          sslParameters.setEndpointIdentificationAlgorithm("HTTPS");
+          if (!configuration.getSslConfig().tunnelHostVerificationDisabled()) {
+            sslParameters.setEndpointIdentificationAlgorithm("HTTPS");
+          }
           engine.setSSLParameters(sslParameters);
         } else {
           engine = sslContext.newEngine(connection.channel().alloc());
