@@ -250,7 +250,7 @@ public class Sha256PluginTest extends BaseConnectionTest {
     Assumptions.assumeTrue(!isWindows && !isMariaDBServer() && (minVersion(8, 0, 0)));
     // mysql 8.0.31 broken public key retrieval, so avoid FLUSHING for now
     Assumptions.assumeTrue(
-        !isMariaDBServer() && (!exactVersion(8, 0, 31) || !exactVersion(8, 0, 32)));
+        !isMariaDBServer() && !exactVersion(8, 0, 31) && !exactVersion(8, 0, 32));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder

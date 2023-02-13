@@ -193,7 +193,6 @@ public class BaseConnectionTest {
 
   public static boolean isXpand() {
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
-    System.out.println(meta.getDatabaseVersion());
     return meta.getDatabaseVersion().toLowerCase().contains("xpand");
   }
 
