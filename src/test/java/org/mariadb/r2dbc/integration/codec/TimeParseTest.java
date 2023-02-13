@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
@@ -415,6 +416,7 @@ public class TimeParseTest extends BaseConnectionTest {
 
   @Test
   void stringValuePrepare() {
+    Assumptions.assumeFalse(isXpand());
     stringValue(
         sharedConnPrepare,
         "90:00:00.012340",

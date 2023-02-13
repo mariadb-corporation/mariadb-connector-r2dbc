@@ -407,7 +407,7 @@ public class BlobParameterTest extends BaseConnectionTest {
 
   @Test
   void localDateTimeValuePrepare() {
-
+    Assumptions.assumeFalse(isXpand());
     localDateTimeValue(
         sharedConnPrepare,
         meta.isMariaDBServer() ? "2013-07-22 12:50:05.012300" : "2013-07-22 12:50:05",

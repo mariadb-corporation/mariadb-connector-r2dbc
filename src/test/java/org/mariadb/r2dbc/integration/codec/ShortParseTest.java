@@ -448,7 +448,10 @@ public class ShortParseTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
         .as(StepVerifier::create)
         .expectNext(
-            Optional.of("00000"), Optional.of("00010"), Optional.of("00100"), Optional.empty())
+            Optional.of(isXpand() ? "0" : "00000"),
+            Optional.of(isXpand() ? "10" : "00010"),
+            Optional.of(isXpand() ? "100" : "00100"),
+            Optional.empty())
         .verifyComplete();
 
     connection

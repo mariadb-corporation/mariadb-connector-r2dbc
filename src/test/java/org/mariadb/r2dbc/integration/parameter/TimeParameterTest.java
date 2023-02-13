@@ -326,6 +326,7 @@ public class TimeParameterTest extends BaseConnectionTest {
 
   @Test
   void localDateValue() {
+    Assumptions.assumeFalse(isXpand());
     localDateValue(sharedConn);
   }
 

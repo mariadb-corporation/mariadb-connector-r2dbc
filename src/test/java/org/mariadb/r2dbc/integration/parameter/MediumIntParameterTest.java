@@ -10,10 +10,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.core.publisher.Flux;
@@ -250,6 +247,7 @@ public class MediumIntParameterTest extends BaseConnectionTest {
 
   @Test
   void localDateTimeValue() {
+    Assumptions.assumeFalse(isXpand());
     sharedConn
         .createStatement("INSERT INTO MediumIntParam VALUES (?,?,?)")
         .bind(0, LocalDateTime.now())
@@ -267,6 +265,7 @@ public class MediumIntParameterTest extends BaseConnectionTest {
 
   @Test
   void localDateValue() {
+    Assumptions.assumeFalse(isXpand());
     sharedConn
         .createStatement("INSERT INTO MediumIntParam VALUES (?,?,?)")
         .bind(0, LocalDate.now())
@@ -284,6 +283,7 @@ public class MediumIntParameterTest extends BaseConnectionTest {
 
   @Test
   void localTimeValue() {
+    Assumptions.assumeFalse(isXpand());
     sharedConn
         .createStatement("INSERT INTO MediumIntParam VALUES (?,?,?)")
         .bind(0, LocalTime.now())

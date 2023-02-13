@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
@@ -28,6 +29,7 @@ public class LoggingTest extends BaseConnectionTest {
 
   @Test
   void basicLogging() throws IOException {
+    Assumptions.assumeFalse(isXpand());
     File tempFile = File.createTempFile("log", ".tmp");
 
     Logger logger = (Logger) LoggerFactory.getLogger("org.mariadb.r2dbc");

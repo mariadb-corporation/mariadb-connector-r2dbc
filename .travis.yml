@@ -36,6 +36,7 @@ jobs:
   fast_finish: true
   allow_failures:
     - env: srv=build
+    - env: srv=xpand
   include:
     - stage: Minimal
       env: srv=mariadb v=10.6 local=1
@@ -55,6 +56,8 @@ jobs:
       name: "SkySQL"
     - env: srv=skysql-ha
       name: "SkySQL with replication"
+    - env: srv=xpand
+      name: "Xpand"
 
     - stage: Community
       env: srv=mariadb v=10.6

@@ -402,9 +402,9 @@ public class MediumIntParseTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
         .as(StepVerifier::create)
         .expectNext(
-            Optional.of("00000000"),
-            Optional.of("00000010"),
-            Optional.of("00000100"),
+            Optional.of(isXpand() ? "0" : "00000000"),
+            Optional.of(isXpand() ? "10" : "00000010"),
+            Optional.of(isXpand() ? "100" : "00000100"),
             Optional.empty())
         .verifyComplete();
 

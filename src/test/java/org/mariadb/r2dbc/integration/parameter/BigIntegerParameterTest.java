@@ -362,6 +362,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
 
   @Test
   void localDateTimeValue() {
+    Assumptions.assumeFalse(isXpand());
     localDateTimeValue(sharedConn);
   }
 
@@ -406,6 +407,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
 
   @Test
   void localDateValue() {
+    Assumptions.assumeFalse(isXpand());
     localDateValue(sharedConn);
   }
 
@@ -451,6 +453,7 @@ public class BigIntegerParameterTest extends BaseConnectionTest {
 
   @Test
   void localTimeValue() {
+    Assumptions.assumeFalse(isXpand());
     localTimeValue(sharedConn);
   }
 

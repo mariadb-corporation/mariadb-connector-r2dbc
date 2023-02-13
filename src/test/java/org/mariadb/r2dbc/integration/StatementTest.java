@@ -340,7 +340,7 @@ public class StatementTest extends BaseConnectionTest {
 
   @Test
   public void sinkEndCheck() throws Throwable {
-    Assumptions.assumeTrue(isMariaDBServer());
+    Assumptions.assumeTrue(isMariaDBServer() && !isXpand());
     AtomicReference<Disposable> d = new AtomicReference<>();
     AtomicReference<Disposable> d2 = new AtomicReference<>();
     MariadbConnection connection = factory.create().block();
@@ -381,7 +381,7 @@ public class StatementTest extends BaseConnectionTest {
 
   @Test
   public void sinkFirstOnly() throws Throwable {
-    Assumptions.assumeTrue(isMariaDBServer());
+    Assumptions.assumeTrue(isMariaDBServer() && !isXpand());
     AtomicReference<Disposable> d2 = new AtomicReference<>();
     MariadbConnection connection = factory.create().block();
     connection.beginTransaction().block();

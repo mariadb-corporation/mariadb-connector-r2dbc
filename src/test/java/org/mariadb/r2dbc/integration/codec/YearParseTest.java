@@ -10,6 +10,7 @@ import java.math.BigInteger;
 import java.time.LocalDate;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
@@ -23,6 +24,8 @@ public class YearParseTest extends BaseConnectionTest {
 
   @BeforeAll
   public static void before2() {
+    // xpand doesn't support YEAR 2
+    Assumptions.assumeFalse(isXpand());
     afterAll2();
     sharedConn.beginTransaction().block();
     String sqlCreate = "CREATE TABLE YearTable (t1 YEAR(4), t2 YEAR(2))";

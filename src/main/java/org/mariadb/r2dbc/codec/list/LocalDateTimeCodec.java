@@ -182,7 +182,12 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
               microseconds = buf.readUnsignedIntLE();
             }
           }
-          if (year == 0 && month == 0 && dayOfMonth == 0 && hour == 0&& minutes == 0 && seconds ==0) return null;
+          if (year == 0
+              && month == 0
+              && dayOfMonth == 0
+              && hour == 0
+              && minutes == 0
+              && seconds == 0) return null;
         } else return null;
         break;
 

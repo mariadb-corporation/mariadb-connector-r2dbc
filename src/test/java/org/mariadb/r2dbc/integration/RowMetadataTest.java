@@ -96,8 +96,10 @@ public class RowMetadataTest extends BaseConnectionTest {
                       assertEquals("t1", t1Meta.getColumn());
                       assertEquals("rowmeta", t1Meta.getTable());
                       assertEquals("rowMetaAlias", t1Meta.getTableAlias());
-                      assertTrue(t1Meta.getCharset() == 224 || t1Meta.getCharset() == 45);
-                      assertEquals(256, t1Meta.getDisplaySize());
+                      if (!isXpand()) {
+                        assertTrue(t1Meta.getCharset() == 224 || t1Meta.getCharset() == 45);
+                        assertEquals(256, t1Meta.getDisplaySize());
+                      }
                       assertFalse(t1Meta.isBinary());
                       assertFalse(t1Meta.isBlob());
                       assertFalse(t1Meta.isMultipleKey());
@@ -107,7 +109,9 @@ public class RowMetadataTest extends BaseConnectionTest {
                       assertFalse(t1Meta.isUniqueKey());
 
                       colMeta = metadata.getColumnMetadata("t2");
-                      assertEquals(Long.class, colMeta.getJavaType());
+                      if (!isXpand()) {
+                        assertEquals(Long.class, colMeta.getJavaType());
+                      }
                       assertEquals("t2", colMeta.getName());
 
                       this.assertThrows(
@@ -116,10 +120,13 @@ public class RowMetadataTest extends BaseConnectionTest {
                           "Column name 'wrongName' does not exist in column names ");
 
                       colMeta = metadata.getColumnMetadata(1);
-                      assertEquals(Long.class, colMeta.getJavaType());
-                      assertEquals("t2", colMeta.getName());
-                      assertEquals(Nullability.NULLABLE, colMeta.getNullability());
-                      assertEquals(10, colMeta.getPrecision());
+                      if (!isXpand()) {
+
+                        assertEquals(Long.class, colMeta.getJavaType());
+                        assertEquals("t2", colMeta.getName());
+                        assertEquals(Nullability.NULLABLE, colMeta.getNullability());
+                        assertEquals(10, colMeta.getPrecision());
+                      }
                       assertEquals(0, colMeta.getScale());
                       assertEquals(
                           ColumnDefinitionPacket.class, colMeta.getNativeTypeMetadata().getClass());
@@ -133,14 +140,18 @@ public class RowMetadataTest extends BaseConnectionTest {
                       assertEquals("rowmeta", t2Meta.getTable());
                       assertEquals("rowMetaAlias", t2Meta.getTableAlias());
 
-                      assertEquals(10, t2Meta.getDisplaySize());
-                      assertEquals(63, t2Meta.getCharset());
+                      if (!isXpand()) {
+                        assertEquals(10, t2Meta.getDisplaySize());
+                        assertEquals(63, t2Meta.getCharset());
+                      }
                       assertTrue(t2Meta.isBinary());
                       assertFalse(t2Meta.isBlob());
                       assertFalse(t2Meta.isMultipleKey());
                       assertFalse(t2Meta.isPrimaryKey());
-                      assertFalse(t2Meta.isSigned());
-                      assertTrue(t2Meta.isZeroFill());
+                      if (!isXpand()) {
+                        assertFalse(t2Meta.isSigned());
+                        assertTrue(t2Meta.isZeroFill());
+                      }
                       assertFalse(t2Meta.isUniqueKey());
 
                       colMeta = metadata.getColumnMetadata(2);

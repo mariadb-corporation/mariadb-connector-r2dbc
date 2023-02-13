@@ -449,7 +449,11 @@ public class TinyIntParseTest extends BaseConnectionTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
         .as(StepVerifier::create)
-        .expectNext(Optional.of("000"), Optional.of("010"), Optional.of("100"), Optional.empty())
+        .expectNext(
+            Optional.of(isXpand() ? "0" : "000"),
+            Optional.of(isXpand() ? "10" : "010"),
+            Optional.of("100"),
+            Optional.empty())
         .verifyComplete();
 
     connection

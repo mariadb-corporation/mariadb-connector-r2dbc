@@ -376,6 +376,7 @@ public class TimeStampParameterTest extends BaseConnectionTest {
 
   @Test
   void localTimeValue() {
+    Assumptions.assumeFalse(isXpand());
     localTimeValue(sharedConn);
   }
 

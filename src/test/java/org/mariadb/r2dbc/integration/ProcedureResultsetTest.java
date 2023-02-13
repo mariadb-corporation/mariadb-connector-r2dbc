@@ -10,10 +10,7 @@ import io.r2dbc.spi.Result;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import reactor.core.publisher.Flux;
 
@@ -43,6 +40,8 @@ public class ProcedureResultsetTest extends BaseConnectionTest {
 
   @Test
   void outputParameter() {
+    // https://jira.mariadb.org/browse/XPT-268
+    Assumptions.assumeFalse(isXpand());
     List<List<Object>> l =
         sharedConn
             .createStatement("call basic_proc(?,?,?,?,?,?,?)")
