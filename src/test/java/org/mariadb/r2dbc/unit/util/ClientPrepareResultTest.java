@@ -152,6 +152,19 @@ public class ClientPrepareResultTest {
   }
 
   @Test
+  public void clientNoParameterParsing() {
+    checkParsing(
+        "SELECT @amount := 10",
+        0,
+        0,
+        true,
+        false,
+        false,
+        new String[] {"SELECT @amount := 10"},
+        new String[] {"SELECT @amount := 10"});
+  }
+
+  @Test
   public void stringReturningParsing() throws Exception {
     checkParsing(
         "select * from t \t RETURNINGa()",

@@ -7,7 +7,11 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.r2dbc.spi.R2dbcTransientResourceException;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.function.UnaryOperator;
 import javax.net.ssl.SSLException;
@@ -26,6 +30,8 @@ public class SslConfig {
   private SslContextBuilder sslContextBuilder;
   private UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer;
 
+  private boolean disableHostVerification;
+
   public SslConfig(
       SslMode sslMode,
       String serverSslCert,
@@ -33,6 +39,7 @@ public class SslConfig {
       String clientSslKey,
       CharSequence clientSslPassword,
       List<String> tlsProtocol,
+      boolean disableHostVerification,
       UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer)
       throws R2dbcTransientResourceException {
     this.sslMode = sslMode;
@@ -41,6 +48,7 @@ public class SslConfig {
     this.tlsProtocol = tlsProtocol;
     this.clientSslKey = clientSslKey;
     this.clientSslPassword = clientSslPassword;
+    this.disableHostVerification = disableHostVerification;
     this.sslContextBuilderCustomizer = sslContextBuilderCustomizer;
     if (sslMode != SslMode.DISABLE) {
       this.sslContextBuilder = getSslContextBuilder();
@@ -53,6 +61,10 @@ public class SslConfig {
 
   public SslMode getSslMode() {
     return sslMode;
+  }
+
+  public boolean tunnelHostVerificationDisabled() {
+    return this.disableHostVerification;
   }
 
   private SslContextBuilder getSslContextBuilder() throws R2dbcTransientResourceException {

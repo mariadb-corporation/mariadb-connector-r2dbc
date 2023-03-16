@@ -444,6 +444,7 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void beginTransactionWithIsolation() throws Exception {
+    Assumptions.assumeFalse(isXpand());
     TransactionDefinition transactionDefinition =
         MariadbTransactionDefinition.READ_ONLY.isolationLevel(IsolationLevel.READ_COMMITTED);
     TransactionDefinition transactionDefinition2 =
@@ -509,20 +510,28 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   private void consume(Connection connection) {
-    int numberOfUserCol = 41;
-    Statement statement = connection.createStatement("select * FROM mysql.user LIMIT 1");
-    Flux.from(statement.execute())
-        .flatMap(
-            it ->
-                it.map(
-                    (row, rowMetadata) -> {
-                      Object[] objs = new Object[numberOfUserCol];
-                      for (int i = 0; i < numberOfUserCol; i++) {
-                        objs[i] = row.get(i);
-                      }
-                      return objs;
-                    }))
-        .blockLast();
+    if (isXpand()) {
+      Statement statement = connection.createStatement("select 1");
+      Flux.from(statement.execute())
+          .flatMap(it -> it.map((row, rowMetadata) -> row.get(0)))
+          .blockLast();
+
+    } else {
+      int numberOfUserCol = 41;
+      Statement statement = connection.createStatement("select * FROM mysql.user LIMIT 1");
+      Flux.from(statement.execute())
+          .flatMap(
+              it ->
+                  it.map(
+                      (row, rowMetadata) -> {
+                        Object[] objs = new Object[numberOfUserCol];
+                        for (int i = 0; i < numberOfUserCol; i++) {
+                          objs[i] = row.get(i);
+                        }
+                        return objs;
+                      }))
+          .blockLast();
+    }
   }
 
   @Test
@@ -703,6 +712,7 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void getDatabase() {
+    Assumptions.assumeFalse(isXpand());
     MariadbConnection connection =
         new MariadbConnectionFactory(TestConfiguration.defaultBuilder.build()).create().block();
     assertEquals(TestConfiguration.database, connection.getDatabase());
@@ -821,10 +831,14 @@ public class ConnectionTest extends BaseConnectionTest {
   @Test
   void wrongSavePoint() {
     sharedConn.createStatement("START TRANSACTION").execute().blockLast();
-    assertThrows(
-        Exception.class,
-        () -> sharedConn.rollbackTransactionToSavepoint("wrong").block(),
-        "SAVEPOINT wrong does not exist");
+    try {
+      sharedConn.rollbackTransactionToSavepoint("wrong").block();
+      Assertions.fail("Must have thrown error");
+    } catch (Exception e) {
+      Assertions.assertTrue(
+          e.getMessage().contains("Savepoint does not exist")
+              || e.getMessage().contains("SAVEPOINT wrong does not exist"));
+    }
     sharedConn.rollbackTransaction().block();
   }
 
@@ -891,6 +905,7 @@ public class ConnectionTest extends BaseConnectionTest {
     Assertions.assertThrows(
         Exception.class, () -> connection.setTransactionIsolationLevel(null).block());
     for (IsolationLevel level : levels) {
+      System.out.println(level);
       connection.setTransactionIsolationLevel(level).block();
       assertEquals(level, connection.getTransactionIsolationLevel());
     }
@@ -971,7 +986,8 @@ public class ConnectionTest extends BaseConnectionTest {
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv"))
-            && !"skysql".equals(System.getenv("srv")));
+            && !"skysql".equals(System.getenv("srv"))
+            && !isXpand());
 
     BigInteger maxConn =
         sharedConn
@@ -1065,7 +1081,8 @@ public class ConnectionTest extends BaseConnectionTest {
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv")));
+            && !"skysql-ha".equals(System.getenv("srv"))
+            && !isXpand());
     MariadbConnection connection =
         new MariadbConnectionFactory(TestConfiguration.defaultBuilder.clone().build())
             .create()

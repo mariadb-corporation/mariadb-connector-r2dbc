@@ -143,6 +143,7 @@ public class LocalDateCodec implements Codec<LocalDate> {
           if (length > 4) {
             buf.skipBytes(length - 4);
           }
+          if (year == 0 && month == 0 && dayOfMonth == 0) return null;
           return LocalDate.of(year, month, dayOfMonth);
         }
         return null;

@@ -394,7 +394,13 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .bind(0, "test1")
         .returnGeneratedValues("id")
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      Assertions.assertEquals("id", metadata.getColumnMetadata(0).getName());
+                      return row.get(0, String.class);
+                    }))
         .as(StepVerifier::create)
         .expectNext("3")
         .verifyComplete();
@@ -404,7 +410,14 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .bind(0, "test3")
         .returnGeneratedValues("TEST_COL_NAME")
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get("TEST_COL_NAME", String.class)))
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      Assertions.assertEquals(
+                          "TEST_COL_NAME", metadata.getColumnMetadata(0).getName());
+                      return row.get("TEST_COL_NAME", String.class);
+                    }))
         .as(StepVerifier::create)
         .expectNext("4")
         .verifyComplete();
@@ -481,6 +494,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     // unexpected error "unexpected message received when no command was send: 0x48000002"
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeFalse(isXpand());
     MariadbConnectionConfiguration confPipeline =
         TestConfiguration.defaultBuilder.clone().useServerPrepStmts(true).build();
     MariadbConnection conn = new MariadbConnectionFactory(confPipeline).create().block();
@@ -548,6 +562,8 @@ public class PrepareResultSetTest extends BaseConnectionTest {
 
   @Test
   void prepareReuse() {
+    // https://jira.mariadb.org/browse/XPT-599 XPand doesn't support DO
+    Assumptions.assumeFalse(isXpand());
     MariadbStatement stmt = sharedConnPrepare.createStatement("DO 1 = ?");
     assertThrows(
         IndexOutOfBoundsException.class,
@@ -715,7 +731,8 @@ public class PrepareResultSetTest extends BaseConnectionTest {
       // Com_stmt_prepare
       if (!"maxscale".equals(System.getenv("srv"))
           && !"skysql-ha".equals(System.getenv("srv"))
-          && (isMariaDBServer() || !minVersion(8, 0, 0))) {
+          && (isMariaDBServer() || !minVersion(8, 0, 0))
+          && !isXpand()) {
         Assertions.assertEquals("5", endingStatus.get(1), endingStatus.get(1));
       }
 

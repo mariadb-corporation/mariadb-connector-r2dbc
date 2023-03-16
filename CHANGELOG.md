@@ -1,5 +1,21 @@
 # Change Log
 
+## [1.1.4](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.1.4) (16 Mar 2023)
+[Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.1.3...1.1.4)
+
+Bugs Fixed:
+
+* [R2DBC-76] Wrong MEDIUM field binary decoding
+* [R2DBC-77] Metadata is null when using returnGeneratedValues on server before 10.5
+* [R2DBC-79] Wrong client side parsing for named parameter when using user variable
+* [R2DBC-80] add option to disable hostname verification for SslMode.TUNNEL. thanks to @shubha-rajan
+* [R2DBC-81] missing parsing/builder variables for option restrictedAuth,rsaPublicKey,cachingRsaPublicKey and allowPublicKeyRetrievalString
+* [R2DBC-82] wrong transactionIsolation level set/get with server without session tracking
+* [R2DBC-85] adding hint in order to execute text command when useServerPrepStmts option is set
+* [R2DBC-83] support xpand 0000-00-00 timestamp/date encoding
+
+
+
 ## [1.1.3](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.1.3) (22 Dec 2022)
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.1.2...1.1.3)
 

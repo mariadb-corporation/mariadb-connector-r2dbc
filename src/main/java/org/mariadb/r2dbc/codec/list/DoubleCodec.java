@@ -101,10 +101,9 @@ public class DoubleCodec implements Codec<Double> {
         return (double) buf.readShortLE();
 
       case MEDIUMINT:
-        if (!column.isSigned()) {
-          return (double) buf.readUnsignedMediumLE();
-        }
-        return (double) buf.readMediumLE();
+        double v = column.isSigned() ? buf.readMediumLE() : buf.readUnsignedMediumLE();
+        buf.readByte(); // needed since binary protocol exchange for medium are on 4 bytes
+        return v;
 
       case INTEGER:
         if (!column.isSigned()) {

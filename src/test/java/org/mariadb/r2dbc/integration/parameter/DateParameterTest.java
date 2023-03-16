@@ -399,6 +399,7 @@ public class DateParameterTest extends BaseConnectionTest {
 
   @Test
   void localTimeValue() {
+    Assumptions.assumeFalse(isXpand());
     localTimeValue(sharedConn);
   }
 

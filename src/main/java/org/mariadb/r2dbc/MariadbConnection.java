@@ -98,7 +98,7 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
       throw new IllegalArgumentException("Statement cannot be empty.");
     }
 
-    if (this.configuration.useServerPrepStmts() || sql.contains("call")) {
+    if ((this.configuration.useServerPrepStmts() || sql.contains("call")) && !sql.startsWith("/*text*/")) {
       return new MariadbServerParameterizedQueryStatement(this.client, sql, this.configuration);
     }
     return new MariadbClientParameterizedQueryStatement(this.client, sql, this.configuration);
@@ -112,7 +112,7 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
   @Override
   public IsolationLevel getTransactionIsolationLevel() {
     if (isolationLevel != null) return isolationLevel;
-    if ((client.getContext().getClientCapabilities() | Capabilities.CLIENT_SESSION_TRACK) > 0
+    if ((client.getContext().getClientCapabilities() & Capabilities.CLIENT_SESSION_TRACK) > 0
         && client.getContext().getIsolationLevel() != null)
       return client.getContext().getIsolationLevel();
     return this.sessionIsolationLevel;
@@ -221,7 +221,7 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
   public Mono<Void> setTransactionIsolationLevel(IsolationLevel isolationLevel) {
     Assert.requireNonNull(isolationLevel, "isolationLevel must not be null");
 
-    if ((client.getContext().getClientCapabilities() | Capabilities.CLIENT_SESSION_TRACK) > 0
+    if ((client.getContext().getClientCapabilities() & Capabilities.CLIENT_SESSION_TRACK) > 0
         && client.getContext().getIsolationLevel() != null
         && client.getContext().getIsolationLevel().equals(isolationLevel)) return Mono.empty();
 

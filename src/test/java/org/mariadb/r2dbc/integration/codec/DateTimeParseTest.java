@@ -113,6 +113,7 @@ public class DateTimeParseTest extends BaseConnectionTest {
 
   @Test
   void localTimeValuePrepare() {
+    Assumptions.assumeFalse(isXpand());
     localTimeValue(sharedConnPrepare);
   }
 
@@ -121,7 +122,13 @@ public class DateTimeParseTest extends BaseConnectionTest {
         .createStatement("SELECT t1 FROM DateTimeTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalTime.class))))
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      System.out.println(row.get(0, LocalTime.class));
+                      return Optional.ofNullable(row.get(0, LocalTime.class));
+                    }))
         .as(StepVerifier::create)
         .expectNext(
             Optional.of(LocalTime.parse("12:50:05.012300")),
@@ -379,6 +386,7 @@ public class DateTimeParseTest extends BaseConnectionTest {
 
   @Test
   void stringValuePrepare() {
+    Assumptions.assumeFalse(isXpand());
     stringValue(
         sharedConnPrepare,
         Optional.of("2013-07-22 12:50:05.012300"),

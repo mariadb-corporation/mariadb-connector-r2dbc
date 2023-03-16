@@ -56,9 +56,8 @@ public class ErrorTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && (throwable
-                        .getMessage()
-                        .contains("Access denied for user 'userWithoutRight'")))
+                    && (throwable.getMessage().contains("Access denied for user 'userWithoutRight'")
+                        || throwable.getMessage().contains("Insufficient user permissions")))
         .verify();
 
     conf =
@@ -75,10 +74,11 @@ public class ErrorTest extends BaseConnectionTest {
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
                     && throwable.getMessage().contains("Fail to establish connection to")
-                    && throwable
-                        .getCause()
-                        .getMessage()
-                        .contains("Access denied for user 'userWithoutRight'"))
+                    && (throwable
+                            .getCause()
+                            .getMessage()
+                            .contains("Access denied for user 'userWithoutRight'")
+                        || throwable.getMessage().contains("Access denied")))
         .verify();
   }
 
@@ -105,7 +105,8 @@ public class ErrorTest extends BaseConnectionTest {
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv")));
+            && !"skysql-ha".equals(System.getenv("srv"))
+            && !isXpand());
     MariadbConnection connection = null;
     MariadbConnection connection2 = null;
     try {

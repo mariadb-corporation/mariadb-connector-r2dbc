@@ -343,6 +343,7 @@ public class TinyIntParameterTest extends BaseConnectionTest {
 
   @Test
   void localTimeValue() {
+    Assumptions.assumeFalse(isXpand());
     localTimeValue(sharedConn);
   }
 

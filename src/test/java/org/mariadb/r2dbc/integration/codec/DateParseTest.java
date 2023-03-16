@@ -82,10 +82,17 @@ public class DateParseTest extends BaseConnectionTest {
 
   private void localDateValue(MariadbConnection connection) {
     connection
-        .createStatement("SELECT t1 FROM DateTable WHERE 1 = ?")
+        .createStatement("SELECT t1,t2 FROM DateTable WHERE 1 = ?")
         .bind(0, 1)
         .execute()
-        .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, LocalDate.class))))
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      row.get(0, LocalDate.class);
+                      row.get(1);
+                      return Optional.ofNullable(row.get(0, LocalDate.class));
+                    }))
         .as(StepVerifier::create)
         .expectNext(
             Optional.of(LocalDate.parse("2010-01-12")),

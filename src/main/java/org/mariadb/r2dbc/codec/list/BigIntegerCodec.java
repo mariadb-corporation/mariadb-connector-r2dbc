@@ -120,10 +120,10 @@ public class BigIntegerCodec implements Codec<BigInteger> {
         return BigInteger.valueOf((int) buf.readShortLE());
 
       case MEDIUMINT:
-        if (!column.isSigned()) {
-          return BigInteger.valueOf((buf.readUnsignedMediumLE()));
-        }
-        return BigInteger.valueOf(buf.readMediumLE());
+        BigInteger v =
+            BigInteger.valueOf(column.isSigned() ? buf.readMediumLE() : buf.readUnsignedMediumLE());
+        buf.readByte(); // needed since binary protocol exchange for medium are on 4 bytes
+        return v;
 
       case INTEGER:
         if (!column.isSigned()) {

@@ -31,6 +31,7 @@ public class TlsTest extends BaseConnectionTest {
 
   @BeforeAll
   public static void before2() {
+    Assumptions.assumeTrue(!isXpand());
     serverSslCert = System.getenv("TEST_DB_SERVER_CERT");
     clientSslCert = System.getenv("TEST_DB_CLIENT_CERT");
     clientSslKey = System.getenv("TEST_DB_CLIENT_KEY");

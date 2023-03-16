@@ -491,8 +491,8 @@ public class IntParseTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
         .as(StepVerifier::create)
         .expectNext(
-            Optional.of("0000000000"),
-            Optional.of("0000000010"),
+            Optional.of(isXpand() ? "0" : "0000000000"),
+            Optional.of(isXpand() ? "10" : "0000000010"),
             Optional.of("1294967295"),
             Optional.empty())
         .verifyComplete();

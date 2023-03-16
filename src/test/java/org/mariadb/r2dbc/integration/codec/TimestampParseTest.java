@@ -179,9 +179,14 @@ public class TimestampParseTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Boolean and column type TIMESTAMP"))
+                    && (throwable
+                            .getMessage()
+                            .equals(
+                                "No decoder for type java.lang.Boolean and column type TIMESTAMP")
+                        || throwable
+                            .getMessage()
+                            .equals(
+                                "No decoder for type java.lang.Boolean and column type DATETIME")))
         .verify();
   }
 
@@ -205,9 +210,12 @@ public class TimestampParseTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
+                        && (throwable
+                            .getMessage()
+                            .equals("No decoder for type byte[] and column type TIMESTAMP"))
+                    || throwable
                         .getMessage()
-                        .equals("No decoder for type byte[] and column type TIMESTAMP"))
+                        .equals("No decoder for type byte[] and column type DATETIME"))
         .verify();
   }
 
@@ -231,9 +239,12 @@ public class TimestampParseTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Byte and column type TIMESTAMP"))
+                    && (throwable
+                            .getMessage()
+                            .equals("No decoder for type java.lang.Byte and column type TIMESTAMP")
+                        || throwable
+                            .getMessage()
+                            .equals("No decoder for type java.lang.Byte and column type DATETIME")))
         .verify();
   }
 
@@ -257,9 +268,12 @@ public class TimestampParseTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type byte and column type TIMESTAMP"))
+                    && (throwable
+                            .getMessage()
+                            .equals("No decoder for type byte and column type TIMESTAMP")
+                        || throwable
+                            .getMessage()
+                            .equals("No decoder for type byte and column type DATETIME")))
         .verify();
   }
 
@@ -283,9 +297,13 @@ public class TimestampParseTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Short and column type TIMESTAMP"))
+                    && (throwable
+                            .getMessage()
+                            .equals("No decoder for type java.lang.Short and column type TIMESTAMP")
+                        || throwable
+                            .getMessage()
+                            .equals(
+                                "No decoder for type java.lang.Short and column type DATETIME")))
         .verify();
   }
 
@@ -309,9 +327,14 @@ public class TimestampParseTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Integer and column type TIMESTAMP"))
+                    && (throwable
+                            .getMessage()
+                            .equals(
+                                "No decoder for type java.lang.Integer and column type TIMESTAMP")
+                        || throwable
+                            .getMessage()
+                            .equals(
+                                "No decoder for type java.lang.Integer and column type DATETIME")))
         .verify();
   }
 
@@ -335,9 +358,12 @@ public class TimestampParseTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Long and column type TIMESTAMP"))
+                    && (throwable
+                            .getMessage()
+                            .equals("No decoder for type java.lang.Long and column type TIMESTAMP")
+                        || throwable
+                            .getMessage()
+                            .equals("No decoder for type java.lang.Long and column type DATETIME")))
         .verify();
   }
 
@@ -361,9 +387,13 @@ public class TimestampParseTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Float and column type TIMESTAMP"))
+                    && (throwable
+                            .getMessage()
+                            .equals("No decoder for type java.lang.Float and column type TIMESTAMP")
+                        || throwable
+                            .getMessage()
+                            .equals(
+                                "No decoder for type java.lang.Float and column type DATETIME")))
         .verify();
   }
 
@@ -387,9 +417,14 @@ public class TimestampParseTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals("No decoder for type java.lang.Double and column type TIMESTAMP"))
+                    && (throwable
+                            .getMessage()
+                            .equals(
+                                "No decoder for type java.lang.Double and column type TIMESTAMP")
+                        || throwable
+                            .getMessage()
+                            .equals(
+                                "No decoder for type java.lang.Double and column type DATETIME")))
         .verify();
   }
 
@@ -434,10 +469,14 @@ public class TimestampParseTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.math.BigDecimal and column type TIMESTAMP"))
+                    && (throwable
+                            .getMessage()
+                            .equals(
+                                "No decoder for type java.math.BigDecimal and column type TIMESTAMP")
+                        || throwable
+                            .getMessage()
+                            .equals(
+                                "No decoder for type java.math.BigDecimal and column type DATETIME")))
         .verify();
   }
 
@@ -461,10 +500,14 @@ public class TimestampParseTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
-                    && throwable
-                        .getMessage()
-                        .equals(
-                            "No decoder for type java.math.BigInteger and column type TIMESTAMP"))
+                    && (throwable
+                            .getMessage()
+                            .equals(
+                                "No decoder for type java.math.BigInteger and column type TIMESTAMP")
+                        || throwable
+                            .getMessage()
+                            .equals(
+                                "No decoder for type java.math.BigInteger and column type DATETIME")))
         .verify();
   }
 

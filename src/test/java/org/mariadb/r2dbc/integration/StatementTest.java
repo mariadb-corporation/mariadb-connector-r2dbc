@@ -91,6 +91,17 @@ public class StatementTest extends BaseConnectionTest {
   }
 
   @Test
+  void basicSetter() {
+    sharedConn
+        .createStatement("SELECT @amount := 10")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+        .as(StepVerifier::create)
+        .expectNext("10")
+        .verifyComplete();
+  }
+
+  @Test
   void bindOnStatementWithoutParameter() {
     Statement stmt = sharedConn.createStatement("INSERT INTO someTable values (1,2)");
     assertThrowsContains(
@@ -329,7 +340,7 @@ public class StatementTest extends BaseConnectionTest {
 
   @Test
   public void sinkEndCheck() throws Throwable {
-    Assumptions.assumeTrue(isMariaDBServer());
+    Assumptions.assumeTrue(isMariaDBServer() && !isXpand());
     AtomicReference<Disposable> d = new AtomicReference<>();
     AtomicReference<Disposable> d2 = new AtomicReference<>();
     MariadbConnection connection = factory.create().block();
@@ -370,7 +381,7 @@ public class StatementTest extends BaseConnectionTest {
 
   @Test
   public void sinkFirstOnly() throws Throwable {
-    Assumptions.assumeTrue(isMariaDBServer());
+    Assumptions.assumeTrue(isMariaDBServer() && !isXpand());
     AtomicReference<Disposable> d2 = new AtomicReference<>();
     MariadbConnection connection = factory.create().block();
     connection.beginTransaction().block();

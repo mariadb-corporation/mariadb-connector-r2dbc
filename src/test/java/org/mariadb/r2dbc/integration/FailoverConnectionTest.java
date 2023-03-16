@@ -199,7 +199,8 @@ public class FailoverConnectionTest extends BaseConnectionTest {
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv")));
+            && !"skysql-ha".equals(System.getenv("srv"))
+            && !isXpand());
 
     transactionReplayFailingDuringCmd(
         createFailoverProxyConnection(HaMode.SEQUENTIAL, true, false));

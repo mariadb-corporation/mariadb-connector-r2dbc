@@ -109,7 +109,10 @@ public class BooleanCodec implements Codec<Boolean> {
         return buf.readShortLE() != 0;
 
       case MEDIUMINT:
-        return buf.readMediumLE() != 0;
+        boolean b = buf.readMediumLE() != 0;
+        buf.readByte(); // needed since binary protocol exchange for medium are on 4 bytes
+        return b;
+
       case INTEGER:
         return buf.readIntLE() != 0;
       case BIGINT:

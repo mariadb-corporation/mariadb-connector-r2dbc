@@ -459,7 +459,10 @@ public class StringParameterTest extends BaseConnectionTest {
   void durationValuePrepare() {
     durationValue(sharedConnPrepare);
     if (meta.isMariaDBServer()) {
-      validate(Optional.of("90:00:00.012340"), Optional.of("00:08:00"), Optional.of("00:00:22"));
+      validate(
+          Optional.of("90:00:00.012340"),
+          Optional.of(isXpand() ? "00:08:00.000000" : "00:08:00"),
+          Optional.of(isXpand() ? "00:00:22.000000" : "00:00:22"));
     } else {
       validate(Optional.of("90:00:00"), Optional.of("00:08:00"), Optional.of("00:00:22"));
     }

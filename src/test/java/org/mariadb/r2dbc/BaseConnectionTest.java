@@ -27,7 +27,7 @@ public class BaseConnectionTest {
   public static final boolean isWindows =
       System.getProperty("os.name").toLowerCase().contains("win");
 
-  public static int initialConnectionNumber = -1;
+  public static Integer initialConnectionNumber = -1;
   public static TcpProxy proxy;
   private static final Random rand = new Random();
   public static final Boolean backslashEscape =
@@ -48,12 +48,14 @@ public class BaseConnectionTest {
   private class Follow implements BeforeEachCallback, AfterEachCallback {
     @Override
     public void beforeEach(ExtensionContext extensionContext) throws Exception {
-      initialConnectionNumber =
-          sharedConn
-              .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
-              .execute()
-              .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
-              .blockLast();
+      if (!isXpand()) {
+        initialConnectionNumber =
+            sharedConn
+                .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
+                .execute()
+                .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
+                .blockLast();
+      }
       initialTest = Instant.now();
       System.out.println(
           "       test : " + extensionContext.getTestMethod().get().getName() + " begin");
@@ -61,44 +63,45 @@ public class BaseConnectionTest {
 
     @AfterEach
     public void afterEach(ExtensionContext extensionContext) throws Exception {
-      int finalConnectionNumber =
-          sharedConn
-              .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
-              .execute()
-              .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
-              .onErrorResume(
-                  t -> {
-                    t.printStackTrace();
-                    return Mono.just(-999999);
-                  })
-              .blockLast();
-      if (finalConnectionNumber - initialConnectionNumber != 0) {
-        int retry = 5;
-        do {
-          Thread.sleep(50);
-          finalConnectionNumber =
-              sharedConn
-                  .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
-                  .execute()
-                  .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
-                  .onErrorResume(
-                      t -> {
-                        t.printStackTrace();
-                        return Mono.just(-999999);
-                      })
-                  .blockLast();
-        } while (retry-- > 0 && finalConnectionNumber != initialConnectionNumber);
+      if (!isXpand()) {
+        Integer finalConnectionNumber =
+            sharedConn
+                .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
+                .execute()
+                .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
+                .onErrorResume(
+                    t -> {
+                      t.printStackTrace();
+                      return Mono.just(-999999);
+                    })
+                .blockLast();
+        if (finalConnectionNumber != null && finalConnectionNumber - initialConnectionNumber != 0) {
+          int retry = 5;
+          do {
+            Thread.sleep(50);
+            finalConnectionNumber =
+                sharedConn
+                    .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
+                    .execute()
+                    .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
+                    .onErrorResume(
+                        t -> {
+                          t.printStackTrace();
+                          return Mono.just(-999999);
+                        })
+                    .blockLast();
+          } while (retry-- > 0 && finalConnectionNumber != initialConnectionNumber);
 
-        if (finalConnectionNumber - initialConnectionNumber != 0) {
-          System.err.printf(
-              "%s: Error connection not ended : changed=%s (initial:%s ended:%s)%n",
-              extensionContext.getTestMethod().get(),
-              (finalConnectionNumber - initialConnectionNumber),
-              initialConnectionNumber,
-              finalConnectionNumber);
+          if (finalConnectionNumber - initialConnectionNumber != 0) {
+            System.err.printf(
+                "%s: Error connection not ended : changed=%s (initial:%s ended:%s)%n",
+                extensionContext.getTestMethod().get(),
+                (finalConnectionNumber - initialConnectionNumber),
+                initialConnectionNumber,
+                finalConnectionNumber);
+          }
         }
       }
-
       System.out.println(
           "       test : "
               + extensionContext.getTestMethod().get().getName()
@@ -120,6 +123,7 @@ public class BaseConnectionTest {
   public static void beforeAll() throws Exception {
 
     sharedConn = factory.create().block();
+
     MariadbConnectionConfiguration confPipeline =
         TestConfiguration.defaultBuilder.clone().useServerPrepStmts(true).build();
     sharedConnPrepare = new MariadbConnectionFactory(confPipeline).create().block();
@@ -185,6 +189,11 @@ public class BaseConnectionTest {
   public static boolean isMariaDBServer() {
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     return meta.isMariaDBServer();
+  }
+
+  public static boolean isXpand() {
+    MariadbConnectionMetadata meta = sharedConn.getMetadata();
+    return meta.getDatabaseVersion().toLowerCase().contains("xpand");
   }
 
   public static boolean minVersion(int major, int minor, int patch) {

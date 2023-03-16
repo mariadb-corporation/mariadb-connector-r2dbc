@@ -401,11 +401,13 @@ public class DateTimeParameterTest extends BaseConnectionTest {
 
   @Test
   void localTimeValue() {
+    Assumptions.assumeFalse(isXpand());
     localTimeValue(sharedConn);
   }
 
   @Test
   void localTimeValuePrepare() {
+    Assumptions.assumeFalse(isXpand());
     LocalTime localTime = LocalTime.parse("05:08:10.123456");
     LocalDateTime localDateTime =
         LocalDateTime.now().withHour(5).withMinute(8).withSecond(10).withNano(123456 * 1000);

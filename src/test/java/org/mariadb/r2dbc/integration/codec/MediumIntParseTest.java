@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
@@ -401,9 +402,9 @@ public class MediumIntParseTest extends BaseConnectionTest {
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
         .as(StepVerifier::create)
         .expectNext(
-            Optional.of("00000000"),
-            Optional.of("00000010"),
-            Optional.of("00000100"),
+            Optional.of(isXpand() ? "0" : "00000000"),
+            Optional.of(isXpand() ? "10" : "00000010"),
+            Optional.of(isXpand() ? "100" : "00000100"),
             Optional.empty())
         .verifyComplete();
 
@@ -440,6 +441,42 @@ public class MediumIntParseTest extends BaseConnectionTest {
             Optional.of(BigDecimal.valueOf(-1)),
             Optional.empty())
         .verifyComplete();
+
+    connection
+        .createStatement("SELECT t1, t2 FROM MediumIntTable WHERE 1 = ?")
+        .bind(0, 1)
+        .execute()
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      return new BigDecimal[] {
+                        row.get(0, BigDecimal.class), row.get(1, BigDecimal.class)
+                      };
+                    }))
+        .as(StepVerifier::create)
+        .assertNext(
+            r -> {
+              Assertions.assertEquals(0, r[0].intValue());
+              Assertions.assertEquals(0, r[1].intValue());
+            })
+        .assertNext(
+            r -> {
+              Assertions.assertEquals(1, r[0].intValue());
+              Assertions.assertEquals(10, r[1].intValue());
+            })
+        .assertNext(
+            r -> {
+              Assertions.assertEquals(-1, r[0].intValue());
+              Assertions.assertEquals(100, r[1].intValue());
+            })
+        .assertNext(
+            r -> {
+              Assertions.assertNull(r[0]);
+              Assertions.assertNull(r[1]);
+            })
+        .verifyComplete();
+
     connection
         .createStatement("SELECT t1 FROM MediumIntUnsignedTable WHERE 1 = ?")
         .bind(0, 1)
