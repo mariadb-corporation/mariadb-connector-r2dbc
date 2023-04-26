@@ -98,7 +98,8 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
       throw new IllegalArgumentException("Statement cannot be empty.");
     }
 
-    if ((this.configuration.useServerPrepStmts() || sql.contains("call")) && !sql.startsWith("/*text*/")) {
+    if ((this.configuration.useServerPrepStmts() || sql.contains("call"))
+        && !sql.startsWith("/*text*/")) {
       return new MariadbServerParameterizedQueryStatement(this.client, sql, this.configuration);
     }
     return new MariadbClientParameterizedQueryStatement(this.client, sql, this.configuration);

@@ -24,7 +24,7 @@ import reactor.netty.resources.ConnectionProvider;
 /** Failover (High-availability) mode */
 public enum HaMode {
   /** sequential: driver will always connect according to connection string order */
-  SEQUENTIAL("sequential") {
+  SEQUENTIAL(new String[] {"sequential"}) {
     public List<HostAddress> getAvailableHost(
         List<HostAddress> hostAddresses, ConcurrentMap<HostAddress, Long> denyList) {
       return getAvailableHostInOrder(hostAddresses, denyList);
@@ -39,7 +39,7 @@ public enum HaMode {
   },
 
   /** load-balance: driver will randomly connect to any host, permitting balancing connections */
-  LOADBALANCE("load-balance") {
+  LOADBALANCE(new String[] {"load-balance", "loadbalance", "loadbalancing"}) {
     public List<HostAddress> getAvailableHost(
         List<HostAddress> hostAddresses, ConcurrentMap<HostAddress, Long> denyList) {
       // use in order not blacklisted server
@@ -58,7 +58,7 @@ public enum HaMode {
   },
 
   /** no ha-mode. Connect to first host only */
-  NONE("") {
+  NONE(new String[0]) {
     public List<HostAddress> getAvailableHost(
         List<HostAddress> hostAddresses, ConcurrentMap<HostAddress, Long> denyList) {
       return hostAddresses;
@@ -80,10 +80,10 @@ public enum HaMode {
   private static final Duration CONNECTION_LOOP_DURATION =
       Duration.parse(System.getProperty("connectionLoopDuration", "PT10S"));
 
-  private final String value;
+  private final String[] aliases;
 
-  HaMode(String value) {
-    this.value = value;
+  HaMode(String[] value) {
+    this.aliases = value;
   }
 
   /**
@@ -94,8 +94,13 @@ public enum HaMode {
    */
   public static HaMode from(String value) {
     for (HaMode haMode : values()) {
-      if (haMode.value.equalsIgnoreCase(value) || haMode.name().equalsIgnoreCase(value)) {
+      if (haMode.name().equalsIgnoreCase(value)) {
         return haMode;
+      }
+      for (String alias : haMode.aliases) {
+        if (alias.equalsIgnoreCase(value)) {
+          return haMode;
+        }
       }
     }
     throw new IllegalArgumentException(

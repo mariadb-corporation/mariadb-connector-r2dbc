@@ -320,6 +320,9 @@ public final class MariadbConnectionConfiguration {
               .split("[,;\\s]+");
       builder.tlsProtocol(protocols);
     }
+    if (connectionFactoryOptions.hasOption(ConnectionFactoryOptions.PROTOCOL)) {
+      builder.haMode((String) connectionFactoryOptions.getValue(ConnectionFactoryOptions.PROTOCOL));
+    }
     builder.password((CharSequence) connectionFactoryOptions.getValue(PASSWORD));
     builder.username((String) connectionFactoryOptions.getRequiredValue(USER));
     if (connectionFactoryOptions.hasOption(PORT)) {
@@ -528,6 +531,8 @@ public final class MariadbConnectionConfiguration {
         + "database='"
         + database
         + '\''
+        + ", haMode="
+        + haMode
         + ", hosts={"
         + (hostAddresses == null ? "" : Arrays.toString(hostAddresses.toArray()))
         + '}'
@@ -1046,6 +1051,8 @@ public final class MariadbConnectionConfiguration {
       return "Builder{"
           + "rsaPublicKey="
           + rsaPublicKey
+          + ", haMode="
+          + haMode
           + ", cachingRsaPublicKey="
           + cachingRsaPublicKey
           + ", allowPublicKeyRetrieval="

@@ -32,13 +32,13 @@ public class ProcedureResultsetTest extends BaseConnectionTest {
                 + "END")
         .execute()
         .blockLast();
-      sharedConn
-              .createStatement(
-                      "CREATE PROCEDURE no_out_proc (IN t1 INT, IN t2 INT) BEGIN \n"
-                              + "DO t1 + t2;\n"
-                              + "END")
-              .execute()
-              .blockLast();
+    sharedConn
+        .createStatement(
+            "CREATE PROCEDURE no_out_proc (IN t1 INT, IN t2 INT) BEGIN \n"
+                + "DO t1 + t2;\n"
+                + "END")
+        .execute()
+        .blockLast();
   }
 
   @AfterAll
@@ -111,57 +111,57 @@ public class ProcedureResultsetTest extends BaseConnectionTest {
     }
     Assertions.assertEquals(LocalDateTime.parse("2003-12-31T12:00:00"), l.get(1).get(3));
 
-      List<List<Object>> l2 =
-              sharedConn
-                      .createStatement("/*text*/ call basic_proc(?,?,?,?,?,?,?)")
-                      .bind(0, 2)
-                      .bind(1, Parameters.inOut(2))
-                      .bind(2, Parameters.out(R2dbcType.INTEGER))
-                      .bind(3, 10)
-                      .bind(4, Parameters.out(R2dbcType.VARCHAR))
-                      .bind(5, Parameters.out(R2dbcType.TIMESTAMP))
-                      .bind(6, Parameters.out(R2dbcType.VARCHAR))
-                      .execute()
-                      .flatMap(
-                              r ->
-                                      Flux.from(
-                                                      r.filter(Result.OutSegment.class::isInstance)
-                                                              .flatMap(
-                                                                      seg -> {
-                                                                          return Flux.just(
-                                                                                  ((Result.OutSegment) seg).outParameters().get(0),
-                                                                                  ((Result.OutSegment) seg).outParameters().get(1),
-                                                                                  ((Result.OutSegment) seg).outParameters().get(2),
-                                                                                  ((Result.OutSegment) seg).outParameters().get(3),
-                                                                                  ((Result.OutSegment) seg).outParameters().get(4));
-                                                                      }))
-                                              .collectList())
-                      .collectList()
-                      .block();
-
-      Assertions.assertEquals(1, l2.size());
-  }
-    @Test
-    void inParameter() {
-        Assumptions.assumeFalse(isXpand());
-                sharedConn
-                        .createStatement("call no_out_proc(?,?)")
-                        .bind(0, 2)
-                        .bind(1, 10)
-                        .execute()
-                        .flatMap(it -> it.getRowsUpdated())
-                        .as(StepVerifier::create)
-                        .expectNext(0L)
-                        .verifyComplete();
+    List<List<Object>> l2 =
         sharedConn
-                .createStatement("/*text*/ call no_out_proc(?,?)")
-                .bind(0, 2)
-                .bind(1, 10)
-                .execute()
-                .flatMap(it -> it.getRowsUpdated())
-                .as(StepVerifier::create)
-                .expectNext(0L)
-                .verifyComplete();
-    }
+            .createStatement("/*text*/ call basic_proc(?,?,?,?,?,?,?)")
+            .bind(0, 2)
+            .bind(1, Parameters.inOut(2))
+            .bind(2, Parameters.out(R2dbcType.INTEGER))
+            .bind(3, 10)
+            .bind(4, Parameters.out(R2dbcType.VARCHAR))
+            .bind(5, Parameters.out(R2dbcType.TIMESTAMP))
+            .bind(6, Parameters.out(R2dbcType.VARCHAR))
+            .execute()
+            .flatMap(
+                r ->
+                    Flux.from(
+                            r.filter(Result.OutSegment.class::isInstance)
+                                .flatMap(
+                                    seg -> {
+                                      return Flux.just(
+                                          ((Result.OutSegment) seg).outParameters().get(0),
+                                          ((Result.OutSegment) seg).outParameters().get(1),
+                                          ((Result.OutSegment) seg).outParameters().get(2),
+                                          ((Result.OutSegment) seg).outParameters().get(3),
+                                          ((Result.OutSegment) seg).outParameters().get(4));
+                                    }))
+                        .collectList())
+            .collectList()
+            .block();
 
+    Assertions.assertEquals(1, l2.size());
+  }
+
+  @Test
+  void inParameter() {
+    Assumptions.assumeFalse(isXpand());
+    sharedConn
+        .createStatement("call no_out_proc(?,?)")
+        .bind(0, 2)
+        .bind(1, 10)
+        .execute()
+        .flatMap(it -> it.getRowsUpdated())
+        .as(StepVerifier::create)
+        .expectNext(0L)
+        .verifyComplete();
+    sharedConn
+        .createStatement("/*text*/ call no_out_proc(?,?)")
+        .bind(0, 2)
+        .bind(1, 10)
+        .execute()
+        .flatMap(it -> it.getRowsUpdated())
+        .as(StepVerifier::create)
+        .expectNext(0L)
+        .verifyComplete();
+  }
 }
