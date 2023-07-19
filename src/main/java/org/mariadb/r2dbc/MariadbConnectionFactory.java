@@ -83,7 +83,8 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
 
     // set default transaction isolation
     String txIsolation =
-        (!client.getVersion().isMariaDBServer()
+            (client.getVersion().isMariaDBServer() && client.getVersion().versionGreaterOrEqual(11, 1, 1))
+            || (!client.getVersion().isMariaDBServer()
                 && (client.getVersion().versionGreaterOrEqual(8, 0, 3)
                     || (client.getVersion().getMajorVersion() < 8
                         && client.getVersion().versionGreaterOrEqual(5, 7, 20))))
