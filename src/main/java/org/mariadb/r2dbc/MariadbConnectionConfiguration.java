@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.function.UnaryOperator;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.HostAddress;
+import org.mariadb.r2dbc.util.Security;
 import org.mariadb.r2dbc.util.SslConfig;
 import reactor.netty.resources.LoopResources;
 import reactor.netty.tcp.TcpResources;
@@ -237,7 +238,7 @@ public final class MariadbConnectionConfiguration {
       String sessionVarString =
           (String)
               connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.SESSION_VARIABLES);
-      builder.sessionVariables(getMapFromString(sessionVarString));
+      builder.sessionVariables(Security.parseSessionVariables(sessionVarString));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.HAMODE)) {
@@ -737,6 +738,11 @@ public final class MariadbConnectionConfiguration {
       return this;
     }
 
+    /**
+     * Set session variable
+     * @param sessionVariables map containing session variables
+     * @return this {@link Builder}
+     */
     public Builder sessionVariables(@Nullable Map<String, String> sessionVariables) {
       this.sessionVariables = sessionVariables;
       return this;

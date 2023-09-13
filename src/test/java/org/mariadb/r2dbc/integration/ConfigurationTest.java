@@ -301,6 +301,25 @@ public class ConfigurationTest extends BaseConnectionTest {
     sharedConn.close().block();
   }
 
+
+  @Test
+  void sessionVariablesMultipleValues() throws Exception {
+    Map sessionVariables1 = new HashMap();
+    sessionVariables1.put("sql_mode", "ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO");
+    MariadbConnectionConfiguration conf = TestConfiguration.defaultBuilder.sessionVariables(sessionVariables1).clone().build();
+
+    MariadbConnection sharedConn = new MariadbConnectionFactory(conf).create().block();
+    sharedConn
+            .createStatement("SELECT @@sql_mode")
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+            .as(StepVerifier::create)
+            .expectNext("ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO")
+            .verifyComplete();
+    Assertions.assertTrue(sharedConn.isAutoCommit());
+    sharedConn.close().block();
+  }
+
   @Test
   void confMinOption() {
     assertThrows(

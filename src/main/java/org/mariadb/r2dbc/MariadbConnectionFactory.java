@@ -113,14 +113,24 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
       Iterator<String> keys = sessionVariable.keySet().iterator();
       for (int i = 0; i < sessionVariable.size(); i++) {
         String key = keys.next();
-        String value = sessionVariable.get(key);
+        Object value = sessionVariable.get(key);
         if (value == null) {
           client.close().subscribe();
           return Mono.error(
               new R2dbcNonTransientResourceException(
                   String.format("Session variable '%s' has no value", key)));
         }
-        sql.append(",").append(key).append("=").append(value);
+        sql.append(",").append(key).append("=");
+        if (value instanceof String) {
+          sql.append("'").append(value).append("'");
+        } else if (value instanceof Integer || value instanceof Boolean) {
+          sql.append(value);
+        } else {
+          client.close().subscribe();
+          return Mono.error(
+                  new R2dbcNonTransientResourceException(
+                          String.format("Session variable '%s' type can only be string,integer or boolean", key)));
+        }
       }
     }
     return client
