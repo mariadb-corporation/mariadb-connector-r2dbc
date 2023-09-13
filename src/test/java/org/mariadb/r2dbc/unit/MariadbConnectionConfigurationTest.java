@@ -3,6 +3,7 @@ package org.mariadb.r2dbc.unit;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.IsolationLevel;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 import org.junit.jupiter.api.Assertions;
@@ -17,7 +18,8 @@ public class MariadbConnectionConfigurationTest {
     TreeMap<String, String> connectionAttributes = new TreeMap<>();
     connectionAttributes.put("entry1", "val1");
     connectionAttributes.put("entry2", "val2");
-
+    Map tzMap = new HashMap();
+    tzMap.put("timezone", "Europe/Paris");
     MariadbConnectionConfiguration conf =
         MariadbConnectionConfiguration.builder()
             .connectTimeout(Duration.ofMillis(150))
@@ -27,7 +29,7 @@ public class MariadbConnectionConfigurationTest {
             .tcpAbortiveClose(true)
             .transactionReplay(true)
             .connectionAttributes(connectionAttributes)
-            .sessionVariables(Map.of("timezone", "Europe/Paris"))
+            .sessionVariables(tzMap)
             .pamOtherPwd(new String[] {"otherPwd"})
             .database("MyDB")
             .password("MyPassword")

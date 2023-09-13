@@ -80,11 +80,17 @@ public class ConfigurationTest extends BaseConnectionTest {
     MariadbConnectionFactory factory =
         (MariadbConnectionFactory)
             ConnectionFactories.get(
-                "r2dbc:mariadb:failover://root:password@localhost:3305/db?isolationLevel=REPEATABLE-READ");
+                "r2dbc:mariadb:loadbalance://root:password@localhost:3305/db?isolationLevel=REPEATABLE-READ");
     Assertions.assertTrue(factory.toString().contains("username='root'"));
     Assertions.assertTrue(factory.toString().contains("database='db'"));
     Assertions.assertTrue(
         factory.toString().contains("isolationLevel=IsolationLevel{sql='REPEATABLE READ'}"));
+    assertThrows(
+        Exception.class,
+        () ->
+            ConnectionFactories.get(
+                "r2dbc:mariadb:failover://root:password@localhost:3305/db?isolationLevel=REPEATABLE-READ"),
+        "Wrong argument value 'failover' for HaMode");
   }
 
   @Test
