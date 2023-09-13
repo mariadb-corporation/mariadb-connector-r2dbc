@@ -11,7 +11,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.mariadb</groupId>
   <artifactId>r2dbc-mariadb</artifactId>
-  <version>1.1.4</version>
+  <version>1.1.5-SNAPSHOT</version>
   <packaging>jar</packaging>
   <url>https://github.com/mariadb-corporation/mariadb-connector-r2dbc</url>
 
@@ -21,14 +21,14 @@
   <properties>
     <java.version>1.8</java.version>
     <jsr305.version>3.0.2</jsr305.version>
-    <junit.version>5.9.1</junit.version>
-    <jmh.version>1.36</jmh.version>
+    <junit.version>5.10.0</junit.version>
+    <jmh.version>1.37</jmh.version>
     <logback.version>1.2.10</logback.version>
-    <netty.version>4.1.86.Final</netty.version>
+    <netty.version>4.1.97.Final</netty.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <r2dbc-spi.version>1.0.0.RELEASE</r2dbc-spi.version>
-    <reactor.version>2022.0.1</reactor.version>
-    <mariadb-jdbc.version>3.0.9</mariadb-jdbc.version>
+    <reactor.version>2022.0.10</reactor.version>
+    <mariadb-jdbc.version>3.2.0</mariadb-jdbc.version>
     <uberjar.name>benchmarks</uberjar.name>
   </properties>
 
@@ -188,22 +188,22 @@
               <goal>compile</goal>
             </goals>
           </execution>
-          <execution>
-            <id>compile-java-9</id>
-            <phase>compile</phase>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-            <configuration>
-              <release>9</release>
-              <source>9</source>
-              <target>9</target>
-              <compileSourceRoots>
-                <compileSourceRoot>${project.basedir}/src/main/java9</compileSourceRoot>
-              </compileSourceRoots>
-              <multiReleaseOutput>true</multiReleaseOutput>
-            </configuration>
-          </execution>
+<!--          <execution>-->
+<!--            <id>compile-java-9</id>-->
+<!--            <phase>compile</phase>-->
+<!--            <goals>-->
+<!--              <goal>compile</goal>-->
+<!--            </goals>-->
+<!--            <configuration>-->
+<!--              <release>9</release>-->
+<!--              <source>9</source>-->
+<!--              <target>9</target>-->
+<!--              <compileSourceRoots>-->
+<!--                <compileSourceRoot>${project.basedir}/src/main/java9</compileSourceRoot>-->
+<!--              </compileSourceRoots>-->
+<!--              <multiReleaseOutput>true</multiReleaseOutput>-->
+<!--            </configuration>-->
+<!--          </execution>-->
         </executions>
       </plugin>
       <plugin>
@@ -403,7 +403,7 @@
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>build-helper-maven-plugin</artifactId>
-            <version>3.3.0</version>
+            <version>3.4.0</version>
             <executions>
               <execution>
                 <id>add-source</id>
