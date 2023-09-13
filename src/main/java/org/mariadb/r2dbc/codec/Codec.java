@@ -31,20 +31,20 @@ public interface Codec<T> {
       ExceptionFactory factory);
 
   default Mono<ByteBuf> encodeText(ByteBufAllocator allocator, Object value, Context context) {
-    throw new IllegalCallerException("Not expected to be use");
+    throw new IllegalStateException("Not expected to be use");
   }
 
   default Mono<ByteBuf> encodeBinary(ByteBufAllocator allocator, Object value) {
-    throw new IllegalCallerException("Not expected to be use");
+    throw new IllegalStateException("Not expected to be use");
   }
 
   default void encodeDirectText(ByteBuf out, Object value, Context context) {
-    throw new IllegalCallerException("Not expected to be use");
+    throw new IllegalStateException("Not expected to be use");
   }
 
   default void encodeDirectBinary(
       ByteBufAllocator allocator, ByteBuf out, Object value, Context context) {
-    throw new IllegalCallerException("Not expected to be use");
+    throw new IllegalStateException("Not expected to be use");
   }
 
   DataType getBinaryEncodeType();
