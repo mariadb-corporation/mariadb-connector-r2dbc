@@ -109,7 +109,7 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
     // set session variables if defined
     if (configuration.getSessionVariables() != null
         && configuration.getSessionVariables().size() > 0) {
-      Map<String, String> sessionVariable = configuration.getSessionVariables();
+      Map<String, Object> sessionVariable = configuration.getSessionVariables();
       Iterator<String> keys = sessionVariable.keySet().iterator();
       for (int i = 0; i < sessionVariable.size(); i++) {
         String key = keys.next();
@@ -123,13 +123,16 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
         sql.append(",").append(key).append("=");
         if (value instanceof String) {
           sql.append("'").append(value).append("'");
-        } else if (value instanceof Integer || value instanceof Boolean) {
+        } else if (value instanceof Integer
+            || value instanceof Boolean
+            || value instanceof Double) {
           sql.append(value);
         } else {
           client.close().subscribe();
           return Mono.error(
-                  new R2dbcNonTransientResourceException(
-                          String.format("Session variable '%s' type can only be string,integer or boolean", key)));
+              new R2dbcNonTransientResourceException(
+                  String.format(
+                      "Session variable '%s' type can only be of type String, Integer, Double or Boolean", key)));
         }
       }
     }

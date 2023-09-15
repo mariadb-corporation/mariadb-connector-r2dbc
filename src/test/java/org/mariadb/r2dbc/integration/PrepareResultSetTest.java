@@ -624,7 +624,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
             .build();
     MariadbConnection connection = new MariadbConnectionFactory(confPipeline).create().block();
     connection
-        .createStatement("SELECT CAST (? AS INTEGER)")
+        .createStatement("SELECT ?")
         .bind(0, 1)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, Long.class)))
@@ -632,7 +632,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .expectNext(1L)
         .verifyComplete();
     connection
-        .createStatement("SELECT CAST (? AS INTEGER)")
+        .createStatement("SELECT ?")
         .bind(0, 2)
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(0, Long.class)))
@@ -665,7 +665,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
       for (long i = 0; i < 5; i++) {
 
         connection
-            .createStatement("SELECT " + i + ", CAST (? AS INTEGER)")
+            .createStatement("SELECT " + i + ", ?")
             .bind(0, i)
             .execute()
             .flatMap(r -> r.map((row, metadata) -> row.get(0, Long.class)))
@@ -706,7 +706,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
 
         if (i % 2 == 0) {
           connection
-              .createStatement("SELECT 1, CAST (? AS INTEGER)")
+              .createStatement("SELECT 1, ?")
               .bind(0, i)
               .execute()
               .flatMap(r -> r.map((row, metadata) -> row.get(1, Long.class)))

@@ -130,10 +130,10 @@ public class BaseConnectionTest {
     String sqlModeAddition = "";
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     if ((meta.isMariaDBServer() && !meta.minVersion(10, 2, 4)) || !meta.isMariaDBServer()) {
-      sqlModeAddition += ",STRICT_TRANS_TABLES";
+      sqlModeAddition += ",STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO";
     }
     if ((meta.isMariaDBServer() && !meta.minVersion(10, 1, 7)) || !meta.isMariaDBServer()) {
-      sqlModeAddition += ",NO_ENGINE_SUBSTITUTION";
+      sqlModeAddition += ",NO_ENGINE_SUBSTITUTION,NO_AUTO_CREATE_USER";
     }
     if (backslashEscape) {
       sqlModeAddition += ",NO_BACKSLASH_ESCAPES";

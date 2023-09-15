@@ -257,7 +257,7 @@ public class BlobParameterTest extends BaseConnectionTest {
 
   @Test
   void inputStreamValueNoBackslash() throws Exception {
-    Map<String, String> sessionMap = new HashMap<>();
+    Map<String, Object> sessionMap = new HashMap<>();
     sessionMap.put("SQL_MODE", "NO_BACKSLASH_ESCAPES");
     MariadbConnectionConfiguration confNoBackSlash =
         TestConfiguration.defaultBuilder.clone().sessionVariables(sessionMap).build();
@@ -268,7 +268,7 @@ public class BlobParameterTest extends BaseConnectionTest {
 
   @Test
   void inputStreamValueNoBackslashPrepare() throws Exception {
-    Map<String, String> sessionMap = new HashMap<>();
+    Map<String, Object> sessionMap = new HashMap<>();
     sessionMap.put("SQL_MODE", "NO_BACKSLASH_ESCAPES");
     MariadbConnectionConfiguration confNoBackSlash =
         TestConfiguration.defaultBuilder

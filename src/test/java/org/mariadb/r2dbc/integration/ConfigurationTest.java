@@ -285,9 +285,9 @@ public class ConfigurationTest extends BaseConnectionTest {
     sharedConn.createStatement("SET @@autocommit=1");
     sharedConn.close().block();
 
-    Map<String, String> sessionVariables = new HashMap<>();
-    sessionVariables.put("net_read_timeout", "60");
-    sessionVariables.put("wait_timeout", "2147483");
+    Map<String, Object> sessionVariables = new HashMap<>();
+    sessionVariables.put("net_read_timeout", 60);
+    sessionVariables.put("wait_timeout", 2147483);
 
     conf =
         TestConfiguration.defaultBuilder
@@ -301,21 +301,25 @@ public class ConfigurationTest extends BaseConnectionTest {
     sharedConn.close().block();
   }
 
-
   @Test
   void sessionVariablesMultipleValues() throws Exception {
     Map sessionVariables1 = new HashMap();
     sessionVariables1.put("sql_mode", "ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO");
-    MariadbConnectionConfiguration conf = TestConfiguration.defaultBuilder.sessionVariables(sessionVariables1).clone().build();
+    MariadbConnectionConfiguration conf =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .sessionVariables(sessionVariables1)
+            .clone()
+            .build();
 
     MariadbConnection sharedConn = new MariadbConnectionFactory(conf).create().block();
     sharedConn
-            .createStatement("SELECT @@sql_mode")
-            .execute()
-            .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
-            .as(StepVerifier::create)
-            .expectNext("ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO")
-            .verifyComplete();
+        .createStatement("SELECT @@sql_mode")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+        .as(StepVerifier::create)
+        .expectNext("ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO")
+        .verifyComplete();
     Assertions.assertTrue(sharedConn.isAutoCommit());
     sharedConn.close().block();
   }

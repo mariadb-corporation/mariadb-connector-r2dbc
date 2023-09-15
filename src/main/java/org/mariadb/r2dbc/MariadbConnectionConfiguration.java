@@ -49,7 +49,7 @@ public final class MariadbConnectionConfiguration {
   private final boolean allowMultiQueries;
   private final boolean allowPipelining;
   private final Map<String, String> connectionAttributes;
-  private final Map<String, String> sessionVariables;
+  private final Map<String, Object> sessionVariables;
   private final SslConfig sslConfig;
   private final String rsaPublicKey;
   private final String cachingRsaPublicKey;
@@ -71,7 +71,7 @@ public final class MariadbConnectionConfiguration {
       @Nullable String database,
       @Nullable String host,
       @Nullable Map<String, String> connectionAttributes,
-      @Nullable Map<String, String> sessionVariables,
+      @Nullable Map<String, Object> sessionVariables,
       @Nullable CharSequence password,
       int port,
       @Nullable List<HostAddress> hostAddresses,
@@ -431,7 +431,7 @@ public final class MariadbConnectionConfiguration {
   }
 
   @Nullable
-  public Map<String, String> getSessionVariables() {
+  public Map<String, Object> getSessionVariables() {
     return this.sessionVariables;
   }
 
@@ -607,7 +607,7 @@ public final class MariadbConnectionConfiguration {
     @Nullable private String database;
     @Nullable private List<HostAddress> hostAddresses;
     @Nullable private String host;
-    @Nullable private Map<String, String> sessionVariables;
+    @Nullable private Map<String, Object> sessionVariables;
     @Nullable private Map<String, String> connectionAttributes;
     @Nullable private CharSequence password;
     private int port = DEFAULT_PORT;
@@ -740,10 +740,11 @@ public final class MariadbConnectionConfiguration {
 
     /**
      * Set session variable
+     *
      * @param sessionVariables map containing session variables
      * @return this {@link Builder}
      */
-    public Builder sessionVariables(@Nullable Map<String, String> sessionVariables) {
+    public Builder sessionVariables(@Nullable Map<String, Object> sessionVariables) {
       this.sessionVariables = sessionVariables;
       return this;
     }

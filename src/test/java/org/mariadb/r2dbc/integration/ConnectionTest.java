@@ -350,9 +350,9 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void basicConnectionWithSessionVariable() throws Exception {
-    Map<String, String> sessionVariable = new HashMap<>();
+    Map<String, Object> sessionVariable = new HashMap<>();
     sessionVariable.put("collation_connection", "utf8_slovenian_ci");
-    sessionVariable.put("wait_timeout", "3600");
+    sessionVariable.put("wait_timeout", 3600);
     MariadbConnectionConfiguration cnf =
         TestConfiguration.defaultBuilder.clone().sessionVariables(sessionVariable).build();
     MariadbConnection connection = new MariadbConnectionFactory(cnf).create().block();
@@ -605,26 +605,25 @@ public class ConnectionTest extends BaseConnectionTest {
                             }))
             .blockLast();
 
-    Map<String, String> sessionVariables = new HashMap<>();
-    sessionVariables.put("net_read_timeout", "60");
-    sessionVariables.put("wait_timeout", "2147483");
+    Map<String, Object> sessionVariables = new HashMap<>();
+    sessionVariables.put("max_statement_time", 60.5);
+    sessionVariables.put("wait_timeout", 2147483);
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder.clone().sessionVariables(sessionVariables).build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection
-        .createStatement("SELECT @@wait_timeout, @@net_read_timeout")
+        .createStatement("SELECT @@wait_timeout, @@max_statement_time")
         .execute()
         .flatMap(
             r ->
                 r.map(
                     (row, metadata) -> {
                       Assertions.assertEquals(row.get(0, BigInteger.class).intValue(), 2147483);
-                      Assertions.assertEquals(row.get(1, BigInteger.class).intValue(), 60);
+                      Assertions.assertEquals(row.get(1, Float.class), 60.5f);
                       Assertions.assertNotEquals(
                           row.get(0, BigInteger.class).intValue(), res[0].intValue());
-                      Assertions.assertNotEquals(
-                          row.get(1, BigInteger.class).intValue(), res[1].intValue());
+                      Assertions.assertNotEquals(row.get(1, Float.class), res[1].floatValue());
                       return 0;
                     }))
         .blockLast();

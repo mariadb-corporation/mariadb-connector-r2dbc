@@ -182,7 +182,7 @@ public class StringParameterTest extends BaseConnectionTest {
 
   @Test
   void clobValueNoBackslash() throws Exception {
-    Map<String, String> sessionMap = new HashMap<>();
+    Map<String, Object> sessionMap = new HashMap<>();
     sessionMap.put("SQL_MODE", "NO_BACKSLASH_ESCAPES");
     MariadbConnectionConfiguration confNoBackSlash =
         TestConfiguration.defaultBuilder.clone().sessionVariables(sessionMap).build();
@@ -193,7 +193,7 @@ public class StringParameterTest extends BaseConnectionTest {
 
   @Test
   void clobValuePrepareNoBackslash() throws Exception {
-    Map<String, String> sessionMap = new HashMap<>();
+    Map<String, Object> sessionMap = new HashMap<>();
     sessionMap.put("SQL_MODE", "NO_BACKSLASH_ESCAPES");
     MariadbConnectionConfiguration confNoBackSlash =
         TestConfiguration.defaultBuilder.clone().sessionVariables(sessionMap).build();
