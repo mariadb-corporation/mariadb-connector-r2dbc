@@ -132,7 +132,8 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
           return Mono.error(
               new R2dbcNonTransientResourceException(
                   String.format(
-                      "Session variable '%s' type can only be of type String, Integer, Double or Boolean", key)));
+                      "Session variable '%s' type can only be of type String, Integer, Double or Boolean",
+                      key)));
         }
       }
     }

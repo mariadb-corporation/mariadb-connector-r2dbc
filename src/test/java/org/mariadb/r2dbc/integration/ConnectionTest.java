@@ -117,6 +117,8 @@ public class ConnectionTest extends BaseConnectionTest {
     Assumptions.assumeTrue(
         !"maxscale".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
+            && !"mariadb-es".equals(System.getenv("srv"))
+            && !"mariadb-es-test".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnection connection = createProxyCon();
     new Timer()

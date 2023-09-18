@@ -99,7 +99,7 @@ public class LoggingTest extends BaseConnectionTest {
               + "|00000090| 61 74 69 6f 6e 27                               |ation'          |\r\n"
               + "+--------+-------------------------------------------------+----------------+";
 
-      if (meta.isMariaDBServer()
+      if ((meta.isMariaDBServer() && !meta.minVersion(11, 1, 1))
           || (meta.getMajorVersion() < 8 && !meta.minVersion(5, 7, 20))
           || (meta.getMajorVersion() >= 8 && !meta.minVersion(8, 0, 3))) {
         Assertions.assertTrue(
