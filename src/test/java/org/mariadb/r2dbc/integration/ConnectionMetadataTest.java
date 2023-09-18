@@ -20,7 +20,9 @@ public class ConnectionMetadataTest extends BaseConnectionTest {
     assertEquals(meta.getDatabaseProductName(), isMariaDBServer() ? "MariaDB" : "MySQL");
     if (isMariaDBServer() && !isXpand()) {
       assertTrue(
-          meta.getDatabaseVersion().contains("10.") || meta.getDatabaseVersion().contains("23."));
+          meta.getDatabaseVersion().contains("10.")
+              || meta.getDatabaseVersion().contains("11.")
+              || meta.getDatabaseVersion().contains("23."));
     } else {
       assertTrue(
           meta.getDatabaseVersion().contains("5.") || meta.getDatabaseVersion().contains("8."));

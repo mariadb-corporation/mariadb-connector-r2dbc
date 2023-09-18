@@ -637,6 +637,7 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void sessionVariables() throws Exception {
+    Assumptions.assumeTrue(isMariaDBServer() && minVersion(10, 2, 0));
     BigInteger[] res =
         sharedConn
             .createStatement("SELECT @@wait_timeout, @@net_read_timeout")

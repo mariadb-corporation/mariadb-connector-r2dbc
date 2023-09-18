@@ -303,7 +303,7 @@ public class ConfigurationTest extends BaseConnectionTest {
 
   @Test
   void sessionVariablesMultipleValues() throws Exception {
-    Map sessionVariables1 = new HashMap();
+    Map<String, Object> sessionVariables1 = new HashMap<>();
     sessionVariables1.put("sql_mode", "ONLY_FULL_GROUP_BY,NO_AUTO_VALUE_ON_ZERO");
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
