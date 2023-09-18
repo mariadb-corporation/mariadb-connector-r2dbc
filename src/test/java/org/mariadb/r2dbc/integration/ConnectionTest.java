@@ -110,6 +110,49 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
+  void connectionCollation() throws Exception {
+    Assumptions.assumeTrue(
+        isMariaDBServer()
+            && !"maxscale".equals(System.getenv("srv"))
+            && !"skysql".equals(System.getenv("srv"))
+            && !"skysql-ha".equals(System.getenv("srv")));
+
+    String defaultUtf8Collation =
+        sharedConn
+            .createStatement(
+                "SELECT COLLATION_NAME FROM information_schema.COLLATIONS c WHERE c.CHARACTER_SET_NAME = 'utf8mb4' AND IS_DEFAULT = 'Yes'")
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+            .blockLast();
+
+    MariadbConnection connection = factory.create().block();
+    try {
+      String newDefaultCollation =
+          connection
+              .createStatement("SELECT @@collation_connection")
+              .execute()
+              .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+              .blockLast();
+      Assertions.assertEquals(defaultUtf8Collation, newDefaultCollation);
+      connection.close().block();
+
+      MariadbConnectionConfiguration confPipeline =
+          TestConfiguration.defaultBuilder.clone().collation("utf8mb4_nopad_bin").build();
+      connection = new MariadbConnectionFactory(confPipeline).create().block();
+      newDefaultCollation =
+          connection
+              .createStatement("SELECT @@collation_connection")
+              .execute()
+              .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+              .blockLast();
+      Assertions.assertEquals("utf8mb4_nopad_bin", newDefaultCollation);
+
+    } finally {
+      connection.close().block();
+    }
+  }
+
+  @Test
   @Timeout(5)
   void connectionDuringError() throws Exception {
     Assumptions.assumeTrue(System.getenv("local") == null || "1".equals(System.getenv("local")));

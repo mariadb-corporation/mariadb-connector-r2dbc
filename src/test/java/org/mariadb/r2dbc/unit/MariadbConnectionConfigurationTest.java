@@ -51,12 +51,13 @@ public class MariadbConnectionConfigurationTest {
             .allowMultiQueries(true)
             .socket("/path/to/mysocket")
             .username("MyUSer")
+            .collation("utf8mb4_nopad_bin")
             .loopResources(LoopResources.create("mariadb"))
             .sslContextBuilderCustomizer((b) -> b)
             .sslTunnelDisableHostVerification(true)
             .build();
     Assertions.assertEquals(
-        "MariadbConnectionConfiguration{database='MyDB', haMode=LOADBALANCE, hosts={[localhost:3306]}, connectTimeout=PT0.15S, tcpKeepAlive=true, tcpAbortiveClose=true, transactionReplay=true, password=*, prepareCacheSize=125, socket='/path/to/mysocket', username='MyUSer', allowMultiQueries=true, allowPipelining=false, connectionAttributes={entry1=val1, entry2=val2}, sessionVariables={timezone=Europe/Paris}, sslConfig=SslConfig{sslMode=TRUST, serverSslCert=/path/to/serverCert, clientSslCert=null, tlsProtocol=[TLSv1.2, TLSv1.3], clientSslKey=clientSecretKey}, rsaPublicKey='/path/to/publicRSAKey', cachingRsaPublicKey='cachingRSAPublicKey', allowPublicKeyRetrieval=true, isolationLevel=IsolationLevel{sql='SERIALIZABLE'}, useServerPrepStmts=false, autocommit=false, tinyInt1isBit=false, pamOtherPwd=*, restrictedAuth=[mysql_native_password, client_ed25519]}",
+        "MariadbConnectionConfiguration{database='MyDB', haMode=LOADBALANCE, hosts={[localhost:3306]}, connectTimeout=PT0.15S, tcpKeepAlive=true, tcpAbortiveClose=true, transactionReplay=true, password=*, prepareCacheSize=125, socket='/path/to/mysocket', username='MyUSer', collation='utf8mb4_nopad_bin', allowMultiQueries=true, allowPipelining=false, connectionAttributes={entry1=val1, entry2=val2}, sessionVariables={timezone=Europe/Paris}, sslConfig=SslConfig{sslMode=TRUST, serverSslCert=/path/to/serverCert, clientSslCert=null, tlsProtocol=[TLSv1.2, TLSv1.3], clientSslKey=clientSecretKey}, rsaPublicKey='/path/to/publicRSAKey', cachingRsaPublicKey='cachingRSAPublicKey', allowPublicKeyRetrieval=true, isolationLevel=IsolationLevel{sql='SERIALIZABLE'}, useServerPrepStmts=false, autocommit=false, tinyInt1isBit=false, pamOtherPwd=*, restrictedAuth=[mysql_native_password, client_ed25519]}",
         conf.toString());
   }
 
@@ -88,12 +89,13 @@ public class MariadbConnectionConfigurationTest {
                 + "&tinyInt1isBit=false"
                 + "&allowPipelining=false"
                 + "&allowMultiQueries=true"
+                + "&collation=utf8mb4_nopad_bin"
                 + "&socket=/path/to/mysocket"
                 + "&sslTunnelDisableHostVerification=true");
     MariadbConnectionConfiguration conf =
         MariadbConnectionConfiguration.fromOptions(options).build();
     Assertions.assertEquals(
-        "MariadbConnectionConfiguration{database='db', haMode=LOADBALANCE, hosts={[localhost:3306]}, connectTimeout=PT0.15S, tcpKeepAlive=true, tcpAbortiveClose=true, transactionReplay=true, password=*, prepareCacheSize=125, socket='/path/to/mysocket', username='ro:ot', allowMultiQueries=true, allowPipelining=false, connectionAttributes={entry1=val1, entry2=val2}, sessionVariables={timezone='Europe/Paris'}, sslConfig=SslConfig{sslMode=TRUST, serverSslCert=/path/to/serverCert, clientSslCert=null, tlsProtocol=[TLSv1.2, TLSv1.3], clientSslKey=clientSecretKey}, rsaPublicKey='/path/to/publicRSAKey', cachingRsaPublicKey='cachingRSAPublicKey', allowPublicKeyRetrieval=true, isolationLevel=IsolationLevel{sql='SERIALIZABLE'}, useServerPrepStmts=false, autocommit=false, tinyInt1isBit=false, pamOtherPwd=*, restrictedAuth=[mysql_native_password, client_ed25519]}",
+        "MariadbConnectionConfiguration{database='db', haMode=LOADBALANCE, hosts={[localhost:3306]}, connectTimeout=PT0.15S, tcpKeepAlive=true, tcpAbortiveClose=true, transactionReplay=true, password=*, prepareCacheSize=125, socket='/path/to/mysocket', username='ro:ot', collation='utf8mb4_nopad_bin', allowMultiQueries=true, allowPipelining=false, connectionAttributes={entry1=val1, entry2=val2}, sessionVariables={timezone='Europe/Paris'}, sslConfig=SslConfig{sslMode=TRUST, serverSslCert=/path/to/serverCert, clientSslCert=null, tlsProtocol=[TLSv1.2, TLSv1.3], clientSslKey=clientSecretKey}, rsaPublicKey='/path/to/publicRSAKey', cachingRsaPublicKey='cachingRSAPublicKey', allowPublicKeyRetrieval=true, isolationLevel=IsolationLevel{sql='SERIALIZABLE'}, useServerPrepStmts=false, autocommit=false, tinyInt1isBit=false, pamOtherPwd=*, restrictedAuth=[mysql_native_password, client_ed25519]}",
         conf.toString());
   }
 
@@ -105,7 +107,7 @@ public class MariadbConnectionConfigurationTest {
     MariadbConnectionConfiguration conf =
         MariadbConnectionConfiguration.fromOptions(options).build();
     Assertions.assertEquals(
-        "MariadbConnectionConfiguration{database='db', haMode=NONE, hosts={[localhost:3306]}, connectTimeout=PT10S, tcpKeepAlive=false, tcpAbortiveClose=false, transactionReplay=false, password=*, prepareCacheSize=250, socket='null', username='ro:ot', allowMultiQueries=false, allowPipelining=true, connectionAttributes=null, sessionVariables={sql_mode='TRADITIONAL,NO_AUTO_VALUE_ON_ZERO,ONLY_FULL_GROUP_BY', wait_timeout=1}, sslConfig=SslConfig{sslMode=DISABLE, serverSslCert=null, clientSslCert=null, tlsProtocol=null, clientSslKey=null}, rsaPublicKey='null', cachingRsaPublicKey='null', allowPublicKeyRetrieval=false, isolationLevel=null, useServerPrepStmts=false, autocommit=true, tinyInt1isBit=true, pamOtherPwd=, restrictedAuth=}",
+        "MariadbConnectionConfiguration{database='db', haMode=NONE, hosts={[localhost:3306]}, connectTimeout=PT10S, tcpKeepAlive=false, tcpAbortiveClose=false, transactionReplay=false, password=*, prepareCacheSize=250, socket='null', username='ro:ot', collation='null', allowMultiQueries=false, allowPipelining=true, connectionAttributes=null, sessionVariables={sql_mode='TRADITIONAL,NO_AUTO_VALUE_ON_ZERO,ONLY_FULL_GROUP_BY', wait_timeout=1}, sslConfig=SslConfig{sslMode=DISABLE, serverSslCert=null, clientSslCert=null, tlsProtocol=null, clientSslKey=null}, rsaPublicKey='null', cachingRsaPublicKey='null', allowPublicKeyRetrieval=false, isolationLevel=null, useServerPrepStmts=false, autocommit=true, tinyInt1isBit=true, pamOtherPwd=, restrictedAuth=}",
         conf.toString());
   }
 
@@ -141,7 +143,7 @@ public class MariadbConnectionConfigurationTest {
     MariadbConnectionConfiguration conf =
         MariadbConnectionConfiguration.fromOptions(options).build();
     Assertions.assertEquals(
-        "MariadbConnectionConfiguration{database='db', haMode=LOADBALANCE, hosts={[localhost:3306]}, connectTimeout=PT0.15S, tcpKeepAlive=true, tcpAbortiveClose=true, transactionReplay=true, password=*, prepareCacheSize=125, socket='/path/to/mysocket', username='ro:ot', allowMultiQueries=true, allowPipelining=false, connectionAttributes={entry1=val1, entry2=val2}, sessionVariables={timezone='Europe/Paris'}, sslConfig=SslConfig{sslMode=TRUST, serverSslCert=/path/to/serverCert, clientSslCert=null, tlsProtocol=[TLSv1.2, TLSv1.3], clientSslKey=clientSecretKey}, rsaPublicKey='/path/to/publicRSAKey', cachingRsaPublicKey='cachingRSAPublicKey', allowPublicKeyRetrieval=true, isolationLevel=IsolationLevel{sql='SERIALIZABLE'}, useServerPrepStmts=false, autocommit=false, tinyInt1isBit=false, pamOtherPwd=*, restrictedAuth=[mysql_native_password, client_ed25519]}",
+        "MariadbConnectionConfiguration{database='db', haMode=LOADBALANCE, hosts={[localhost:3306]}, connectTimeout=PT0.15S, tcpKeepAlive=true, tcpAbortiveClose=true, transactionReplay=true, password=*, prepareCacheSize=125, socket='/path/to/mysocket', username='ro:ot', collation='null', allowMultiQueries=true, allowPipelining=false, connectionAttributes={entry1=val1, entry2=val2}, sessionVariables={timezone='Europe/Paris'}, sslConfig=SslConfig{sslMode=TRUST, serverSslCert=/path/to/serverCert, clientSslCert=null, tlsProtocol=[TLSv1.2, TLSv1.3], clientSslKey=clientSecretKey}, rsaPublicKey='/path/to/publicRSAKey', cachingRsaPublicKey='cachingRSAPublicKey', allowPublicKeyRetrieval=true, isolationLevel=IsolationLevel{sql='SERIALIZABLE'}, useServerPrepStmts=false, autocommit=false, tinyInt1isBit=false, pamOtherPwd=*, restrictedAuth=[mysql_native_password, client_ed25519]}",
         conf.toString());
   }
 

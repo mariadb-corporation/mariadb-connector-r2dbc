@@ -41,6 +41,7 @@ public final class MariadbConnectionConfiguration {
   private final boolean tcpAbortiveClose;
   private final boolean transactionReplay;
   private final CharSequence password;
+  private final String collation;
   private final CharSequence[] pamOtherPwd;
   private final int port;
   private final int prepareCacheSize;
@@ -73,6 +74,7 @@ public final class MariadbConnectionConfiguration {
       @Nullable Map<String, String> connectionAttributes,
       @Nullable Map<String, Object> sessionVariables,
       @Nullable CharSequence password,
+      @Nullable String collation,
       int port,
       @Nullable List<HostAddress> hostAddresses,
       @Nullable String socket,
@@ -114,6 +116,7 @@ public final class MariadbConnectionConfiguration {
     this.connectionAttributes = connectionAttributes;
     this.sessionVariables = sessionVariables;
     this.password = password != null && !password.toString().isEmpty() ? password : null;
+    this.collation = collation;
     this.port = port;
     this.socket = socket;
     this.username = username;
@@ -325,6 +328,9 @@ public final class MariadbConnectionConfiguration {
       builder.haMode((String) connectionFactoryOptions.getValue(ConnectionFactoryOptions.PROTOCOL));
     }
     builder.password((CharSequence) connectionFactoryOptions.getValue(PASSWORD));
+    builder.collation(
+        (String) connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.COLLATION));
+
     builder.username((String) connectionFactoryOptions.getRequiredValue(USER));
     if (connectionFactoryOptions.hasOption(PORT)) {
       builder.port(intValue(connectionFactoryOptions.getValue(PORT)));
@@ -438,6 +444,11 @@ public final class MariadbConnectionConfiguration {
   @Nullable
   public CharSequence getPassword() {
     return this.password;
+  }
+
+  @Nullable
+  public String getCollation() {
+    return this.collation;
   }
 
   public int getPort() {
@@ -555,6 +566,9 @@ public final class MariadbConnectionConfiguration {
         + ", username='"
         + username
         + '\''
+        + ", collation='"
+        + collation
+        + '\''
         + ", allowMultiQueries="
         + allowMultiQueries
         + ", allowPipelining="
@@ -610,6 +624,8 @@ public final class MariadbConnectionConfiguration {
     @Nullable private Map<String, Object> sessionVariables;
     @Nullable private Map<String, String> connectionAttributes;
     @Nullable private CharSequence password;
+    @Nullable private String collation;
+
     private int port = DEFAULT_PORT;
     @Nullable private String socket;
     private boolean allowMultiQueries = false;
@@ -665,6 +681,7 @@ public final class MariadbConnectionConfiguration {
           this.connectionAttributes,
           this.sessionVariables,
           this.password,
+          this.collation,
           this.port,
           this.hostAddresses,
           this.socket,
@@ -785,6 +802,17 @@ public final class MariadbConnectionConfiguration {
      */
     public Builder password(@Nullable CharSequence password) {
       this.password = password;
+      return this;
+    }
+
+    /**
+     * Configure the utf8mb4 collation.
+     *
+     * @param collation default utf8mb4 collation if not using server default collation
+     * @return this {@link Builder}
+     */
+    public Builder collation(@Nullable String collation) {
+      this.collation = collation;
       return this;
     }
 
@@ -1099,6 +1127,8 @@ public final class MariadbConnectionConfiguration {
           + allowPipelining
           + ", useServerPrepStmts="
           + useServerPrepStmts
+          + ", collation="
+          + collation
           + ", prepareCacheSize="
           + isolationLevel
           + ", isolationLevel="

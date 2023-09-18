@@ -137,6 +137,10 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
         }
       }
     }
+    sql.append(", names UTF8MB4");
+    if (configuration.getCollation() != null && !configuration.getCollation().isEmpty())
+      sql.append(" COLLATE ").append(configuration.getCollation());
+
     return client
         .sendCommand(new QueryPacket(sql.toString()), true)
         .doOnDiscard(ReferenceCounted.class, ReferenceCountUtil::release)

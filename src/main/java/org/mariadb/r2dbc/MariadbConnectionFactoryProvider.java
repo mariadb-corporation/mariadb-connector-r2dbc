@@ -22,6 +22,8 @@ public final class MariadbConnectionFactoryProvider implements ConnectionFactory
   public static final Option<String> CLIENT_SSL_CERT = Option.valueOf("clientSslCert");
   public static final Option<String> CLIENT_SSL_KEY = Option.valueOf("clientSslKey");
   public static final Option<String> CLIENT_SSL_PWD = Option.valueOf("clientSslPassword");
+  public static final Option<String> COLLATION = Option.valueOf("collation");
+
   public static final Option<Boolean> ALLOW_PIPELINING = Option.valueOf("allowPipelining");
   public static final Option<Boolean> USE_SERVER_PREPARE = Option.valueOf("useServerPrepStmts");
   public static final Option<String> ISOLATION_LEVEL = Option.valueOf("isolationLevel");
