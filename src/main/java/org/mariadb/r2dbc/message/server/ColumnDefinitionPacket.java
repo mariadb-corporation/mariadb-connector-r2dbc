@@ -12,6 +12,7 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.ServerMessage;
+import org.mariadb.r2dbc.util.CharsetEncodingLength;
 import org.mariadb.r2dbc.util.MariadbType;
 import org.mariadb.r2dbc.util.constants.ColumnFlags;
 import reactor.util.Logger;
@@ -21,44 +22,6 @@ public final class ColumnDefinitionPacket
     implements ServerMessage, ColumnMetadata, OutParameterMetadata {
   private static final Logger logger = Loggers.getLogger(ColumnDefinitionPacket.class);
 
-  // This array stored character length for every collation id up to collation id 256
-  // It is generated from the information schema using
-  // "select  id, maxlen from information_schema.character_sets, information_schema.collations
-  // where character_sets.character_set_name = collations.character_set_name order by id"
-  private static final int[] maxCharlen = {
-    0, 2, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 3, 2, 1, 1,
-    1, 0, 1, 2, 1, 1, 1, 1,
-    2, 1, 1, 1, 2, 1, 1, 1,
-    1, 3, 1, 2, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 4, 4, 1,
-    1, 1, 1, 1, 1, 1, 4, 4,
-    0, 1, 1, 1, 4, 4, 0, 1,
-    1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 0, 1, 1, 1,
-    1, 1, 1, 3, 2, 2, 2, 2,
-    2, 1, 2, 3, 1, 1, 1, 2,
-    2, 3, 3, 1, 0, 4, 4, 4,
-    4, 4, 4, 4, 4, 4, 4, 4,
-    4, 4, 4, 4, 4, 4, 4, 4,
-    4, 0, 0, 0, 0, 0, 0, 0,
-    2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 0, 2, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 2,
-    4, 4, 4, 4, 4, 4, 4, 4,
-    4, 4, 4, 4, 4, 4, 4, 4,
-    4, 4, 4, 4, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    3, 3, 3, 3, 3, 3, 3, 3,
-    3, 3, 3, 3, 3, 3, 3, 3,
-    3, 3, 3, 3, 0, 3, 4, 4,
-    0, 0, 0, 0, 0, 0, 0, 3,
-    4, 4, 4, 4, 4, 4, 4, 4,
-    4, 4, 4, 4, 4, 4, 4, 4,
-    4, 4, 4, 4, 0, 4, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0
-  };
   private final byte[] meta;
   private final int charset;
   private final long length;
@@ -200,7 +163,11 @@ public final class ColumnDefinitionPacket
         || dataType == DataType.SET
         || dataType == DataType.VARSTRING
         || dataType == DataType.STRING) {
-      return (int) (length / (maxCharlen[charset] == 0 ? 1 : maxCharlen[charset]));
+      return (int)
+          (length
+              / (CharsetEncodingLength.maxCharlen.get(charset) == 0
+                  ? 1
+                  : CharsetEncodingLength.maxCharlen.get(charset)));
     }
     return (int) length;
   }

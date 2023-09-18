@@ -133,8 +133,12 @@ public class BaseConnectionTest {
       sqlModeAddition += ",STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO";
     }
     if ((meta.isMariaDBServer() && !meta.minVersion(10, 1, 7)) || !meta.isMariaDBServer()) {
-      sqlModeAddition += ",NO_ENGINE_SUBSTITUTION,NO_AUTO_CREATE_USER";
+      sqlModeAddition += ",NO_ENGINE_SUBSTITUTION";
     }
+    if ((meta.isMariaDBServer() && !meta.minVersion(10, 1, 7))) {
+      sqlModeAddition += "NO_AUTO_CREATE_USER";
+    }
+
     if (backslashEscape) {
       sqlModeAddition += ",NO_BACKSLASH_ESCAPES";
     }
