@@ -23,7 +23,7 @@
     <jsr305.version>3.0.2</jsr305.version>
     <junit.version>5.9.1</junit.version>
     <jmh.version>1.36</jmh.version>
-    <logback.version>1.2.10</logback.version>
+    <logback.version>1.2.13</logback.version>
     <netty.version>4.1.86.Final</netty.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <r2dbc-spi.version>1.0.0.RELEASE</r2dbc-spi.version>
