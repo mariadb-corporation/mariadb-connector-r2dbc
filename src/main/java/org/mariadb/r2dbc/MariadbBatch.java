@@ -18,7 +18,7 @@ import org.mariadb.r2dbc.util.ClientParser;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
-/** Basic implementation for batch. //TODO implement bulk */
+/** Basic implementation for batch. */
 final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
 
   private final Client client;

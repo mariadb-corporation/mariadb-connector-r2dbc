@@ -29,6 +29,9 @@ public final class MariadbConnectionFactoryProvider implements ConnectionFactory
   public static final Option<String> ISOLATION_LEVEL = Option.valueOf("isolationLevel");
   public static final Option<Boolean> AUTO_COMMIT = Option.valueOf("autocommit");
   public static final Option<Boolean> TINY_IS_BIT = Option.valueOf("tinyInt1isBit");
+  public static final Option<Boolean> USE_BULK_STMT = Option.valueOf("useBulkStmts");
+  public static final Option<Boolean> USE_BULK_STMT_FOR_INSERTS = Option.valueOf("useBulkStmtsForInserts");
+
   public static final Option<Integer> PREPARE_CACHE_SIZE = Option.valueOf("prepareCacheSize");
   public static final Option<String> SSL_MODE = Option.valueOf("sslMode");
   public static final Option<Boolean> TRANSACTION_REPLAY = Option.valueOf("transactionReplay");

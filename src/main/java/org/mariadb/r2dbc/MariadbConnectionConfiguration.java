@@ -59,6 +59,8 @@ public final class MariadbConnectionConfiguration {
   private final boolean useServerPrepStmts;
   private final boolean autocommit;
   private final boolean tinyInt1isBit;
+  private final boolean useBulkStmts;
+  private final boolean useBulkStmtsForInserts;
   private final String[] restrictedAuth;
   private final LoopResources loopResources;
   private final UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer;
@@ -96,6 +98,8 @@ public final class MariadbConnectionConfiguration {
       @Nullable Integer prepareCacheSize,
       @Nullable CharSequence[] pamOtherPwd,
       boolean tinyInt1isBit,
+      boolean useBulkStmts,
+      boolean useBulkStmtsForInserts,
       String restrictedAuth,
       @Nullable LoopResources loopResources,
       @Nullable UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer,
@@ -143,6 +147,8 @@ public final class MariadbConnectionConfiguration {
     this.pamOtherPwd = pamOtherPwd;
     this.autocommit = autocommit;
     this.tinyInt1isBit = tinyInt1isBit;
+    this.useBulkStmts = useBulkStmts;
+    this.useBulkStmtsForInserts = useBulkStmtsForInserts;
     this.loopResources = loopResources != null ? loopResources : TcpResources.get();
     this.useServerPrepStmts = !this.allowMultiQueries && useServerPrepStmts;
     this.sslContextBuilderCustomizer = sslContextBuilderCustomizer;
@@ -280,6 +286,18 @@ public final class MariadbConnectionConfiguration {
       builder.tinyInt1isBit(
           boolValue(
               connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.TINY_IS_BIT)));
+    }
+
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.USE_BULK_STMT)) {
+      builder.useBulkStmts(
+              boolValue(
+                      connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.USE_BULK_STMT)));
+    }
+
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.USE_BULK_STMT_FOR_INSERTS)) {
+      builder.useBulkStmtsForInserts(
+              boolValue(
+                      connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.USE_BULK_STMT_FOR_INSERTS)));
     }
 
     if (connectionFactoryOptions.hasOption(
@@ -499,7 +517,13 @@ public final class MariadbConnectionConfiguration {
   public boolean tinyInt1isBit() {
     return tinyInt1isBit;
   }
+  public boolean useBulkStmts() {
+    return useBulkStmts;
+  }
 
+  public boolean useBulkStmtsForInserts() {
+    return useBulkStmtsForInserts;
+  }
   public int getPrepareCacheSize() {
     return prepareCacheSize;
   }
@@ -595,6 +619,10 @@ public final class MariadbConnectionConfiguration {
         + autocommit
         + ", tinyInt1isBit="
         + tinyInt1isBit
+            + ", useBulkStmts="
+            + useBulkStmts
+            + ", useBulkStmtsForInserts="
+            + useBulkStmtsForInserts
         + ", pamOtherPwd="
         + hiddenPamPwd
         + ", restrictedAuth="
@@ -634,6 +662,9 @@ public final class MariadbConnectionConfiguration {
     private IsolationLevel isolationLevel = null;
     private boolean autocommit = true;
     private boolean tinyInt1isBit = true;
+    private boolean useBulkStmts = false;
+    private boolean useBulkStmtsForInserts = true;
+
     @Nullable Integer prepareCacheSize;
     @Nullable private List<String> tlsProtocol;
     @Nullable private String serverSslCert;
@@ -703,6 +734,8 @@ public final class MariadbConnectionConfiguration {
           this.prepareCacheSize,
           this.pamOtherPwd,
           this.tinyInt1isBit,
+          this.useBulkStmts,
+          this.useBulkStmtsForInserts,
           this.restrictedAuth,
           this.loopResources,
           this.sslContextBuilderCustomizer,
@@ -998,6 +1031,31 @@ public final class MariadbConnectionConfiguration {
     }
 
     /**
+     * Use dedicated COM_STMT_BULK_EXECUTE protocol for batch insert when possible to have faster batch.
+     * (significant only on >= MariaDB 10.2.7). Default: false.
+     *
+     * @param useBulkStmts return bulk option
+     * @return this {@link Builder}
+     */
+    public Builder useBulkStmts(boolean useBulkStmts) {
+      this.useBulkStmts = useBulkStmts;
+      return this;
+    }
+
+    /**
+     * use Bulk batch for insert only.
+     * This permits to ensure returning expected affected rows.
+     * This option is enabled when useBulkStmts is enabled
+     *
+     * @param useBulkStmtsForInserts return bulk option for insert commands
+     * @return this {@link Builder}
+     */
+    public Builder useBulkStmtsForInserts(boolean useBulkStmtsForInserts) {
+      this.useBulkStmtsForInserts = useBulkStmtsForInserts;
+      return this;
+    }
+
+    /**
      * Permit pipelining (sending request before resolution of previous one).
      *
      * @param allowPipelining indicate if pipelining is permit
@@ -1151,6 +1209,9 @@ public final class MariadbConnectionConfiguration {
           + hiddenPamPwd
           + ", tinyInt1isBit="
           + tinyInt1isBit
+              + ", useBulkStmts="
+              + useBulkStmts
+
           + ", autoCommit="
           + autocommit
           + '}';

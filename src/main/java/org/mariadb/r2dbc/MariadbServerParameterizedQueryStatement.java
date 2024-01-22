@@ -165,8 +165,46 @@ final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatem
                         }
                       });
             }
+
             // batch
             bindings.add(getCurrentBinding());
+            checkIfInsertCommand();
+
+            if ((isCommandInsert && (configuration.useBulkStmts() || configuration.useBulkStmtsForInserts()))
+                    || (!isCommandInsert && configuration.useBulkStmts())) {
+              // use COM_STMT_BULK command
+              AtomicBoolean canceled = new AtomicBoolean();
+              return prepareIfNotDone(sql, factory)
+                      .thenMany(
+                                      .map(
+                                              binding -> {
+                                                Flux<ServerMessage> messages =
+                                                        this.client
+                                                                .sendCommand(
+                                                                        new ExecuteBulkPacket(
+                                                                                sql,
+                                                                                prepareResult.get(),
+                                                                                binding.getBindResultParameters(
+                                                                                        prepareResult.get().getNumParams())),
+                                                                        false)
+                                                                .doOnComplete(
+                                                                        () -> tryNextBinding(iterator, bindingSink, canceled));
+
+                                                return toResult(Protocol.BINARY, messages, factory, prepareResult);
+                                              })
+                                      .doOnComplete(() -> {
+                                        this.bindings.forEach(Binding::clear);
+                                        this.bindings.clear();
+                                      })
+                                      .doFinally(
+                                              s -> {
+                                                if (prepareResult.get() != null) {
+                                                  prepareResult.get().decrementUse(client);
+                                                }
+                                              })
+                      .flatMap(mariadbResultFlux -> mariadbResultFlux);
+            }
+            // batch sent as pipelining COM_STMT_EXECUTE commands
             this.initializeBinding();
             Iterator<Binding> iterator = this.bindings.iterator();
             Sinks.Many<Binding> bindingSink = Sinks.many().unicast().onBackpressureBuffer();

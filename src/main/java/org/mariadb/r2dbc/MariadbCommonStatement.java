@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
@@ -31,6 +32,9 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
   protected ExceptionFactory factory;
   protected String[] generatedColumns;
   private final Protocol defaultProtocol;
+  private static final Pattern INSERT_STATEMENT_PATTERN =
+          Pattern.compile("^(\\s*\\/\\*([^*]|\\*[^/])*\\*\\/)*\\s*(INSERT)", Pattern.CASE_INSENSITIVE);
+  protected Boolean isCommandInsert = null;
 
   public MariadbCommonStatement(
       Client client,
@@ -42,6 +46,11 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
     this.configuration = configuration;
     this.initialSql = Assert.requireNonNull(sql, "sql must not be null");
     this.factory = ExceptionFactory.withSql(sql);
+  }
+
+  protected void checkIfInsertCommand() {
+    if (isCommandInsert == null)
+      isCommandInsert = (initialSql == null) ? false : INSERT_STATEMENT_PATTERN.matcher(initialSql).find();
   }
 
   protected void initializeBinding() {
