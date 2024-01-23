@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2022 MariaDB Corporation Ab
+// Copyright (c) 2020-2024 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration.authentication;
 
@@ -118,7 +118,8 @@ public class Ed25519PluginTest extends BaseConnectionTest {
     assertThrows(
         R2dbcNonTransientResourceException.class,
         () -> new MariadbConnectionFactory(conf).create().block(),
-        "Unsupported authentication plugin client_ed25519. Authorized plugin: [mysql_native_password]");
+        "Unsupported authentication plugin client_ed25519. Authorized plugin:"
+            + " [mysql_native_password]");
   }
 
   @Test
@@ -191,7 +192,8 @@ public class Ed25519PluginTest extends BaseConnectionTest {
     assertThrows(
         R2dbcNonTransientResourceException.class,
         () -> new MariadbConnectionFactory(conf).create().block(),
-        "Unsupported authentication plugin client_ed25519. Authorized plugin: [mysql_native_password, dialog, mysql_clear_password]");
+        "Unsupported authentication plugin client_ed25519. Authorized plugin:"
+            + " [mysql_native_password, dialog, mysql_clear_password]");
 
     MariadbConnectionConfiguration conf2 =
         TestConfiguration.defaultBuilder
