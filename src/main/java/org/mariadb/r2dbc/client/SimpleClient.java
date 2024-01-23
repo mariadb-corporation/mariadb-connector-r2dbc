@@ -231,20 +231,14 @@ public class SimpleClient implements Client {
 
           if (this.isClosed.compareAndSet(false, true)) {
             Channel channel = this.connection.channel();
-            if (channel.isOpen()) {
+            if (!channel.isOpen()) {
               this.connection.dispose();
               return this.connection.onDispose();
             }
-
-            return Flux.just(QuitPacket.INSTANCE)
-                .doOnNext(
-                    message ->
-                        connection
-                            .channel()
-                            .writeAndFlush(message.encode(context, context.getByteBufAllocator())))
-                .then()
-                .doOnSuccess(v -> this.connection.dispose())
-                .then(this.connection.onDispose());
+            return connection.outbound().send(encoder.encodeFlux(QuitPacket.INSTANCE))
+                    .then()
+                    .doOnSuccess(v -> this.connection.dispose())
+                    .then(this.connection.onDispose());
           }
 
           return Mono.empty();
