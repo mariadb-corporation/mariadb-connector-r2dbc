@@ -6,18 +6,18 @@
 
 <configuration>
 
-  <appender class="ch.qos.logback.core.ConsoleAppender" name="STDOUT">
-    <encoder>
-      <pattern>%d{yyyy-MM-dd} | %d{HH:mm:ss.SSS} | %-20.20thread | %5p | %logger{25} | %m%n
-      </pattern>
-    </encoder>
-  </appender>
+    <appender class="ch.qos.logback.core.ConsoleAppender" name="STDOUT">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd} | %d{HH:mm:ss.SSS} | %-20.20thread | %5p | %logger{25} | %m%n
+            </pattern>
+        </encoder>
+    </appender>
 
-  <logger level="ERROR" name="org.mariadb.r2dbc"/>
-  <logger level="ERROR" name="dev.miku.r2dbc.mysql"/>
+    <logger level="ERROR" name="org.mariadb.r2dbc"/>
+    <logger level="ERROR" name="dev.miku.r2dbc.mysql"/>
 
-  <root level="WARN">
-    <appender-ref ref="STDOUT"/>
-  </root>
+    <root level="WARN">
+        <appender-ref ref="STDOUT"/>
+    </root>
 
 </configuration>

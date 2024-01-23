@@ -34,14 +34,14 @@ public final class AuthenticationFlow {
   private static final Logger logger = Loggers.getLogger(AuthenticationFlow.class);
 
   private final MariadbConnectionConfiguration configuration;
+  private final SimpleClient client;
+  private final HostAddress hostAddress;
   private InitialHandshakePacket initialHandshakePacket;
   private AuthenticationPlugin pluginHandler;
   private byte[] seed;
   private Sequencer sequencer;
   private AuthMoreDataPacket authMoreDataPacket;
-  private final SimpleClient client;
   private FluxSink<State> sink;
-  private final HostAddress hostAddress;
   private long clientCapabilities;
 
   private AuthenticationFlow(

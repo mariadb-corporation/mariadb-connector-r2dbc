@@ -31,7 +31,8 @@ public class BitParseTest extends BaseConnectionTest {
     sharedConn.createStatement("CREATE TABLE BitTable2 (t1 BIT(1))").execute().blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO BitTable VALUES (b'0000', 1, b'0'), (b'0000000100000000', 2, b'1'),(b'0000111100000000', 3, b'10'),(b'1010', 4, b'11'), (null, 5, b'100')")
+            "INSERT INTO BitTable VALUES (b'0000', 1, b'0'), (b'0000000100000000', 2,"
+                + " b'1'),(b'0000111100000000', 3, b'10'),(b'1010', 4, b'11'), (null, 5, b'100')")
         .execute()
         .blockLast();
     sharedConn

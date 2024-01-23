@@ -10,7 +10,6 @@ import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.time.temporal.ChronoField;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
@@ -227,21 +226,21 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
     int nano = val.getNano();
     if (nano > 0) {
       out.writeByte((byte) 11);
-      out.writeShortLE((short) val.get(ChronoField.YEAR));
-      out.writeByte(val.get(ChronoField.MONTH_OF_YEAR));
-      out.writeByte(val.get(ChronoField.DAY_OF_MONTH));
-      out.writeByte(val.get(ChronoField.HOUR_OF_DAY));
-      out.writeByte(val.get(ChronoField.MINUTE_OF_HOUR));
-      out.writeByte(val.get(ChronoField.SECOND_OF_MINUTE));
+      out.writeShortLE((short) val.getYear());
+      out.writeByte(val.getMonthValue());
+      out.writeByte(val.getDayOfMonth());
+      out.writeByte(val.getHour());
+      out.writeByte(val.getMinute());
+      out.writeByte(val.getSecond());
       out.writeIntLE(nano / 1000);
     } else {
       out.writeByte((byte) 7);
-      out.writeShortLE((short) val.get(ChronoField.YEAR));
-      out.writeByte(val.get(ChronoField.MONTH_OF_YEAR));
-      out.writeByte(val.get(ChronoField.DAY_OF_MONTH));
-      out.writeByte(val.get(ChronoField.HOUR_OF_DAY));
-      out.writeByte(val.get(ChronoField.MINUTE_OF_HOUR));
-      out.writeByte(val.get(ChronoField.SECOND_OF_MINUTE));
+      out.writeShortLE((short) val.getYear());
+      out.writeByte(val.getMonthValue());
+      out.writeByte(val.getDayOfMonth());
+      out.writeByte(val.getHour());
+      out.writeByte(val.getMinute());
+      out.writeByte(val.getSecond());
     }
   }
 

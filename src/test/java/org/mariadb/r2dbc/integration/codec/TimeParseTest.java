@@ -31,10 +31,8 @@ public class TimeParseTest extends BaseConnectionTest {
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO TimeParseTest VALUES ('90:00:00.012340', '-10:01:02.012340'), ('800:00:00.123', '-00:00:10"
-                + ".123'), (800, 0), "
-                + "(22, -22)"
-                + ", (null, null)")
+            "INSERT INTO TimeParseTest VALUES ('90:00:00.012340', '-10:01:02.012340'),"
+                + " ('800:00:00.123', '-00:00:10.123'), (800, 0), (22, -22), (null, null)")
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();

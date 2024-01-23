@@ -41,6 +41,12 @@ public class FailoverClient implements Client {
   private final MariadbConnectionConfiguration conf;
   private final ReentrantLock lock;
 
+  public FailoverClient(MariadbConnectionConfiguration conf, ReentrantLock lock, Client client) {
+    this.client.set(client);
+    this.conf = conf;
+    this.lock = lock;
+  }
+
   private static final Mono<Boolean> reconnectIfNeeded(
       MariadbConnectionConfiguration conf, ReentrantLock lock, AtomicReference<Client> client) {
     if (client.get().isConnected()) return Mono.just(Boolean.TRUE);
@@ -65,7 +71,8 @@ public class FailoverClient implements Client {
                           return Mono.error(
                               new R2dbcTransientResourceException(
                                   String.format(
-                                      "Driver has reconnect connection after a communications link failure with %s. In progress transaction was lost",
+                                      "Driver has reconnect connection after a communications link"
+                                          + " failure with %s. In progress transaction was lost",
                                       client.get().getHostAddress()),
                                   "25S03"));
                         }));
@@ -106,12 +113,6 @@ public class FailoverClient implements Client {
                           request))
                   .thenReturn(c);
             });
-  }
-
-  public FailoverClient(MariadbConnectionConfiguration conf, ReentrantLock lock, Client client) {
-    this.client.set(client);
-    this.conf = conf;
-    this.lock = lock;
   }
 
   private static Mono<Void> syncNewState(
@@ -171,7 +172,8 @@ public class FailoverClient implements Client {
           return Mono.error(
               new R2dbcTransientResourceException(
                   String.format(
-                      "Driver has reconnect connection after a communications link failure with %s during command.",
+                      "Driver has reconnect connection after a communications link failure with %s"
+                          + " during command.",
                       oldClient.getHostAddress()),
                   "25S03",
                   throwable));
@@ -184,7 +186,8 @@ public class FailoverClient implements Client {
         return Mono.error(
             new R2dbcTransientResourceException(
                 String.format(
-                    "Driver has reconnect connection after a communications link failure with %s. In progress transaction was lost",
+                    "Driver has reconnect connection after a communications link failure with %s."
+                        + " In progress transaction was lost",
                     oldClient.getHostAddress()),
                 "25S03",
                 throwable));
@@ -210,7 +213,8 @@ public class FailoverClient implements Client {
       return Mono.error(
           new R2dbcTransientResourceException(
               String.format(
-                  "Driver has reconnect connection after a communications link failure with %s. In progress transaction was too big to be replayed, and was lost",
+                  "Driver has reconnect connection after a communications link failure with %s. In"
+                      + " progress transaction was too big to be replayed, and was lost",
                   oldCli.getHostAddress()),
               "25S03"));
     }

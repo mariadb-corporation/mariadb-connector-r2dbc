@@ -71,7 +71,8 @@ public class TlsTest extends BaseConnectionTest {
     if (useOldNotation) {
       create_sql = "CREATE USER 'MUTUAL_AUTH'";
       grant_sql =
-          "grant all privileges on *.* to 'MUTUAL_AUTH' identified by 'MySup8%rPassw@ord' REQUIRE X509";
+          "grant all privileges on *.* to 'MUTUAL_AUTH' identified by 'MySup8%rPassw@ord' REQUIRE"
+              + " X509";
     } else {
       create_sql = "CREATE USER 'MUTUAL_AUTH' identified by 'MySup8%rPassw@ord' REQUIRE X509";
       grant_sql = "grant all privileges on *.* to 'MUTUAL_AUTH'";
@@ -79,6 +80,14 @@ public class TlsTest extends BaseConnectionTest {
     sharedConn.createStatement(create_sql).execute().subscribe();
     sharedConn.createStatement(grant_sql).execute().subscribe();
     sharedConn.createStatement("FLUSH PRIVILEGES").execute().blockLast();
+  }
+
+  private static String readLine(String filePath) throws IOException {
+    StringBuilder contentBuilder = new StringBuilder();
+    try (Stream<String> stream = Files.lines(Paths.get(filePath), StandardCharsets.UTF_8)) {
+      stream.forEach(s -> contentBuilder.append(s).append("\n"));
+    }
+    return contentBuilder.toString();
   }
 
   @Test
@@ -267,14 +276,6 @@ public class TlsTest extends BaseConnectionTest {
             .build();
     MariadbConnection con2 = new MariadbConnectionFactory(conf2).create().block();
     con2.close().block();
-  }
-
-  private static String readLine(String filePath) throws IOException {
-    StringBuilder contentBuilder = new StringBuilder();
-    try (Stream<String> stream = Files.lines(Paths.get(filePath), StandardCharsets.UTF_8)) {
-      stream.forEach(s -> contentBuilder.append(s).append("\n"));
-    }
-    return contentBuilder.toString();
   }
 
   @Test

@@ -52,6 +52,9 @@ public class SimpleClient implements Client {
 
   private static final Logger logger = Loggers.getLogger(SimpleClient.class);
   protected final MariadbConnectionConfiguration configuration;
+  protected final ReentrantLock lock;
+  protected final Connection connection;
+  protected final HostAddress hostAddress;
   private final ServerMessageSubscriber messageSubscriber;
   private final Sinks.Many<ClientMessage> requestSink =
       Sinks.many().unicast().onBackpressureBuffer();
@@ -59,24 +62,13 @@ public class SimpleClient implements Client {
       Queues.<Exchange>get(Queues.SMALL_BUFFER_SIZE).get();
   private final Queue<ServerMessage> receiverQueue =
       Queues.<ServerMessage>get(Queues.SMALL_BUFFER_SIZE).get();
-
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final MariadbFrameDecoder decoder;
   private final MariadbPacketEncoder encoder;
   private final PrepareCache prepareCache;
   private final ByteBufAllocator byteBufAllocator;
-
-  private volatile boolean closeRequested = false;
-
-  protected final ReentrantLock lock;
-  protected final Connection connection;
-  protected final HostAddress hostAddress;
   protected volatile Context context;
-
-  @Override
-  public Context getContext() {
-    return context;
-  }
+  private volatile boolean closeRequested = false;
 
   protected SimpleClient(
       Connection connection,
@@ -174,6 +166,11 @@ public class SimpleClient implements Client {
       tcpClient = tcpClient.option(ChannelOption.SO_LINGER, 0);
     }
     return tcpClient;
+  }
+
+  @Override
+  public Context getContext() {
+    return context;
   }
 
   public void handleConnectionError(Throwable throwable) {
@@ -588,13 +585,126 @@ public class SimpleClient implements Client {
     return this.closeRequested;
   }
 
+  public void sendCommandWithoutResult(ClientMessage message) {
+    try {
+      lock.lock();
+      this.requestSink.emitNext(message, Sinks.EmitFailureHandler.FAIL_FAST);
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public Flux<ServerMessage> sendCommand(ClientMessage message, boolean canSafelyBeReExecuted) {
+    return sendCommand(message, DecoderState.QUERY_RESPONSE, null, canSafelyBeReExecuted);
+  }
+
+  public Flux<ServerMessage> sendCommand(
+      ClientMessage message, DecoderState initialState, boolean canSafelyBeReExecuted) {
+    return sendCommand(message, initialState, null, canSafelyBeReExecuted);
+  }
+
+  public Flux<ServerMessage> sendCommand(
+      ClientMessage message, DecoderState initialState, String sql, boolean canSafelyBeReExecuted) {
+    return Flux.create(
+        sink -> {
+          if (!isConnected() || messageSubscriber.isClose()) {
+            sink.error(
+                new R2dbcNonTransientResourceException(
+                    "Connection is close. Cannot send anything"));
+            return;
+          }
+          try {
+            lock.lock();
+            Exchange exchange = new Exchange(sink, initialState, sql);
+            if (this.exchangeQueue.offer(exchange)) {
+              if (message instanceof PreparePacket) {
+                decoder.addPrepare(((PreparePacket) message).getSql());
+              }
+              sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
+              this.requestSink.emitNext(message, Sinks.EmitFailureHandler.FAIL_FAST);
+            } else {
+              sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
+            }
+          } catch (Throwable t) {
+            sink.error(t);
+          } finally {
+            lock.unlock();
+          }
+        });
+  }
+
+  public Mono<ServerPrepareResult> sendPrepare(
+      ClientMessage requests, ExceptionFactory factory, String sql) {
+    return sendCommand(requests, DecoderState.PREPARE_RESPONSE, sql, true)
+        .handle(
+            (it, sink) -> {
+              if (it instanceof ErrorPacket) {
+                sink.error(factory.from((ErrorPacket) it));
+                return;
+              }
+              if (it instanceof CompletePrepareResult) {
+                sink.next(((CompletePrepareResult) it).getPrepare());
+              }
+              if (it.ending()) {
+                sink.complete();
+              }
+            })
+        .cast(ServerPrepareResult.class)
+        .singleOrEmpty();
+  }
+
+  public Flux<ServerMessage> sendCommand(
+      PreparePacket preparePacket, ExecutePacket executePacket, boolean canSafelyBeReExecuted) {
+    return Flux.create(
+        sink -> {
+          if (!isConnected() || messageSubscriber.isClose()) {
+            sink.error(
+                new R2dbcNonTransientResourceException(
+                    "Connection is close. Cannot send anything"));
+            return;
+          }
+          try {
+            lock.lock();
+            Exchange exchange =
+                new Exchange(
+                    sink, DecoderState.PREPARE_AND_EXECUTE_RESPONSE, preparePacket.getSql());
+            if (this.exchangeQueue.offer(exchange)) {
+              sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
+              decoder.addPrepare(preparePacket.getSql());
+              this.requestSink.emitNext(preparePacket, Sinks.EmitFailureHandler.FAIL_FAST);
+              this.requestSink.emitNext(executePacket, Sinks.EmitFailureHandler.FAIL_FAST);
+            } else {
+              sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
+            }
+          } catch (Throwable t) {
+            t.printStackTrace();
+            sink.error(t);
+          } finally {
+            lock.unlock();
+          }
+        });
+  }
+
+  public HostAddress getHostAddress() {
+    return hostAddress;
+  }
+
+  public PrepareCache getPrepareCache() {
+    return prepareCache;
+  }
+
+  @Override
+  public String toString() {
+    return "Client{isClosed=" + isClosed + ", context=" + context + '}';
+  }
+
   protected class ServerMessageSubscriber implements CoreSubscriber<ServerMessage> {
-    private Subscription upstream;
-    private volatile boolean close;
     private final AtomicLong receiverDemands = new AtomicLong(0);
     private final ReentrantLock lock;
     private final Queue<Exchange> exchangeQueue;
     private final Queue<ServerMessage> receiverQueue;
+    private Subscription upstream;
+    private volatile boolean close;
 
     public ServerMessageSubscriber(
         ReentrantLock lock, Queue<Exchange> exchangeQueue, Queue<ServerMessage> receiverQueue) {
@@ -712,118 +822,5 @@ public class SimpleClient implements Client {
     public boolean isClose() {
       return close;
     }
-  }
-
-  public void sendCommandWithoutResult(ClientMessage message) {
-    try {
-      lock.lock();
-      this.requestSink.emitNext(message, Sinks.EmitFailureHandler.FAIL_FAST);
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  public Flux<ServerMessage> sendCommand(ClientMessage message, boolean canSafelyBeReExecuted) {
-    return sendCommand(message, DecoderState.QUERY_RESPONSE, null, canSafelyBeReExecuted);
-  }
-
-  public Flux<ServerMessage> sendCommand(
-      ClientMessage message, DecoderState initialState, boolean canSafelyBeReExecuted) {
-    return sendCommand(message, initialState, null, canSafelyBeReExecuted);
-  }
-
-  public Flux<ServerMessage> sendCommand(
-      ClientMessage message, DecoderState initialState, String sql, boolean canSafelyBeReExecuted) {
-    return Flux.create(
-        sink -> {
-          if (!isConnected() || messageSubscriber.isClose()) {
-            sink.error(
-                new R2dbcNonTransientResourceException(
-                    "Connection is close. Cannot send anything"));
-            return;
-          }
-          try {
-            lock.lock();
-            Exchange exchange = new Exchange(sink, initialState, sql);
-            if (this.exchangeQueue.offer(exchange)) {
-              if (message instanceof PreparePacket) {
-                decoder.addPrepare(((PreparePacket) message).getSql());
-              }
-              sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
-              this.requestSink.emitNext(message, Sinks.EmitFailureHandler.FAIL_FAST);
-            } else {
-              sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
-            }
-          } catch (Throwable t) {
-            sink.error(t);
-          } finally {
-            lock.unlock();
-          }
-        });
-  }
-
-  public Mono<ServerPrepareResult> sendPrepare(
-      ClientMessage requests, ExceptionFactory factory, String sql) {
-    return sendCommand(requests, DecoderState.PREPARE_RESPONSE, sql, true)
-        .handle(
-            (it, sink) -> {
-              if (it instanceof ErrorPacket) {
-                sink.error(factory.from((ErrorPacket) it));
-                return;
-              }
-              if (it instanceof CompletePrepareResult) {
-                sink.next(((CompletePrepareResult) it).getPrepare());
-              }
-              if (it.ending()) {
-                sink.complete();
-              }
-            })
-        .cast(ServerPrepareResult.class)
-        .singleOrEmpty();
-  }
-
-  public Flux<ServerMessage> sendCommand(
-      PreparePacket preparePacket, ExecutePacket executePacket, boolean canSafelyBeReExecuted) {
-    return Flux.create(
-        sink -> {
-          if (!isConnected() || messageSubscriber.isClose()) {
-            sink.error(
-                new R2dbcNonTransientResourceException(
-                    "Connection is close. Cannot send anything"));
-            return;
-          }
-          try {
-            lock.lock();
-            Exchange exchange =
-                new Exchange(
-                    sink, DecoderState.PREPARE_AND_EXECUTE_RESPONSE, preparePacket.getSql());
-            if (this.exchangeQueue.offer(exchange)) {
-              sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
-              decoder.addPrepare(preparePacket.getSql());
-              this.requestSink.emitNext(preparePacket, Sinks.EmitFailureHandler.FAIL_FAST);
-              this.requestSink.emitNext(executePacket, Sinks.EmitFailureHandler.FAIL_FAST);
-            } else {
-              sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
-            }
-          } catch (Throwable t) {
-            t.printStackTrace();
-            sink.error(t);
-          } finally {
-            lock.unlock();
-          }
-        });
-  }
-
-  public HostAddress getHostAddress() {
-    return hostAddress;
-  }
-
-  public PrepareCache getPrepareCache() {
-    return prepareCache;
-  }
-
-  @Override
-  public String toString() {
-    return "Client{isClosed=" + isClosed + ", context=" + context + '}';
   }
 }

@@ -25,6 +25,9 @@ import org.mariadb.r2dbc.util.MariadbType;
 import reactor.test.StepVerifier;
 
 public class BlobParseTest extends BaseConnectionTest {
+  String[] expectedVals = new String[] {"diego🤘💪", "georg", "lawrin"};
+  AtomicInteger index = new AtomicInteger();
+
   @BeforeAll
   public static void before2() {
     afterAll2();
@@ -415,9 +418,6 @@ public class BlobParseTest extends BaseConnectionTest {
   void streamValuePrepare() {
     streamValue(sharedConnPrepare);
   }
-
-  String[] expectedVals = new String[] {"diego🤘💪", "georg", "lawrin"};
-  AtomicInteger index = new AtomicInteger();
 
   private boolean inputStreamToByte(InputStream actual) {
     byte[] expected = expectedVals[index.getAndIncrement()].getBytes(StandardCharsets.UTF_8);

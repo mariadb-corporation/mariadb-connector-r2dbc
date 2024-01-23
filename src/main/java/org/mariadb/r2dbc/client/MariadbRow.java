@@ -14,32 +14,16 @@ import reactor.util.annotation.Nullable;
 
 public abstract class MariadbRow {
   protected static final int NULL_LENGTH = -1;
-  protected int length;
-  protected int index = -1;
-
   protected final MariadbRowMetadata meta;
   protected final ByteBuf buf;
   protected final ExceptionFactory factory;
+  protected int length;
+  protected int index = -1;
 
   MariadbRow(ByteBuf buf, MariadbRowMetadata meta, ExceptionFactory factory) {
     this.buf = buf;
     this.meta = meta;
     this.factory = factory;
-  }
-
-  @FunctionalInterface
-  public interface MariadbRowConstructor {
-
-    org.mariadb.r2dbc.api.MariadbRow create(
-        ByteBuf buf, MariadbRowMetadata meta, ExceptionFactory factory);
-  }
-
-  public abstract <T> T get(int index, Class<T> type);
-
-  @Nullable
-  public <T> T get(String name, Class<T> type) {
-    Assert.requireNonNull(name, "name must not be null");
-    return get(this.meta.getIndex(name), type);
   }
 
   protected static R2dbcTransientResourceException noDecoderException(
@@ -83,5 +67,20 @@ public abstract class MariadbRow {
         String.format(
             "No decoder for type %s and column type %s",
             type.getName(), column.getDataType().toString()));
+  }
+
+  public abstract <T> T get(int index, Class<T> type);
+
+  @Nullable
+  public <T> T get(String name, Class<T> type) {
+    Assert.requireNonNull(name, "name must not be null");
+    return get(this.meta.getIndex(name), type);
+  }
+
+  @FunctionalInterface
+  public interface MariadbRowConstructor {
+
+    org.mariadb.r2dbc.api.MariadbRow create(
+        ByteBuf buf, MariadbRowMetadata meta, ExceptionFactory factory);
   }
 }

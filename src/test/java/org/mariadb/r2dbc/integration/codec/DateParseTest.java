@@ -166,7 +166,8 @@ public class DateParseTest extends BaseConnectionTest {
                     && throwable
                         .getMessage()
                         .equals(
-                            "No decoder for type org.mariadb.r2dbc.BaseConnectionTest and column type DATE"))
+                            "No decoder for type org.mariadb.r2dbc.BaseConnectionTest and column"
+                                + " type DATE"))
         .verify();
   }
 

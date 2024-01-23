@@ -25,8 +25,8 @@ import reactor.core.publisher.Sinks;
 final class MariadbServerParameterizedQueryStatement extends MariadbCommonStatement
     implements MariadbStatement {
 
-  private ServerNamedParamParser paramParser;
   private final AtomicReference<ServerPrepareResult> prepareResult;
+  private ServerNamedParamParser paramParser;
 
   MariadbServerParameterizedQueryStatement(
       Client client, String sql, MariadbConnectionConfiguration configuration) {

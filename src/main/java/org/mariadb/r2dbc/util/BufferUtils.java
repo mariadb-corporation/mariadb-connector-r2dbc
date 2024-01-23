@@ -15,13 +15,12 @@ import org.mariadb.r2dbc.util.constants.ServerStatus;
 
 public final class BufferUtils {
 
+  public static final byte[] BINARY_PREFIX = {'_', 'b', 'i', 'n', 'a', 'r', 'y', ' ', '\''};
+  public static final byte[] STRING_PREFIX = {'\''};
   private static final byte QUOTE = (byte) '\'';
   private static final byte DBL_QUOTE = (byte) '"';
   private static final byte ZERO_BYTE = (byte) '\0';
   private static final byte BACKSLASH = (byte) '\\';
-  public static final byte[] BINARY_PREFIX = {'_', 'b', 'i', 'n', 'a', 'r', 'y', ' ', '\''};
-  public static final byte[] STRING_PREFIX = {'\''};
-
   private static final DateTimeFormatter TIMESTAMP_FORMAT =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
   private static final DateTimeFormatter TIMESTAMP_FORMAT_NO_FRACTIONAL =

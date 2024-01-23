@@ -11,9 +11,8 @@ import reactor.util.Loggers;
 
 public final class Binding {
   private static final Logger LOGGER = Loggers.getLogger(Binding.class);
-
-  private BindValue[] binds;
   private final int expectedSize;
+  private BindValue[] binds;
   private int currentSize = 0;
 
   public Binding(int expectedSize) {

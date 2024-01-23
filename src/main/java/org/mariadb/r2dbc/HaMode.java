@@ -122,6 +122,7 @@ public enum HaMode {
             client ->
                 MariadbConnectionFactory.setSessionVariables(conf, client).then(Mono.just(client)));
   }
+
   /**
    * return hosts of without blacklisted hosts. hosts in blacklist reaching blacklist timeout will
    * be present. order corresponds to connection string order.
@@ -206,6 +207,10 @@ public enum HaMode {
                     t, conf, lock, failFast, availableHosts, availHost, iterator, endingNanoTime));
   }
 
+  public static void failHost(HostAddress hostAddress) {
+    denyList.put(hostAddress, System.nanoTime() + DENIED_LIST_TIMEOUT);
+  }
+
   /**
    * List of hosts without blacklist entries, ordered according to HA mode
    *
@@ -218,8 +223,4 @@ public enum HaMode {
 
   public abstract Mono<Client> connectHost(
       MariadbConnectionConfiguration conf, ReentrantLock lock, boolean failFast);
-
-  public static void failHost(HostAddress hostAddress) {
-    denyList.put(hostAddress, System.nanoTime() + DENIED_LIST_TIMEOUT);
-  }
 }

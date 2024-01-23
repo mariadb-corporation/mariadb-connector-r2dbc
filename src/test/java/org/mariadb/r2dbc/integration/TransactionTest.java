@@ -11,7 +11,8 @@ import reactor.core.publisher.Mono;
 
 public class TransactionTest extends BaseConnectionTest {
   private static final String insertCmd =
-      "INSERT INTO `users` (`first_name`, `last_name`, `email`) VALUES ('MariaDB', 'Row', 'mariadb@test.com')";
+      "INSERT INTO `users` (`first_name`, `last_name`, `email`) VALUES ('MariaDB', 'Row',"
+          + " 'mariadb@test.com')";
 
   @BeforeAll
   public static void before2() {
@@ -29,14 +30,14 @@ public class TransactionTest extends BaseConnectionTest {
         .blockLast();
   }
 
-  @BeforeEach
-  public void beforeEach() {
-    sharedConn.createStatement("TRUNCATE TABLE `users`").execute().blockLast();
-  }
-
   @AfterAll
   public static void drop() {
     sharedConn.createStatement("DROP TABLE IF EXISTS `users`").execute().blockLast();
+  }
+
+  @BeforeEach
+  public void beforeEach() {
+    sharedConn.createStatement("TRUNCATE TABLE `users`").execute().blockLast();
   }
 
   @Test

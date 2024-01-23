@@ -23,7 +23,8 @@ public class TimeStampParameterTest extends BaseConnectionTest {
   public static void before2() {
     sharedConn
         .createStatement(
-            "CREATE TABLE TimestampParam (t1 TIMESTAMP(6) NULL, t2 TIMESTAMP(6) NULL, t3 TIMESTAMP(6) NULL)")
+            "CREATE TABLE TimestampParam (t1 TIMESTAMP(6) NULL, t2 TIMESTAMP(6) NULL, t3"
+                + " TIMESTAMP(6) NULL)")
         .execute()
         .blockLast();
   }

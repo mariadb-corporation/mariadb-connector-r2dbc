@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
+
 package org.mariadb.r2dbc.client;
 
 import io.netty.buffer.ByteBuf;
@@ -108,7 +111,8 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
                   if (((OkPacket) message).value() > 1) {
                     sink.error(
                         factory.createException(
-                            "Connector cannot get generated ID (using returnGeneratedValues) multiple rows before MariaDB 10.5.1",
+                            "Connector cannot get generated ID (using returnGeneratedValues)"
+                                + " multiple rows before MariaDB 10.5.1",
                             "HY000",
                             -1));
                     return;
@@ -141,6 +145,18 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
                 }
               }
             });
+  }
+
+  static MariadbSegmentResult toResult(
+      Protocol protocol,
+      AtomicReference<ServerPrepareResult> prepareResult,
+      Flux<ServerMessage> messages,
+      ExceptionFactory factory,
+      String[] generatedColumns,
+      boolean supportReturning,
+      MariadbConnectionConfiguration conf) {
+    return new MariadbSegmentResult(
+        protocol, prepareResult, messages, factory, generatedColumns, supportReturning, conf);
   }
 
   @Override
@@ -249,18 +265,6 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
   @Override
   public String toString() {
     return "MariadbSegmentResult{segments=" + this.segments + '}';
-  }
-
-  static MariadbSegmentResult toResult(
-      Protocol protocol,
-      AtomicReference<ServerPrepareResult> prepareResult,
-      Flux<ServerMessage> messages,
-      ExceptionFactory factory,
-      String[] generatedColumns,
-      boolean supportReturning,
-      MariadbConnectionConfiguration conf) {
-    return new MariadbSegmentResult(
-        protocol, prepareResult, messages, factory, generatedColumns, supportReturning, conf);
   }
 
   static class MariadbRowSegment extends AbstractReferenceCounted implements Result.RowSegment {

@@ -13,15 +13,14 @@ import org.mariadb.r2dbc.util.Assert;
 import reactor.util.annotation.Nullable;
 
 public class MariadbOutParameters implements org.mariadb.r2dbc.api.MariadbOutParameters {
-  private final int columnNumber;
-  private final byte[] nullBitmap;
   protected static final int NULL_LENGTH = -1;
-  protected int length;
-  protected int index = -1;
-
   protected final MariadbOutParametersMetadata meta;
   protected final ByteBuf buf;
   protected final ExceptionFactory factory;
+  private final int columnNumber;
+  private final byte[] nullBitmap;
+  protected int length;
+  protected int index = -1;
 
   public MariadbOutParameters(
       ByteBuf buf, MariadbOutParametersMetadata meta, ExceptionFactory factory) {

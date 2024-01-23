@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
+
 package org.mariadb.r2dbc.util;
 
 import java.util.HashMap;
@@ -12,7 +15,7 @@ public class Security {
    * @param sessionVariable option value
    * @return parsed String
    */
-  public static Map parseSessionVariables(String sessionVariable) {
+  public static Map<String, Object> parseSessionVariables(String sessionVariable) {
     Map<String, Object> out = new HashMap<>();
     StringBuilder sb = new StringBuilder();
     Parse state = Parse.Normal;
@@ -62,7 +65,7 @@ public class Security {
         case ',':
           if (state == Parse.Normal) {
             if (!iskey) {
-              String valStr = sb.toString().substring(1);
+              String valStr = sb.substring(1);
               out.put(key, parseObject(valStr, isString));
               isString = false;
             } else {
@@ -95,7 +98,7 @@ public class Security {
     }
 
     if (!iskey) {
-      String valStr = sb.toString().substring(1);
+      String valStr = sb.substring(1);
       out.put(key, parseObject(valStr, isString));
     } else {
       String tmpkey = sb.toString().trim();

@@ -3,11 +3,7 @@
 
 package org.mariadb.r2dbc;
 
-import static io.r2dbc.spi.ConnectionFactoryOptions.DATABASE;
-import static io.r2dbc.spi.ConnectionFactoryOptions.HOST;
-import static io.r2dbc.spi.ConnectionFactoryOptions.PASSWORD;
-import static io.r2dbc.spi.ConnectionFactoryOptions.PORT;
-import static io.r2dbc.spi.ConnectionFactoryOptions.USER;
+import static io.r2dbc.spi.ConnectionFactoryOptions.*;
 
 import io.netty.handler.ssl.SslContextBuilder;
 import io.r2dbc.spi.ConnectionFactoryOptions;
@@ -16,11 +12,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.UnaryOperator;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.HostAddress;
@@ -55,13 +47,13 @@ public final class MariadbConnectionConfiguration {
   private final String rsaPublicKey;
   private final String cachingRsaPublicKey;
   private final boolean allowPublicKeyRetrieval;
-  private IsolationLevel isolationLevel;
   private final boolean useServerPrepStmts;
   private final boolean autocommit;
   private final boolean tinyInt1isBit;
   private final String[] restrictedAuth;
   private final LoopResources loopResources;
   private final UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer;
+  private IsolationLevel isolationLevel;
 
   private MariadbConnectionConfiguration(
       String haMode,
@@ -609,6 +601,7 @@ public final class MariadbConnectionConfiguration {
    */
   public static final class Builder implements Cloneable {
 
+    @Nullable Integer prepareCacheSize;
     @Nullable private String haMode;
     @Nullable private String rsaPublicKey;
     @Nullable private String cachingRsaPublicKey;
@@ -625,7 +618,6 @@ public final class MariadbConnectionConfiguration {
     @Nullable private Map<String, String> connectionAttributes;
     @Nullable private CharSequence password;
     @Nullable private String collation;
-
     private int port = DEFAULT_PORT;
     @Nullable private String socket;
     private boolean allowMultiQueries = false;
@@ -634,7 +626,6 @@ public final class MariadbConnectionConfiguration {
     private IsolationLevel isolationLevel = null;
     private boolean autocommit = true;
     private boolean tinyInt1isBit = true;
-    @Nullable Integer prepareCacheSize;
     @Nullable private List<String> tlsProtocol;
     @Nullable private String serverSslCert;
     @Nullable private String clientSslCert;
@@ -645,10 +636,9 @@ public final class MariadbConnectionConfiguration {
     private String restrictedAuth;
     @Nullable private LoopResources loopResources;
     @Nullable private UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer;
+    private boolean sslTunnelDisableHostVerification;
 
     private Builder() {}
-
-    private boolean sslTunnelDisableHostVerification;
 
     /**
      * Returns a configured {@link MariadbConnectionConfiguration}.

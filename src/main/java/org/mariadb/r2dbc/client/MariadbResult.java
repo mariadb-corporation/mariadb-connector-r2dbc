@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
+
 package org.mariadb.r2dbc.client;
 
 import io.netty.buffer.ByteBuf;
@@ -56,6 +59,14 @@ public class MariadbResult extends AbstractReferenceCounted
     this.supportReturning = supportReturning;
     this.conf = conf;
     this.prepareResult = prepareResult;
+  }
+
+  public static ByteBuf getLongTextEncoded(long value) {
+    byte[] byteValue = Long.toString(value).getBytes(StandardCharsets.US_ASCII);
+    byte[] encodedLength;
+    int length = byteValue.length;
+    encodedLength = new byte[] {(byte) length};
+    return Unpooled.copiedBuffer(encodedLength, byteValue);
   }
 
   @Override
@@ -153,7 +164,8 @@ public class MariadbResult extends AbstractReferenceCounted
               if (okPacket.value() > 1) {
                 sink.error(
                     this.factory.createException(
-                        "Connector cannot get generated ID (using returnGeneratedValues) multiple rows before MariaDB 10.5.1",
+                        "Connector cannot get generated ID (using returnGeneratedValues) multiple"
+                            + " rows before MariaDB 10.5.1",
                         "HY000",
                         -1));
                 return;
@@ -201,14 +213,6 @@ public class MariadbResult extends AbstractReferenceCounted
             }
           }
         });
-  }
-
-  public static ByteBuf getLongTextEncoded(long value) {
-    byte[] byteValue = Long.toString(value).getBytes(StandardCharsets.US_ASCII);
-    byte[] encodedLength;
-    int length = byteValue.length;
-    encodedLength = new byte[] {(byte) length};
-    return Unpooled.copiedBuffer(encodedLength, byteValue);
   }
 
   @Override

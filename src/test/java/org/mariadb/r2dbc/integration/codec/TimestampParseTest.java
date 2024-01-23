@@ -30,7 +30,8 @@ public class TimestampParseTest extends BaseConnectionTest {
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO TimestampTable VALUES('2013-07-22 12:50:05.01230'), ('2035-01-31 10:45:01'), (null)")
+            "INSERT INTO TimestampTable VALUES('2013-07-22 12:50:05.01230'), ('2035-01-31"
+                + " 10:45:01'), (null)")
         .execute()
         .blockLast();
     sharedConn
@@ -39,7 +40,8 @@ public class TimestampParseTest extends BaseConnectionTest {
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO TimestampTable2 VALUES('1970-01-02 12:50:05.01230'), ('1970-01-01 10:45:01'), (null)")
+            "INSERT INTO TimestampTable2 VALUES('1970-01-02 12:50:05.01230'), ('1970-01-01"
+                + " 10:45:01'), (null)")
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
@@ -472,11 +474,13 @@ public class TimestampParseTest extends BaseConnectionTest {
                     && (throwable
                             .getMessage()
                             .equals(
-                                "No decoder for type java.math.BigDecimal and column type TIMESTAMP")
+                                "No decoder for type java.math.BigDecimal and column type"
+                                    + " TIMESTAMP")
                         || throwable
                             .getMessage()
                             .equals(
-                                "No decoder for type java.math.BigDecimal and column type DATETIME")))
+                                "No decoder for type java.math.BigDecimal and column type"
+                                    + " DATETIME")))
         .verify();
   }
 
@@ -503,11 +507,13 @@ public class TimestampParseTest extends BaseConnectionTest {
                     && (throwable
                             .getMessage()
                             .equals(
-                                "No decoder for type java.math.BigInteger and column type TIMESTAMP")
+                                "No decoder for type java.math.BigInteger and column type"
+                                    + " TIMESTAMP")
                         || throwable
                             .getMessage()
                             .equals(
-                                "No decoder for type java.math.BigInteger and column type DATETIME")))
+                                "No decoder for type java.math.BigInteger and column type"
+                                    + " DATETIME")))
         .verify();
   }
 

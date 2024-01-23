@@ -20,6 +20,8 @@ public class TestConfiguration {
   public static final String database;
   public static final String other;
   public static final MariadbConnectionConfiguration.Builder defaultBuilder;
+  public static final MariadbConnectionConfiguration defaultConf;
+  public static final MariadbConnectionFactory defaultFactory;
 
   static {
     String defaultHost = "localhost";
@@ -77,6 +79,8 @@ public class TestConfiguration {
 
     ConnectionFactoryOptions options = ConnectionFactoryOptions.parse(connString);
     defaultBuilder = MariadbConnectionConfiguration.fromOptions(options);
+    defaultConf = defaultBuilder.build();
+    defaultFactory = new MariadbConnectionFactory(defaultConf);
   }
 
   private static String get(String name, Properties prop) {
@@ -85,8 +89,4 @@ public class TestConfiguration {
     if (val == null) val = prop.getProperty(name);
     return val;
   }
-
-  public static final MariadbConnectionConfiguration defaultConf = defaultBuilder.build();
-  public static final MariadbConnectionFactory defaultFactory =
-      new MariadbConnectionFactory(defaultConf);
 }

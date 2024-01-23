@@ -34,22 +34,26 @@ public class StringParseTest extends BaseConnectionTest {
     sharedConn.createStatement("DROP TABLE IF EXISTS StringTable").execute().blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE StringTable (t1 varchar(256), t2 TEXT) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+            "CREATE TABLE StringTable (t1 varchar(256), t2 TEXT) CHARACTER SET utf8mb4 COLLATE"
+                + " utf8mb4_unicode_ci")
         .execute()
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO StringTable VALUES ('some🌟', 'some🌟'),('1', '1'),('0', '0'), (null, null)")
+            "INSERT INTO StringTable VALUES ('some🌟', 'some🌟'),('1', '1'),('0', '0'), (null,"
+                + " null)")
         .execute()
         .blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE StringBinary (t1 varbinary(256), t2 varbinary(1024)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+            "CREATE TABLE StringBinary (t1 varbinary(256), t2 varbinary(1024)) CHARACTER SET"
+                + " utf8mb4 COLLATE utf8mb4_unicode_ci")
         .execute()
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO StringBinary VALUES ('some🌟', 'some🌟'),('1', '1'),('0', '0'), (null, null)")
+            "INSERT INTO StringBinary VALUES ('some🌟', 'some🌟'),('1', '1'),('0', '0'), (null,"
+                + " null)")
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
@@ -64,6 +68,17 @@ public class StringParseTest extends BaseConnectionTest {
     sharedConn.createStatement("DROP TABLE IF EXISTS localTimeValue").execute().blockLast();
     sharedConn.createStatement("DROP TABLE IF EXISTS localDateValue").execute().blockLast();
     sharedConn.createStatement("DROP TABLE IF EXISTS localDateTimeValue").execute().blockLast();
+  }
+
+  public static byte[] hexStringToByteArray(String hex) {
+    int l = hex.length();
+    byte[] data = new byte[l / 2];
+    for (int i = 0; i < l; i += 2) {
+      data[i / 2] =
+          (byte)
+              ((Character.digit(hex.charAt(i), 16) << 4) + Character.digit(hex.charAt(i + 1), 16));
+    }
+    return data;
   }
 
   @Test
@@ -130,17 +145,6 @@ public class StringParseTest extends BaseConnectionTest {
     byte[] bytes = hexStringToByteArray(b);
     String st = new String(bytes, StandardCharsets.UTF_8);
     System.out.println(st);
-  }
-
-  public static byte[] hexStringToByteArray(String hex) {
-    int l = hex.length();
-    byte[] data = new byte[l / 2];
-    for (int i = 0; i < l; i += 2) {
-      data[i / 2] =
-          (byte)
-              ((Character.digit(hex.charAt(i), 16) << 4) + Character.digit(hex.charAt(i + 1), 16));
-    }
-    return data;
   }
 
   @Test
@@ -294,7 +298,9 @@ public class StringParseTest extends BaseConnectionTest {
                     && throwable
                         .getMessage()
                         .equals(
-                            "No decoder for type org.mariadb.r2dbc.integration.codec.StringParseTest and column type VARSTRING"))
+                            "No decoder for type"
+                                + " org.mariadb.r2dbc.integration.codec.StringParseTest and column"
+                                + " type VARSTRING"))
         .verify();
   }
 
@@ -325,12 +331,14 @@ public class StringParseTest extends BaseConnectionTest {
     sharedConn.createStatement("DROP TABLE IF EXISTS durationValue").execute().blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE durationValue (t1 varchar(256)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+            "CREATE TABLE durationValue (t1 varchar(256)) CHARACTER SET utf8mb4 COLLATE"
+                + " utf8mb4_unicode_ci")
         .execute()
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO durationValue VALUES ('90:00:00.012340'), ('800:00:00.123'), ('800'), ('22'), (null)")
+            "INSERT INTO durationValue VALUES ('90:00:00.012340'), ('800:00:00.123'), ('800'),"
+                + " ('22'), (null)")
         .execute()
         .blockLast();
 
@@ -380,13 +388,14 @@ public class StringParseTest extends BaseConnectionTest {
     sharedConn.createStatement("DROP TABLE IF EXISTS localTimeValue").execute().blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE localTimeValue (t1 varchar(256)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+            "CREATE TABLE localTimeValue (t1 varchar(256)) CHARACTER SET utf8mb4 COLLATE"
+                + " utf8mb4_unicode_ci")
         .execute()
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO localTimeValue VALUES ('18:00:00.012340'), ('08:01:18.123'), ('800'), ('22'), "
-                + "(null)")
+            "INSERT INTO localTimeValue VALUES ('18:00:00.012340'), ('08:01:18.123'), ('800'),"
+                + " ('22'), (null)")
         .execute()
         .blockLast();
 
@@ -435,12 +444,14 @@ public class StringParseTest extends BaseConnectionTest {
     sharedConn.createStatement("DROP TABLE IF EXISTS localDateValue").execute().blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE localDateValue (t1 varchar(256)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+            "CREATE TABLE localDateValue (t1 varchar(256)) CHARACTER SET utf8mb4 COLLATE"
+                + " utf8mb4_unicode_ci")
         .execute()
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO localDateValue VALUES ('2010-01-12'), ('2011-2-28'), (null), ('2011-a-28')")
+            "INSERT INTO localDateValue VALUES ('2010-01-12'), ('2011-2-28'), (null),"
+                + " ('2011-a-28')")
         .execute()
         .blockLast();
 
@@ -487,12 +498,14 @@ public class StringParseTest extends BaseConnectionTest {
                     && throwable
                         .getMessage()
                         .equals(
-                            "value 'some\uD83C\uDF1F' (VARSTRING) cannot be decoded as LocalDateTime"))
+                            "value 'some\uD83C\uDF1F' (VARSTRING) cannot be decoded as"
+                                + " LocalDateTime"))
         .verify();
     sharedConn.createStatement("DROP TABLE IF EXISTS localDateTimeValue").execute().blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE localDateTimeValue (t1 varchar(256)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+            "CREATE TABLE localDateTimeValue (t1 varchar(256)) CHARACTER SET utf8mb4 COLLATE"
+                + " utf8mb4_unicode_ci")
         .execute()
         .blockLast();
     sharedConn
@@ -519,7 +532,8 @@ public class StringParseTest extends BaseConnectionTest {
                     && throwable
                         .getMessage()
                         .equals(
-                            "value '2013-07-bb 12:50:05.01230' (VARSTRING) cannot be decoded as LocalDateTime"))
+                            "value '2013-07-bb 12:50:05.01230' (VARSTRING) cannot be decoded as"
+                                + " LocalDateTime"))
         .verify();
   }
 

@@ -118,7 +118,8 @@ public class Sha256PluginTest extends BaseConnectionTest {
       if (minVersion(8, 0, 0)) {
         sharedConn
             .createStatement(
-                "CREATE USER 'cachingSha256User'  IDENTIFIED WITH caching_sha2_password BY 'password'")
+                "CREATE USER 'cachingSha256User'  IDENTIFIED WITH caching_sha2_password BY"
+                    + " 'password'")
             .execute()
             .blockLast();
         sharedConn
@@ -127,7 +128,8 @@ public class Sha256PluginTest extends BaseConnectionTest {
             .blockLast();
         sharedConn
             .createStatement(
-                "CREATE USER 'cachingSha256User2'  IDENTIFIED WITH caching_sha2_password BY 'password'")
+                "CREATE USER 'cachingSha256User2'  IDENTIFIED WITH caching_sha2_password BY"
+                    + " 'password'")
             .execute()
             .blockLast();
         sharedConn
@@ -136,7 +138,8 @@ public class Sha256PluginTest extends BaseConnectionTest {
             .blockLast();
         sharedConn
             .createStatement(
-                "CREATE USER 'cachingSha256User3'  IDENTIFIED WITH caching_sha2_password BY 'password'")
+                "CREATE USER 'cachingSha256User3'  IDENTIFIED WITH caching_sha2_password BY"
+                    + " 'password'")
             .execute()
             .blockLast();
         sharedConn
@@ -154,7 +157,8 @@ public class Sha256PluginTest extends BaseConnectionTest {
             .blockLast();
         sharedConn
             .createStatement(
-                "CREATE USER 'userWithWrongPassword'  IDENTIFIED WITH caching_sha2_password BY 'blabla'")
+                "CREATE USER 'userWithWrongPassword'  IDENTIFIED WITH caching_sha2_password BY"
+                    + " 'blabla'")
             .execute()
             .blockLast();
         sharedConn

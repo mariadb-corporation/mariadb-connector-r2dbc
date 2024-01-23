@@ -6,7 +6,8 @@
 
 # Benchmark
 
-How to run : 
+How to run :
+
 ```script
 mvn clean package -P bench -Dmaven.test.skip
 
@@ -18,13 +19,15 @@ java -Duser.country=US -Duser.language=en -jar target/benchmarks.jar "Select_1_u
 ```
 
 Configuration by system properties :
+
 * TEST_HOST: localhost
 * TEST_PORT: 3306
 * TEST_USERNAME: root
 * TEST_PASSWORD: ""
 * TEST_DATABASE: "testr2"
 
-example: 
+example:
+
 ```script
 mvn clean package -P bench -Dmaven.test.skip
 java -DTEST_PORT=3307 -Duser.country=US -Duser.language=en -jar target/benchmarks.jar "Select_1_user"

@@ -14,19 +14,14 @@ public class ServerPrepareResult {
 
   private final int statementId;
   private final int numParams;
-  private ColumnDefinitionPacket[] columns;
-
   private final AtomicBoolean closing = new AtomicBoolean();
   private final AtomicInteger use = new AtomicInteger(1);
   private final AtomicBoolean cached = new AtomicBoolean(false);
+  private ColumnDefinitionPacket[] columns;
 
   public ServerPrepareResult(int statementId, int numParams, ColumnDefinitionPacket[] columns) {
     this.statementId = statementId;
     this.numParams = numParams;
-    this.columns = columns;
-  }
-
-  public void setColumns(ColumnDefinitionPacket[] columns) {
     this.columns = columns;
   }
 
@@ -40,6 +35,10 @@ public class ServerPrepareResult {
 
   public ColumnDefinitionPacket[] getColumns() {
     return columns;
+  }
+
+  public void setColumns(ColumnDefinitionPacket[] columns) {
+    this.columns = columns;
   }
 
   public void close(Client client) {

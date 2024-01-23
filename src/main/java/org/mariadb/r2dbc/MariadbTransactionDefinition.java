@@ -18,11 +18,24 @@ public final class MariadbTransactionDefinition implements TransactionDefinition
 
   public static Option<Boolean> WITH_CONSISTENT_SNAPSHOT =
       Option.valueOf("WITH CONSISTENT SNAPSHOT");
-
+  public static MariadbTransactionDefinition WITH_CONSISTENT_SNAPSHOT_READ_WRITE =
+      EMPTY.consistent().readWrite();
+  public static MariadbTransactionDefinition WITH_CONSISTENT_SNAPSHOT_READ_ONLY =
+      EMPTY.consistent().readOnly();
+  public static MariadbTransactionDefinition READ_WRITE = EMPTY.readWrite();
+  public static MariadbTransactionDefinition READ_ONLY = EMPTY.readOnly();
   private final Map<Option<?>, Object> options;
 
   private MariadbTransactionDefinition(Map<Option<?>, Object> options) {
     this.options = options;
+  }
+
+  static MariadbTransactionDefinition mutability(boolean readWrite) {
+    return readWrite ? EMPTY.readWrite() : EMPTY.readOnly();
+  }
+
+  static MariadbTransactionDefinition from(IsolationLevel isolationLevel) {
+    return MariadbTransactionDefinition.EMPTY.isolationLevel(isolationLevel);
   }
 
   @Override
@@ -39,14 +52,6 @@ public final class MariadbTransactionDefinition implements TransactionDefinition
         Assert.requireNonNull(value, "value must not be null"));
 
     return new MariadbTransactionDefinition(options);
-  }
-
-  static MariadbTransactionDefinition mutability(boolean readWrite) {
-    return readWrite ? EMPTY.readWrite() : EMPTY.readOnly();
-  }
-
-  static MariadbTransactionDefinition from(IsolationLevel isolationLevel) {
-    return MariadbTransactionDefinition.EMPTY.isolationLevel(isolationLevel);
   }
 
   public MariadbTransactionDefinition isolationLevel(IsolationLevel isolationLevel) {
@@ -68,11 +73,4 @@ public final class MariadbTransactionDefinition implements TransactionDefinition
   public MariadbTransactionDefinition notConsistent() {
     return with(MariadbTransactionDefinition.WITH_CONSISTENT_SNAPSHOT, false);
   }
-
-  public static MariadbTransactionDefinition WITH_CONSISTENT_SNAPSHOT_READ_WRITE =
-      EMPTY.consistent().readWrite();
-  public static MariadbTransactionDefinition WITH_CONSISTENT_SNAPSHOT_READ_ONLY =
-      EMPTY.consistent().readOnly();
-  public static MariadbTransactionDefinition READ_WRITE = EMPTY.readWrite();
-  public static MariadbTransactionDefinition READ_ONLY = EMPTY.readOnly();
 }

@@ -27,7 +27,8 @@ public class BigIntegerParseTest extends BaseConnectionTest {
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO BigIntTable VALUES (0,1, 2),(1,2, 20),(9223372036854775807,3, 120), (null,4, 1250)")
+            "INSERT INTO BigIntTable VALUES (0,1, 2),(1,2, 20),(9223372036854775807,3, 120),"
+                + " (null,4, 1250)")
         .execute()
         .blockLast();
     sharedConn

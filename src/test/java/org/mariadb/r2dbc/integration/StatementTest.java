@@ -29,28 +29,33 @@ public class StatementTest extends BaseConnectionTest {
         .blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE prepareReturningBefore105 (id int not null primary key auto_increment, test varchar(10))")
+            "CREATE TABLE prepareReturningBefore105 (id int not null primary key auto_increment,"
+                + " test varchar(10))")
         .execute()
         .blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE returningBefore105WithParameter (id int not null primary key auto_increment, test varchar(10))")
+            "CREATE TABLE returningBefore105WithParameter (id int not null primary key"
+                + " auto_increment, test varchar(10))")
         .execute()
         .blockLast();
 
     sharedConn
         .createStatement(
-            "CREATE TABLE generatedId (id int not null primary key auto_increment, test varchar(10))")
+            "CREATE TABLE generatedId (id int not null primary key auto_increment, test"
+                + " varchar(10))")
         .execute()
         .blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE prepareReturning (id int not null primary key auto_increment, test varchar(10))")
+            "CREATE TABLE prepareReturning (id int not null primary key auto_increment, test"
+                + " varchar(10))")
         .execute()
         .blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE dupplicate (id int not null primary key auto_increment, test varchar(10))")
+            "CREATE TABLE dupplicate (id int not null primary key auto_increment, test"
+                + " varchar(10))")
         .execute()
         .blockLast();
     sharedConn
@@ -60,13 +65,15 @@ public class StatementTest extends BaseConnectionTest {
         .blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE INSERT_RETURNING (id int not null primary key auto_increment, test varchar(10))")
+            "CREATE TABLE INSERT_RETURNING (id int not null primary key auto_increment, test"
+                + " varchar(10))")
         .execute()
         .blockLast();
 
     sharedConn
         .createStatement(
-            "CREATE TABLE returningBefore105 (id int not null primary key auto_increment, test varchar(10))")
+            "CREATE TABLE returningBefore105 (id int not null primary key auto_increment, test"
+                + " varchar(10))")
         .execute()
         .blockLast();
   }
@@ -88,6 +95,14 @@ public class StatementTest extends BaseConnectionTest {
     sharedConn.createStatement("DROP TABLE IF EXISTS get_pos").execute().blockLast();
     sharedConn.createStatement("DROP TABLE IF EXISTS INSERT_RETURNING").execute().blockLast();
     sharedConn.createStatement("DROP TABLE IF EXISTS returningBefore105").execute().blockLast();
+  }
+
+  private static int[] randParams() {
+    int[] rnds = new int[1000];
+    for (int i = 0; i < 1000; i++) {
+      rnds[i] = (int) (Math.random() * 1000);
+    }
+    return rnds;
   }
 
   @Test
@@ -112,15 +127,18 @@ public class StatementTest extends BaseConnectionTest {
     assertThrowsContains(
         IndexOutOfBoundsException.class,
         () -> stmt.bind("name", 1),
-        "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'");
+        "Binding parameters is not supported for the statement 'INSERT INTO someTable values"
+            + " (1,2)'");
     assertThrowsContains(
         IndexOutOfBoundsException.class,
         () -> stmt.bindNull(0, String.class),
-        "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'");
+        "Binding parameters is not supported for the statement 'INSERT INTO someTable values"
+            + " (1,2)'");
     assertThrowsContains(
         IndexOutOfBoundsException.class,
         () -> stmt.bindNull("name", String.class),
-        "Binding parameters is not supported for the statement 'INSERT INTO someTable values (1,2)'");
+        "Binding parameters is not supported for the statement 'INSERT INTO someTable values"
+            + " (1,2)'");
   }
 
   @Test
@@ -192,7 +210,8 @@ public class StatementTest extends BaseConnectionTest {
       Assertions.assertTrue(
           e.getMessage()
               .contains(
-                  "No encoder for class org.mariadb.r2dbc.MariadbConnection (parameter at index 0)"));
+                  "No encoder for class org.mariadb.r2dbc.MariadbConnection (parameter at index"
+                      + " 0)"));
     }
   }
 
@@ -286,14 +305,6 @@ public class StatementTest extends BaseConnectionTest {
         Assertions.fail("ERROR");
       }
     }
-  }
-
-  private static int[] randParams() {
-    int[] rnds = new int[1000];
-    for (int i = 0; i < 1000; i++) {
-      rnds[i] = (int) (Math.random() * 1000);
-    }
-    return rnds;
   }
 
   @Test

@@ -13,6 +13,7 @@ public class TcpProxy {
   private final String host;
   private final TcpProxySocket socket;
   private ScheduledExecutorService executorService;
+
   /**
    * Initialise proxy.
    *

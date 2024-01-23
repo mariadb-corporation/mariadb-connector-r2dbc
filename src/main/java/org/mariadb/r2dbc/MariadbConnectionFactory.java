@@ -36,31 +36,6 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
     return new MariadbConnectionFactory(configuration);
   }
 
-  @Override
-  public Mono<org.mariadb.r2dbc.api.MariadbConnection> create() {
-    ReentrantLock lock = new ReentrantLock();
-    return ((configuration.getSocket() != null)
-            ? connectToSocket(
-                configuration, new DomainSocketAddress(configuration.getSocket()), null, lock)
-            : (configuration.getHaMode().equals(HaMode.NONE)
-                ? configuration.getHaMode().connectHost(configuration, lock, false)
-                : configuration
-                    .getHaMode()
-                    .connectHost(configuration, lock, false)
-                    .flatMap(c -> Mono.just(new FailoverClient(configuration, lock, c)))))
-        .flatMap(
-            client ->
-                Mono.just(
-                        new MariadbConnection(
-                            client,
-                            configuration.getIsolationLevel() == null
-                                ? IsolationLevel.REPEATABLE_READ
-                                : configuration.getIsolationLevel(),
-                            configuration))
-                    .onErrorResume(throwable -> closeWithError(client, throwable)))
-        .cast(org.mariadb.r2dbc.api.MariadbConnection.class);
-  }
-
   private static Mono<Client> connectToSocket(
       final MariadbConnectionConfiguration configuration,
       SocketAddress endpoint,
@@ -132,7 +107,8 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
           return Mono.error(
               new R2dbcNonTransientResourceException(
                   String.format(
-                      "Session variable '%s' type can only be of type String, Integer, Double or Boolean",
+                      "Session variable '%s' type can only be of type String, Integer, Double or"
+                          + " Boolean",
                       key)));
         }
       }
@@ -171,6 +147,31 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
 
     return new R2dbcNonTransientResourceException(
         String.format("Cannot connect to %s", endpoint), throwable);
+  }
+
+  @Override
+  public Mono<org.mariadb.r2dbc.api.MariadbConnection> create() {
+    ReentrantLock lock = new ReentrantLock();
+    return ((configuration.getSocket() != null)
+            ? connectToSocket(
+                configuration, new DomainSocketAddress(configuration.getSocket()), null, lock)
+            : (configuration.getHaMode().equals(HaMode.NONE)
+                ? configuration.getHaMode().connectHost(configuration, lock, false)
+                : configuration
+                    .getHaMode()
+                    .connectHost(configuration, lock, false)
+                    .flatMap(c -> Mono.just(new FailoverClient(configuration, lock, c)))))
+        .flatMap(
+            client ->
+                Mono.just(
+                        new MariadbConnection(
+                            client,
+                            configuration.getIsolationLevel() == null
+                                ? IsolationLevel.REPEATABLE_READ
+                                : configuration.getIsolationLevel(),
+                            configuration))
+                    .onErrorResume(throwable -> closeWithError(client, throwable)))
+        .cast(org.mariadb.r2dbc.api.MariadbConnection.class);
   }
 
   @Override

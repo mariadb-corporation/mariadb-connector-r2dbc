@@ -25,10 +25,7 @@ import org.mariadb.r2dbc.util.BindValue;
 
 public final class Codecs {
 
-  private static final Map<R2dbcType, Codec<?>> r2dbcTypeMapper = r2dbcTypeToDataTypeMap();
-  private static final Map<Class<?>, Codec<?>> codecMapper = classToCodecMap();
   public static final Map<Object, Codec<?>> typeMapper = typeToCodec();
-
   public static final Codec<?>[] LIST =
       new Codec<?>[] {
         BigDecimalCodec.INSTANCE,
@@ -52,6 +49,8 @@ public final class Codecs {
         StreamCodec.INSTANCE,
         StringCodec.INSTANCE
       };
+  private static final Map<R2dbcType, Codec<?>> r2dbcTypeMapper = r2dbcTypeToDataTypeMap();
+  private static final Map<Class<?>, Codec<?>> codecMapper = classToCodecMap();
 
   public static BindValue encodeNull(Class<?> type, int index) {
     if (type == null) return new BindValue(StringCodec.INSTANCE, null);

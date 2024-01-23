@@ -23,7 +23,8 @@ public class StatementBatchingTest extends BaseConnectionTest {
   void batchStatement(MariadbConnection connection) {
     connection
         .createStatement(
-            "CREATE TEMPORARY TABLE batchStatement (id int not null primary key auto_increment, test varchar(10))")
+            "CREATE TEMPORARY TABLE batchStatement (id int not null primary key auto_increment,"
+                + " test varchar(10))")
         .execute()
         .blockLast();
     connection.beginTransaction().block();
@@ -60,7 +61,8 @@ public class StatementBatchingTest extends BaseConnectionTest {
   void batchStatementResultSet(MariadbConnection connection) {
     connection
         .createStatement(
-            "CREATE TEMPORARY TABLE batchStatementResultSet (id int not null primary key auto_increment, test varchar(10))")
+            "CREATE TEMPORARY TABLE batchStatementResultSet (id int not null primary key"
+                + " auto_increment, test varchar(10))")
         .execute()
         .blockLast();
     connection.beginTransaction().block();

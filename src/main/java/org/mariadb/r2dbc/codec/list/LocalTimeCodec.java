@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoField;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
@@ -236,17 +235,17 @@ public class LocalTimeCodec implements Codec<LocalTime> {
       out.writeByte((byte) 12);
       out.writeByte((byte) 0);
       out.writeIntLE(0);
-      out.writeByte((byte) val.get(ChronoField.HOUR_OF_DAY));
-      out.writeByte((byte) val.get(ChronoField.MINUTE_OF_HOUR));
-      out.writeByte((byte) val.get(ChronoField.SECOND_OF_MINUTE));
+      out.writeByte((byte) val.getHour());
+      out.writeByte((byte) val.getMinute());
+      out.writeByte((byte) val.getSecond());
       out.writeIntLE(nano / 1000);
     } else {
       out.writeByte((byte) 8);
       out.writeByte((byte) 0);
       out.writeIntLE(0);
-      out.writeByte((byte) val.get(ChronoField.HOUR_OF_DAY));
-      out.writeByte((byte) val.get(ChronoField.MINUTE_OF_HOUR));
-      out.writeByte((byte) val.get(ChronoField.SECOND_OF_MINUTE));
+      out.writeByte((byte) val.getHour());
+      out.writeByte((byte) val.getMinute());
+      out.writeByte((byte) val.getSecond());
     }
   }
 

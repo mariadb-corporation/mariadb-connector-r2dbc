@@ -21,19 +21,106 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class BaseConnectionTest {
-  public static MariadbConnectionFactory factory = TestConfiguration.defaultFactory;
-  public static MariadbConnection sharedConn;
-  public static MariadbConnection sharedConnPrepare;
   public static final boolean isWindows =
       System.getProperty("os.name").toLowerCase().contains("win");
-
-  public static Integer initialConnectionNumber = -1;
-  public static TcpProxy proxy;
-  private static final Random rand = new Random();
   public static final Boolean backslashEscape =
       System.getenv("NO_BACKSLASH_ESCAPES") != null
           ? Boolean.valueOf(System.getenv("NO_BACKSLASH_ESCAPES"))
           : false;
+  private static final Random rand = new Random();
+  public static MariadbConnectionFactory factory = TestConfiguration.defaultFactory;
+  public static MariadbConnection sharedConn;
+  public static MariadbConnection sharedConnPrepare;
+  public static Integer initialConnectionNumber = -1;
+  public static TcpProxy proxy;
+  private static Instant initialTest;
+  @RegisterExtension public Extension watcher = new BaseConnectionTest.Follow();
+
+  @BeforeAll
+  public static void beforeAll() throws Exception {
+
+    sharedConn = factory.create().block();
+
+    MariadbConnectionConfiguration confPipeline =
+        TestConfiguration.defaultBuilder.clone().useServerPrepStmts(true).build();
+    sharedConnPrepare = new MariadbConnectionFactory(confPipeline).create().block();
+    String sqlModeAddition = "";
+    MariadbConnectionMetadata meta = sharedConn.getMetadata();
+    if ((meta.isMariaDBServer() && !meta.minVersion(10, 2, 4)) || !meta.isMariaDBServer()) {
+      sqlModeAddition += ",STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO";
+    }
+    if ((meta.isMariaDBServer() && !meta.minVersion(10, 1, 7)) || !meta.isMariaDBServer()) {
+      sqlModeAddition += ",NO_ENGINE_SUBSTITUTION";
+    }
+    if ((meta.isMariaDBServer() && !meta.minVersion(10, 1, 7))) {
+      sqlModeAddition += "NO_AUTO_CREATE_USER";
+    }
+
+    if (backslashEscape) {
+      sqlModeAddition += ",NO_BACKSLASH_ESCAPES";
+    }
+    if (!"".equals(sqlModeAddition)) {
+      sharedConn
+          .createStatement("SET @@sql_mode = concat(@@sql_mode,'" + sqlModeAddition + "')")
+          .execute()
+          .blockLast();
+      sharedConnPrepare
+          .createStatement("set sql_mode= concat(@@sql_mode,'" + sqlModeAddition + "')")
+          .execute()
+          .blockLast();
+    }
+  }
+
+  @AfterAll
+  public static void afterEAll() {
+    sharedConn.close().block();
+    sharedConnPrepare.close().block();
+  }
+
+  public static boolean runLongTest() {
+    String runLongTest = System.getenv("RUN_LONG_TEST");
+    if (runLongTest != null) {
+      return Boolean.parseBoolean(runLongTest);
+    }
+    return false;
+  }
+
+  public static void assertThrowsContains(
+      Class<? extends Exception> expectedType, Executable executable, String expected) {
+    Exception e = Assertions.assertThrows(expectedType, executable);
+    Assertions.assertTrue(e.getMessage().contains(expected), "real message:" + e.getMessage());
+  }
+
+  public static boolean isMariaDBServer() {
+    MariadbConnectionMetadata meta = sharedConn.getMetadata();
+    return meta.isMariaDBServer();
+  }
+
+  public static boolean isXpand() {
+    MariadbConnectionMetadata meta = sharedConn.getMetadata();
+    return meta.getDatabaseVersion().toLowerCase().contains("xpand");
+  }
+
+  public static boolean minVersion(int major, int minor, int patch) {
+    MariadbConnectionMetadata meta = sharedConn.getMetadata();
+    return meta.minVersion(major, minor, patch);
+  }
+
+  public static boolean exactVersion(int major, int minor, int patch) {
+    MariadbConnectionMetadata meta = sharedConn.getMetadata();
+    return meta.getMajorVersion() == major
+        && meta.getMinorVersion() == minor
+        && meta.getPatchVersion() == patch;
+  }
+
+  public static Integer maxAllowedPacket() {
+    return sharedConnPrepare
+        .createStatement("select @@max_allowed_packet")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.class)))
+        .single()
+        .block();
+  }
 
   public void assertThrows(
       Class<? extends Exception> expectedType, Executable executable, String expected) {
@@ -41,9 +128,30 @@ public class BaseConnectionTest {
     Assertions.assertTrue(e.getMessage().contains(expected), "real message:" + e.getMessage());
   }
 
-  @RegisterExtension public Extension watcher = new BaseConnectionTest.Follow();
+  public MariadbConnection createProxyCon() throws Exception {
+    HostAddress hostAddress = TestConfiguration.defaultConf.getHostAddresses().get(0);
+    try {
+      proxy = new TcpProxy(hostAddress.getHost(), hostAddress.getPort());
+    } catch (IOException i) {
+      throw new Exception("proxy error", i);
+    }
+    MariadbConnectionConfiguration confProxy =
+        TestConfiguration.defaultBuilder
+            .clone()
+            .port(proxy.getLocalPort())
+            .host("localhost")
+            .build();
+    return new MariadbConnectionFactory(confProxy).create().block();
+  }
 
-  private static Instant initialTest;
+  public boolean haveSsl(MariadbConnection connection) {
+    return connection
+        .createStatement("select @@have_ssl")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+        .blockLast()
+        .equals("YES");
+  }
 
   private class Follow implements BeforeEachCallback, AfterEachCallback {
     @Override
@@ -117,116 +225,5 @@ public class BaseConnectionTest {
           .expectNext(j)
           .verifyComplete();
     }
-  }
-
-  @BeforeAll
-  public static void beforeAll() throws Exception {
-
-    sharedConn = factory.create().block();
-
-    MariadbConnectionConfiguration confPipeline =
-        TestConfiguration.defaultBuilder.clone().useServerPrepStmts(true).build();
-    sharedConnPrepare = new MariadbConnectionFactory(confPipeline).create().block();
-    String sqlModeAddition = "";
-    MariadbConnectionMetadata meta = sharedConn.getMetadata();
-    if ((meta.isMariaDBServer() && !meta.minVersion(10, 2, 4)) || !meta.isMariaDBServer()) {
-      sqlModeAddition += ",STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO";
-    }
-    if ((meta.isMariaDBServer() && !meta.minVersion(10, 1, 7)) || !meta.isMariaDBServer()) {
-      sqlModeAddition += ",NO_ENGINE_SUBSTITUTION";
-    }
-    if ((meta.isMariaDBServer() && !meta.minVersion(10, 1, 7))) {
-      sqlModeAddition += "NO_AUTO_CREATE_USER";
-    }
-
-    if (backslashEscape) {
-      sqlModeAddition += ",NO_BACKSLASH_ESCAPES";
-    }
-    if (!"".equals(sqlModeAddition)) {
-      sharedConn
-          .createStatement("SET @@sql_mode = concat(@@sql_mode,'" + sqlModeAddition + "')")
-          .execute()
-          .blockLast();
-      sharedConnPrepare
-          .createStatement("set sql_mode= concat(@@sql_mode,'" + sqlModeAddition + "')")
-          .execute()
-          .blockLast();
-    }
-  }
-
-  public MariadbConnection createProxyCon() throws Exception {
-    HostAddress hostAddress = TestConfiguration.defaultConf.getHostAddresses().get(0);
-    try {
-      proxy = new TcpProxy(hostAddress.getHost(), hostAddress.getPort());
-    } catch (IOException i) {
-      throw new Exception("proxy error", i);
-    }
-    MariadbConnectionConfiguration confProxy =
-        TestConfiguration.defaultBuilder
-            .clone()
-            .port(proxy.getLocalPort())
-            .host("localhost")
-            .build();
-    return new MariadbConnectionFactory(confProxy).create().block();
-  }
-
-  @AfterAll
-  public static void afterEAll() {
-    sharedConn.close().block();
-    sharedConnPrepare.close().block();
-  }
-
-  public static boolean runLongTest() {
-    String runLongTest = System.getenv("RUN_LONG_TEST");
-    if (runLongTest != null) {
-      return Boolean.parseBoolean(runLongTest);
-    }
-    return false;
-  }
-
-  public static void assertThrowsContains(
-      Class<? extends Exception> expectedType, Executable executable, String expected) {
-    Exception e = Assertions.assertThrows(expectedType, executable);
-    Assertions.assertTrue(e.getMessage().contains(expected), "real message:" + e.getMessage());
-  }
-
-  public static boolean isMariaDBServer() {
-    MariadbConnectionMetadata meta = sharedConn.getMetadata();
-    return meta.isMariaDBServer();
-  }
-
-  public static boolean isXpand() {
-    MariadbConnectionMetadata meta = sharedConn.getMetadata();
-    return meta.getDatabaseVersion().toLowerCase().contains("xpand");
-  }
-
-  public static boolean minVersion(int major, int minor, int patch) {
-    MariadbConnectionMetadata meta = sharedConn.getMetadata();
-    return meta.minVersion(major, minor, patch);
-  }
-
-  public static boolean exactVersion(int major, int minor, int patch) {
-    MariadbConnectionMetadata meta = sharedConn.getMetadata();
-    return meta.getMajorVersion() == major
-        && meta.getMinorVersion() == minor
-        && meta.getPatchVersion() == patch;
-  }
-
-  public static Integer maxAllowedPacket() {
-    return sharedConnPrepare
-        .createStatement("select @@max_allowed_packet")
-        .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.class)))
-        .single()
-        .block();
-  }
-
-  public boolean haveSsl(MariadbConnection connection) {
-    return connection
-        .createStatement("select @@have_ssl")
-        .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
-        .blockLast()
-        .equals("YES");
   }
 }

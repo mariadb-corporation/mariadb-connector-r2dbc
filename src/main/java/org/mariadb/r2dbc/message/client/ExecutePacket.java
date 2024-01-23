@@ -18,10 +18,10 @@ import reactor.core.publisher.Mono;
 
 public final class ExecutePacket implements ClientMessage {
   private final BindValue[] bindValues;
-  private int statementId;
   private final int parameterCount;
   private final String sql;
   private final MessageSequence sequencer = new Sequencer((byte) 0xff);
+  private int statementId;
   private ByteBuf savedBuf = null;
 
   public ExecutePacket(String sql, ServerPrepareResult prepareResult, BindValue[] bindValues) {
@@ -53,7 +53,7 @@ public final class ExecutePacket implements ClientMessage {
       for (int i = 0; i < parameterCount; i++) {
         BindValue param = bindValues[i];
         if (param.isNull()) {
-          nullBitsBuffer[i / 8] |= (1 << (i % 8));
+          nullBitsBuffer[i / 8] |= (byte) (1 << (i % 8));
         }
         if (!param.getCodec().isDirect()) {
           direct = false;

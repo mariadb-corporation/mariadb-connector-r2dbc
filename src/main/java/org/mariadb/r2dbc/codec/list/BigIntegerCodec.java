@@ -18,7 +18,6 @@ import org.mariadb.r2dbc.util.BufferUtils;
 
 public class BigIntegerCodec implements Codec<BigInteger> {
 
-  public static BigIntegerCodec INSTANCE = new BigIntegerCodec();
   private static final EnumSet<DataType> COMPATIBLE_TYPES =
       EnumSet.of(
           DataType.TINYINT,
@@ -36,6 +35,7 @@ public class BigIntegerCodec implements Codec<BigInteger> {
           DataType.TEXT,
           DataType.VARSTRING,
           DataType.STRING);
+  public static BigIntegerCodec INSTANCE = new BigIntegerCodec();
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getDataType())

@@ -262,9 +262,7 @@ public class IntParameterTest extends BaseConnectionTest {
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
                     && (((R2dbcTransientResourceException) throwable).getSqlState().equals("01000")
-                        || ((R2dbcTransientResourceException) throwable)
-                            .getMessage()
-                            .contains("truncated for conversion to INT")))
+                        || throwable.getMessage().contains("truncated for conversion to INT")))
         .verify();
   }
 
@@ -282,9 +280,7 @@ public class IntParameterTest extends BaseConnectionTest {
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
                     && (((R2dbcTransientResourceException) throwable).getSqlState().equals("01000")
-                        || ((R2dbcTransientResourceException) throwable)
-                            .getMessage()
-                            .contains("truncated for conversion to INT")))
+                        || throwable.getMessage().contains("truncated for conversion to INT")))
         .verify();
   }
 
@@ -302,9 +298,7 @@ public class IntParameterTest extends BaseConnectionTest {
             throwable ->
                 throwable instanceof R2dbcTransientResourceException
                     && (((R2dbcTransientResourceException) throwable).getSqlState().equals("01000")
-                        || ((R2dbcTransientResourceException) throwable)
-                            .getMessage()
-                            .contains("truncated for conversion to INT")))
+                        || throwable.getMessage().contains("truncated for conversion to INT")))
         .verify();
   }
 

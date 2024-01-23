@@ -32,15 +32,6 @@ public final class PrepareResultPacket implements ServerMessage {
     this.continueOnEnd = continueOnEnd;
   }
 
-  @Override
-  public boolean ending() {
-    return continueOnEnd && numParams == 0 && numColumns == 0 && eofDeprecated;
-  }
-
-  public boolean isContinueOnEnd() {
-    return continueOnEnd;
-  }
-
   public static PrepareResultPacket decode(
       Sequencer sequencer, ByteBuf buffer, Context context, boolean continueOnEnd) {
     /* Prepared Statement OK */
@@ -55,6 +46,15 @@ public final class PrepareResultPacket implements ServerMessage {
         numParams,
         ((context.getClientCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0),
         continueOnEnd);
+  }
+
+  @Override
+  public boolean ending() {
+    return continueOnEnd && numParams == 0 && numColumns == 0 && eofDeprecated;
+  }
+
+  public boolean isContinueOnEnd() {
+    return continueOnEnd;
   }
 
   public int getStatementId() {

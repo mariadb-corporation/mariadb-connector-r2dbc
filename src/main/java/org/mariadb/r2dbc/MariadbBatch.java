@@ -30,6 +30,24 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
     this.configuration = configuration;
   }
 
+  private static void tryNextCommand(
+      Iterator<String> iterator, Sinks.Many<String> bindingSink, AtomicBoolean canceled) {
+
+    if (canceled.get()) {
+      return;
+    }
+
+    try {
+      if (iterator.hasNext()) {
+        bindingSink.emitNext(iterator.next(), Sinks.EmitFailureHandler.FAIL_FAST);
+      } else {
+        bindingSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
+      }
+    } catch (Exception e) {
+      bindingSink.emitError(e, Sinks.EmitFailureHandler.FAIL_FAST);
+    }
+  }
+
   @Override
   public MariadbBatch add(String sql) {
     Assert.requireNonNull(sql, "sql must not be null");
@@ -90,24 +108,6 @@ final class MariadbBatch implements org.mariadb.r2dbc.api.MariadbBatch {
           .doOnCancel(() -> canceled.set(true))
           .doOnSubscribe(
               it -> commandsSink.emitNext(iterator.next(), Sinks.EmitFailureHandler.FAIL_FAST));
-    }
-  }
-
-  private static void tryNextCommand(
-      Iterator<String> iterator, Sinks.Many<String> bindingSink, AtomicBoolean canceled) {
-
-    if (canceled.get()) {
-      return;
-    }
-
-    try {
-      if (iterator.hasNext()) {
-        bindingSink.emitNext(iterator.next(), Sinks.EmitFailureHandler.FAIL_FAST);
-      } else {
-        bindingSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
-      }
-    } catch (Exception e) {
-      bindingSink.emitError(e, Sinks.EmitFailureHandler.FAIL_FAST);
     }
   }
 }

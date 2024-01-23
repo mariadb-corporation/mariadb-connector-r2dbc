@@ -7,21 +7,21 @@ import org.openjdk.jmh.annotations.Benchmark;
 
 public class Do_1 extends Common {
 
-  @Benchmark
-  public Long testR2dbc(MyState state) throws Throwable {
-    return consume(state.r2dbc);
-  }
+    @Benchmark
+    public Long testR2dbc(MyState state) throws Throwable {
+        return consume(state.r2dbc);
+    }
 
-  @Benchmark
-  public Long testR2dbcPrepare(MyState state) throws Throwable {
-    return consume(state.r2dbcPrepare);
-  }
+    @Benchmark
+    public Long testR2dbcPrepare(MyState state) throws Throwable {
+        return consume(state.r2dbcPrepare);
+    }
 
-  private Long consume(MariadbConnection connection) {
-    return connection.createStatement("DO 1").execute()
-            .flatMap(it -> it.getRowsUpdated())
-            .blockLast();
-  }
+    private Long consume(MariadbConnection connection) {
+        return connection.createStatement("DO 1").execute()
+                .flatMap(it -> it.getRowsUpdated())
+                .blockLast();
+    }
 
 
 }

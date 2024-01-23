@@ -31,7 +31,8 @@ public class DateTimeParseTest extends BaseConnectionTest {
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO DateTimeTable VALUES('2013-07-22 12:50:05.01230'), ('2035-01-31 10:45:01'), (null), (0), ('2021-01-01')")
+            "INSERT INTO DateTimeTable VALUES('2013-07-22 12:50:05.01230'), ('2035-01-31"
+                + " 10:45:01'), (null), (0), ('2021-01-01')")
         .execute()
         .blockLast();
     sharedConn.createStatement("FLUSH TABLES").execute().blockLast();

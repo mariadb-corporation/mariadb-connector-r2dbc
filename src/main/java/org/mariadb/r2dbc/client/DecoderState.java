@@ -83,7 +83,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   COLUMN_COUNT {
-
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       ColumnCountPacket columnCountPacket =
@@ -107,7 +106,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   COLUMN_DEFINITION {
-
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       decoder.decrementStateCounter();
@@ -156,7 +154,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   EOF_END_OUT_PARAM {
-
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       // specific for mysql that break protocol, forgetting sometime to set PS_OUT_PARAMETERS and
@@ -234,7 +231,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   PREPARE_RESPONSE {
-
     @Override
     public DecoderState decoder(short val, int len) {
       if (val == 255) { // 0xFF
@@ -270,7 +266,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   PREPARE_AND_EXECUTE_RESPONSE {
-
     @Override
     public DecoderState decoder(short val, int len) {
       if (val == 255) { // 0xFF
@@ -306,7 +301,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   PREPARE_PARAMETER {
-
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       decoder.decrementStateCounter();
@@ -323,7 +317,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   PREPARE_PARAMETER_EOF {
-
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       if (decoder.getPrepare().getNumColumns() == 0) {
@@ -346,7 +339,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   PREPARE_COLUMN {
-
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       ColumnDefinitionPacket columnDefinitionPacket =
@@ -370,7 +362,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   PREPARE_COLUMN_EOF {
-
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       boolean continueOnEnd = decoder.getPrepare().isContinueOnEnd();
@@ -385,7 +376,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   ERROR {
-
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       return ErrorPacket.decode(sequencer, body, true);
@@ -398,7 +388,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   ERROR_AND_EXECUTE_RESPONSE {
-
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       return ErrorPacket.decode(sequencer, body, false);
@@ -411,7 +400,6 @@ public enum DecoderState implements DecoderStateInterface {
   },
 
   SKIP_EXECUTE {
-
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       decoder.decrementStateCounter();

@@ -154,7 +154,8 @@ public class DecimalParseTest extends BaseConnectionTest {
                     && throwable
                         .getMessage()
                         .equals(
-                            "value '9223372036854775807.92233720368547758070' (DECIMAL) cannot be decoded as Byte"))
+                            "value '9223372036854775807.92233720368547758070' (DECIMAL) cannot be"
+                                + " decoded as Byte"))
         .verify();
   }
 
@@ -182,7 +183,8 @@ public class DecimalParseTest extends BaseConnectionTest {
                     && throwable
                         .getMessage()
                         .equals(
-                            "value '9223372036854775807.92233720368547758070' (DECIMAL) cannot be decoded as Byte"))
+                            "value '9223372036854775807.92233720368547758070' (DECIMAL) cannot be"
+                                + " decoded as Byte"))
         .verify();
   }
 
@@ -261,7 +263,8 @@ public class DecimalParseTest extends BaseConnectionTest {
                     && throwable
                         .getMessage()
                         .equals(
-                            "value '19223372036854775807.92233720368547758070' cannot be decoded as Long"))
+                            "value '19223372036854775807.92233720368547758070' cannot be decoded as"
+                                + " Long"))
         .verify();
   }
 

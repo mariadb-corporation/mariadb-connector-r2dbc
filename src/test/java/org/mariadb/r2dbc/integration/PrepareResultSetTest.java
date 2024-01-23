@@ -66,13 +66,16 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         .blockLast();
     sharedConn
         .createStatement(
-            "INSERT INTO PrepareResultSetTest VALUES (456,789000002,25,30, 456.45,127,2020,45,'ዩኒኮድ ወረጘ የጝ',65445681355454,987456,45000, 45.9, -2, 2045, 12, 'ዩኒኮድ What does this means ?')")
+            "INSERT INTO PrepareResultSetTest VALUES (456,789000002,25,30, 456.45,127,2020,45,'ዩኒኮድ"
+                + " ወረጘ የጝ',65445681355454,987456,45000, 45.9, -2, 2045, 12, 'ዩኒኮድ What does this"
+                + " means ?')")
         .execute()
         .blockLast();
     sharedConn.createStatement("CREATE TABLE myTable(a varchar(10))").execute().blockLast();
     sharedConn
         .createStatement(
-            "CREATE TABLE parameterLengthEncoded(t0 VARCHAR(1024),t1 MEDIUMTEXT) DEFAULT CHARSET=utf8mb4")
+            "CREATE TABLE parameterLengthEncoded(t0 VARCHAR(1024),t1 MEDIUMTEXT) DEFAULT"
+                + " CHARSET=utf8mb4")
         .execute()
         .blockLast();
     sharedConn
@@ -83,7 +86,8 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     sharedConn.createStatement("CREATE TABLE validateParam(t0 VARCHAR(10))").execute().blockLast();
     sharedConnPrepare
         .createStatement(
-            "CREATE TABLE missingParameter(t1 VARCHAR(256),t2 VARCHAR(256)) DEFAULT CHARSET=utf8mb4")
+            "CREATE TABLE missingParameter(t1 VARCHAR(256),t2 VARCHAR(256)) DEFAULT"
+                + " CHARSET=utf8mb4")
         .execute()
         .blockLast();
   }
@@ -309,7 +313,8 @@ public class PrepareResultSetTest extends BaseConnectionTest {
 
     sharedConnPrepare
         .createStatement(
-            "CREATE TEMPORARY TABLE INSERT_RETURNING (id int not null primary key auto_increment, test varchar(10))")
+            "CREATE TEMPORARY TABLE INSERT_RETURNING (id int not null primary key auto_increment,"
+                + " test varchar(10))")
         .execute()
         .blockLast();
 
@@ -356,7 +361,8 @@ public class PrepareResultSetTest extends BaseConnectionTest {
 
     sharedConnPrepare
         .createStatement(
-            "CREATE TEMPORARY TABLE returningBefore105 (id int not null primary key auto_increment, test varchar(10))")
+            "CREATE TEMPORARY TABLE returningBefore105 (id int not null primary key auto_increment,"
+                + " test varchar(10))")
         .execute()
         .blockLast();
 
@@ -456,7 +462,8 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> stmt.bind(0, this).execute().blockLast(),
-        "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest (parameter at index 0) ");
+        "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest (parameter at"
+            + " index 0) ");
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bindNull(-1, Integer.class),
@@ -577,7 +584,8 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> stmt.bind(0, this).execute().blockLast(),
-        "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest (parameter at index 0) ");
+        "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest (parameter at"
+            + " index 0) ");
     assertThrows(
         IndexOutOfBoundsException.class,
         () -> stmt.bindNull(-1, Integer.class),
@@ -589,7 +597,8 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> stmt.bindNull(0, this.getClass()),
-        "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest (parameter at index 0)");
+        "No encoder for class org.mariadb.r2dbc.integration.PrepareResultSetTest (parameter at"
+            + " index 0)");
     stmt.bindNull(0, String.class);
     stmt.bind(0, 1);
     stmt.execute().blockLast();
@@ -603,7 +612,8 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   private List<String> prepareInfo(MariadbConnection connection) {
     return connection
         .createStatement(
-            "SHOW SESSION STATUS WHERE Variable_name in ('Prepared_stmt_count','Com_stmt_prepare', 'Com_stmt_close')")
+            "SHOW SESSION STATUS WHERE Variable_name in ('Prepared_stmt_count','Com_stmt_prepare',"
+                + " 'Com_stmt_close')")
         .execute()
         .flatMap(r -> r.map((row, metadata) -> row.get(1, String.class)))
         .collectList()

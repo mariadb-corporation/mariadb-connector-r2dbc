@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
+
 package org.mariadb.r2dbc;
 
 import io.netty.util.ReferenceCountUtil;
@@ -23,14 +26,14 @@ import reactor.core.publisher.Sinks;
 public abstract class MariadbCommonStatement implements MariadbStatement {
   public static final int UNKNOWN_SIZE = -1;
   protected final List<Binding> bindings = new ArrayList<>();
-  private Binding currentBinding;
-  protected int expectedSize;
   protected final Client client;
   protected final String initialSql;
   protected final MariadbConnectionConfiguration configuration;
+  private final Protocol defaultProtocol;
+  protected int expectedSize;
   protected ExceptionFactory factory;
   protected String[] generatedColumns;
-  private final Protocol defaultProtocol;
+  private Binding currentBinding;
 
   public MariadbCommonStatement(
       Client client,
@@ -42,6 +45,41 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
     this.configuration = configuration;
     this.initialSql = Assert.requireNonNull(sql, "sql must not be null");
     this.factory = ExceptionFactory.withSql(sql);
+  }
+
+  /**
+   * Augments an SQL statement with a {@code RETURNING} statement and column names. If the
+   * collection is empty, uses {@code *} for column names.
+   *
+   * @param sql the SQL to augment
+   * @param generatedColumns the names of the columns to augment with
+   * @return an augmented sql statement returning the specified columns or a wildcard
+   * @throws IllegalArgumentException if {@code sql} or {@code generatedColumns} is {@code null}
+   */
+  public static String augment(String sql, String[] generatedColumns) {
+    Assert.requireNonNull(sql, "sql must not be null");
+    Assert.requireNonNull(generatedColumns, "generatedColumns must not be null");
+    return String.format(
+        "%s RETURNING %s",
+        sql, generatedColumns.length == 0 ? "*" : String.join(", ", generatedColumns));
+  }
+
+  protected static void tryNextBinding(
+      Iterator<Binding> iterator, Sinks.Many<Binding> bindingSink, AtomicBoolean canceled) {
+
+    if (canceled.get()) {
+      return;
+    }
+
+    try {
+      if (iterator.hasNext()) {
+        bindingSink.emitNext(iterator.next(), Sinks.EmitFailureHandler.FAIL_FAST);
+      } else {
+        bindingSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
+      }
+    } catch (Exception e) {
+      bindingSink.emitError(e, Sinks.EmitFailureHandler.FAIL_FAST);
+    }
   }
 
   protected void initializeBinding() {
@@ -102,22 +140,6 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
   protected Binding getCurrentBinding() {
     return currentBinding;
   }
-  /**
-   * Augments an SQL statement with a {@code RETURNING} statement and column names. If the
-   * collection is empty, uses {@code *} for column names.
-   *
-   * @param sql the SQL to augment
-   * @param generatedColumns the names of the columns to augment with
-   * @return an augmented sql statement returning the specified columns or a wildcard
-   * @throws IllegalArgumentException if {@code sql} or {@code generatedColumns} is {@code null}
-   */
-  public static String augment(String sql, String[] generatedColumns) {
-    Assert.requireNonNull(sql, "sql must not be null");
-    Assert.requireNonNull(generatedColumns, "generatedColumns must not be null");
-    return String.format(
-        "%s RETURNING %s",
-        sql, generatedColumns.length == 0 ? "*" : String.join(", ", generatedColumns));
-  }
 
   public Flux<org.mariadb.r2dbc.api.MariadbResult> toResult(
       final Protocol protocol,
@@ -137,24 +159,6 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
                     generatedColumns,
                     client.getVersion().supportReturning(),
                     configuration));
-  }
-
-  protected static void tryNextBinding(
-      Iterator<Binding> iterator, Sinks.Many<Binding> bindingSink, AtomicBoolean canceled) {
-
-    if (canceled.get()) {
-      return;
-    }
-
-    try {
-      if (iterator.hasNext()) {
-        bindingSink.emitNext(iterator.next(), Sinks.EmitFailureHandler.FAIL_FAST);
-      } else {
-        bindingSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
-      }
-    } catch (Exception e) {
-      bindingSink.emitError(e, Sinks.EmitFailureHandler.FAIL_FAST);
-    }
   }
 
   protected void clearBindings(Iterator<Binding> iterator, AtomicBoolean canceled) {

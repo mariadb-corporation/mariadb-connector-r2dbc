@@ -34,7 +34,8 @@ public class StringParameterTest extends BaseConnectionTest {
   public static void before2() {
     sharedConn
         .createStatement(
-            "CREATE TABLE StringParam (t1 VARCHAR(256), t2 VARCHAR(256), t3 VARCHAR(256)) DEFAULT CHARSET=utf8mb4")
+            "CREATE TABLE StringParam (t1 VARCHAR(256), t2 VARCHAR(256), t3 VARCHAR(256)) DEFAULT"
+                + " CHARSET=utf8mb4")
         .execute()
         .blockLast();
   }

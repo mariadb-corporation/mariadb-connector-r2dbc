@@ -23,7 +23,8 @@ public class ResultsetTest extends BaseConnectionTest {
     dropAll();
     sharedConn
         .createStatement(
-            "CREATE TABLE prepare3 (t1 LONGTEXT, t2 LONGTEXT, t3 LONGTEXT, t4 LONGTEXT, t5 varchar(10))")
+            "CREATE TABLE prepare3 (t1 LONGTEXT, t2 LONGTEXT, t3 LONGTEXT, t4 LONGTEXT, t5"
+                + " varchar(10))")
         .execute()
         .blockLast();
   }
@@ -85,7 +86,8 @@ public class ResultsetTest extends BaseConnectionTest {
 
     sharedConn
         .createStatement(
-            "CREATE TEMPORARY TABLE INSERT_RETURNING (id int not null primary key auto_increment, test varchar(10))")
+            "CREATE TEMPORARY TABLE INSERT_RETURNING (id int not null primary key auto_increment,"
+                + " test varchar(10))")
         .execute()
         .blockLast();
 

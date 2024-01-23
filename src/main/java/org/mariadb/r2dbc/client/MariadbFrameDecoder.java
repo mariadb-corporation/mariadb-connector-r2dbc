@@ -1,18 +1,6 @@
-/*
- * Copyright 2012 The Netty Project
- *
- * The Netty Project licenses this file to you under the Apache License,
- * version 2.0 (the "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at:
- *
- *   https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
+
 package org.mariadb.r2dbc.client;
 
 import io.netty.buffer.ByteBuf;
@@ -33,12 +21,12 @@ import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.util.concurrent.Queues;
 
 public class MariadbFrameDecoder extends ByteToMessageDecoder {
-  private CompositeByteBuf multipart = null;
   private final Queue<Exchange> exchangeQueue;
   private final Client client;
   private final MariadbConnectionConfiguration configuration;
-  private DecoderState state = null;
   private final Queue<String> prepareSql = Queues.<String>small().get();
+  private CompositeByteBuf multipart = null;
+  private DecoderState state = null;
   private long clientCapabilities;
   private int stateCounter = 0;
   private boolean metaFollows = false;
@@ -110,6 +98,11 @@ public class MariadbFrameDecoder extends ByteToMessageDecoder {
     return context;
   }
 
+  public void setContext(Context context) {
+    this.context = context;
+    this.clientCapabilities = this.context.getClientCapabilities();
+  }
+
   public int getStateCounter() {
     return stateCounter;
   }
@@ -163,11 +156,6 @@ public class MariadbFrameDecoder extends ByteToMessageDecoder {
 
   public boolean addPrepare(String sql) {
     return this.prepareSql.offer(sql);
-  }
-
-  public void setContext(Context context) {
-    this.context = context;
-    this.clientCapabilities = this.context.getClientCapabilities();
   }
 
   public boolean isMetaFollows() {

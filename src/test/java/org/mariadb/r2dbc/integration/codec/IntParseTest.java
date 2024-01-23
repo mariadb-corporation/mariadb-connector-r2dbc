@@ -141,7 +141,8 @@ public class IntParseTest extends BaseConnectionTest {
                     && throwable
                         .getMessage()
                         .equals(
-                            "No decoder for type org.mariadb.r2dbc.integration.codec.IntParseTest and column type INTEGER(signed)"))
+                            "No decoder for type org.mariadb.r2dbc.integration.codec.IntParseTest"
+                                + " and column type INTEGER(signed)"))
         .verify();
     connection
         .createStatement("SELECT t1 FROM IntUnsignedTable WHERE 1 = ?  LIMIT 1")
@@ -155,8 +156,8 @@ public class IntParseTest extends BaseConnectionTest {
                     && throwable
                         .getMessage()
                         .equals(
-                            "No decoder for type org.mariadb.r2dbc.integration.codec.IntParseTest and column type "
-                                + "INTEGER(unsigned)"))
+                            "No decoder for type org.mariadb.r2dbc.integration.codec.IntParseTest"
+                                + " and column type INTEGER(unsigned)"))
         .verify();
   }
 
@@ -605,7 +606,8 @@ public class IntParseTest extends BaseConnectionTest {
                     && throwable
                         .getMessage()
                         .equals(
-                            "No decoder for type java.time.LocalDateTime and column type INTEGER(signed)"))
+                            "No decoder for type java.time.LocalDateTime and column type"
+                                + " INTEGER(signed)"))
         .verify();
   }
 

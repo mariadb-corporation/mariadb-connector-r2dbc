@@ -127,6 +127,10 @@ public class BlobCodec implements Codec<Blob> {
     return false;
   }
 
+  public DataType getBinaryEncodeType() {
+    return DataType.BLOB;
+  }
+
   private class MariaDbBlob implements Blob {
     private ByteBuf data;
 
@@ -147,9 +151,5 @@ public class BlobCodec implements Codec<Blob> {
       }
       return Mono.empty();
     }
-  }
-
-  public DataType getBinaryEncodeType() {
-    return DataType.BLOB;
   }
 }

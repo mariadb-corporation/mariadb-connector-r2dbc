@@ -48,10 +48,6 @@ public enum DataType {
     this.mariadbType = (short) mariadbType;
   }
 
-  public short get() {
-    return mariadbType;
-  }
-
   /**
    * Convert server Type to server type.
    *
@@ -69,5 +65,9 @@ public enum DataType {
     }
 
     return dataType;
+  }
+
+  public short get() {
+    return mariadbType;
   }
 }

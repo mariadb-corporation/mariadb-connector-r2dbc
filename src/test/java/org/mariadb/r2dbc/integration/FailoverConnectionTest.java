@@ -215,7 +215,8 @@ public class FailoverConnectionTest extends BaseConnectionTest {
     AtomicReference<Throwable> resultingError = new AtomicReference<>();
     connection
         .createStatement(
-            "SELECT * from sequence_0_to_999 as tab1, sequence_0_to_999 tab2 order by tab2.t1 ASC, tab1.t1 ASC")
+            "SELECT * from sequence_0_to_999 as tab1, sequence_0_to_999 tab2 order by tab2.t1 ASC,"
+                + " tab1.t1 ASC")
         .execute()
         .flatMap(
             r ->

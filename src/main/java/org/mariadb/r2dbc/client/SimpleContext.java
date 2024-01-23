@@ -12,9 +12,9 @@ public class SimpleContext implements Context {
   private final long threadId;
   private final long serverCapabilities;
   private final long clientCapabilities;
-  private short serverStatus;
   private final ServerVersion version;
   private final ByteBufAllocator byteBufAllocator;
+  private short serverStatus;
   private IsolationLevel isolationLevel;
   private String database;
 

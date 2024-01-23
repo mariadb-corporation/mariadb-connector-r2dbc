@@ -38,7 +38,8 @@ public class ServerPrepareResultTest {
   @Test
   public void testRewritableWithConstantParameter() throws Exception {
     checkParsing(
-        "INSERT INTO TABLE_INSERT(col1,col2,col3,col4, col5) VALUES (9, ?, 5, ?, 8) ON DUPLICATE KEY UPDATE col2=col2+10",
+        "INSERT INTO TABLE_INSERT(col1,col2,col3,col4, col5) VALUES (9, ?, 5, ?, 8) ON DUPLICATE"
+            + " KEY UPDATE col2=col2+10",
         2,
         2);
   }
@@ -76,7 +77,8 @@ public class ServerPrepareResultTest {
   @Test
   public void testRewritableWithConstantParameterAndParamAfterValue() throws Exception {
     checkParsing(
-        "INSERT INTO TABLE(col1,col2,col3,col4, col5) VALUES (9, ?, 5, ?, 8) ON DUPLICATE KEY UPDATE col2=?",
+        "INSERT INTO TABLE(col1,col2,col3,col4, col5) VALUES (9, ?, 5, ?, 8) ON DUPLICATE KEY"
+            + " UPDATE col2=?",
         3,
         3);
   }

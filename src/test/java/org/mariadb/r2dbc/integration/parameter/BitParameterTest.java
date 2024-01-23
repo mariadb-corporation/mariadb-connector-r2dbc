@@ -84,7 +84,8 @@ public class BitParameterTest extends BaseConnectionTest {
     Assertions.assertTrue(
         stmt.toString()
             .contains(
-                "bindings=[[BindValue{codec=BooleanCodec}, BindValue{codec=BooleanCodec}, BindValue{codec=BooleanCodec}]]"),
+                "bindings=[[BindValue{codec=BooleanCodec}, BindValue{codec=BooleanCodec},"
+                    + " BindValue{codec=BooleanCodec}]]"),
         stmt.toString());
     stmt.execute().blockLast();
     validate(

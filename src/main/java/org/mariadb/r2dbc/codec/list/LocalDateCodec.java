@@ -8,7 +8,6 @@ import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoField;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
@@ -206,9 +205,9 @@ public class LocalDateCodec implements Codec<LocalDate> {
       ByteBufAllocator allocator, ByteBuf out, Object value, Context context) {
     LocalDate val = (LocalDate) value;
     out.writeByte(7); // length
-    out.writeShortLE((short) val.get(ChronoField.YEAR));
-    out.writeByte(val.get(ChronoField.MONTH_OF_YEAR));
-    out.writeByte(val.get(ChronoField.DAY_OF_MONTH));
+    out.writeShortLE((short) val.getYear());
+    out.writeByte(val.getMonthValue());
+    out.writeByte(val.getDayOfMonth());
     out.writeBytes(new byte[] {0, 0, 0});
   }
 

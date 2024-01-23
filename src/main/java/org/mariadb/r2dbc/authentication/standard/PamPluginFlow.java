@@ -13,12 +13,11 @@ import org.mariadb.r2dbc.message.server.Sequencer;
 public final class PamPluginFlow implements AuthenticationPlugin {
 
   public static final String TYPE = "dialog";
+  private int counter = -1;
 
   public PamPluginFlow create() {
     return new PamPluginFlow();
   }
-
-  private int counter = -1;
 
   public String type() {
     return TYPE;
@@ -36,7 +35,8 @@ public final class PamPluginFlow implements AuthenticationPlugin {
       } else {
         if (configuration.getPamOtherPwd() == null) {
           throw new IllegalArgumentException(
-              "PAM authentication is set with multiple password, but pamOtherPwd option wasn't set");
+              "PAM authentication is set with multiple password, but pamOtherPwd option wasn't"
+                  + " set");
         }
         if (configuration.getPamOtherPwd().length < counter) {
           throw new IllegalArgumentException(

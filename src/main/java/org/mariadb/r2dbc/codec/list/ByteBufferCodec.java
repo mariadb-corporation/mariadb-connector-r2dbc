@@ -29,6 +29,30 @@ public class ByteBufferCodec implements Codec<ByteBuffer> {
           DataType.VARSTRING,
           DataType.TEXT);
 
+  private static ByteBuffer decode(
+      ByteBuf buf, int length, ColumnDefinitionPacket column, ExceptionFactory factory) {
+    switch (column.getDataType()) {
+      case STRING:
+      case TEXT:
+      case VARSTRING:
+        if (!column.isBinary()) {
+          buf.skipBytes(length);
+          throw factory.createParsingException(
+              String.format(
+                  "Data type %s (not binary) cannot be decoded as Blob", column.getDataType()));
+        }
+        ByteBuffer value = ByteBuffer.allocate(length);
+        buf.readBytes(value);
+        return value;
+
+      default:
+        // BIT, TINYBLOB, MEDIUMBLOB, LONGBLOB, BLOB, GEOMETRY
+        byte[] val = new byte[length];
+        buf.readBytes(val);
+        return ByteBuffer.wrap(val);
+    }
+  }
+
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getDataType())
         && type.isAssignableFrom(ByteBuffer.class);
@@ -52,30 +76,6 @@ public class ByteBufferCodec implements Codec<ByteBuffer> {
       Class<? extends ByteBuffer> type,
       ExceptionFactory factory) {
     return decode(buf, length, column, factory);
-  }
-
-  private static ByteBuffer decode(
-      ByteBuf buf, int length, ColumnDefinitionPacket column, ExceptionFactory factory) {
-    switch (column.getDataType()) {
-      case STRING:
-      case TEXT:
-      case VARSTRING:
-        if (!column.isBinary()) {
-          buf.skipBytes(length);
-          throw factory.createParsingException(
-              String.format(
-                  "Data type %s (not binary) cannot be decoded as Blob", column.getDataType()));
-        }
-        ByteBuffer value = ByteBuffer.allocate(length);
-        buf.readBytes(value);
-        return value;
-
-      default:
-        // BIT, TINYBLOB, MEDIUMBLOB, LONGBLOB, BLOB, GEOMETRY
-        byte[] val = new byte[length];
-        buf.readBytes(val);
-        return ByteBuffer.wrap(val);
-    }
   }
 
   public boolean canEncode(Class<?> value) {

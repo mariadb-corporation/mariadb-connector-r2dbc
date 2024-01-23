@@ -24,6 +24,23 @@ import reactor.netty.resources.LoopResources;
 import reactor.test.StepVerifier;
 
 public class ConnectionTest extends BaseConnectionTest {
+  private static final String sql;
+
+  static {
+    StringBuilder sb = new StringBuilder("do ?");
+    for (int i = 1; i < 1000; i++) {
+      sb.append(",?");
+    }
+    sql = sb.toString();
+  }
+
+  IsolationLevel[] levels =
+      new IsolationLevel[] {
+        IsolationLevel.READ_UNCOMMITTED,
+        IsolationLevel.READ_COMMITTED,
+        IsolationLevel.SERIALIZABLE,
+        IsolationLevel.REPEATABLE_READ
+      };
   private Level initialReactorLvl;
   private Level initialLvl;
 
@@ -120,7 +137,8 @@ public class ConnectionTest extends BaseConnectionTest {
     String defaultUtf8Collation =
         sharedConn
             .createStatement(
-                "SELECT COLLATION_NAME FROM information_schema.COLLATIONS c WHERE c.CHARACTER_SET_NAME = 'utf8mb4' AND IS_DEFAULT = 'Yes'")
+                "SELECT COLLATION_NAME FROM information_schema.COLLATIONS c WHERE"
+                    + " c.CHARACTER_SET_NAME = 'utf8mb4' AND IS_DEFAULT = 'Yes'")
             .execute()
             .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
             .blockLast();
@@ -151,6 +169,24 @@ public class ConnectionTest extends BaseConnectionTest {
       connection.close().block();
     }
   }
+
+  //    @Test
+  //    void perf() {
+  //      for (int ii = 0; ii < 1000000; ii++) {
+  //        io.r2dbc.spi.Statement statement = sharedConn.createStatement(sql);
+  //        for (int i = 0; i < 1000; i++) statement.bind(i, i);
+  //
+  //        Flux.from(statement.execute()).flatMap(it -> it.getRowsUpdated()).blockLast();
+  //      }
+  //    }
+
+  //  @Test
+  //  void perf() {
+  //    for (int ii = 0; ii < 1000000; ii++) {
+  //      io.r2dbc.spi.Statement statement = sharedConn.createStatement("DO 1");
+  //      Flux.from(statement.execute()).flatMap(it -> it.getRowsUpdated()).blockLast();
+  //    }
+  //  }
 
   @Test
   @Timeout(5)
@@ -189,34 +225,6 @@ public class ConnectionTest extends BaseConnectionTest {
         .verifyComplete();
     Thread.sleep(100);
   }
-
-  private static final String sql;
-
-  static {
-    StringBuilder sb = new StringBuilder("do ?");
-    for (int i = 1; i < 1000; i++) {
-      sb.append(",?");
-    }
-    sql = sb.toString();
-  }
-
-  //    @Test
-  //    void perf() {
-  //      for (int ii = 0; ii < 1000000; ii++) {
-  //        io.r2dbc.spi.Statement statement = sharedConn.createStatement(sql);
-  //        for (int i = 0; i < 1000; i++) statement.bind(i, i);
-  //
-  //        Flux.from(statement.execute()).flatMap(it -> it.getRowsUpdated()).blockLast();
-  //      }
-  //    }
-
-  //  @Test
-  //  void perf() {
-  //    for (int ii = 0; ii < 1000000; ii++) {
-  //      io.r2dbc.spi.Statement statement = sharedConn.createStatement("DO 1");
-  //      Flux.from(statement.execute()).flatMap(it -> it.getRowsUpdated()).blockLast();
-  //    }
-  //  }
 
   @Test
   void remoteValidation() {
@@ -510,7 +518,8 @@ public class ConnectionTest extends BaseConnectionTest {
                     && throwable
                         .getMessage()
                         .equals(
-                            "Transaction characteristics can't be changed while a transaction is in progress"))
+                            "Transaction characteristics can't be changed while a transaction is in"
+                                + " progress"))
         .verify();
     sharedConn.rollbackTransaction().block();
   }
@@ -675,67 +684,6 @@ public class ConnectionTest extends BaseConnectionTest {
         .blockLast();
 
     connection.close().block();
-  }
-
-  protected class ExecuteQueries implements Runnable {
-    private final AtomicInteger i;
-    private MariadbConnection connection = null;
-
-    public ExecuteQueries(AtomicInteger i) {
-      this.i = i;
-    }
-
-    public void run() {
-      try {
-        connection = factory.create().block();
-        int rnd = (int) (Math.random() * 1000);
-        Statement statement = connection.createStatement("select " + rnd);
-        BigInteger val =
-            Flux.from(statement.execute())
-                .flatMap(it -> it.map((row, rowMetadata) -> row.get(0, BigInteger.class)))
-                .blockLast();
-        if (rnd != val.intValue())
-          throw new IllegalStateException("ERROR rnd:" + rnd + " different to val:" + val);
-        i.incrementAndGet();
-      } catch (Throwable e) {
-        e.printStackTrace();
-      } finally {
-        closeConnection();
-      }
-    }
-
-    public synchronized void closeConnection() {
-      if (connection != null) {
-        connection.close().block();
-        connection = null;
-      }
-    }
-  }
-
-  protected class ExecuteQueriesOnSameConnection implements Runnable {
-    private final AtomicInteger i;
-    private final MariadbConnection connection;
-
-    public ExecuteQueriesOnSameConnection(AtomicInteger i, MariadbConnection connection) {
-      this.i = i;
-      this.connection = connection;
-    }
-
-    public void run() {
-      try {
-        int rnd = (int) (Math.random() * 1000);
-        Statement statement = connection.createStatement("select " + rnd);
-        Integer val =
-            Flux.from(statement.execute())
-                .flatMap(it -> it.map((row, rowMetadata) -> row.get(0, Integer.class)))
-                .blockLast();
-        if (rnd != val.intValue())
-          throw new IllegalStateException("ERROR rnd:" + rnd + " different to val:" + val);
-        i.incrementAndGet();
-      } catch (Throwable e) {
-        e.printStackTrace();
-      }
-    }
   }
 
   @Test
@@ -933,14 +881,6 @@ public class ConnectionTest extends BaseConnectionTest {
       connection.close().block();
     }
   }
-
-  IsolationLevel[] levels =
-      new IsolationLevel[] {
-        IsolationLevel.READ_UNCOMMITTED,
-        IsolationLevel.READ_COMMITTED,
-        IsolationLevel.SERIALIZABLE,
-        IsolationLevel.REPEATABLE_READ
-      };
 
   @Test
   public void isolationLevel() {
@@ -1148,7 +1088,8 @@ public class ConnectionTest extends BaseConnectionTest {
           e.getMessage().contains("Query execution was interrupted (max_statement_time exceeded)")
               || e.getMessage()
                   .contains(
-                      "Query execution was interrupted, maximum statement execution time exceeded"));
+                      "Query execution was interrupted, maximum statement execution time"
+                          + " exceeded"));
     } finally {
       connection.close().block();
     }
@@ -1190,5 +1131,66 @@ public class ConnectionTest extends BaseConnectionTest {
     assertTrue(hasMariaDbThreads);
 
     connection.close().block();
+  }
+
+  protected class ExecuteQueries implements Runnable {
+    private final AtomicInteger i;
+    private MariadbConnection connection = null;
+
+    public ExecuteQueries(AtomicInteger i) {
+      this.i = i;
+    }
+
+    public void run() {
+      try {
+        connection = factory.create().block();
+        int rnd = (int) (Math.random() * 1000);
+        Statement statement = connection.createStatement("select " + rnd);
+        BigInteger val =
+            Flux.from(statement.execute())
+                .flatMap(it -> it.map((row, rowMetadata) -> row.get(0, BigInteger.class)))
+                .blockLast();
+        if (rnd != val.intValue())
+          throw new IllegalStateException("ERROR rnd:" + rnd + " different to val:" + val);
+        i.incrementAndGet();
+      } catch (Throwable e) {
+        e.printStackTrace();
+      } finally {
+        closeConnection();
+      }
+    }
+
+    public synchronized void closeConnection() {
+      if (connection != null) {
+        connection.close().block();
+        connection = null;
+      }
+    }
+  }
+
+  protected class ExecuteQueriesOnSameConnection implements Runnable {
+    private final AtomicInteger i;
+    private final MariadbConnection connection;
+
+    public ExecuteQueriesOnSameConnection(AtomicInteger i, MariadbConnection connection) {
+      this.i = i;
+      this.connection = connection;
+    }
+
+    public void run() {
+      try {
+        int rnd = (int) (Math.random() * 1000);
+        Statement statement = connection.createStatement("select " + rnd);
+        Integer val =
+            Flux.from(statement.execute())
+                .flatMap(it -> it.map((row, rowMetadata) -> row.get(0, Integer.class)))
+                .blockLast();
+        if (rnd != val.intValue())
+          throw new IllegalStateException("ERROR rnd:" + rnd + " different to val:" + val);
+        i.incrementAndGet();
+      } catch (Throwable e) {
+        e.printStackTrace();
+      }
+    }
   }
 }

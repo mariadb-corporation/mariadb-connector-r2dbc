@@ -1,6 +1,5 @@
-// SPDX-License-Identifier: LGPL-2.1-or-later
-// Copyright (c) 2012-2014 Monty Program Ab
-// Copyright (c) 2015-2021 MariaDB Corporation Ab
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2020-2022 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.util;
 
@@ -63,7 +62,8 @@ public final class LoggerHelper {
     sb.append(
         "       +--------------------------------------------------+\n"
             + "       |  0  1  2  3  4  5  6  7   8  9  a  b  c  d  e  f |\n"
-            + "+------+--------------------------------------------------+------------------+\n|000000| ");
+            + "+------+--------------------------------------------------+------------------+\n"
+            + "|000000| ");
 
     while (pos < logLength + offset) {
       int byteValue = bytes[pos] & 0xFF;
