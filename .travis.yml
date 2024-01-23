@@ -3,6 +3,15 @@ language: java
 jdk: openjdk17
 version: ~> 1.0
 
+before_install:
+  - |-
+    case $TRAVIS_OS_NAME in
+      windows)
+        choco install openjdk11 maven
+        export PATH=$(cmd.exe //c "refreshenv > nul & C:\Progra~1\Git\bin\bash -c 'echo \$PATH' ")
+        ;;
+    esac
+
 env:
   global: packet=40 local=0 clear_text_plugin=0 RUN_LONG_TEST=true PROFILE=default DB=testr2
 
