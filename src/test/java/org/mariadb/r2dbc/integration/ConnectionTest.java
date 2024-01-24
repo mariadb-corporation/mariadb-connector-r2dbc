@@ -143,6 +143,18 @@ public class ConnectionTest extends BaseConnectionTest {
             .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
             .blockLast();
 
+    try {
+      defaultUtf8Collation = sharedConn
+              .createStatement(
+                      "SELECT COLLATION_NAME FROM information_schema.COLLATION_CHARACTER_SET_APPLICABILITY c WHERE" +
+                              " c.CHARACTER_SET_NAME = 'utf8mb4' AND IS_DEFAULT = 'Yes'")
+              .execute()
+              .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+              .blockLast();
+    } catch (Exception e) {
+      // eat - for mariadb 11.3+ only
+    }
+
     MariadbConnection connection = factory.create().block();
     try {
       String newDefaultCollation =
