@@ -52,35 +52,38 @@ public class OkPacket implements ServerMessage, Result.UpdateCount {
       BufferUtils.skipLengthEncode(buf); // skip info
       while (buf.isReadable()) {
         ByteBuf stateInfo = BufferUtils.readLengthEncodedBuffer(buf);
-        if (stateInfo.isReadable()) {
+        while (stateInfo.isReadable()) {
           switch (stateInfo.readByte()) {
             case StateChange.SESSION_TRACK_SYSTEM_VARIABLES:
-              ByteBuf sessionVariableBuf = BufferUtils.readLengthEncodedBuffer(stateInfo);
-              String variable = BufferUtils.readLengthEncodedString(sessionVariableBuf);
-              String value = BufferUtils.readLengthEncodedString(sessionVariableBuf);
-              logger.debug("System variable change :  {} = {}", variable, value);
+              ByteBuf sessionVariableBuf;
+              do {
+                sessionVariableBuf = BufferUtils.readLengthEncodedBuffer(stateInfo);
+                String variable = BufferUtils.readLengthEncodedString(sessionVariableBuf);
+                String value = BufferUtils.readLengthEncodedString(sessionVariableBuf);
+                logger.debug("System variable change :  {} = {}", variable, value);
 
-              switch (variable) {
-                case "transaction_isolation":
-                case "tx_isolation":
-                  switch (value) {
-                    case "REPEATABLE-READ":
-                      context.setIsolationLevel(IsolationLevel.REPEATABLE_READ);
-                      break;
+                switch (variable) {
+                  case "transaction_isolation":
+                  case "tx_isolation":
+                    switch (value) {
+                      case "REPEATABLE-READ":
+                        context.setIsolationLevel(IsolationLevel.REPEATABLE_READ);
+                        break;
 
-                    case "READ-UNCOMMITTED":
-                      context.setIsolationLevel(IsolationLevel.READ_UNCOMMITTED);
-                      break;
+                      case "READ-UNCOMMITTED":
+                        context.setIsolationLevel(IsolationLevel.READ_UNCOMMITTED);
+                        break;
 
-                    case "SERIALIZABLE":
-                      context.setIsolationLevel(IsolationLevel.SERIALIZABLE);
-                      break;
+                      case "SERIALIZABLE":
+                        context.setIsolationLevel(IsolationLevel.SERIALIZABLE);
+                        break;
 
-                    default:
-                      context.setIsolationLevel(IsolationLevel.READ_COMMITTED);
-                      break;
-                  }
-              }
+                      default:
+                        context.setIsolationLevel(IsolationLevel.READ_COMMITTED);
+                        break;
+                    }
+                }
+              } while (sessionVariableBuf.readableBytes() > 0);
               break;
 
             case StateChange.SESSION_TRACK_SCHEMA:
@@ -88,6 +91,10 @@ public class OkPacket implements ServerMessage, Result.UpdateCount {
               String schema = BufferUtils.readLengthEncodedString(sessionSchemaBuf);
               context.setDatabase(schema);
               logger.debug("Schema change : now is '{}'", schema);
+              break;
+
+            default:
+              stateInfo.skipBytes((int)BufferUtils.readLengthEncodedInt(stateInfo));
               break;
           }
         }
