@@ -34,6 +34,7 @@ public final class MariadbConnectionConfiguration {
   private final boolean transactionReplay;
   private final CharSequence password;
   private final String collation;
+  private final String timezone;
   private final CharSequence[] pamOtherPwd;
   private final int port;
   private final int prepareCacheSize;
@@ -67,6 +68,7 @@ public final class MariadbConnectionConfiguration {
       @Nullable Map<String, Object> sessionVariables,
       @Nullable CharSequence password,
       @Nullable String collation,
+      @Nullable String timezone,
       int port,
       @Nullable List<HostAddress> hostAddresses,
       @Nullable String socket,
@@ -109,6 +111,7 @@ public final class MariadbConnectionConfiguration {
     this.sessionVariables = sessionVariables;
     this.password = password != null && !password.toString().isEmpty() ? password : null;
     this.collation = collation;
+    this.timezone = timezone == null ? "disable" : timezone;
     this.port = port;
     this.socket = socket;
     this.username = username;
@@ -131,7 +134,7 @@ public final class MariadbConnectionConfiguration {
     this.rsaPublicKey = rsaPublicKey;
     this.cachingRsaPublicKey = cachingRsaPublicKey;
     this.allowPublicKeyRetrieval = allowPublicKeyRetrieval;
-    this.prepareCacheSize = (prepareCacheSize == null) ? 250 : prepareCacheSize.intValue();
+    this.prepareCacheSize = (prepareCacheSize == null) ? 250 : prepareCacheSize;
     this.pamOtherPwd = pamOtherPwd;
     this.autocommit = autocommit;
     this.tinyInt1isBit = tinyInt1isBit;
@@ -142,7 +145,7 @@ public final class MariadbConnectionConfiguration {
 
   static boolean boolValue(Object value) {
     if (value instanceof Boolean) {
-      return ((Boolean) value).booleanValue();
+      return (Boolean) value;
     }
     return Boolean.parseBoolean(value.toString()) || "1".equals(value);
   }
@@ -322,6 +325,8 @@ public final class MariadbConnectionConfiguration {
     builder.password((CharSequence) connectionFactoryOptions.getValue(PASSWORD));
     builder.collation(
         (String) connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.COLLATION));
+    builder.timezone(
+        (String) connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.TIMEZONE));
 
     builder.username((String) connectionFactoryOptions.getRequiredValue(USER));
     if (connectionFactoryOptions.hasOption(PORT)) {
@@ -379,8 +384,7 @@ public final class MariadbConnectionConfiguration {
     Map<String, String> map = new HashMap<>();
     if (s != null && !s.isEmpty()) {
       String[] pairs = s.split(",");
-      for (int i = 0; i < pairs.length; i++) {
-        String pair = pairs[i];
+      for (String pair : pairs) {
         String[] keyValue = pair.split("=");
         map.put(keyValue[0], (keyValue.length > 1) ? keyValue[1] : "");
       }
@@ -441,6 +445,10 @@ public final class MariadbConnectionConfiguration {
   @Nullable
   public String getCollation() {
     return this.collation;
+  }
+
+  public String getTimezone() {
+    return this.timezone;
   }
 
   public int getPort() {
@@ -561,6 +569,9 @@ public final class MariadbConnectionConfiguration {
         + ", collation='"
         + collation
         + '\''
+        + ", timezone='"
+        + timezone
+        + '\''
         + ", allowMultiQueries="
         + allowMultiQueries
         + ", allowPipelining="
@@ -618,6 +629,7 @@ public final class MariadbConnectionConfiguration {
     @Nullable private Map<String, String> connectionAttributes;
     @Nullable private CharSequence password;
     @Nullable private String collation;
+    @Nullable private String timezone;
     private int port = DEFAULT_PORT;
     @Nullable private String socket;
     private boolean allowMultiQueries = false;
@@ -672,6 +684,7 @@ public final class MariadbConnectionConfiguration {
           this.sessionVariables,
           this.password,
           this.collation,
+          this.timezone,
           this.port,
           this.hostAddresses,
           this.socket,
@@ -803,6 +816,23 @@ public final class MariadbConnectionConfiguration {
      */
     public Builder collation(@Nullable String collation) {
       this.collation = collation;
+      return this;
+    }
+
+    /**
+     * Configure the timezone. The option `timezone` can have 3 types of value:
+     *
+     * <ul>
+     *   <li>'disabled' (default) : connector doesn't change time_zone
+     *   <li>'auto': client will use client default timezone
+     *   <li>'a timezone': connector will set connection variable to value
+     * </ul>
+     *
+     * @param timezone 'disabled'/'auto'/'a timezone' value
+     * @return this {@link Builder}
+     */
+    public Builder timezone(@Nullable String timezone) {
+      this.timezone = timezone;
       return this;
     }
 
@@ -1119,6 +1149,8 @@ public final class MariadbConnectionConfiguration {
           + useServerPrepStmts
           + ", collation="
           + collation
+          + ", timezone="
+          + timezone
           + ", prepareCacheSize="
           + isolationLevel
           + ", isolationLevel="

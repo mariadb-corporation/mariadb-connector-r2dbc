@@ -60,8 +60,6 @@ public class SimpleClient implements Client {
       Sinks.many().unicast().onBackpressureBuffer();
   private final Queue<Exchange> exchangeQueue =
       Queues.<Exchange>get(Queues.SMALL_BUFFER_SIZE).get();
-  private final Queue<ServerMessage> receiverQueue =
-      Queues.<ServerMessage>get(Queues.SMALL_BUFFER_SIZE).get();
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final MariadbFrameDecoder decoder;
   private final MariadbPacketEncoder encoder;
@@ -86,6 +84,7 @@ public class SimpleClient implements Client {
     this.decoder = new MariadbFrameDecoder(exchangeQueue, this, configuration);
     this.encoder = new MariadbPacketEncoder();
     this.byteBufAllocator = connection.outbound().alloc();
+    Queue<ServerMessage> receiverQueue = Queues.<ServerMessage>get(Queues.SMALL_BUFFER_SIZE).get();
     this.messageSubscriber = new ServerMessageSubscriber(this.lock, exchangeQueue, receiverQueue);
     connection.addHandlerFirst(this.decoder);
 
@@ -159,7 +158,7 @@ public class SimpleClient implements Client {
     }
 
     if (configuration.isTcpKeepAlive()) {
-      tcpClient = tcpClient.option(ChannelOption.SO_KEEPALIVE, configuration.isTcpKeepAlive());
+      tcpClient = tcpClient.option(ChannelOption.SO_KEEPALIVE, true);
     }
 
     if (configuration.isTcpAbortiveClose()) {
@@ -235,10 +234,12 @@ public class SimpleClient implements Client {
               this.connection.dispose();
               return this.connection.onDispose();
             }
-            return connection.outbound().send(encoder.encodeFlux(QuitPacket.INSTANCE))
-                    .then()
-                    .doOnSuccess(v -> this.connection.dispose())
-                    .then(this.connection.onDispose());
+            return connection
+                .outbound()
+                .send(encoder.encodeFlux(QuitPacket.INSTANCE))
+                .then()
+                .doOnSuccess(v -> this.connection.dispose())
+                .then(this.connection.onDispose());
           }
 
           return Mono.empty();
@@ -713,7 +714,6 @@ public class SimpleClient implements Client {
     }
 
     public void onError(Throwable t) {
-      t.printStackTrace();
       if (this.close) {
         Operators.onErrorDropped(t, currentContext());
         return;

@@ -5,7 +5,6 @@ package org.mariadb.r2dbc.integration;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import ch.qos.logback.classic.Level;
 import io.r2dbc.spi.*;
 import java.math.BigInteger;
 import java.time.Duration;
@@ -24,16 +23,6 @@ import reactor.netty.resources.LoopResources;
 import reactor.test.StepVerifier;
 
 public class ConnectionTest extends BaseConnectionTest {
-  private static final String sql;
-
-  static {
-    StringBuilder sb = new StringBuilder("do ?");
-    for (int i = 1; i < 1000; i++) {
-      sb.append(",?");
-    }
-    sql = sb.toString();
-  }
-
   IsolationLevel[] levels =
       new IsolationLevel[] {
         IsolationLevel.READ_UNCOMMITTED,
@@ -41,8 +30,6 @@ public class ConnectionTest extends BaseConnectionTest {
         IsolationLevel.SERIALIZABLE,
         IsolationLevel.REPEATABLE_READ
       };
-  private Level initialReactorLvl;
-  private Level initialLvl;
 
   @BeforeAll
   public static void before2() {
@@ -144,10 +131,12 @@ public class ConnectionTest extends BaseConnectionTest {
             .blockLast();
 
     try {
-      defaultUtf8Collation = sharedConn
+      defaultUtf8Collation =
+          sharedConn
               .createStatement(
-                      "SELECT COLLATION_NAME FROM information_schema.COLLATION_CHARACTER_SET_APPLICABILITY c WHERE" +
-                              " c.CHARACTER_SET_NAME = 'utf8mb4' AND IS_DEFAULT = 'Yes'")
+                  "SELECT COLLATION_NAME FROM"
+                      + " information_schema.COLLATION_CHARACTER_SET_APPLICABILITY c WHERE"
+                      + " c.CHARACTER_SET_NAME = 'utf8mb4' AND IS_DEFAULT = 'Yes'")
               .execute()
               .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
               .blockLast();
@@ -250,6 +239,7 @@ public class ConnectionTest extends BaseConnectionTest {
   @Test
   void remoteValidationClosedConnection() {
     MariadbConnection connection = factory.create().block();
+    assert connection != null;
     connection.close().block();
     connection
         .validate(ValidationDepth.REMOTE)
@@ -301,7 +291,7 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
-  public void localSocket() throws Exception {
+  public void localSocket() {
     Assumptions.assumeTrue(
         System.getenv("local") != null
             && "1".equals(System.getenv("local"))
@@ -334,6 +324,7 @@ public class ConnectionTest extends BaseConnectionTest {
 
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     consume(connection);
+    assert connection != null;
     connection.close().block();
 
     sharedConn.createStatement("DROP USER testSocket@'localhost'").execute().blockLast();
@@ -345,6 +336,7 @@ public class ConnectionTest extends BaseConnectionTest {
         TestConfiguration.defaultBuilder.clone().tcpKeepAlive(Boolean.TRUE).build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     consume(connection);
+    assert connection != null;
     connection.close().block();
   }
 
@@ -354,6 +346,7 @@ public class ConnectionTest extends BaseConnectionTest {
         TestConfiguration.defaultBuilder.clone().tcpAbortiveClose(Boolean.TRUE).build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     consume(connection);
+    assert connection != null;
     connection.close().block();
   }
 
@@ -446,15 +439,61 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
-  void multipleClose() throws Exception {
+  void multipleClose() {
     MariadbConnection connection = factory.create().block();
     connection.close().subscribe();
     connection.close().block();
   }
 
   @Test
+  void withTimezoneMinus8() throws Exception {
+    MariadbConnection connection =
+        new MariadbConnectionFactory(
+                TestConfiguration.defaultBuilder.clone().timezone("GMT-8").build())
+            .create()
+            .block();
+    connection
+        .createStatement("SELECT @@time_zone")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
+        .as(StepVerifier::create)
+        .expectNext("-08:00")
+        .verifyComplete();
+
+    connection.close().block();
+  }
+
+  @Test
+  void withTimezoneUtc() throws Exception {
+    MariadbConnection connection =
+        new MariadbConnectionFactory(
+                TestConfiguration.defaultBuilder.clone().timezone("UTC").build())
+            .create()
+            .block();
+    connection
+        .createStatement("SELECT @@time_zone, @@system_time_zone")
+        .execute()
+        .flatMap(
+            r ->
+                r.map(
+                    (row, metadata) -> {
+                      String srvTz = row.get(0, String.class);
+                      if ("SYSTEM".equals(srvTz)) {
+                        return row.get(1, String.class);
+                      }
+                      return srvTz;
+                    }))
+        .as(StepVerifier::create)
+        .expectNextMatches(srvTz -> "+00:00".equals(srvTz) || "UTC".equals(srvTz))
+        .verifyComplete();
+
+    connection.close().block();
+  }
+
+  @Test
   void multipleBegin() throws Exception {
     MariadbConnection connection = factory.create().block();
+    assert connection != null;
     multipleBegin(connection);
     connection.close().block();
 
@@ -463,6 +502,7 @@ public class ConnectionTest extends BaseConnectionTest {
                 TestConfiguration.defaultBuilder.clone().allowPipelining(false).build())
             .create()
             .block();
+    assert connection != null;
     multipleBegin(connection);
     connection.close().block();
   }
@@ -486,6 +526,7 @@ public class ConnectionTest extends BaseConnectionTest {
 
     for (MariadbTransactionDefinition transactionDefinition : transactionDefinitions) {
       MariadbConnection connection = factory.create().block();
+      assert connection != null;
       multipleBeginWithIsolation(connection, transactionDefinition);
       connection.close().block();
 
@@ -494,6 +535,7 @@ public class ConnectionTest extends BaseConnectionTest {
                   TestConfiguration.defaultBuilder.clone().allowPipelining(false).build())
               .create()
               .block();
+      assert connection != null;
       multipleBeginWithIsolation(connection, transactionDefinition);
       connection.close().block();
     }
@@ -539,6 +581,7 @@ public class ConnectionTest extends BaseConnectionTest {
   @Test
   void multipleAutocommit() throws Exception {
     MariadbConnection connection = factory.create().block();
+    assert connection != null;
     multipleAutocommit(connection);
     connection.close().block();
 
@@ -547,6 +590,7 @@ public class ConnectionTest extends BaseConnectionTest {
                 TestConfiguration.defaultBuilder.clone().allowPipelining(false).build())
             .create()
             .block();
+    assert connection != null;
     multipleAutocommit(connection);
     connection.close().block();
   }
@@ -639,6 +683,7 @@ public class ConnectionTest extends BaseConnectionTest {
       scheduler.awaitTermination(100, TimeUnit.SECONDS);
       Assertions.assertEquals(10, completed.get());
     } finally {
+      assert connection != null;
       connection.close().block();
     }
   }
@@ -653,6 +698,7 @@ public class ConnectionTest extends BaseConnectionTest {
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder.clone().connectionAttributes(connectionAttributes).build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    assert connection != null;
     connection.close().block();
   }
 
@@ -679,6 +725,7 @@ public class ConnectionTest extends BaseConnectionTest {
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder.clone().sessionVariables(sessionVariables).build();
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
+    assert connection != null;
     connection
         .createStatement("SELECT @@wait_timeout, @@max_statement_time")
         .execute()

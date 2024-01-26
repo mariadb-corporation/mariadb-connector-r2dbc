@@ -8,14 +8,20 @@ import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.*;
 import java.net.SocketAddress;
+import java.time.DateTimeException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.locks.ReentrantLock;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.client.FailoverClient;
 import org.mariadb.r2dbc.client.MariadbResult;
 import org.mariadb.r2dbc.client.SimpleClient;
 import org.mariadb.r2dbc.message.Protocol;
+import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.QueryPacket;
 import org.mariadb.r2dbc.message.flow.AuthenticationFlow;
 import org.mariadb.r2dbc.util.Assert;
@@ -47,6 +53,75 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
         .cast(Client.class)
         .flatMap(client -> setSessionVariables(configuration, client).thenReturn(client))
         .onErrorMap(e -> cannotConnect(e, endpoint));
+  }
+
+  private static Mono<String> setTimezoneIfNeeded(
+      final MariadbConnectionConfiguration configuration, Client client) {
+    if (!"disable".equalsIgnoreCase(configuration.getTimezone())) {
+      return client
+          .sendCommand(new QueryPacket("SELECT @@time_zone, @@system_time_zone"), true)
+          .doOnDiscard(ReferenceCounted.class, ReferenceCountUtil::release)
+          .windowUntil(ServerMessage::resultSetEnd)
+          .map(
+              dataRow ->
+                  new MariadbResult(
+                      Protocol.TEXT,
+                      null,
+                      dataRow,
+                      ExceptionFactory.INSTANCE,
+                      null,
+                      false,
+                      configuration))
+          .flatMap(
+              r ->
+                  r.map(
+                      (row, metadata) -> {
+                        String serverTz = row.get(0, String.class);
+                        if ("SYSTEM".equals(serverTz)) {
+                          serverTz = row.get(1, String.class);
+                        }
+                        boolean mustSetTimezone = true;
+                        TimeZone connectionTz =
+                            "auto".equalsIgnoreCase(configuration.getTimezone())
+                                ? TimeZone.getDefault()
+                                : TimeZone.getTimeZone(
+                                    ZoneId.of(configuration.getTimezone()).normalized());
+                        ZoneId clientZoneId = connectionTz.toZoneId();
+
+                        // try to avoid timezone consideration if server use the same one
+                        try {
+                          assert serverTz != null;
+                          ZoneId serverZoneId = ZoneId.of(serverTz);
+                          if (serverZoneId.normalized().equals(clientZoneId)
+                              || ZoneId.of(serverTz, ZoneId.SHORT_IDS).equals(clientZoneId)) {
+                            mustSetTimezone = false;
+                          }
+                        } catch (DateTimeException e) {
+                          // eat
+                        }
+
+                        if (mustSetTimezone) {
+                          if (clientZoneId.getRules().isFixedOffset()) {
+                            ZoneOffset zoneOffset =
+                                clientZoneId.getRules().getOffset(Instant.now());
+                            if (zoneOffset.getTotalSeconds() == 0) {
+                              // specific for UTC timezone, server permitting only SYSTEM/UTC offset
+                              // or named time
+                              // zone
+                              // not 'UTC'/'Z'
+                              return ",time_zone='+00:00'";
+                            } else {
+                              return ",time_zone='" + zoneOffset.getId() + "'";
+                            }
+                          } else {
+                            return ",time_zone='" + clientZoneId.normalized() + "'";
+                          }
+                        }
+                        return "";
+                      }))
+          .last();
+    }
+    return Mono.just("");
   }
 
   public static Mono<Void> setSessionVariables(
@@ -117,21 +192,25 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
     if (configuration.getCollation() != null && !configuration.getCollation().isEmpty())
       sql.append(" COLLATE ").append(configuration.getCollation());
 
-    return client
-        .sendCommand(new QueryPacket(sql.toString()), true)
-        .doOnDiscard(ReferenceCounted.class, ReferenceCountUtil::release)
-        .windowUntil(it -> it.resultSetEnd())
-        .map(
-            dataRow ->
-                new MariadbResult(
-                    Protocol.TEXT,
-                    null,
-                    dataRow,
-                    ExceptionFactory.INSTANCE,
-                    null,
-                    false,
-                    configuration))
-        .last()
+    return setTimezoneIfNeeded(configuration, client)
+        .map(sql::append)
+        .flatMap(
+            sqlcmd ->
+                client
+                    .sendCommand(new QueryPacket(sqlcmd.toString()), true)
+                    .doOnDiscard(ReferenceCounted.class, ReferenceCountUtil::release)
+                    .windowUntil(ServerMessage::resultSetEnd)
+                    .map(
+                        dataRow ->
+                            new MariadbResult(
+                                Protocol.TEXT,
+                                null,
+                                dataRow,
+                                ExceptionFactory.INSTANCE,
+                                null,
+                                false,
+                                configuration))
+                    .last())
         .then();
   }
 
