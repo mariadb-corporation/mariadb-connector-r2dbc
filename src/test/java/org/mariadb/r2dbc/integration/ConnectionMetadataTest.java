@@ -17,6 +17,7 @@ public class ConnectionMetadataTest extends BaseConnectionTest {
   @Test
   void connectionMeta() {
     ConnectionMetadata meta = sharedConn.getMetadata();
+    System.out.println(meta.getDatabaseVersion());
     assertEquals(meta.getDatabaseProductName(), isMariaDBServer() ? "MariaDB" : "MySQL");
     if (isMariaDBServer() && !isXpand()) {
       assertTrue(

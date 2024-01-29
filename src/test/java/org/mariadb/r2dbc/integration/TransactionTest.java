@@ -43,125 +43,155 @@ public class TransactionTest extends BaseConnectionTest {
   @Test
   void commit() {
     MariadbConnection conn = factory.create().block();
-    conn.beginTransaction()
-        .thenMany(conn.createStatement(insertCmd).execute())
-        .concatWith(Flux.from(conn.commitTransaction()).then(Mono.empty()))
-        .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
-        .blockLast();
-    checkInserted(conn, 1);
-    conn.close().block();
+    try {
+      conn.beginTransaction()
+          .thenMany(conn.createStatement(insertCmd).execute())
+          .concatWith(Flux.from(conn.commitTransaction()).then(Mono.empty()))
+          .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
+          .blockLast();
+      checkInserted(conn, 1);
+    } finally {
+      conn.close().block();
+    }
   }
 
   @Test
   void multipleBegin() {
     MariadbConnection conn = factory.create().block();
-    // must issue only one begin command
-    conn.beginTransaction().thenMany(conn.beginTransaction()).blockLast();
-    conn.beginTransaction().block();
-    conn.close().block();
+    try {
+      // must issue only one begin command
+      conn.beginTransaction().thenMany(conn.beginTransaction()).blockLast();
+      conn.beginTransaction().block();
+    } finally {
+      conn.close().block();
+    }
   }
 
   @Test
   void commitWithoutTransaction() {
     // must issue no commit command
     MariadbConnection conn = factory.create().block();
-    conn.commitTransaction().thenMany(conn.commitTransaction()).blockLast();
-    conn.commitTransaction().block();
-    conn.close().block();
+    try {
+      conn.commitTransaction().thenMany(conn.commitTransaction()).blockLast();
+      conn.commitTransaction().block();
+    } finally {
+      conn.close().block();
+    }
   }
 
   @Test
   void rollbackWithoutTransaction() {
     // must issue no commit command
     MariadbConnection conn = factory.create().block();
-    conn.rollbackTransaction().thenMany(conn.rollbackTransaction()).blockLast();
-    conn.rollbackTransaction().block();
-    conn.close().block();
+    try {
+      conn.rollbackTransaction().thenMany(conn.rollbackTransaction()).blockLast();
+      conn.rollbackTransaction().block();
+    } finally {
+      conn.close().block();
+    }
   }
 
   @Test
   void createSavepoint() {
     // must issue multiple savepoints
     MariadbConnection conn = factory.create().block();
-    conn.createSavepoint("t").thenMany(conn.createSavepoint("t2")).blockLast();
-    conn.createSavepoint("t3").block();
-    conn.close().block();
+    try {
+      conn.createSavepoint("t").thenMany(conn.createSavepoint("t2")).blockLast();
+      conn.createSavepoint("t3").block();
+    } finally {
+      conn.close().block();
+    }
   }
 
   @Test
   void rollback() {
     MariadbConnection conn = factory.create().block();
-    conn.beginTransaction()
-        .thenMany(conn.createStatement(insertCmd).execute())
-        .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
-        .blockLast();
-    conn.rollbackTransaction().block();
-    checkInserted(conn, 0);
-    conn.close().block();
+    try {
+      conn.beginTransaction()
+          .thenMany(conn.createStatement(insertCmd).execute())
+          .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
+          .blockLast();
+      conn.rollbackTransaction().block();
+      checkInserted(conn, 0);
+    } finally {
+      conn.close().block();
+    }
   }
 
   @Test
   void rollbackPipelining() {
     MariadbConnection conn = factory.create().block();
-    conn.beginTransaction()
-        .thenMany(conn.createStatement(insertCmd).execute())
-        .concatWith(Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
-        .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
-        .blockLast();
-    checkInserted(conn, 0);
-    conn.close().block();
+    try {
+      conn.beginTransaction()
+          .thenMany(conn.createStatement(insertCmd).execute())
+          .concatWith(Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
+          .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
+          .blockLast();
+      checkInserted(conn, 0);
+    } finally {
+      conn.close().block();
+    }
   }
 
   @Test
   void releaseSavepoint() throws Exception {
     MariadbConnection conn = factory.create().block();
-    conn.setAutoCommit(false).block();
-    conn.createStatement(insertCmd)
-        .execute()
-        .thenMany(conn.createSavepoint("mySavePoint1"))
-        .thenMany(conn.createStatement(insertCmd).execute())
-        .concatWith(Flux.from(conn.releaseSavepoint("mySavePoint1")).then(Mono.empty()))
-        .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
-        .blockLast();
-    checkInserted(conn, 2);
-    conn.rollbackTransaction().block();
-    conn.setAutoCommit(true).block();
-    conn.close().block();
+    try {
+      conn.setAutoCommit(false).block();
+      conn.createStatement(insertCmd)
+          .execute()
+          .thenMany(conn.createSavepoint("mySavePoint1"))
+          .thenMany(conn.createStatement(insertCmd).execute())
+          .concatWith(Flux.from(conn.releaseSavepoint("mySavePoint1")).then(Mono.empty()))
+          .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
+          .blockLast();
+      checkInserted(conn, 2);
+      conn.rollbackTransaction().block();
+      conn.setAutoCommit(true).block();
+    } finally {
+      conn.close().block();
+    }
   }
 
   @Test
   void rollbackSavepoint() {
     MariadbConnection conn = factory.create().block();
-    conn.setAutoCommit(false).block();
-    conn.createStatement(insertCmd)
-        .execute()
-        .thenMany(conn.createSavepoint("mySavePoint2"))
-        .thenMany(conn.createStatement(insertCmd).execute())
-        .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
-        .blockLast();
-    conn.rollbackTransactionToSavepoint("mySavePoint2").block();
-    checkInserted(conn, 1);
-    conn.rollbackTransaction().block();
-    conn.setAutoCommit(true).block();
-    conn.close().block();
+    try {
+      conn.setAutoCommit(false).block();
+      conn.createStatement(insertCmd)
+          .execute()
+          .thenMany(conn.createSavepoint("mySavePoint2"))
+          .thenMany(conn.createStatement(insertCmd).execute())
+          .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
+          .blockLast();
+      conn.rollbackTransactionToSavepoint("mySavePoint2").block();
+      checkInserted(conn, 1);
+      conn.rollbackTransaction().block();
+      conn.setAutoCommit(true).block();
+    } finally {
+      conn.close().block();
+    }
   }
 
   @Test
   void rollbackSavepointPipelining() {
     MariadbConnection conn = factory.create().block();
-    conn.setAutoCommit(false).block();
-    conn.createStatement(insertCmd)
-        .execute()
-        .thenMany(conn.createSavepoint("mySavePoint3"))
-        .thenMany(conn.createStatement(insertCmd).execute())
-        .concatWith(
-            Flux.from(conn.rollbackTransactionToSavepoint("mySavePoint3")).then(Mono.empty()))
-        .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
-        .blockLast();
-    checkInserted(conn, 1);
-    conn.rollbackTransaction().block();
-    conn.setAutoCommit(true).block();
-    conn.close().block();
+    try {
+      conn.setAutoCommit(false).block();
+      conn.createStatement(insertCmd)
+          .execute()
+          .thenMany(conn.createSavepoint("mySavePoint3"))
+          .thenMany(conn.createStatement(insertCmd).execute())
+          .concatWith(
+              Flux.from(conn.rollbackTransactionToSavepoint("mySavePoint3")).then(Mono.empty()))
+          .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
+          .blockLast();
+      checkInserted(conn, 1);
+      conn.rollbackTransaction().block();
+      conn.setAutoCommit(true).block();
+    } finally {
+      conn.close().block();
+    }
   }
 
   private void checkInserted(MariadbConnection conn, int expectedValue) {

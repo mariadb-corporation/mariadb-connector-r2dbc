@@ -46,8 +46,9 @@ public class OkPacket implements ServerMessage, Result.UpdateCount {
     long lastInsertId = BufferUtils.readLengthEncodedInt(buf);
     short serverStatus = buf.readShortLE();
     short warningCount = buf.readShortLE();
+    context.setServerStatus(serverStatus);
 
-    if ((context.getServerCapabilities() & Capabilities.CLIENT_SESSION_TRACK) != 0
+    if ((context.getClientCapabilities() & Capabilities.CLIENT_SESSION_TRACK) != 0
         && buf.isReadable()) {
       BufferUtils.skipLengthEncode(buf); // skip info
       while (buf.isReadable()) {
@@ -94,13 +95,12 @@ public class OkPacket implements ServerMessage, Result.UpdateCount {
               break;
 
             default:
-              stateInfo.skipBytes((int)BufferUtils.readLengthEncodedInt(stateInfo));
+              stateInfo.skipBytes((int) BufferUtils.readLengthEncodedInt(stateInfo));
               break;
           }
         }
       }
     }
-    context.setServerStatus(serverStatus);
     return new OkPacket(
         sequencer,
         affectedRows,
