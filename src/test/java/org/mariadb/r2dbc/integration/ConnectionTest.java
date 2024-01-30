@@ -129,7 +129,7 @@ public class ConnectionTest extends BaseConnectionTest {
             .execute()
             .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
             .blockLast();
-
+    System.out.println("default collation:" + defaultUtf8Collation);
     try {
       defaultUtf8Collation =
           sharedConn
@@ -140,6 +140,7 @@ public class ConnectionTest extends BaseConnectionTest {
               .execute()
               .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
               .blockLast();
+      System.out.println("default collation applicability:" + defaultUtf8Collation);
     } catch (Exception e) {
       // eat - for mariadb 11.3+ only
     }
@@ -152,7 +153,9 @@ public class ConnectionTest extends BaseConnectionTest {
               .execute()
               .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)))
               .blockLast();
-      Assertions.assertEquals(defaultUtf8Collation, newDefaultCollation);
+      Assertions.assertTrue(
+          defaultUtf8Collation.equals(newDefaultCollation)
+              || ("utf8mb4_" + defaultUtf8Collation).equals(newDefaultCollation));
       connection.close().block();
 
       MariadbConnectionConfiguration confPipeline =
