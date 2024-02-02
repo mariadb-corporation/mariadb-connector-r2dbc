@@ -6,8 +6,7 @@ package org.mariadb.r2dbc.integration;
 import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 public class TransactionTest extends BaseConnectionTest {
   private static final String insertCmd =
@@ -44,11 +43,9 @@ public class TransactionTest extends BaseConnectionTest {
   void commit() {
     MariadbConnection conn = factory.create().block();
     try {
-      conn.beginTransaction()
-          .thenMany(conn.createStatement(insertCmd).execute())
-          .concatWith(Flux.from(conn.commitTransaction()).then(Mono.empty()))
-          .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
-          .blockLast();
+      conn.beginTransaction().subscribe();
+      conn.createStatement(insertCmd).execute().subscribe();
+      conn.commitTransaction().block();
       checkInserted(conn, 1);
     } finally {
       conn.close().block();
@@ -60,7 +57,8 @@ public class TransactionTest extends BaseConnectionTest {
     MariadbConnection conn = factory.create().block();
     try {
       // must issue only one begin command
-      conn.beginTransaction().thenMany(conn.beginTransaction()).blockLast();
+      conn.beginTransaction().subscribe();
+      conn.beginTransaction().subscribe();
       conn.beginTransaction().block();
     } finally {
       conn.close().block();
@@ -72,7 +70,8 @@ public class TransactionTest extends BaseConnectionTest {
     // must issue no commit command
     MariadbConnection conn = factory.create().block();
     try {
-      conn.commitTransaction().thenMany(conn.commitTransaction()).blockLast();
+      conn.commitTransaction().subscribe();
+      conn.commitTransaction().subscribe();
       conn.commitTransaction().block();
     } finally {
       conn.close().block();
@@ -84,7 +83,8 @@ public class TransactionTest extends BaseConnectionTest {
     // must issue no commit command
     MariadbConnection conn = factory.create().block();
     try {
-      conn.rollbackTransaction().thenMany(conn.rollbackTransaction()).blockLast();
+      conn.rollbackTransaction().subscribe();
+      conn.rollbackTransaction().subscribe();
       conn.rollbackTransaction().block();
     } finally {
       conn.close().block();
@@ -96,7 +96,8 @@ public class TransactionTest extends BaseConnectionTest {
     // must issue multiple savepoints
     MariadbConnection conn = factory.create().block();
     try {
-      conn.createSavepoint("t").thenMany(conn.createSavepoint("t2")).blockLast();
+      conn.createSavepoint("t").subscribe();
+      conn.createSavepoint("t2").block();
       conn.createSavepoint("t3").block();
     } finally {
       conn.close().block();
@@ -107,10 +108,8 @@ public class TransactionTest extends BaseConnectionTest {
   void rollback() {
     MariadbConnection conn = factory.create().block();
     try {
-      conn.beginTransaction()
-          .thenMany(conn.createStatement(insertCmd).execute())
-          .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
-          .blockLast();
+      conn.beginTransaction().block();
+      conn.createStatement(insertCmd).execute().subscribe();
       conn.rollbackTransaction().block();
       checkInserted(conn, 0);
     } finally {
@@ -123,11 +122,9 @@ public class TransactionTest extends BaseConnectionTest {
     MariadbConnection conn = factory.create().block();
     try {
       conn.beginTransaction().subscribe();
-      conn.createStatement(insertCmd)
-          .execute()
-          .concatWith(Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
-          .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
-          .blockLast();
+      conn.createStatement(insertCmd).execute().subscribe();
+      conn.rollbackTransaction().subscribe();
+      conn.rollbackTransaction().block();
       checkInserted(conn, 0);
     } finally {
       conn.close().block();
@@ -139,13 +136,14 @@ public class TransactionTest extends BaseConnectionTest {
     MariadbConnection conn = factory.create().block();
     try {
       conn.setAutoCommit(false).block();
-      conn.createStatement(insertCmd)
-          .execute()
-          .thenMany(conn.createSavepoint("mySavePoint1"))
-          .thenMany(conn.createStatement(insertCmd).execute())
-          .concatWith(Flux.from(conn.releaseSavepoint("mySavePoint1")).then(Mono.empty()))
-          .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
-          .blockLast();
+      conn.createStatement(insertCmd).execute().subscribe();
+      conn.createSavepoint("mySavePoint1").subscribe();
+      try {
+        conn.createStatement(insertCmd).execute().flatMap(r -> r.getRowsUpdated()).blockLast();
+      } catch (Exception e) {
+        conn.rollbackTransaction().block();
+      }
+      conn.releaseSavepoint("mySavePoint1").block();
       checkInserted(conn, 2);
       conn.rollbackTransaction().block();
       conn.setAutoCommit(true).block();
@@ -159,12 +157,15 @@ public class TransactionTest extends BaseConnectionTest {
     MariadbConnection conn = factory.create().block();
     try {
       conn.setAutoCommit(false).block();
-      conn.createStatement(insertCmd)
-          .execute()
-          .thenMany(conn.createSavepoint("mySavePoint2"))
-          .thenMany(conn.createStatement(insertCmd).execute())
-          .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
-          .blockLast();
+      conn.createStatement(insertCmd).execute().subscribe();
+
+      conn.createSavepoint("mySavePoint2").subscribe();
+      try {
+        conn.createStatement(insertCmd).execute().flatMap(r -> r.getRowsUpdated()).blockLast();
+      } catch (Exception e) {
+        conn.rollbackTransaction().block();
+      }
+
       conn.rollbackTransactionToSavepoint("mySavePoint2").block();
       checkInserted(conn, 1);
       conn.rollbackTransaction().block();
@@ -196,11 +197,11 @@ public class TransactionTest extends BaseConnectionTest {
   }
 
   private void checkInserted(MariadbConnection conn, int expectedValue) {
-    Integer res =
-        conn.createStatement("SELECT count(*) FROM `users`")
-            .execute()
-            .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.class)))
-            .blockLast();
-    Assertions.assertEquals(expectedValue, res);
+    conn.createStatement("SELECT count(*) FROM `users`")
+        .execute()
+        .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.class)))
+        .as(StepVerifier::create)
+        .expectNext(Integer.valueOf(expectedValue))
+        .verifyComplete();
   }
 }
