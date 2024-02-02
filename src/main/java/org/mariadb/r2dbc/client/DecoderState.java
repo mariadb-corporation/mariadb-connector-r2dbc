@@ -7,7 +7,6 @@ import io.netty.buffer.ByteBuf;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.server.*;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
-import org.mariadb.r2dbc.util.constants.Capabilities;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 
 public enum DecoderState implements DecoderStateInterface {
@@ -97,11 +96,7 @@ public enum DecoderState implements DecoderStateInterface {
       if (decoder.isMetaFollows()) {
         return COLUMN_DEFINITION;
       }
-      if ((decoder.getClientCapabilities() & Capabilities.CLIENT_DEPRECATE_EOF) > 0) {
-        return ROW_RESPONSE;
-      } else {
-        return EOF_INTERMEDIATE_RESPONSE;
-      }
+      return EOF_INTERMEDIATE_RESPONSE;
     }
   },
 

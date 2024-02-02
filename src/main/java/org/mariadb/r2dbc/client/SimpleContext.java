@@ -13,8 +13,8 @@ public class SimpleContext implements Context {
   private final long serverCapabilities;
   private final long clientCapabilities;
   private final ServerVersion version;
-  private String redirectValue;
   private final ByteBufAllocator byteBufAllocator;
+  private String redirectValue;
   private short serverStatus;
   private IsolationLevel isolationLevel;
   private String database;
