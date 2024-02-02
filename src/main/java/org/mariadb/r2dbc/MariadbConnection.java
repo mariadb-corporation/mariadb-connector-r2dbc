@@ -71,7 +71,7 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
 
   @Override
   public Mono<Void> commitTransaction() {
-    return this.client.commitTransaction().then().doOnSuccess(i -> this.isolationLevel = null);
+    return this.client.commitTransaction().doOnSuccess(i -> this.isolationLevel = null);
   }
 
   @Override

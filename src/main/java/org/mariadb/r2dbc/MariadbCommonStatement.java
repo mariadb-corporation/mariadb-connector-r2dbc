@@ -21,6 +21,7 @@ import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.Binding;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
 public abstract class MariadbCommonStatement implements MariadbStatement {
@@ -148,7 +149,7 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
       AtomicReference<ServerPrepareResult> prepareResult) {
     return messages
         .doOnDiscard(ReferenceCounted.class, ReferenceCountUtil::release)
-        .windowUntil(it -> it.resultSetEnd())
+        .windowUntil(ServerMessage::resultSetEnd)
         .map(
             dataRow ->
                 new MariadbResult(
@@ -158,7 +159,9 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
                     factory,
                     generatedColumns,
                     client.getVersion().supportReturning(),
-                    configuration));
+                    configuration))
+        .flatMap(m -> client.redirect().then(Mono.just(m)))
+        .cast(org.mariadb.r2dbc.api.MariadbResult.class);
   }
 
   protected void clearBindings(Iterator<Binding> iterator, AtomicBoolean canceled) {

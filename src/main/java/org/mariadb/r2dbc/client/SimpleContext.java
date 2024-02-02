@@ -13,6 +13,7 @@ public class SimpleContext implements Context {
   private final long serverCapabilities;
   private final long clientCapabilities;
   private final ServerVersion version;
+  private String redirectValue;
   private final ByteBufAllocator byteBufAllocator;
   private short serverStatus;
   private IsolationLevel isolationLevel;
@@ -37,6 +38,7 @@ public class SimpleContext implements Context {
     this.isolationLevel = isolationLevel == null ? IsolationLevel.REPEATABLE_READ : isolationLevel;
     this.database = database;
     this.byteBufAllocator = byteBufAllocator;
+    this.redirectValue = null;
   }
 
   public long getThreadId() {
@@ -81,6 +83,15 @@ public class SimpleContext implements Context {
 
   public ByteBufAllocator getByteBufAllocator() {
     return byteBufAllocator;
+  }
+
+  @Override
+  public void setRedirect(String redirectValue) {
+    this.redirectValue = redirectValue;
+  }
+
+  public String getRedirectValue() {
+    return redirectValue;
   }
 
   @Override

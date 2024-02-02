@@ -83,6 +83,8 @@ public class OkPacket implements ServerMessage, Result.UpdateCount {
                         context.setIsolationLevel(IsolationLevel.READ_COMMITTED);
                         break;
                     }
+                  case "redirect_url":
+                    context.setRedirect(value.isEmpty() ? null : value);
                 }
               } while (sessionVariableBuf.readableBytes() > 0);
               break;

@@ -24,6 +24,10 @@ public interface Context {
 
   void setIsolationLevel(IsolationLevel isolationLevel);
 
+  void setRedirect(String redirectValue);
+
+  String getRedirectValue();
+
   String getDatabase();
 
   void setDatabase(String database);

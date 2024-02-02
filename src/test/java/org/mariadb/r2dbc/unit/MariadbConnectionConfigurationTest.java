@@ -72,7 +72,7 @@ public class MariadbConnectionConfigurationTest {
             + " TLSv1.3], clientSslKey=clientSecretKey}, rsaPublicKey='/path/to/publicRSAKey',"
             + " cachingRsaPublicKey='cachingRSAPublicKey', allowPublicKeyRetrieval=true,"
             + " isolationLevel=IsolationLevel{sql='SERIALIZABLE'}, useServerPrepStmts=false,"
-            + " autocommit=false, tinyInt1isBit=false, pamOtherPwd=*,"
+            + " autocommit=false, permitRedirect=true, tinyInt1isBit=false, pamOtherPwd=*,"
             + " restrictedAuth=[mysql_native_password, client_ed25519]}",
         conf.toString());
   }
@@ -123,7 +123,7 @@ public class MariadbConnectionConfigurationTest {
             + " TLSv1.3], clientSslKey=clientSecretKey}, rsaPublicKey='/path/to/publicRSAKey',"
             + " cachingRsaPublicKey='cachingRSAPublicKey', allowPublicKeyRetrieval=true,"
             + " isolationLevel=IsolationLevel{sql='SERIALIZABLE'}, useServerPrepStmts=false,"
-            + " autocommit=false, tinyInt1isBit=false, pamOtherPwd=*,"
+            + " autocommit=false, permitRedirect=true, tinyInt1isBit=false, pamOtherPwd=*,"
             + " restrictedAuth=[mysql_native_password, client_ed25519]}",
         conf.toString());
   }
@@ -145,8 +145,8 @@ public class MariadbConnectionConfigurationTest {
             + " wait_timeout=1}, sslConfig=SslConfig{sslMode=DISABLE, serverSslCert=null,"
             + " clientSslCert=null, tlsProtocol=null, clientSslKey=null}, rsaPublicKey='null',"
             + " cachingRsaPublicKey='null', allowPublicKeyRetrieval=false, isolationLevel=null,"
-            + " useServerPrepStmts=false, autocommit=true, tinyInt1isBit=true, pamOtherPwd=,"
-            + " restrictedAuth=}",
+            + " useServerPrepStmts=false, autocommit=true, permitRedirect=true, tinyInt1isBit=true,"
+            + " pamOtherPwd=, restrictedAuth=}",
         conf.toString());
   }
 
@@ -192,8 +192,9 @@ public class MariadbConnectionConfigurationTest {
             + " clientSslCert=null, tlsProtocol=[TLSv1.2, TLSv1.3], clientSslKey=clientSecretKey},"
             + " rsaPublicKey='/path/to/publicRSAKey', cachingRsaPublicKey='cachingRSAPublicKey',"
             + " allowPublicKeyRetrieval=true, isolationLevel=IsolationLevel{sql='SERIALIZABLE'},"
-            + " useServerPrepStmts=false, autocommit=false, tinyInt1isBit=false, pamOtherPwd=*,"
-            + " restrictedAuth=[mysql_native_password, client_ed25519]}",
+            + " useServerPrepStmts=false, autocommit=false, permitRedirect=true,"
+            + " tinyInt1isBit=false, pamOtherPwd=*, restrictedAuth=[mysql_native_password,"
+            + " client_ed25519]}",
         conf.toString());
   }
 

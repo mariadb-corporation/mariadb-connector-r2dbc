@@ -374,7 +374,7 @@ public class ConfigurationTest extends BaseConnectionTest {
             + " prepareCacheSize=null, isolationLevel=null, tlsProtocol=null, serverSslCert=null,"
             + " clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST,"
             + " sslTunnelDisableHostVerification=false, pamOtherPwd=*,*, tinyInt1isBit=false,"
-            + " autoCommit=true}",
+            + " autoCommit=true, permitRedirect=true}",
         builder.toString());
     builder.tlsProtocol((String) null);
     Assertions.assertEquals(
@@ -387,7 +387,7 @@ public class ConfigurationTest extends BaseConnectionTest {
             + " prepareCacheSize=null, isolationLevel=null, tlsProtocol=null, serverSslCert=null,"
             + " clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST,"
             + " sslTunnelDisableHostVerification=false, pamOtherPwd=*,*, tinyInt1isBit=false,"
-            + " autoCommit=true}",
+            + " autoCommit=true, permitRedirect=true}",
         builder.toString());
     MariadbConnectionConfiguration conf = builder.build();
     Assertions.assertEquals(

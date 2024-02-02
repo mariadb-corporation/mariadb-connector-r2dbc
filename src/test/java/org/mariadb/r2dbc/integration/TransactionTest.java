@@ -122,8 +122,9 @@ public class TransactionTest extends BaseConnectionTest {
   void rollbackPipelining() {
     MariadbConnection conn = factory.create().block();
     try {
-      conn.beginTransaction()
-          .thenMany(conn.createStatement(insertCmd).execute())
+      conn.beginTransaction().subscribe();
+      conn.createStatement(insertCmd)
+          .execute()
           .concatWith(Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
           .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
           .blockLast();
@@ -178,14 +179,14 @@ public class TransactionTest extends BaseConnectionTest {
     MariadbConnection conn = factory.create().block();
     try {
       conn.setAutoCommit(false).block();
-      conn.createStatement(insertCmd)
-          .execute()
-          .thenMany(conn.createSavepoint("mySavePoint3"))
-          .thenMany(conn.createStatement(insertCmd).execute())
-          .concatWith(
-              Flux.from(conn.rollbackTransactionToSavepoint("mySavePoint3")).then(Mono.empty()))
-          .onErrorResume(err -> Flux.from(conn.rollbackTransaction()).then(Mono.empty()))
-          .blockLast();
+      conn.createStatement(insertCmd).execute().subscribe();
+      conn.createSavepoint("mySavePoint3").subscribe();
+      conn.createStatement(insertCmd).execute().subscribe();
+      try {
+        conn.rollbackTransactionToSavepoint("mySavePoint3").block();
+      } catch (Exception e) {
+        conn.rollbackTransaction().block();
+      }
       checkInserted(conn, 1);
       conn.rollbackTransaction().block();
       conn.setAutoCommit(true).block();

@@ -50,6 +50,7 @@ public final class MariadbConnectionConfiguration {
   private final boolean allowPublicKeyRetrieval;
   private final boolean useServerPrepStmts;
   private final boolean autocommit;
+  private final boolean permitRedirect;
   private final boolean tinyInt1isBit;
   private final String[] restrictedAuth;
   private final LoopResources loopResources;
@@ -87,6 +88,7 @@ public final class MariadbConnectionConfiguration {
       boolean useServerPrepStmts,
       IsolationLevel isolationLevel,
       boolean autocommit,
+      boolean permitRedirect,
       @Nullable Integer prepareCacheSize,
       @Nullable CharSequence[] pamOtherPwd,
       boolean tinyInt1isBit,
@@ -137,10 +139,111 @@ public final class MariadbConnectionConfiguration {
     this.prepareCacheSize = (prepareCacheSize == null) ? 250 : prepareCacheSize;
     this.pamOtherPwd = pamOtherPwd;
     this.autocommit = autocommit;
+    this.permitRedirect = permitRedirect;
     this.tinyInt1isBit = tinyInt1isBit;
     this.loopResources = loopResources != null ? loopResources : TcpResources.get();
     this.useServerPrepStmts = !this.allowMultiQueries && useServerPrepStmts;
     this.sslContextBuilderCustomizer = sslContextBuilderCustomizer;
+  }
+
+  private MariadbConnectionConfiguration(
+      String database,
+      List<HostAddress> hostAddresses,
+      HaMode haMode,
+      Duration connectTimeout,
+      boolean tcpKeepAlive,
+      boolean tcpAbortiveClose,
+      boolean transactionReplay,
+      CharSequence password,
+      String collation,
+      String timezone,
+      CharSequence[] pamOtherPwd,
+      int port,
+      int prepareCacheSize,
+      String socket,
+      String username,
+      boolean allowMultiQueries,
+      boolean allowPipelining,
+      Map<String, String> connectionAttributes,
+      Map<String, Object> sessionVariables,
+      SslConfig sslConfig,
+      String rsaPublicKey,
+      String cachingRsaPublicKey,
+      boolean allowPublicKeyRetrieval,
+      boolean useServerPrepStmts,
+      boolean autocommit,
+      boolean permitRedirect,
+      boolean tinyInt1isBit,
+      String[] restrictedAuth,
+      LoopResources loopResources,
+      UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer) {
+    this.database = database;
+    this.hostAddresses = hostAddresses;
+    this.haMode = haMode;
+    this.connectTimeout = connectTimeout;
+    this.tcpKeepAlive = tcpKeepAlive;
+    this.tcpAbortiveClose = tcpAbortiveClose;
+    this.transactionReplay = transactionReplay;
+    this.password = password;
+    this.collation = collation;
+    this.timezone = timezone;
+    this.pamOtherPwd = pamOtherPwd;
+    this.port = port;
+    this.prepareCacheSize = prepareCacheSize;
+    this.socket = socket;
+    this.username = username;
+    this.allowMultiQueries = allowMultiQueries;
+    this.allowPipelining = allowPipelining;
+    this.connectionAttributes = connectionAttributes;
+    this.sessionVariables = sessionVariables;
+    this.sslConfig = sslConfig;
+    this.rsaPublicKey = rsaPublicKey;
+    this.cachingRsaPublicKey = cachingRsaPublicKey;
+    this.allowPublicKeyRetrieval = allowPublicKeyRetrieval;
+    this.useServerPrepStmts = useServerPrepStmts;
+    this.autocommit = autocommit;
+    this.permitRedirect = permitRedirect;
+    this.tinyInt1isBit = tinyInt1isBit;
+    this.restrictedAuth = restrictedAuth;
+    this.loopResources = loopResources;
+    this.sslContextBuilderCustomizer = sslContextBuilderCustomizer;
+  }
+
+  public MariadbConnectionConfiguration redirectConf(
+      HostAddress hostAddress, String user, CharSequence password) {
+    // same connection, but with hostAddress, user and password changed
+    // + redirection disabled to avoid redirection loop
+    return new MariadbConnectionConfiguration(
+        this.database,
+        Collections.singletonList(hostAddress),
+        this.haMode,
+        this.connectTimeout,
+        this.tcpKeepAlive,
+        this.tcpAbortiveClose,
+        this.transactionReplay,
+        password,
+        this.collation,
+        this.timezone,
+        this.pamOtherPwd,
+        hostAddress.getPort(),
+        this.prepareCacheSize,
+        this.socket,
+        user,
+        this.allowMultiQueries,
+        this.allowPipelining,
+        this.connectionAttributes,
+        this.sessionVariables,
+        this.sslConfig,
+        this.rsaPublicKey,
+        this.cachingRsaPublicKey,
+        this.allowPublicKeyRetrieval,
+        this.useServerPrepStmts,
+        this.autocommit,
+        false,
+        this.tinyInt1isBit,
+        this.restrictedAuth,
+        this.loopResources,
+        this.sslContextBuilderCustomizer);
   }
 
   static boolean boolValue(Object value) {
@@ -271,6 +374,13 @@ public final class MariadbConnectionConfiguration {
           boolValue(
               connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.AUTO_COMMIT)));
     }
+
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.PERMIT_REDIRECT)) {
+      builder.permitRedirect(
+          boolValue(
+              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.PERMIT_REDIRECT)));
+    }
+
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TINY_IS_BIT)) {
       builder.tinyInt1isBit(
           boolValue(
@@ -496,6 +606,10 @@ public final class MariadbConnectionConfiguration {
     return autocommit;
   }
 
+  public boolean permitRedirect() {
+    return permitRedirect;
+  }
+
   public boolean tinyInt1isBit() {
     return tinyInt1isBit;
   }
@@ -596,6 +710,8 @@ public final class MariadbConnectionConfiguration {
         + useServerPrepStmts
         + ", autocommit="
         + autocommit
+        + ", permitRedirect="
+        + permitRedirect
         + ", tinyInt1isBit="
         + tinyInt1isBit
         + ", pamOtherPwd="
@@ -637,6 +753,7 @@ public final class MariadbConnectionConfiguration {
     private boolean useServerPrepStmts = false;
     private IsolationLevel isolationLevel = null;
     private boolean autocommit = true;
+    private boolean permitRedirect = true;
     private boolean tinyInt1isBit = true;
     @Nullable private List<String> tlsProtocol;
     @Nullable private String serverSslCert;
@@ -703,6 +820,7 @@ public final class MariadbConnectionConfiguration {
           this.useServerPrepStmts,
           this.isolationLevel,
           this.autocommit,
+          this.permitRedirect,
           this.prepareCacheSize,
           this.pamOtherPwd,
           this.tinyInt1isBit,
@@ -1006,6 +1124,17 @@ public final class MariadbConnectionConfiguration {
     }
 
     /**
+     * Permit to indicate if redirection are allowed. Default value True.
+     *
+     * @param permitRedirect use permitRedirect
+     * @return this {@link Builder}
+     */
+    public Builder permitRedirect(boolean permitRedirect) {
+      this.permitRedirect = permitRedirect;
+      return this;
+    }
+
+    /**
      * Permit to indicate how BIT(1) must return as boolean or byte . Default value True (returns
      * boolean).
      *
@@ -1175,6 +1304,8 @@ public final class MariadbConnectionConfiguration {
           + tinyInt1isBit
           + ", autoCommit="
           + autocommit
+          + ", permitRedirect="
+          + permitRedirect
           + '}';
     }
   }

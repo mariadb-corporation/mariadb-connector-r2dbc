@@ -153,7 +153,10 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
     // set session tracking
     if ((client.getContext().getClientCapabilities() & Capabilities.CLIENT_SESSION_TRACK) > 0) {
       sql.append(",session_track_schema=1");
-      sql.append(",session_track_system_variables='autocommit,").append(txIsolation).append("'");
+      sql.append(
+              ",session_track_system_variables=CONCAT(@@session_track_system_variables,',autocommit,")
+          .append(txIsolation)
+          .append("')");
     }
 
     // set session variables if defined

@@ -11,16 +11,22 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import io.r2dbc.spi.TransactionDefinition;
+import java.io.UnsupportedEncodingException;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.URLDecoder;
+import java.sql.SQLSyntaxErrorException;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
@@ -28,8 +34,10 @@ import javax.net.ssl.SSLParameters;
 import org.mariadb.r2dbc.*;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.Protocol;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.*;
+import org.mariadb.r2dbc.message.flow.AuthenticationFlow;
 import org.mariadb.r2dbc.message.server.CompletePrepareResult;
 import org.mariadb.r2dbc.message.server.ErrorPacket;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
@@ -51,20 +59,23 @@ import reactor.util.concurrent.Queues;
 public class SimpleClient implements Client {
 
   private static final Logger logger = Loggers.getLogger(SimpleClient.class);
-  protected final MariadbConnectionConfiguration configuration;
+  private static final Pattern REDIRECT_URL_FORMAT =
+      Pattern.compile(
+          "(mariadb|mysql)://(([^/@:]+)?(:([^/]+))?@)?(([^/:]+)(:([0-9]+))?)(/([^?]+)(/?(.*))?)?$",
+          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
+  protected MariadbConnectionConfiguration configuration;
   protected final ReentrantLock lock;
-  protected final Connection connection;
-  protected final HostAddress hostAddress;
-  private final ServerMessageSubscriber messageSubscriber;
-  private final Sinks.Many<ClientMessage> requestSink =
-      Sinks.many().unicast().onBackpressureBuffer();
-  private final Queue<Exchange> exchangeQueue =
-      Queues.<Exchange>get(Queues.SMALL_BUFFER_SIZE).get();
+  protected Connection connection;
+  protected HostAddress hostAddress;
+  private ServerMessageSubscriber messageSubscriber;
+  private Sinks.Many<ClientMessage> requestSink = Sinks.many().unicast().onBackpressureBuffer();
+  private Queue<Exchange> exchangeQueue = Queues.<Exchange>get(Queues.SMALL_BUFFER_SIZE).get();
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
-  private final MariadbFrameDecoder decoder;
-  private final MariadbPacketEncoder encoder;
+  private MariadbFrameDecoder decoder;
+  private MariadbPacketEncoder encoder;
   private final PrepareCache prepareCache;
-  private final ByteBufAllocator byteBufAllocator;
+  private ByteBufAllocator byteBufAllocator;
   protected volatile Context context;
   private volatile boolean closeRequested = false;
 
@@ -130,6 +141,95 @@ public class SimpleClient implements Client {
         .onErrorResume(this::sendResumeError)
         .doAfterTerminate(this::closeChannelIfNeeded)
         .subscribe();
+  }
+
+  public Mono<Void> redirect() {
+    if (configuration.permitRedirect() && context.getRedirectValue() != null) {
+      // redirect only if :
+      // * when pipelining, having received all waiting responses.
+      // * not in a transaction
+      if (this.exchangeQueue.size() <= 1
+          && (this.context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
+        String redirectValue = context.getRedirectValue();
+        context.setRedirect(null);
+        // redirection required
+        Matcher matcher = REDIRECT_URL_FORMAT.matcher(redirectValue);
+        if (!matcher.matches()) {
+          return Mono.error(
+              new SQLSyntaxErrorException(
+                  "invalid callable syntax. must be like {[?=]call <procedure/function name>[(?,?,"
+                      + " ...)]}\n"
+                      + " but was : "
+                      + redirectValue));
+        }
+
+        try {
+          String host =
+              matcher.group(7) != null
+                  ? URLDecoder.decode(matcher.group(7), "UTF-8")
+                  : matcher.group(6);
+          int port = matcher.group(9) != null ? Integer.parseInt(matcher.group(9)) : 3306;
+          HostAddress hostAddress = new HostAddress(host, port);
+
+          // actually only options accepted are user and password
+          // there might be additional possible options in the future
+          String user = (matcher.group(3) != null) ? matcher.group(3) : configuration.getUsername();
+          CharSequence password =
+              (matcher.group(5) != null) ? matcher.group(5) : configuration.getPassword();
+
+          MariadbConnectionConfiguration redirectConf =
+              configuration.redirectConf(hostAddress, user, password);
+
+          return SimpleClient.connect(
+                  ConnectionProvider.newConnection(),
+                  InetSocketAddress.createUnresolved(hostAddress.getHost(), hostAddress.getPort()),
+                  hostAddress,
+                  redirectConf,
+                  lock)
+              .delayUntil(client -> AuthenticationFlow.exchange(client, redirectConf, hostAddress))
+              .doOnError(e -> HaMode.failHost(hostAddress))
+              .cast(SimpleClient.class)
+              .flatMap(
+                  client ->
+                      MariadbConnectionFactory.setSessionVariables(redirectConf, client)
+                          .then(Mono.just(client)))
+              .flatMap(this::refreshClient)
+              .onErrorComplete()
+              .then();
+        } catch (UnsupportedEncodingException e) {
+          // "UTF-8" is known, but String decode(String s, Charset charset) requires java 10+ to get
+          // ride of catching error
+          return Mono.error(e);
+        }
+      }
+    }
+    return Mono.empty();
+  }
+
+  public Mono<Void> refreshClient(SimpleClient client) {
+    return connection
+        .outbound()
+        .send(encoder.encodeFlux(QuitPacket.INSTANCE))
+        .then()
+        .doOnSuccess(v -> this.connection.dispose())
+        .then(this.connection.onDispose())
+        .doFinally(
+            v -> {
+              this.isClosed.set(false);
+              this.closeRequested = false;
+              this.connection = client.connection;
+              this.context = client.context;
+              this.configuration = client.configuration;
+              this.hostAddress = client.hostAddress;
+              this.prepareCache.clear();
+              this.requestSink = client.requestSink;
+              this.decoder = client.decoder;
+              this.encoder = client.encoder;
+              this.byteBufAllocator = client.byteBufAllocator;
+              this.messageSubscriber = client.messageSubscriber;
+              this.exchangeQueue = client.exchangeQueue;
+            })
+        .then();
   }
 
   public static Mono<SimpleClient> connect(
@@ -280,24 +380,6 @@ public class SimpleClient implements Client {
     return Mono.empty();
   }
 
-  private Flux<ServerMessage> execute(Consumer<FluxSink<ServerMessage>> s) {
-    return Flux.create(
-        sink -> {
-          if (!isConnected()) {
-            sink.error(
-                new R2dbcNonTransientResourceException(
-                    "Connection is close. Cannot send anything"));
-            return;
-          }
-          try {
-            lock.lock();
-            s.accept(sink);
-          } finally {
-            lock.unlock();
-          }
-        });
-  }
-
   public long getThreadId() {
     return context.getThreadId();
   }
@@ -308,32 +390,7 @@ public class SimpleClient implements Client {
    * @return publisher
    */
   public Mono<Void> beginTransaction() {
-    try {
-      lock.lock();
-
-      return execute(
-              sink -> {
-                if (!exchangeQueue.isEmpty()
-                    || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
-                  Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, "BEGIN");
-                  if (this.exchangeQueue.offer(exchange)) {
-                    this.requestSink.emitNext(
-                        new QueryPacket("BEGIN"), Sinks.EmitFailureHandler.FAIL_FAST);
-                    sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
-                  } else {
-                    sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
-                  }
-                } else {
-                  logger.debug("Skipping start transaction because already in transaction");
-                  sink.complete();
-                }
-              })
-          .handle(ExceptionFactory.withSql("BEGIN")::handleErrorResponse)
-          .then();
-
-    } finally {
-      lock.unlock();
-    }
+    return executeWhenNotInTransaction("BEGIN");
   }
 
   /**
@@ -355,31 +412,7 @@ public class SimpleClient implements Client {
       sb.append(" WITH CONSISTENT SNAPSHOT");
     }
 
-    String sql = sb.toString();
-    try {
-      lock.lock();
-      return execute(
-              sink -> {
-                if (!exchangeQueue.isEmpty()
-                    || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
-                  Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
-                  if (this.exchangeQueue.offer(exchange)) {
-                    this.requestSink.emitNext(
-                        new QueryPacket(sql), Sinks.EmitFailureHandler.FAIL_FAST);
-                    sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
-                  } else {
-                    sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
-                  }
-                } else {
-                  logger.debug("Skipping start transaction because already in transaction");
-                  sink.complete();
-                }
-              })
-          .handle(ExceptionFactory.withSql(sql)::handleErrorResponse)
-          .then();
-    } finally {
-      lock.unlock();
-    }
+    return executeWhenNotInTransaction(sb.toString());
   }
 
   /**
@@ -388,36 +421,42 @@ public class SimpleClient implements Client {
    * @return publisher
    */
   public Mono<Void> commitTransaction() {
+    return executeWhenTransaction("COMMIT");
+  }
+
+  private Mono<Void> executeWhenTransaction(String sql) {
     try {
       lock.lock();
-      return execute(sink -> executeWhenTransaction(sink, "COMMIT"))
-          .handle(ExceptionFactory.withSql("COMMIT")::handleErrorResponse)
-          .then();
+      if (!exchangeQueue.isEmpty()
+          || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) > 0) {
+        Flux<ServerMessage> messages = sendCommand(new QueryPacket(sql), false);
+        return messages
+            .doOnDiscard(ReferenceCounted.class, ReferenceCountUtil::release)
+            .handle(ExceptionFactory.withSql(sql)::handleErrorResponse)
+            .flatMap(m -> redirect().then(Mono.just(m)))
+            .then();
+      }
+      return Mono.empty();
     } finally {
       lock.unlock();
     }
   }
 
-  private void executeWhenTransaction(FluxSink<ServerMessage> sink, String sql) {
-    if (!exchangeQueue.isEmpty() || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) > 0) {
-      try {
-        lock.lock();
-        Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
-        if (this.exchangeQueue.offer(exchange)) {
-          sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
-          this.requestSink.emitNext(new QueryPacket(sql), Sinks.EmitFailureHandler.FAIL_FAST);
-        } else {
-          sink.error(new R2dbcTransientResourceException("Request queue limit reached"));
-        }
-      } catch (Throwable t) {
-        t.printStackTrace();
-        throw t;
-      } finally {
-        lock.unlock();
+  private Mono<Void> executeWhenNotInTransaction(String sql) {
+    try {
+      lock.lock();
+      if (!exchangeQueue.isEmpty()
+          || (context.getServerStatus() & ServerStatus.IN_TRANSACTION) == 0) {
+        Flux<ServerMessage> messages = sendCommand(new QueryPacket(sql), false);
+        return messages
+            .doOnDiscard(ReferenceCounted.class, ReferenceCountUtil::release)
+            .handle(ExceptionFactory.withSql(sql)::handleErrorResponse)
+            .flatMap(m -> redirect().then(Mono.just(m)))
+            .then();
       }
-    } else {
-      logger.debug(String.format("Skipping '%s' because no active transaction", sql));
-      sink.complete();
+      return Mono.empty();
+    } finally {
+      lock.unlock();
     }
   }
 
@@ -427,14 +466,7 @@ public class SimpleClient implements Client {
    * @return publisher
    */
   public Mono<Void> rollbackTransaction() {
-    try {
-      lock.lock();
-      return execute(sink -> executeWhenTransaction(sink, "ROLLBACK"))
-          .handle(ExceptionFactory.withSql("ROLLBACK")::handleErrorResponse)
-          .then();
-    } finally {
-      lock.unlock();
-    }
+    return executeWhenTransaction("ROLLBACK");
   }
 
   /**
@@ -443,15 +475,8 @@ public class SimpleClient implements Client {
    * @return publisher
    */
   public Mono<Void> rollbackTransactionToSavepoint(String name) {
-    try {
-      lock.lock();
-      String sql = String.format("ROLLBACK TO SAVEPOINT `%s`", name.replace("`", "``"));
-      return execute(sink -> executeWhenTransaction(sink, sql))
-          .handle(ExceptionFactory.withSql(sql)::handleErrorResponse)
-          .then();
-    } finally {
-      lock.unlock();
-    }
+    String sql = String.format("ROLLBACK TO SAVEPOINT `%s`", name.replace("`", "``"));
+    return executeWhenTransaction(sql);
   }
 
   /**
@@ -460,35 +485,30 @@ public class SimpleClient implements Client {
    * @return publisher
    */
   public Mono<Void> setAutoCommit(boolean autoCommit) {
+
+    String sql = "SET autocommit=" + (autoCommit ? '1' : '0');
     try {
       lock.lock();
-      return execute(
-              sink -> {
-                String sql = "SET autocommit=" + (autoCommit ? '1' : '0');
-                if (!this.exchangeQueue.isEmpty() || autoCommit != isAutoCommit()) {
-
-                  try {
-                    Exchange exchange = new Exchange(sink, DecoderState.QUERY_RESPONSE, sql);
-                    if (this.exchangeQueue.offer(exchange)) {
-                      sink.onRequest(value -> messageSubscriber.onRequest(exchange, value));
-                      this.requestSink.emitNext(
-                          new QueryPacket(sql), Sinks.EmitFailureHandler.FAIL_FAST);
-                    } else {
-                      sink.error(
-                          new R2dbcTransientResourceException("Request queue limit reached"));
-                    }
-                  } catch (Throwable t) {
-                    t.printStackTrace();
-                    throw t;
-                  }
-
-                } else {
-                  logger.debug("Skipping autocommit since already in that state");
-                  sink.complete();
-                }
-              })
-          .handle(ExceptionFactory.withSql(null)::handleErrorResponse)
-          .then();
+      if (!this.exchangeQueue.isEmpty() || autoCommit != isAutoCommit()) {
+        Flux<ServerMessage> messages = sendCommand(new QueryPacket(sql), false);
+        return messages
+            .doOnDiscard(ReferenceCounted.class, ReferenceCountUtil::release)
+            .windowUntil(ServerMessage::resultSetEnd)
+            .map(
+                dataRow ->
+                    new MariadbResult(
+                        Protocol.TEXT,
+                        null,
+                        dataRow,
+                        ExceptionFactory.withSql(sql),
+                        null,
+                        true,
+                        configuration))
+            .flatMap(m -> redirect().then(Mono.just(m)))
+            .cast(org.mariadb.r2dbc.api.MariadbResult.class)
+            .then();
+      }
+      return Mono.empty();
     } finally {
       lock.unlock();
     }

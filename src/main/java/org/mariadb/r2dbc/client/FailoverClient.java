@@ -610,4 +610,9 @@ public class FailoverClient implements Client {
   public HostAddress getHostAddress() {
     return client.get().getHostAddress();
   }
+
+  @Override
+  public Mono<Void> redirect() {
+    return client.get().redirect();
+  }
 }
