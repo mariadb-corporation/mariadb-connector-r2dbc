@@ -67,23 +67,24 @@ public class LoggingTest extends BaseConnectionTest {
     MariadbConnectionMetadata meta = connection.getMetadata();
     connection.close().block();
 
-    try {
       String contents = new String(Files.readAllBytes(Paths.get(tempFile.getPath())));
       String selectIsolation =
-          "        +-------------------------------------------------+\r\n"
-              + "         |  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f |\r\n"
-              + "+--------+-------------------------------------------------+----------------+\r\n"
-              + "|00000000| 8f 00 00 00 03 53 45 54 20 61 75 74 6f 63 6f 6d |.....SET autocom|\r\n"
-              + "|00000010| 6d 69 74 3d 31 2c 74 78 5f 69 73 6f 6c 61 74 69 |mit=1,tx_isolati|\r\n"
-              + "|00000020| 6f 6e 3d 27 52 45 50 45 41 54 41 42 4c 45 2d 52 |on='REPEATABLE-R|\r\n"
-              + "|00000030| 45 41 44 27 2c 73 65 73 73 69 6f 6e 5f 74 72 61 |EAD',session_tra|\r\n"
-              + "|00000040| 63 6b 5f 73 63 68 65 6d 61 3d 31 2c 73 65 73 73 |ck_schema=1,sess|\r\n"
-              + "|00000050| 69 6f 6e 5f 74 72 61 63 6b 5f 73 79 73 74 65 6d |ion_track_system|\r\n"
-              + "|00000060| 5f 76 61 72 69 61 62 6c 65 73 3d 27 61 75 74 6f |_variables='auto|\r\n"
-              + "|00000070| 63 6f 6d 6d 69 74 2c 74 78 5f 69 73 6f 6c 61 74 |commit,tx_isolat|\r\n"
-              + "|00000080| 69 6f 6e 27 2c 20 6e 61 6d 65 73 20 55 54 46 38 |ion', names UTF8|\r\n"
-              + "|00000090| 4d 42 34                                        |MB4             |\r\n"
-              + "+--------+-------------------------------------------------+----------------+";
+          "         +-------------------------------------------------+\r\n"+
+                  "         |  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f |\r\n"+
+                  "+--------+-------------------------------------------------+----------------+\r\n"+
+                  "|00000000| b9 00 00 00 03 53 45 54 20 61 75 74 6f 63 6f 6d |.....SET autocom|\r\n"+
+                  "|00000010| 6d 69 74 3d 31 2c 74 78 5f 69 73 6f 6c 61 74 69 |mit=1,tx_isolati|\r\n"+
+                  "|00000020| 6f 6e 3d 27 52 45 50 45 41 54 41 42 4c 45 2d 52 |on='REPEATABLE-R|\r\n"+
+                  "|00000030| 45 41 44 27 2c 73 65 73 73 69 6f 6e 5f 74 72 61 |EAD',session_tra|\r\n"+
+                  "|00000040| 63 6b 5f 73 63 68 65 6d 61 3d 31 2c 73 65 73 73 |ck_schema=1,sess|\r\n"+
+                  "|00000050| 69 6f 6e 5f 74 72 61 63 6b 5f 73 79 73 74 65 6d |ion_track_system|\r\n"+
+                  "|00000060| 5f 76 61 72 69 61 62 6c 65 73 3d 43 4f 4e 43 41 |_variables=CONCA|\r\n"+
+                  "|00000070| 54 28 40 40 73 65 73 73 69 6f 6e 5f 74 72 61 63 |T(@@session_trac|\r\n"+
+                  "|00000080| 6b 5f 73 79 73 74 65 6d 5f 76 61 72 69 61 62 6c |k_system_variabl|\r\n"+
+                  "|00000090| 65 73 2c 27 2c 61 75 74 6f 63 6f 6d 6d 69 74 2c |es,',autocommit,|\r\n"+
+                  "|000000a0| 74 78 5f 69 73 6f 6c 61 74 69 6f 6e 27 29 2c 20 |tx_isolation'), |\r\n"+
+                  "|000000b0| 6e 61 6d 65 73 20 55 54 46 38 4d 42 34          |names UTF8MB4   |\r\n"+
+                  "+--------+-------------------------------------------------+----------------+\r\n";
       String mysqlIsolation =
           "         +-------------------------------------------------+\r\n"
               + "         |  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f |\r\n"
@@ -128,10 +129,6 @@ public class LoggingTest extends BaseConnectionTest {
       logger.setLevel(initialLevel);
       logger.detachAppender(fa);
       logger.setAdditive(true);
-    } catch (Throwable e) {
-      e.printStackTrace();
-      Assertions.fail();
-    }
   }
 
   public String encodeHexString(byte[] byteArray) {
