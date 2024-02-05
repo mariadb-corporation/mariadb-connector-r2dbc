@@ -251,31 +251,37 @@ public class TlsTest extends BaseConnectionTest {
             .sslMode(SslMode.VERIFY_CA)
             .serverSslCert(serverSslCert)
             .build();
-    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
-    connection
-        .createStatement("SHOW STATUS like 'Ssl_version'")
-        .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(1)))
-        .as(StepVerifier::create)
-        .expectNextMatches(
-            val -> {
-              if ("maxscale".equals(System.getenv("srv"))
-                  && !"skysql-ha".equals(System.getenv("srv"))) return true;
-              String[] values = {"TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
-              return Arrays.stream(values).anyMatch(val::equals);
-            })
-        .verifyComplete();
-    connection.close().block();
-    String serverCertString = readLine(serverSslCert);
-    MariadbConnectionConfiguration conf2 =
-        TestConfiguration.defaultBuilder
-            .clone()
-            .port(sslPort)
-            .sslMode(SslMode.VERIFY_CA)
-            .serverSslCert(serverCertString)
-            .build();
-    MariadbConnection con2 = new MariadbConnectionFactory(conf2).create().block();
-    con2.close().block();
+    MariadbConnection connection = null;
+    try {
+      connection = new MariadbConnectionFactory(conf).create().block();
+      connection
+          .createStatement("SHOW STATUS like 'Ssl_version'")
+          .execute()
+          .flatMap(r -> r.map((row, metadata) -> row.get(1)))
+          .as(StepVerifier::create)
+          .expectNextMatches(
+              val -> {
+                if ("maxscale".equals(System.getenv("srv"))
+                    && !"skysql-ha".equals(System.getenv("srv"))) return true;
+                String[] values = {"TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
+                return Arrays.stream(values).anyMatch(val::equals);
+              })
+          .verifyComplete();
+      connection.close().block();
+      connection = null;
+      String serverCertString = readLine(serverSslCert);
+      MariadbConnectionConfiguration conf2 =
+          TestConfiguration.defaultBuilder
+              .clone()
+              .port(sslPort)
+              .sslMode(SslMode.VERIFY_CA)
+              .serverSslCert(serverCertString)
+              .build();
+      MariadbConnection con2 = new MariadbConnectionFactory(conf2).create().block();
+      con2.close().block();
+    } finally {
+      if (connection != null) connection.close().block();
+    }
   }
 
   @Test
@@ -331,22 +337,25 @@ public class TlsTest extends BaseConnectionTest {
             .host("mariadb.example.com")
             .serverSslCert(serverSslCert)
             .build();
-
-    MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
-    connection
-        .createStatement("SHOW STATUS like 'Ssl_version'")
-        .execute()
-        .flatMap(r -> r.map((row, metadata) -> row.get(1)))
-        .as(StepVerifier::create)
-        .expectNextMatches(
-            val -> {
-              if ("maxscale".equals(System.getenv("srv"))
-                  && !"skysql-ha".equals(System.getenv("srv"))) return true;
-              String[] values = {"TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
-              return Arrays.stream(values).anyMatch(val::equals);
-            })
-        .verifyComplete();
-    connection.close().block();
+    MariadbConnection connection = null;
+    try {
+      connection = new MariadbConnectionFactory(conf).create().block();
+      connection
+          .createStatement("SHOW STATUS like 'Ssl_version'")
+          .execute()
+          .flatMap(r -> r.map((row, metadata) -> row.get(1)))
+          .as(StepVerifier::create)
+          .expectNextMatches(
+              val -> {
+                if ("maxscale".equals(System.getenv("srv"))
+                    && !"skysql-ha".equals(System.getenv("srv"))) return true;
+                String[] values = {"TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
+                return Arrays.stream(values).anyMatch(val::equals);
+              })
+          .verifyComplete();
+    } finally {
+      if (connection != null) connection.close().block();
+    }
   }
 
   @Test
