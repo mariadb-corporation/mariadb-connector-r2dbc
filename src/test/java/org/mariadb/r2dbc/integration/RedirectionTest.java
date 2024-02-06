@@ -195,13 +195,16 @@ public class RedirectionTest extends BaseConnectionTest {
             .port(proxy.getLocalPort())
             .host("localhost")
             .build();
-    MariadbConnection connection = new MariadbConnectionFactory(confProxy).create().block();
     try {
-      Assertions.assertEquals(TestConfiguration.defaultConf.getPort(), connection.getPort());
+      MariadbConnection connection = new MariadbConnectionFactory(confProxy).create().block();
+      try {
+        Assertions.assertEquals(TestConfiguration.defaultConf.getPort(), connection.getPort());
+      } finally {
+        connection.close().block();
+      }
     } finally {
-      sharedConn.createStatement("set @@global.redirect_url=\"\"").execute().blockLast();
-      connection.close().block();
       proxy.stop();
+      sharedConn.createStatement("set @@global.redirect_url=\"\"").execute().blockLast();
     }
   }
 }

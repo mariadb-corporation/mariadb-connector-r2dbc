@@ -157,10 +157,10 @@ public class SimpleClient implements Client {
         if (!matcher.matches()) {
           return Mono.error(
               new SQLSyntaxErrorException(
-                  "invalid callable syntax. must be like {[?=]call <procedure/function name>[(?,?,"
-                      + " ...)]}\n"
-                      + " but was : "
-                      + redirectValue));
+                  "error parsing redirection string '"
+                      + redirectValue
+                      + "'. format must be"
+                      + " 'mariadb/mysql://[<user>[:<password>]@]<host>[:<port>]/[<db>[?<opt1>=<value1>[&<opt2>=<value2>]]]'"));
         }
 
         try {

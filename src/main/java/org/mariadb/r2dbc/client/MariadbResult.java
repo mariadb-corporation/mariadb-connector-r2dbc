@@ -175,6 +175,7 @@ public class MariadbResult extends AbstractReferenceCounted
               org.mariadb.r2dbc.api.MariadbRow row = new MariadbRowText(buf, tmpMeta, factory);
               sink.next(f.apply(row, row.getMetadata()));
               ReferenceCountUtil.release(row);
+              if (okPacket.ending()) sink.complete();
             }
             return;
           }
@@ -199,7 +200,7 @@ public class MariadbResult extends AbstractReferenceCounted
               if (prepareResult != null && prepareResult.get() != null && metaFollows.get()) {
                 prepareResult.get().setColumns(columnsArray);
               }
-            }
+            } else sink.complete();
             return;
           }
 
