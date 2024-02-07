@@ -85,7 +85,7 @@ public class LoggingTest extends BaseConnectionTest {
                   "|000000a0| 74 78 5f 69 73 6f 6c 61 74 69 6f 6e 27 29 2c 20 |tx_isolation'), |\r\n"+
                   "|000000b0| 6e 61 6d 65 73 20 55 54 46 38 4d 42 34          |names UTF8MB4   |\r\n"+
                   "+--------+-------------------------------------------------+----------------+\r\n";
-      String mysqlIsolation =
+      String transactionIsolation =
           "         +-------------------------------------------------+\r\n"
               + "         |  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f |\r\n"
               + "+--------+-------------------------------------------------+----------------+\r\n"
@@ -103,7 +103,24 @@ public class LoggingTest extends BaseConnectionTest {
               + "|000000b0| 74 69 6f 6e 5f 69 73 6f 6c 61 74 69 6f 6e 27 29 |tion_isolation')|\r\n"
               + "|000000c0| 2c 20 6e 61 6d 65 73 20 55 54 46 38 4d 42 34    |, names UTF8MB4 |\r\n"
               + "+--------+-------------------------------------------------+----------------+";
-
+      String mysqlIsolation =
+              "         +-------------------------------------------------+\r\n" +
+                      "         |  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f |\r\n" +
+                      "+--------+-------------------------------------------------+----------------+\r\n" +
+                      "|00000000| c0 00 00 00 03 53 45 54 20 61 75 74 6f 63 6f 6d |.....SET autocom|\r\n" +
+                      "|00000010| 6d 69 74 3d 31 2c 74 72 61 6e 73 61 63 74 69 6f |mit=1,transactio|\r\n" +
+                      "|00000020| 6e 5f 69 73 6f 6c 61 74 69 6f 6e 3d 27 52 45 50 |n_isolation='REP|\r\n" +
+                      "|00000030| 45 41 54 41 42 4c 45 2d 52 45 41 44 27 2c 73 65 |EATABLE-READ',se|\r\n" +
+                      "|00000040| 73 73 69 6f 6e 5f 74 72 61 63 6b 5f 73 63 68 65 |ssion_track_sche|\r\n" +
+                      "|00000050| 6d 61 3d 31 2c 73 65 73 73 69 6f 6e 5f 74 72 61 |ma=1,session_tra|\r\n" +
+                      "|00000060| 63 6b 5f 73 79 73 74 65 6d 5f 76 61 72 69 61 62 |ck_system_variab|\r\n" +
+                      "|00000070| 6c 65 73 3d 43 4f 4e 43 41 54 28 40 40 73 65 73 |les=CONCAT(@@ses|\r\n" +
+                      "|00000080| 73 69 6f 6e 5f 74 72 61 63 6b 5f 73 79 73 74 65 |sion_track_syste|\r\n" +
+                      "|00000090| 6d 5f 76 61 72 69 61 62 6c 65 73 2c 27 2c 74 72 |m_variables,',tr|\r\n" +
+                      "|000000a0| 61 6e 73 61 63 74 69 6f 6e 5f 69 73 6f 6c 61 74 |ansaction_isolat|\r\n" +
+                      "|000000b0| 69 6f 6e 27 29 2c 20 6e 61 6d 65 73 20 55 54 46 |ion'), names UTF|\r\n" +
+                      "|000000c0| 38 4d 42 34                                     |8MB4            |\r\n" +
+                      "+--------+-------------------------------------------------+----------------+";
       if ((meta.isMariaDBServer() && !meta.minVersion(11, 1, 1))
           || (meta.getMajorVersion() < 8 && !meta.minVersion(5, 7, 20))
           || (meta.getMajorVersion() >= 8 && !meta.minVersion(8, 0, 3))) {
@@ -111,11 +128,16 @@ public class LoggingTest extends BaseConnectionTest {
             contents.contains(selectIsolation)
                 || contents.contains(selectIsolation.replace("\r\n", "\n")),
             contents);
+      } else if (meta.isMariaDBServer()) {
+        Assertions.assertTrue(
+            contents.contains(transactionIsolation)
+                || contents.contains(transactionIsolation.replace("\r\n", "\n")),
+            contents);
       } else {
         Assertions.assertTrue(
-            contents.contains(mysqlIsolation)
-                || contents.contains(mysqlIsolation.replace("\r\n", "\n")),
-            contents);
+                contents.contains(mysqlIsolation)
+                        || contents.contains(mysqlIsolation.replace("\r\n", "\n")),
+                contents);
       }
 
       String selectOne =

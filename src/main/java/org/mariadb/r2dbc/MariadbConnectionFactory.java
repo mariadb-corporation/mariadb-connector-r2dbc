@@ -153,10 +153,18 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
     // set session tracking
     if ((client.getContext().getClientCapabilities() & Capabilities.CLIENT_SESSION_TRACK) > 0) {
       sql.append(",session_track_schema=1");
-      sql.append(
-              ",session_track_system_variables=CONCAT(@@session_track_system_variables,',autocommit,")
-          .append(txIsolation)
-          .append("')");
+      if (!client.getContext().getVersion().isMariaDBServer()) {
+        // MySQL only support 8 version that always have autocommit and doesn't permit adding
+        // autocommit value if already present
+        sql.append(",session_track_system_variables=CONCAT(@@session_track_system_variables,',")
+            .append(txIsolation)
+            .append("')");
+      } else {
+        sql.append(
+                ",session_track_system_variables=CONCAT(@@session_track_system_variables,',autocommit,")
+            .append(txIsolation)
+            .append("')");
+      }
     }
 
     // set session variables if defined
