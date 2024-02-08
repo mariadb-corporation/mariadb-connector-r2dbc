@@ -32,7 +32,7 @@ The MariaDB Connector is available through maven using :
 		<dependency>
 				<groupId>org.mariadb</groupId>
 				<artifactId>r2dbc-mariadb</artifactId>
-				<version>1.1.4</version>
+				<version>1.2.0</version>
 		</dependency>
 ```
 
@@ -114,6 +114,9 @@ Basic example:
 |                    **`loopResources`** | permits to share netty EventLoopGroup among multiple async libraries/framework                                                                                                                                                                                                                                                                                                                                                                                                                           |          *LoopResources*           |                     |
 |      **`sslContextBuilderCustomizer`** | Permits to customized SSL context builder.                                                                                                                                                                                                                                                                                                                                                                                                                                                               | *UnaryOperator<SslContextBuilder>* |                     |
 | **`sslTunnelDisableHostVerification`** | Disable hostname verification during SSLHandshake when SslMode.TUNNEL is set                                                                                                                                                                                                                                                                                                                                                                                                                             |             *boolean*              |                     |
+|                   **`permitRedirect`** | Permit server redirection                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |             *boolean*              |        true         |
+|                         **`timezone`** | permits to force session timezone in case of client having a different timezone compare to server. The option `timezone` can have 3 types of value: * 'disabled' (default) : connector doesn't change time_zone. * 'auto': client will use client default timezone. * '<a timezone>': connector will set connection variable to value. Since 1.2.0                                                                                                                                                       |              String                |     'disabled'      |
+
 
 ## Failover
 

@@ -1,5 +1,24 @@
 # Change Log
 
+## [1.2.0](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.2.0) (08 Feb 2024)
+
+[Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.1.4...1.2.0)
+
+Notable Changes:
+
+* R2DBC-93 new timezone option
+* R2DBC-66 add support for connection redirection
+
+Bugs Fixed:
+
+* R2DBC-92 Properly end connection (in place of RST TCP packet)
+* R2DBC-86 Failover High availability mode "r2dbc:mariadb:[sequential|loadbalancing]://..." wrongly parsed
+* R2DBC-87 Compatibility with mariadb 11.1.1
+* R2DBC-88 java 8 compatibility regression
+* R2DBC-91 ensure respecting server collation
+* R2DBC-94 session tracking wrong implementation when multiple system variable changes
+
+
 ## [1.1.4](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.1.4) (16 Mar 2023)
 
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.1.3...1.1.4)
