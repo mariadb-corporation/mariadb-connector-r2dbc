@@ -35,7 +35,7 @@ public class SimpleContext implements Context {
     this.clientCapabilities = clientCapabilities;
     this.serverStatus = serverStatus;
     this.version = new ServerVersion(serverVersion, mariaDBServer);
-    this.isolationLevel = isolationLevel == null ? IsolationLevel.REPEATABLE_READ : isolationLevel;
+    this.isolationLevel = isolationLevel;
     this.database = database;
     this.byteBufAllocator = byteBufAllocator;
     this.redirectValue = null;

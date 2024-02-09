@@ -243,6 +243,7 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
         + client
         + ", isolationLevel="
         + ((client.getContext().getClientCapabilities() | Capabilities.CLIENT_SESSION_TRACK) > 0
+                && client.getContext().getIsolationLevel() != null
             ? client.getContext().getIsolationLevel()
             : sessionIsolationLevel)
         + '}';
