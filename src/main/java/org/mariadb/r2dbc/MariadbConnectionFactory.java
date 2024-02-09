@@ -165,7 +165,7 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
             .append(txIsolation)
             .append("')");
       }
-      client.getContext().setIsolationLevel(IsolationLevel.REPEATABLE_READ);
+      client.getContext().setIsolationLevel(configuration.getIsolationLevel() == null ? IsolationLevel.REPEATABLE_READ : configuration.getIsolationLevel());
     }
 
     // set session variables if defined
