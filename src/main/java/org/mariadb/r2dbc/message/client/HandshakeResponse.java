@@ -5,11 +5,8 @@ package org.mariadb.r2dbc.message.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.Properties;
 import org.mariadb.r2dbc.MariadbConnectionFactoryProvider;
 import org.mariadb.r2dbc.authentication.addon.ClearPasswordPluginFlow;
 import org.mariadb.r2dbc.authentication.standard.CachingSha2PasswordFlow;
@@ -158,17 +155,6 @@ public final class HandshakeResponse implements ClientMessage {
       ByteBuf buf, Map<String, String> connectionAttributes, HostAddress hostAddress) {
     BufferUtils.writeLengthEncode("_client_name", buf);
     BufferUtils.writeLengthEncode(MariadbConnectionFactoryProvider.MARIADB_DRIVER, buf);
-
-    final Properties properties = new Properties();
-    try (InputStream inputStream =
-        getClass().getClassLoader().getResourceAsStream("project" + ".properties")) {
-      properties.load(inputStream);
-
-      BufferUtils.writeLengthEncode("_client_version", buf);
-      BufferUtils.writeLengthEncode(properties.getProperty("version"), buf);
-    } catch (IOException ie) {
-      // eat
-    }
 
     BufferUtils.writeLengthEncode("_server_host", buf);
     BufferUtils.writeLengthEncode(hostAddress != null ? hostAddress.getHost() : "", buf);
