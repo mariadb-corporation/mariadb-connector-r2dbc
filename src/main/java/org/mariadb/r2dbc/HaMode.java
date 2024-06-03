@@ -58,7 +58,7 @@ public enum HaMode {
   },
 
   /** no ha-mode. Connect to first host only */
-  NONE(new String[0]) {
+  NONE(new String[] {""}) {
     public List<HostAddress> getAvailableHost(
         List<HostAddress> hostAddresses, ConcurrentMap<HostAddress, Long> denyList) {
       return hostAddresses;
