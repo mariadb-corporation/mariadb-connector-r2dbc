@@ -20,7 +20,7 @@ public enum SslMode {
   // Connect over a pre-created SSL tunnel
   TUNNEL("tunnel", new String[] {"TUNNEL"});
 
-  private final String value;
+  public final String value;
   private final String[] aliases;
 
   SslMode(String value, String[] aliases) {

@@ -26,7 +26,7 @@ public class SslConfig {
   private SslContextBuilder sslContextBuilder;
   private UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer;
 
-  private boolean disableHostVerification;
+  private boolean sslTunnelDisableHostVerification;
 
   public SslConfig(
       SslMode sslMode,
@@ -35,7 +35,7 @@ public class SslConfig {
       String clientSslKey,
       CharSequence clientSslPassword,
       List<String> tlsProtocol,
-      boolean disableHostVerification,
+      boolean sslTunnelDisableHostVerification,
       UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer)
       throws R2dbcTransientResourceException {
     this.sslMode = sslMode;
@@ -44,7 +44,7 @@ public class SslConfig {
     this.tlsProtocol = tlsProtocol;
     this.clientSslKey = clientSslKey;
     this.clientSslPassword = clientSslPassword;
-    this.disableHostVerification = disableHostVerification;
+    this.sslTunnelDisableHostVerification = sslTunnelDisableHostVerification;
     this.sslContextBuilderCustomizer = sslContextBuilderCustomizer;
     if (sslMode != SslMode.DISABLE) {
       this.sslContextBuilder = getSslContextBuilder();
@@ -59,8 +59,8 @@ public class SslConfig {
     return sslMode;
   }
 
-  public boolean tunnelHostVerificationDisabled() {
-    return this.disableHostVerification;
+  public boolean sslTunnelDisableHostVerification() {
+    return this.sslTunnelDisableHostVerification;
   }
 
   private SslContextBuilder getSslContextBuilder() throws R2dbcTransientResourceException {
@@ -163,17 +163,44 @@ public class SslConfig {
 
   @Override
   public String toString() {
-    return "SslConfig{"
-        + "sslMode="
-        + sslMode
-        + ", serverSslCert="
-        + serverSslCert
-        + ", clientSslCert="
-        + clientSslCert
-        + ", tlsProtocol="
-        + tlsProtocol
-        + ", clientSslKey="
-        + clientSslKey
-        + '}';
+    StringBuilder sb = new StringBuilder();
+    boolean first = true;
+    if (sslMode != SslMode.DISABLE) {
+      sb.append("sslMode=").append(sslMode.value);
+      first=false;
+    }
+    if (serverSslCert != null) {
+      if (!first) sb.append("&");
+      sb.append("serverSslCert=").append(serverSslCert);
+      first=false;
+    }
+    if (clientSslCert != null) {
+      if (!first) sb.append("&");
+      sb.append("clientSslCert=").append(clientSslCert);
+      first=false;
+    }
+    if (tlsProtocol != null) {
+      if (!first) sb.append("&");
+      sb.append("tlsProtocol=").append(String.join(",",tlsProtocol));
+      first=false;
+    }
+    if (clientSslKey != null) {
+      if (!first) sb.append("&");
+      sb.append("clientSslKey=").append(clientSslKey);
+      first=false;
+    }
+    if (clientSslPassword != null) {
+      if (!first) sb.append("&");
+      sb.append("clientSslPassword=***");
+      first=false;
+    }
+
+    if (sslTunnelDisableHostVerification) {
+      if (!first) sb.append("&");
+      sb.append("sslTunnelDisableHostVerification=true");
+      first=false;
+    }
+
+    return sb.toString();
   }
 }

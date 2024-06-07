@@ -58,9 +58,7 @@ public class ConfigurationTest extends BaseConnectionTest {
         (MariadbConnectionFactory)
             ConnectionFactories.get(
                 "r2dbc:mariadb://root%40%C3%A5:p%40ssword@localhost:3305/%D1" + "%88db");
-    Assertions.assertTrue(factory.toString().contains("username='root@å'"));
-    Assertions.assertTrue(factory.toString().contains("database='шdb'"));
-    Assertions.assertTrue(factory.toString().contains("isolationLevel=null"));
+    Assertions.assertTrue(factory.toString().contains("r2dbc:mariadb://localhost:3305/шdb?password=***&username=root@å"));
   }
 
   @Test
@@ -69,10 +67,8 @@ public class ConfigurationTest extends BaseConnectionTest {
         (MariadbConnectionFactory)
             ConnectionFactories.get(
                 "r2dbc:mariadb://root:password@localhost:3305/db?isolationLevel=REPEATABLE-READ");
-    Assertions.assertTrue(factory.toString().contains("username='root'"));
-    Assertions.assertTrue(factory.toString().contains("database='db'"));
     Assertions.assertTrue(
-        factory.toString().contains("isolationLevel=IsolationLevel{sql='REPEATABLE READ'}"));
+        factory.toString().contains("r2dbc:mariadb://localhost:3305/db?password=***&username=root&isolationLevel=REPEATABLE-READ"));
   }
 
   @Test
@@ -81,10 +77,10 @@ public class ConfigurationTest extends BaseConnectionTest {
         (MariadbConnectionFactory)
             ConnectionFactories.get(
                 "r2dbc:mariadb:loadbalance://root:password@localhost:3305/db?isolationLevel=REPEATABLE-READ");
-    Assertions.assertTrue(factory.toString().contains("username='root'"));
-    Assertions.assertTrue(factory.toString().contains("database='db'"));
+    Assertions.assertTrue(factory.toString().contains("username=root"));
+    Assertions.assertTrue(factory.toString().contains("/db?"));
     Assertions.assertTrue(
-        factory.toString().contains("isolationLevel=IsolationLevel{sql='REPEATABLE READ'}"));
+        factory.toString().contains("isolationLevel=REPEATABLE-READ"));
     assertThrows(
         Exception.class,
         () ->
@@ -189,16 +185,7 @@ public class ConfigurationTest extends BaseConnectionTest {
     MariadbConnectionConfiguration conf =
         MariadbConnectionConfiguration.fromOptions(options).build();
     MariadbConnectionFactory factory = MariadbConnectionFactory.from(conf);
-
-    Assertions.assertTrue(factory.toString().contains("database='myDb'"));
-    Assertions.assertTrue(
-        factory.toString().contains("hosts={[someHost:43306]}"), factory.toString());
-    Assertions.assertTrue(factory.toString().contains("allowMultiQueries=true"));
-    Assertions.assertTrue(factory.toString().contains("allowPipelining=true"));
-    Assertions.assertTrue(factory.toString().contains("username='myUser'"));
-    Assertions.assertTrue(factory.toString().contains("connectTimeout=PT10S"));
-    Assertions.assertTrue(factory.toString().contains("tcpKeepAlive=true"));
-    Assertions.assertTrue(factory.toString().contains("tcpAbortiveClose=true"));
+    Assertions.assertTrue(factory.toString().contains("r2dbc:mariadb://someHost:43306/myDb?tcpKeepAlive=true&tcpAbortiveClose=true&username=myUser&allowMultiQueries=true"));
   }
 
   @Test
@@ -348,7 +335,7 @@ public class ConfigurationTest extends BaseConnectionTest {
     Assertions.assertTrue(factoryOptions.toString().contains("sessionVariables=sql_mode='ANSI'"));
     ConnectionFactory connectionFactory = ConnectionFactories.get(factoryOptions);
     Assertions.assertTrue(
-        connectionFactory.toString().contains("sessionVariables={sql_mode='ANSI'}"));
+        connectionFactory.toString().contains("r2dbc:mariadb://localhost/dbname?password=***&username=admin&sessionVariables=sql_mode='ANSI'"));
   }
 
   @Test
@@ -391,8 +378,7 @@ public class ConfigurationTest extends BaseConnectionTest {
         builder.toString());
     MariadbConnectionConfiguration conf = builder.build();
     Assertions.assertEquals(
-        "SslConfig{sslMode=TRUST, serverSslCert=null, clientSslCert=null, tlsProtocol=null,"
-            + " clientSslKey=null}",
+        "sslMode=trust",
         conf.getSslConfig().toString());
   }
 

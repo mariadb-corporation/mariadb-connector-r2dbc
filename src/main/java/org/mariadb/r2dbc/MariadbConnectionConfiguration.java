@@ -9,6 +9,7 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.IsolationLevel;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Field;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -640,85 +641,163 @@ public final class MariadbConnectionConfiguration {
 
   @Override
   public String toString() {
-    StringBuilder hiddenPwd = new StringBuilder();
-    if (password != null) {
-      hiddenPwd.append("*");
+
+    MariadbConnectionConfiguration defaultConf = new Builder().build(false);
+    StringBuilder sb = new StringBuilder();
+    sb.append("r2dbc:mariadb:");
+    if (this.haMode != HaMode.NONE) {
+      sb.append(this.haMode.toString().toLowerCase(Locale.ROOT)).append(":");
     }
-    StringBuilder hiddenPamPwd = new StringBuilder();
-    if (pamOtherPwd != null) {
-      for (CharSequence s : pamOtherPwd) {
-        hiddenPamPwd.append("*");
-        hiddenPamPwd.append(",");
+    sb.append("//");
+    for (int i = 0; i < this.getHostAddresses().size(); i++) {
+      HostAddress hostAddress = this.getHostAddresses().get(i);
+      if (i > 0) {
+        sb.append(",");
       }
-      hiddenPamPwd.deleteCharAt(hiddenPamPwd.length() - 1);
+      sb.append(hostAddress.getHost());
+      if (hostAddress.getPort() != 3306) sb.append(":").append(hostAddress.getPort());
     }
 
-    return "MariadbConnectionConfiguration{"
-        + "database='"
-        + database
-        + '\''
-        + ", haMode="
-        + haMode
-        + ", hosts={"
-        + (hostAddresses == null ? "" : Arrays.toString(hostAddresses.toArray()))
-        + '}'
-        + ", connectTimeout="
-        + connectTimeout
-        + ", tcpKeepAlive="
-        + tcpKeepAlive
-        + ", tcpAbortiveClose="
-        + tcpAbortiveClose
-        + ", transactionReplay="
-        + transactionReplay
-        + ", password="
-        + hiddenPwd
-        + ", prepareCacheSize="
-        + prepareCacheSize
-        + ", socket='"
-        + socket
-        + '\''
-        + ", username='"
-        + username
-        + '\''
-        + ", collation='"
-        + collation
-        + '\''
-        + ", timezone='"
-        + timezone
-        + '\''
-        + ", allowMultiQueries="
-        + allowMultiQueries
-        + ", allowPipelining="
-        + allowPipelining
-        + ", connectionAttributes="
-        + connectionAttributes
-        + ", sessionVariables="
-        + sessionVariables
-        + ", sslConfig="
-        + sslConfig
-        + ", rsaPublicKey='"
-        + rsaPublicKey
-        + '\''
-        + ", cachingRsaPublicKey='"
-        + cachingRsaPublicKey
-        + '\''
-        + ", allowPublicKeyRetrieval="
-        + allowPublicKeyRetrieval
-        + ", isolationLevel="
-        + isolationLevel
-        + ", useServerPrepStmts="
-        + useServerPrepStmts
-        + ", autocommit="
-        + autocommit
-        + ", permitRedirect="
-        + permitRedirect
-        + ", tinyInt1isBit="
-        + tinyInt1isBit
-        + ", pamOtherPwd="
-        + hiddenPamPwd
-        + ", restrictedAuth="
-        + (restrictedAuth == null ? "" : Arrays.toString(restrictedAuth))
-        + '}';
+    sb.append("/");
+    if (this.database != null) {
+      sb.append(this.database);
+    }
+
+    try {
+      // Option object is already initialized to default values.
+      // loop on properties,
+      // - check DefaultOption to check that property value correspond to type (and range)
+      // - set values
+      boolean first = true;
+
+      Field[] fields = MariadbConnectionConfiguration.class.getDeclaredFields();
+      for (Field field : fields) {
+        if ("database".equals(field.getName())
+                || "haMode".equals(field.getName())
+                || "$jacocoData".equals(field.getName())
+                || "addresses".equals(field.getName())
+                || "sslContextBuilderCustomizer".equals(field.getName())
+                || "loopResources".equals(field.getName())
+                || "hostAddresses".equals(field.getName())
+                || "port".equals(field.getName())
+        ) {
+          continue;
+        }
+        Object obj = field.get(this);
+
+        if (obj != null && (!(obj instanceof Properties) || ((Properties) obj).size() > 0)) {
+
+          if ("password".equals(field.getName())) {
+            sb.append(first ? '?' : '&');
+            first = false;
+            sb.append(field.getName()).append('=');
+            sb.append("***");
+            continue;
+          }
+
+          if (field.getType().equals(String.class)) {
+            String defaultValue = (String) field.get(defaultConf);
+            if (!obj.equals(defaultValue)) {
+              sb.append(first ? '?' : '&');
+              first = false;
+              sb.append(field.getName()).append('=');
+              sb.append((String) obj);
+            }
+          } else if (field.getType().equals(SslConfig.class)) {
+             String sslConfigString = ((SslConfig) obj).toString();
+             if (!sslConfigString.isEmpty()) {
+               sb.append(first ? '?' : '&');
+               first = false;
+               sb.append(sslConfigString);
+             }
+          } else if (field.getType().equals(boolean.class)) {
+            boolean defaultValue = field.getBoolean(defaultConf);
+            if (!obj.equals(defaultValue)) {
+              sb.append(first ? '?' : '&');
+              first = false;
+              sb.append(field.getName()).append('=');
+              sb.append(obj);
+            }
+          } else if (field.getType().equals(int.class)) {
+            try {
+              int defaultValue = field.getInt(defaultConf);
+              if (!obj.equals(defaultValue)) {
+                sb.append(first ? '?' : '&');
+                sb.append(field.getName()).append('=').append(obj);
+                first = false;
+              }
+            } catch (IllegalAccessException n) {
+              // eat
+            }
+          } else if (field.getType().equals(Properties.class)) {
+            sb.append(first ? '?' : '&');
+            first = false;
+            boolean firstProp = true;
+            Properties properties = (Properties) obj;
+            for (Object key : properties.keySet()) {
+              if (firstProp) {
+                firstProp = false;
+              } else {
+                sb.append('&');
+              }
+              sb.append(key).append('=');
+              sb.append(properties.get(key));
+            }
+          } else if (field.getType().isArray()) {
+            Object defaultValue = field.get(defaultConf);
+            if (field.getType().getComponentType().equals(CharSequence.class)) {
+              if (obj != null) obj = String.join(",", ((CharSequence[]) obj));
+            }
+            if (field.getType().getComponentType().equals(String.class)) {
+              if (obj != null) obj = String.join(",", ((String[]) obj));
+            }
+            if (!obj.equals(defaultValue)) {
+              sb.append(first ? '?' : '&');
+              first = false;
+              sb.append(field.getName()).append('=');
+              sb.append(obj);
+            }
+          } else if (field.getType().equals(IsolationLevel.class)) {
+            Object defaultValue = field.get(defaultConf);
+            if (!obj.equals(defaultValue)) {
+              sb.append(first ? '?' : '&');
+              first = false;
+              sb.append("isolationLevel=");
+              sb.append(((IsolationLevel)obj).asSql().replace(" ", "-"));
+            }
+          } else if (field.getType().equals(Map.class)) {
+            Object defaultValue = field.get(defaultConf);
+            if (!obj.equals(defaultValue)) {
+              sb.append(first ? '?' : '&');
+              first = false;
+              sb.append(field.getName()).append("=");
+              Map objMap = (Map)obj;
+              boolean firstMapEntry = true;
+              for (Object entry : objMap.entrySet()) {
+                if (!firstMapEntry) sb.append(',');
+                sb.append(((Map.Entry)entry).getKey()).append("=").append(((Map.Entry)entry).getValue());
+                firstMapEntry = false;
+              }
+            }
+          } else {
+            Object defaultValue = field.get(defaultConf);
+            if (!obj.equals(defaultValue)) {
+              sb.append(first ? '?' : '&');
+              first = false;
+              sb.append(field.getName()).append('=');
+              sb.append(obj);
+            }
+          }
+        }
+      }
+
+    } catch (IllegalAccessException n) {
+      n.printStackTrace();
+    } catch (SecurityException s) {
+      // only for jws, so never thrown
+      throw new IllegalArgumentException("Security too restrictive : " + s.getMessage());
+    }
+    return sb.toString();
   }
 
   /**
@@ -775,20 +854,24 @@ public final class MariadbConnectionConfiguration {
      * @return a configured {@link MariadbConnectionConfiguration}
      */
     public MariadbConnectionConfiguration build() {
+      return build(true);
+    }
 
-      if (this.host == null && this.socket == null) {
-        throw new IllegalArgumentException("host or socket must not be null");
+    private MariadbConnectionConfiguration build(boolean checkMandatory) {
+      if (checkMandatory) {
+        if (this.host == null && this.socket == null) {
+          throw new IllegalArgumentException("host or socket must not be null");
+        }
+
+        if (this.host != null && this.socket != null) {
+          throw new IllegalArgumentException(
+                  "Connection must be configured for either host/port or socket usage but not both");
+        }
+
+        if (this.username == null) {
+          throw new IllegalArgumentException("username must not be null");
+        }
       }
-
-      if (this.host != null && this.socket != null) {
-        throw new IllegalArgumentException(
-            "Connection must be configured for either host/port or socket usage but not both");
-      }
-
-      if (this.username == null) {
-        throw new IllegalArgumentException("username must not be null");
-      }
-
       return new MariadbConnectionConfiguration(
           this.haMode,
           this.connectTimeout,
