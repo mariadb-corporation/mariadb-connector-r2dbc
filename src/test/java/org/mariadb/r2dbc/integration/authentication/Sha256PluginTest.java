@@ -269,7 +269,7 @@ public class Sha256PluginTest extends BaseConnectionTest {
 
   @Test
   public void sha256PluginTestException() throws Exception {
-    Assumptions.assumeTrue(!isMariaDBServer() && minVersion(8, 0, 0));
+    Assumptions.assumeTrue(!isMariaDBServer() && minVersion(8, 0, 0) && !minVersion(8, 4, 0));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
@@ -380,7 +380,7 @@ public class Sha256PluginTest extends BaseConnectionTest {
 
   @Test
   public void cachingSha256PluginTestException() throws Exception {
-    Assumptions.assumeTrue(!isMariaDBServer() && minVersion(8, 0, 0));
+    Assumptions.assumeTrue(!isMariaDBServer() && minVersion(8, 0, 0) && !minVersion(8, 4, 0));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder

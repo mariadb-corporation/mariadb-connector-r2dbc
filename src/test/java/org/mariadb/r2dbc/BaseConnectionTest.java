@@ -145,6 +145,7 @@ public class BaseConnectionTest {
   }
 
   public boolean haveSsl(MariadbConnection connection) {
+    if (!isMariaDBServer() && minVersion(8, 4, 0)) return true;
     return connection
         .createStatement("select @@have_ssl")
         .execute()
