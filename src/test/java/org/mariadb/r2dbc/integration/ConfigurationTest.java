@@ -124,20 +124,9 @@ public class ConfigurationTest extends BaseConnectionTest {
                     + "&connectionAttributes"
                     + "=test=2,"
                     + "h=4&pamOtherPwd=p%40ssword,pwd");
-    Assertions.assertTrue(factory.toString().contains("socket='ff'"));
-    Assertions.assertTrue(factory.toString().contains("allowMultiQueries=true"));
-    Assertions.assertTrue(factory.toString().contains("tlsProtocol=[TLSv1.2]"));
-    Assertions.assertTrue(factory.toString().contains("serverSslCert=" + serverSslCert));
-    Assertions.assertTrue(factory.toString().contains("clientSslCert=" + clientSslCert));
-    Assertions.assertTrue(factory.toString().contains("allowPipelining=true"));
-    Assertions.assertTrue(factory.toString().contains("useServerPrepStmts=false"));
-    Assertions.assertTrue(factory.toString().contains("prepareCacheSize=2560"));
-    Assertions.assertTrue(factory.toString().contains("sslMode=TRUST"));
-    Assertions.assertTrue(factory.toString().contains("connectionAttributes={test=2, h=4}"));
-    Assertions.assertTrue(factory.toString().contains("pamOtherPwd=*,*"));
-    Assertions.assertTrue(factory.toString().contains("connectTimeout=PT10S"));
-    Assertions.assertTrue(factory.toString().contains("tcpKeepAlive=true"));
-    Assertions.assertTrue(factory.toString().contains("tcpAbortiveClose=true"));
+    Assertions.assertTrue(factory.toString().contains("r2dbc:mariadb://localhost/db?tcpKeepAlive=true&tcpAbortiveClose=true&password=***&pamOtherPwd=p@ssword,pwd&prepareCacheSize=2560&socket=ff&username=root&allowMultiQueries=true&connectionAttributes=test=2,h=4&sslMode=trust&serverSslCert="));
+    Assertions.assertTrue(factory.toString().contains("&clientSslCert="));
+    Assertions.assertTrue(factory.toString().contains("&tlsProtocol=TLSv1.2"));
   }
 
   @Test
