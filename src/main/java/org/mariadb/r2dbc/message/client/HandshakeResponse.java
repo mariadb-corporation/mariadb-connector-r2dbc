@@ -20,6 +20,7 @@ import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
 import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.BufferUtils;
 import org.mariadb.r2dbc.util.HostAddress;
+import org.mariadb.r2dbc.util.VersionFactory;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 import reactor.core.publisher.Mono;
 
@@ -159,15 +160,10 @@ public final class HandshakeResponse implements ClientMessage {
     BufferUtils.writeLengthEncode("_client_name", buf);
     BufferUtils.writeLengthEncode(MariadbConnectionFactoryProvider.MARIADB_DRIVER, buf);
 
-    final Properties properties = new Properties();
-    try (InputStream inputStream =
-        getClass().getClassLoader().getResourceAsStream("project" + ".properties")) {
-      properties.load(inputStream);
-
+    String clientVersion = VersionFactory.getInstance();
+    if (clientVersion != null) {
       BufferUtils.writeLengthEncode("_client_version", buf);
-      BufferUtils.writeLengthEncode(properties.getProperty("version"), buf);
-    } catch (IOException ie) {
-      // eat
+      BufferUtils.writeLengthEncode(VersionFactory.getInstance(), buf);
     }
 
     BufferUtils.writeLengthEncode("_server_host", buf);
