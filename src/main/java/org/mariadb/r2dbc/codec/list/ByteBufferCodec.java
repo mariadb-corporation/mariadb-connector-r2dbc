@@ -79,7 +79,7 @@ public class ByteBufferCodec implements Codec<ByteBuffer> {
   }
 
   public boolean canEncode(Class<?> value) {
-    return ByteBuf.class.isAssignableFrom(value);
+    return ByteBuffer.class.isAssignableFrom(value);
   }
 
   @Override
@@ -100,7 +100,7 @@ public class ByteBufferCodec implements Codec<ByteBuffer> {
   public void encodeDirectBinary(
       ByteBufAllocator allocator, ByteBuf out, Object value, Context context) {
     ByteBuffer val = (ByteBuffer) value;
-    BufferUtils.encodeLength(val.remaining());
+    out.writeBytes(BufferUtils.encodeLength(val.remaining()));
     out.writeBytes(val);
   }
 

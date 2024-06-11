@@ -21,14 +21,12 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
-import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 public class BlobParameterTest extends BaseConnectionTest {
-  private static final MariadbConnectionMetadata meta = sharedConn.getMetadata();
 
   @BeforeAll
   public static void before2() {
@@ -246,6 +244,30 @@ public class BlobParameterTest extends BaseConnectionTest {
   }
 
   @Test
+  void byteBufferValue() {
+    byteBufferValue(sharedConn);
+  }
+
+  @Test
+  void byteBufferValuePrepare() {
+    byteBufferValue(sharedConnPrepare);
+  }
+
+  private void byteBufferValue(MariadbConnection connection) {
+    MariadbStatement stmt =
+        connection
+            .createStatement("INSERT INTO BlobParam VALUES (?,?,?)")
+            .bind(0, ByteBuffer.wrap(new byte[] {(byte) 15}))
+            .bind(1, ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127}))
+            .bind(2, ByteBuffer.wrap(new byte[] {0}));
+    stmt.execute().blockLast();
+    validateNotNull(
+        ByteBuffer.wrap(new byte[] {(byte) 15}),
+        ByteBuffer.wrap(new byte[] {(byte) 1, 0, (byte) 127}),
+        ByteBuffer.wrap(new byte[] {0}));
+  }
+
+  @Test
   void inputStreamValue() {
     inputStreamValue(sharedConn);
   }
@@ -410,8 +432,8 @@ public class BlobParameterTest extends BaseConnectionTest {
     Assumptions.assumeFalse(isXpand());
     localDateTimeValue(
         sharedConnPrepare,
-        meta.isMariaDBServer() ? "2013-07-22 12:50:05.012300" : "2013-07-22 12:50:05",
-        meta.isMariaDBServer() ? "2025-01-31 10:45:01.123000" : "2025-01-31 10:45:01");
+        isMariaDBServer() ? "2013-07-22 12:50:05.012300" : "2013-07-22 12:50:05",
+        isMariaDBServer() ? "2025-01-31 10:45:01.123000" : "2025-01-31 10:45:01");
   }
 
   private void localDateTimeValue(MariadbConnection connection, String t1, String t3) {
@@ -465,9 +487,9 @@ public class BlobParameterTest extends BaseConnectionTest {
   void localTimeValuePrepare() {
     localTimeValue(sharedConnPrepare);
     validateNotNull(
-        ByteBuffer.wrap((meta.isMariaDBServer() ? "18:00:00.012340" : "18:00:00").getBytes()),
-        ByteBuffer.wrap((meta.isMariaDBServer() ? "08:00:00.123000" : "08:00:00").getBytes()),
-        ByteBuffer.wrap((meta.isMariaDBServer() ? "08:00:00.123000" : "08:00:00").getBytes()));
+        ByteBuffer.wrap((isMariaDBServer() ? "18:00:00.012340" : "18:00:00").getBytes()),
+        ByteBuffer.wrap((isMariaDBServer() ? "08:00:00.123000" : "08:00:00").getBytes()),
+        ByteBuffer.wrap((isMariaDBServer() ? "08:00:00.123000" : "08:00:00").getBytes()));
   }
 
   private void localTimeValue(MariadbConnection connection) {
