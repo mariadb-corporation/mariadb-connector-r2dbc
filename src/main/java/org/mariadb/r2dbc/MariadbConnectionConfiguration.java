@@ -640,6 +640,7 @@ public final class MariadbConnectionConfiguration {
   }
 
   @Override
+  @SuppressWarnings("rawtypes")
   public String toString() {
 
     MariadbConnectionConfiguration defaultConf = new Builder().build(false);
