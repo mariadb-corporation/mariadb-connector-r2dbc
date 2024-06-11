@@ -18,7 +18,6 @@ import reactor.util.Loggers;
 public class OkPacket implements ServerMessage, Result.UpdateCount {
   public static final byte TYPE = (byte) 0x00;
   private static final Logger logger = Loggers.getLogger(OkPacket.class);
-  private final Sequencer sequencer;
   private final long affectedRows;
   private final long lastInsertId;
   private final short serverStatus;
@@ -26,13 +25,11 @@ public class OkPacket implements ServerMessage, Result.UpdateCount {
   private final boolean ending;
 
   public OkPacket(
-      Sequencer sequencer,
       long affectedRows,
       long lastInsertId,
       short serverStatus,
       short warningCount,
       final boolean ending) {
-    this.sequencer = sequencer;
     this.affectedRows = affectedRows;
     this.lastInsertId = lastInsertId;
     this.serverStatus = serverStatus;
@@ -40,7 +37,7 @@ public class OkPacket implements ServerMessage, Result.UpdateCount {
     this.ending = ending;
   }
 
-  public static OkPacket decode(Sequencer sequencer, ByteBuf buf, Context context) {
+  public static OkPacket decode(ByteBuf buf, Context context) {
     buf.skipBytes(1);
     long affectedRows = BufferUtils.readLengthEncodedInt(buf);
     long lastInsertId = BufferUtils.readLengthEncodedInt(buf);
@@ -107,7 +104,6 @@ public class OkPacket implements ServerMessage, Result.UpdateCount {
       }
     }
     return new OkPacket(
-        sequencer,
         affectedRows,
         lastInsertId,
         serverStatus,

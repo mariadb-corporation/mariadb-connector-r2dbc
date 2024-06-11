@@ -23,7 +23,7 @@ final class MariadbClientParameterizedQueryStatement extends MariadbCommonStatem
 
   MariadbClientParameterizedQueryStatement(
       Client client, String sql, MariadbConnectionConfiguration configuration) {
-    super(client, sql, configuration, Protocol.TEXT);
+    super(client, sql, configuration);
     this.parser = ClientParser.parameterParts(this.initialSql, this.client.noBackslashEscapes());
     this.expectedSize = this.parser.getParamCount();
     initializeBinding();

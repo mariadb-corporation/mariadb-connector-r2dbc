@@ -9,8 +9,8 @@ import java.util.List;
 import java.util.Objects;
 
 public class HostAddress {
-  String host;
-  int port;
+  final String host;
+  final int port;
 
   public HostAddress(String host, int port) {
     this.host = host;

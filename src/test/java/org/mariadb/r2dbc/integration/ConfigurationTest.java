@@ -37,15 +37,16 @@ public class ConfigurationTest extends BaseConnectionTest {
     ConnectionFactory factory =
         ConnectionFactories.get(
             String.format(
-                "r2dbc:mariadb://%s:%s@%s:%s/%s%s",
-                encodedUser,
-                encodedPwd,
-                TestConfiguration.host,
-                TestConfiguration.port,
-                TestConfiguration.database,
-                TestConfiguration.other == null
-                    ? "?allowPublicKeyRetrieval=true"
-                    : "?" + TestConfiguration.other.replace("\n", "\\n")) + "&allowPublicKeyRetrieval=true");
+                    "r2dbc:mariadb://%s:%s@%s:%s/%s%s",
+                    encodedUser,
+                    encodedPwd,
+                    TestConfiguration.host,
+                    TestConfiguration.port,
+                    TestConfiguration.database,
+                    TestConfiguration.other == null
+                        ? "?allowPublicKeyRetrieval=true"
+                        : "?" + TestConfiguration.other.replace("\n", "\\n"))
+                + "&allowPublicKeyRetrieval=true");
     Connection connection = Mono.from(factory.create()).block();
     Flux.from(connection.createStatement("SELECT * FROM myTable").execute())
         .flatMap(r -> r.map((row, metadata) -> row.get(0, String.class)));
@@ -58,7 +59,10 @@ public class ConfigurationTest extends BaseConnectionTest {
         (MariadbConnectionFactory)
             ConnectionFactories.get(
                 "r2dbc:mariadb://root%40%C3%A5:p%40ssword@localhost:3305/%D1" + "%88db");
-    Assertions.assertTrue(factory.toString().contains("r2dbc:mariadb://localhost:3305/шdb?password=***&username=root@å"));
+    Assertions.assertTrue(
+        factory
+            .toString()
+            .contains("r2dbc:mariadb://localhost:3305/шdb?password=***&username=root@å"));
   }
 
   @Test
@@ -68,7 +72,10 @@ public class ConfigurationTest extends BaseConnectionTest {
             ConnectionFactories.get(
                 "r2dbc:mariadb://root:password@localhost:3305/db?isolationLevel=REPEATABLE-READ");
     Assertions.assertTrue(
-        factory.toString().contains("r2dbc:mariadb://localhost:3305/db?password=***&username=root&isolationLevel=REPEATABLE-READ"));
+        factory
+            .toString()
+            .contains(
+                "r2dbc:mariadb://localhost:3305/db?password=***&username=root&isolationLevel=REPEATABLE-READ"));
   }
 
   @Test
@@ -79,8 +86,7 @@ public class ConfigurationTest extends BaseConnectionTest {
                 "r2dbc:mariadb:loadbalance://root:password@localhost:3305/db?isolationLevel=REPEATABLE-READ");
     Assertions.assertTrue(factory.toString().contains("username=root"));
     Assertions.assertTrue(factory.toString().contains("/db?"));
-    Assertions.assertTrue(
-        factory.toString().contains("isolationLevel=REPEATABLE-READ"));
+    Assertions.assertTrue(factory.toString().contains("isolationLevel=REPEATABLE-READ"));
     assertThrows(
         Exception.class,
         () ->
@@ -124,7 +130,11 @@ public class ConfigurationTest extends BaseConnectionTest {
                     + "&connectionAttributes"
                     + "=test=2,"
                     + "h=4&pamOtherPwd=p%40ssword,pwd");
-    Assertions.assertTrue(factory.toString().contains("r2dbc:mariadb://localhost/db?tcpKeepAlive=true&tcpAbortiveClose=true&password=***&pamOtherPwd=p@ssword,pwd&prepareCacheSize=2560&socket=ff&username=root&allowMultiQueries=true&connectionAttributes=test=2,h=4&sslMode=trust&serverSslCert="));
+    Assertions.assertTrue(
+        factory
+            .toString()
+            .contains(
+                "r2dbc:mariadb://localhost/db?tcpKeepAlive=true&tcpAbortiveClose=true&password=***&pamOtherPwd=p@ssword,pwd&prepareCacheSize=2560&socket=ff&username=root&allowMultiQueries=true&connectionAttributes=test=2,h=4&sslMode=trust&serverSslCert="));
     Assertions.assertTrue(factory.toString().contains("&clientSslCert="));
     Assertions.assertTrue(factory.toString().contains("&tlsProtocol=TLSv1.2"));
   }
@@ -174,7 +184,11 @@ public class ConfigurationTest extends BaseConnectionTest {
     MariadbConnectionConfiguration conf =
         MariadbConnectionConfiguration.fromOptions(options).build();
     MariadbConnectionFactory factory = MariadbConnectionFactory.from(conf);
-    Assertions.assertTrue(factory.toString().contains("r2dbc:mariadb://someHost:43306/myDb?tcpKeepAlive=true&tcpAbortiveClose=true&username=myUser&allowMultiQueries=true"));
+    Assertions.assertTrue(
+        factory
+            .toString()
+            .contains(
+                "r2dbc:mariadb://someHost:43306/myDb?tcpKeepAlive=true&tcpAbortiveClose=true&username=myUser&allowMultiQueries=true"));
   }
 
   @Test
@@ -324,7 +338,10 @@ public class ConfigurationTest extends BaseConnectionTest {
     Assertions.assertTrue(factoryOptions.toString().contains("sessionVariables=sql_mode='ANSI'"));
     ConnectionFactory connectionFactory = ConnectionFactories.get(factoryOptions);
     Assertions.assertTrue(
-        connectionFactory.toString().contains("r2dbc:mariadb://localhost/dbname?password=***&username=admin&sessionVariables=sql_mode='ANSI'"));
+        connectionFactory
+            .toString()
+            .contains(
+                "r2dbc:mariadb://localhost/dbname?password=***&username=admin&sessionVariables=sql_mode='ANSI'"));
   }
 
   @Test
@@ -366,9 +383,7 @@ public class ConfigurationTest extends BaseConnectionTest {
             + " autoCommit=true, permitRedirect=true}",
         builder.toString());
     MariadbConnectionConfiguration conf = builder.build();
-    Assertions.assertEquals(
-        "sslMode=trust",
-        conf.getSslConfig().toString());
+    Assertions.assertEquals("sslMode=trust", conf.getSslConfig().toString());
   }
 
   @Test

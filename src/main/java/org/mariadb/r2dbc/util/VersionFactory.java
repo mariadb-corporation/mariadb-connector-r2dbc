@@ -15,7 +15,7 @@ public final class VersionFactory {
     static {
       String res = null;
       try (InputStream inputStream =
-                   VersionFactory.class.getClassLoader().getResourceAsStream("mariadb.properties")) {
+          VersionFactory.class.getClassLoader().getResourceAsStream("mariadb.properties")) {
         if (inputStream != null) {
           Properties prop = new Properties();
           prop.load(inputStream);
@@ -26,7 +26,6 @@ public final class VersionFactory {
       }
       instance = res;
     }
-
   }
 
   public static String getInstance() {

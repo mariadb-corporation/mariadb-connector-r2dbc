@@ -167,38 +167,38 @@ public class SslConfig {
     boolean first = true;
     if (sslMode != SslMode.DISABLE) {
       sb.append("sslMode=").append(sslMode.value);
-      first=false;
+      first = false;
     }
     if (serverSslCert != null) {
       if (!first) sb.append("&");
       sb.append("serverSslCert=").append(serverSslCert);
-      first=false;
+      first = false;
     }
     if (clientSslCert != null) {
       if (!first) sb.append("&");
       sb.append("clientSslCert=").append(clientSslCert);
-      first=false;
+      first = false;
     }
     if (tlsProtocol != null) {
       if (!first) sb.append("&");
-      sb.append("tlsProtocol=").append(String.join(",",tlsProtocol));
-      first=false;
+      sb.append("tlsProtocol=").append(String.join(",", tlsProtocol));
+      first = false;
     }
     if (clientSslKey != null) {
       if (!first) sb.append("&");
       sb.append("clientSslKey=").append(clientSslKey);
-      first=false;
+      first = false;
     }
     if (clientSslPassword != null) {
       if (!first) sb.append("&");
       sb.append("clientSslPassword=***");
-      first=false;
+      first = false;
     }
 
     if (sslTunnelDisableHostVerification) {
       if (!first) sb.append("&");
       sb.append("sslTunnelDisableHostVerification=true");
-      first=false;
+      first = false;
     }
 
     return sb.toString();

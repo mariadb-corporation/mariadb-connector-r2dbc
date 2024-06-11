@@ -6,7 +6,6 @@ package org.mariadb.r2dbc.message.server;
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
 import org.mariadb.r2dbc.message.AuthSwitch;
-import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.ServerMessage;
 
 public class AuthSwitchPacket implements AuthSwitch, ServerMessage {
@@ -21,7 +20,7 @@ public class AuthSwitchPacket implements AuthSwitch, ServerMessage {
     this.seed = seed;
   }
 
-  public static AuthSwitchPacket decode(Sequencer sequencer, ByteBuf buf, Context context) {
+  public static AuthSwitchPacket decode(Sequencer sequencer, ByteBuf buf) {
     buf.skipBytes(1);
     int nullLength = buf.bytesBefore((byte) 0x00);
     String plugin = buf.toString(buf.readerIndex(), nullLength, StandardCharsets.US_ASCII);

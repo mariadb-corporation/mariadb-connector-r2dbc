@@ -674,14 +674,13 @@ public final class MariadbConnectionConfiguration {
       Field[] fields = MariadbConnectionConfiguration.class.getDeclaredFields();
       for (Field field : fields) {
         if ("database".equals(field.getName())
-                || "haMode".equals(field.getName())
-                || "$jacocoData".equals(field.getName())
-                || "addresses".equals(field.getName())
-                || "sslContextBuilderCustomizer".equals(field.getName())
-                || "loopResources".equals(field.getName())
-                || "hostAddresses".equals(field.getName())
-                || "port".equals(field.getName())
-        ) {
+            || "haMode".equals(field.getName())
+            || "$jacocoData".equals(field.getName())
+            || "addresses".equals(field.getName())
+            || "sslContextBuilderCustomizer".equals(field.getName())
+            || "loopResources".equals(field.getName())
+            || "hostAddresses".equals(field.getName())
+            || "port".equals(field.getName())) {
           continue;
         }
         Object obj = field.get(this);
@@ -705,12 +704,12 @@ public final class MariadbConnectionConfiguration {
               sb.append((String) obj);
             }
           } else if (field.getType().equals(SslConfig.class)) {
-             String sslConfigString = ((SslConfig) obj).toString();
-             if (!sslConfigString.isEmpty()) {
-               sb.append(first ? '?' : '&');
-               first = false;
-               sb.append(sslConfigString);
-             }
+            String sslConfigString = ((SslConfig) obj).toString();
+            if (!sslConfigString.isEmpty()) {
+              sb.append(first ? '?' : '&');
+              first = false;
+              sb.append(sslConfigString);
+            }
           } else if (field.getType().equals(boolean.class)) {
             boolean defaultValue = field.getBoolean(defaultConf);
             if (!obj.equals(defaultValue)) {
@@ -764,7 +763,7 @@ public final class MariadbConnectionConfiguration {
               sb.append(first ? '?' : '&');
               first = false;
               sb.append("isolationLevel=");
-              sb.append(((IsolationLevel)obj).asSql().replace(" ", "-"));
+              sb.append(((IsolationLevel) obj).asSql().replace(" ", "-"));
             }
           } else if (field.getType().equals(Map.class)) {
             Object defaultValue = field.get(defaultConf);
@@ -772,11 +771,13 @@ public final class MariadbConnectionConfiguration {
               sb.append(first ? '?' : '&');
               first = false;
               sb.append(field.getName()).append("=");
-              Map objMap = (Map)obj;
+              Map objMap = (Map) obj;
               boolean firstMapEntry = true;
               for (Object entry : objMap.entrySet()) {
                 if (!firstMapEntry) sb.append(',');
-                sb.append(((Map.Entry)entry).getKey()).append("=").append(((Map.Entry)entry).getValue());
+                sb.append(((Map.Entry) entry).getKey())
+                    .append("=")
+                    .append(((Map.Entry) entry).getValue());
                 firstMapEntry = false;
               }
             }
@@ -866,7 +867,7 @@ public final class MariadbConnectionConfiguration {
 
         if (this.host != null && this.socket != null) {
           throw new IllegalArgumentException(
-                  "Connection must be configured for either host/port or socket usage but not both");
+              "Connection must be configured for either host/port or socket usage but not both");
         }
 
         if (this.username == null) {

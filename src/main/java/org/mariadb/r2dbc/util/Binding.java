@@ -6,11 +6,8 @@ package org.mariadb.r2dbc.util;
 import java.util.Arrays;
 import java.util.Objects;
 import org.mariadb.r2dbc.MariadbCommonStatement;
-import reactor.util.Logger;
-import reactor.util.Loggers;
 
 public final class Binding {
-  private static final Logger LOGGER = Loggers.getLogger(Binding.class);
   private final int expectedSize;
   private BindValue[] binds;
   private int currentSize = 0;

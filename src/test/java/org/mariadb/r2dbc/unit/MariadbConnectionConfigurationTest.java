@@ -64,21 +64,22 @@ public class MariadbConnectionConfigurationTest {
         "r2dbc:mariadb:loadbalance://localhost/MyDB?connectTimeout=PT0.15S&tcpKeepAlive=true&tcpAbortiveClose=true&transactionReplay=true&password=***&collation=utf8mb4_nopad_bin&timezone=auto&pamOtherPwd=otherPwd&prepareCacheSize=125&socket=/path/to/mysocket&username=MyUSer&allowPipelining=false&connectionAttributes=entry1=val1,entry2=val2&sessionVariables=timezone=Europe/Paris&sslMode=trust&serverSslCert=/path/to/serverCert&tlsProtocol=TLSv1.2,TLSv1.3&clientSslKey=clientSecretKey&clientSslPassword=***&sslTunnelDisableHostVerification=true&rsaPublicKey=/path/to/publicRSAKey&cachingRsaPublicKey=cachingRSAPublicKey&allowPublicKeyRetrieval=true&useServerPrepStmts=true&autocommit=false&tinyInt1isBit=false&restrictedAuth=mysql_native_password,client_ed25519&isolationLevel=SERIALIZABLE",
         conf.toString());
   }
+
   @Test
   public void haMode() {
     TreeMap<String, String> connectionAttributes = new TreeMap<>();
     connectionAttributes.put("entry1", "val1");
     connectionAttributes.put("entry2", "val2");
     MariadbConnectionConfiguration conf =
-            MariadbConnectionConfiguration.builder()
-                    .haMode("")
-                    .host("localhost")
-                    .username("user")
-                    .connectionAttributes(connectionAttributes)
-                    .build();
+        MariadbConnectionConfiguration.builder()
+            .haMode("")
+            .host("localhost")
+            .username("user")
+            .connectionAttributes(connectionAttributes)
+            .build();
     Assertions.assertEquals(
-            "r2dbc:mariadb://localhost/?username=user&connectionAttributes=entry1=val1,entry2=val2",
-            conf.toString());
+        "r2dbc:mariadb://localhost/?username=user&connectionAttributes=entry1=val1,entry2=val2",
+        conf.toString());
   }
 
   @Test
@@ -116,34 +117,34 @@ public class MariadbConnectionConfigurationTest {
     MariadbConnectionConfiguration conf =
         MariadbConnectionConfiguration.fromOptions(options).build();
     Assertions.assertEquals(
-            "r2dbc:mariadb:loadbalance://localhost/db?connectTimeout=PT0.15S"
-                    + "&tcpKeepAlive=true"
-                    + "&tcpAbortiveClose=true"
-                    + "&transactionReplay=true"
-                    + "&password=***"
-                    + "&collation=utf8mb4_nopad_bin"
-                    + "&timezone=auto"
-                    + "&pamOtherPwd=otherPwd"
-                    + "&prepareCacheSize=125"
-                    + "&socket=/path/to/mysocket"
-                    + "&username=ro:ot"
-                    + "&allowMultiQueries=true"
-                    + "&allowPipelining=false"
-                    + "&connectionAttributes=entry1=val1,entry2=val2"
-                    + "&sessionVariables=timezone='Europe/Paris'"
-                    + "&sslMode=trust"
-                    + "&serverSslCert=/path/to/serverCert"
-                    + "&tlsProtocol=TLSv1.2,TLSv1.3"
-                    + "&clientSslKey=clientSecretKey"
-                    + "&clientSslPassword=***"
-                    + "&sslTunnelDisableHostVerification=true"
-                    + "&rsaPublicKey=/path/to/publicRSAKey"
-                    + "&cachingRsaPublicKey=cachingRSAPublicKey"
-                    + "&allowPublicKeyRetrieval=true"
-                    + "&autocommit=false"
-                    + "&tinyInt1isBit=false"
-                    + "&restrictedAuth=mysql_native_password,client_ed25519"
-                    + "&isolationLevel=SERIALIZABLE",
+        "r2dbc:mariadb:loadbalance://localhost/db?connectTimeout=PT0.15S"
+            + "&tcpKeepAlive=true"
+            + "&tcpAbortiveClose=true"
+            + "&transactionReplay=true"
+            + "&password=***"
+            + "&collation=utf8mb4_nopad_bin"
+            + "&timezone=auto"
+            + "&pamOtherPwd=otherPwd"
+            + "&prepareCacheSize=125"
+            + "&socket=/path/to/mysocket"
+            + "&username=ro:ot"
+            + "&allowMultiQueries=true"
+            + "&allowPipelining=false"
+            + "&connectionAttributes=entry1=val1,entry2=val2"
+            + "&sessionVariables=timezone='Europe/Paris'"
+            + "&sslMode=trust"
+            + "&serverSslCert=/path/to/serverCert"
+            + "&tlsProtocol=TLSv1.2,TLSv1.3"
+            + "&clientSslKey=clientSecretKey"
+            + "&clientSslPassword=***"
+            + "&sslTunnelDisableHostVerification=true"
+            + "&rsaPublicKey=/path/to/publicRSAKey"
+            + "&cachingRsaPublicKey=cachingRSAPublicKey"
+            + "&allowPublicKeyRetrieval=true"
+            + "&autocommit=false"
+            + "&tinyInt1isBit=false"
+            + "&restrictedAuth=mysql_native_password,client_ed25519"
+            + "&isolationLevel=SERIALIZABLE",
         conf.toString());
   }
 
@@ -155,7 +156,7 @@ public class MariadbConnectionConfigurationTest {
     MariadbConnectionConfiguration conf =
         MariadbConnectionConfiguration.fromOptions(options).build();
     Assertions.assertEquals(
-            "r2dbc:mariadb://localhost/db?password=***&username=ro:ot&sessionVariables=sql_mode='TRADITIONAL,NO_AUTO_VALUE_ON_ZERO,ONLY_FULL_GROUP_BY',wait_timeout=1",
+        "r2dbc:mariadb://localhost/db?password=***&username=ro:ot&sessionVariables=sql_mode='TRADITIONAL,NO_AUTO_VALUE_ON_ZERO,ONLY_FULL_GROUP_BY',wait_timeout=1",
         conf.toString());
   }
 

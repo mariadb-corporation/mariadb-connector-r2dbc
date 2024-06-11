@@ -10,18 +10,13 @@ import io.r2dbc.spi.OutParameterMetadata;
 import java.nio.charset.StandardCharsets;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.codec.DataType;
-import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.util.CharsetEncodingLength;
 import org.mariadb.r2dbc.util.MariadbType;
 import org.mariadb.r2dbc.util.constants.ColumnFlags;
-import reactor.util.Logger;
-import reactor.util.Loggers;
 
 public final class ColumnDefinitionPacket
     implements ServerMessage, ColumnMetadata, OutParameterMetadata {
-  private static final Logger logger = Loggers.getLogger(ColumnDefinitionPacket.class);
-
   private final byte[] meta;
   private final int charset;
   private final long length;
@@ -82,11 +77,7 @@ public final class ColumnDefinitionPacket
   }
 
   public static ColumnDefinitionPacket decode(
-      Sequencer sequencer,
-      ByteBuf buf,
-      Context context,
-      boolean ending,
-      MariadbConnectionConfiguration conf) {
+      ByteBuf buf, boolean ending, MariadbConnectionConfiguration conf) {
     byte[] meta = new byte[buf.readableBytes() - 12];
     buf.readBytes(meta);
     int charset = buf.readUnsignedShortLE();

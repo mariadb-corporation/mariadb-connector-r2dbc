@@ -16,7 +16,7 @@ public final class MariadbTransactionDefinition implements TransactionDefinition
   public static final MariadbTransactionDefinition EMPTY =
       new MariadbTransactionDefinition(Collections.emptyMap());
 
-  public static Option<Boolean> WITH_CONSISTENT_SNAPSHOT =
+  public static final Option<Boolean> WITH_CONSISTENT_SNAPSHOT =
       Option.valueOf("WITH CONSISTENT SNAPSHOT");
   public static MariadbTransactionDefinition WITH_CONSISTENT_SNAPSHOT_READ_WRITE =
       EMPTY.consistent().readWrite();

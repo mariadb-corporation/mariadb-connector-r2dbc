@@ -18,12 +18,9 @@ public final class ErrorPacket implements ServerMessage, Result.Message {
   private final short errorCode;
   private final String message;
   private final String sqlState;
-  private final Sequencer sequencer;
   private final boolean ending;
 
-  private ErrorPacket(
-      Sequencer sequencer, short errorCode, String sqlState, String message, boolean ending) {
-    this.sequencer = sequencer;
+  private ErrorPacket(short errorCode, String sqlState, String message, boolean ending) {
     this.errorCode = errorCode;
     this.message = message;
     this.sqlState = sqlState;
@@ -46,7 +43,7 @@ public final class ErrorPacket implements ServerMessage, Result.Message {
       msg = buf.readCharSequence(buf.readableBytes(), StandardCharsets.UTF_8).toString();
       sqlState = "HY000";
     }
-    ErrorPacket err = new ErrorPacket(sequencer, errorCode, sqlState, msg, ending);
+    ErrorPacket err = new ErrorPacket(errorCode, sqlState, msg, ending);
     logger.warn("Error: '{}' sqlState='{}' code={} ", msg, sqlState, errorCode);
     return err;
   }

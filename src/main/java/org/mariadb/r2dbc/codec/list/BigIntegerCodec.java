@@ -35,7 +35,7 @@ public class BigIntegerCodec implements Codec<BigInteger> {
           DataType.TEXT,
           DataType.VARSTRING,
           DataType.STRING);
-  public static BigIntegerCodec INSTANCE = new BigIntegerCodec();
+  public static final BigIntegerCodec INSTANCE = new BigIntegerCodec();
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getDataType())

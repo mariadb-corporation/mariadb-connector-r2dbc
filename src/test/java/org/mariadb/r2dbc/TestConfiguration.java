@@ -4,15 +4,14 @@
 package org.mariadb.r2dbc;
 
 import io.r2dbc.spi.ConnectionFactoryOptions;
-import org.mariadb.r2dbc.api.MariadbConnection;
-import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
+import org.mariadb.r2dbc.api.MariadbConnection;
+import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
 
 public class TestConfiguration {
 
@@ -83,9 +82,15 @@ public class TestConfiguration {
     ConnectionFactoryOptions options = ConnectionFactoryOptions.parse(connString);
     defaultBuilder = MariadbConnectionConfiguration.fromOptions(options);
     try {
-      MariadbConnection connection = new MariadbConnectionFactory(MariadbConnectionConfiguration.fromOptions(options).allowPublicKeyRetrieval(true).build()).create().block();
+      MariadbConnection connection =
+          new MariadbConnectionFactory(
+                  MariadbConnectionConfiguration.fromOptions(options)
+                      .allowPublicKeyRetrieval(true)
+                      .build())
+              .create()
+              .block();
       MariadbConnectionMetadata meta = connection.getMetadata();
-      if (!meta.isMariaDBServer() && meta.minVersion(8,4,0)) {
+      if (!meta.isMariaDBServer() && meta.minVersion(8, 4, 0)) {
         defaultBuilder.allowPublicKeyRetrieval(true);
       }
       connection.close().block();

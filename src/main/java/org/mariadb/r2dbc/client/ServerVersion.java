@@ -20,8 +20,10 @@ public class ServerVersion {
     this.majorVersion = parsed[0];
     this.minorVersion = parsed[1];
     this.patchVersion = parsed[2];
-    this.supportReturning = mariaDBServer &&
-            versionGreaterOrEqual(this.majorVersion, this.minorVersion, this.patchVersion, 10, 5, 1);
+    this.supportReturning =
+        mariaDBServer
+            && versionGreaterOrEqual(
+                this.majorVersion, this.minorVersion, this.patchVersion, 10, 5, 1);
   }
 
   public boolean isMariaDBServer() {
@@ -57,10 +59,12 @@ public class ServerVersion {
    * @return true if version is greater than parameters
    */
   public boolean versionGreaterOrEqual(int major, int minor, int patch) {
-    return versionGreaterOrEqual(this.majorVersion, this.minorVersion, this.patchVersion, major, minor, patch);
+    return versionGreaterOrEqual(
+        this.majorVersion, this.minorVersion, this.patchVersion, major, minor, patch);
   }
 
-  private static boolean versionGreaterOrEqual(int currentMajor, int currentMinor, int currentPatch, int major, int minor, int patch) {
+  private static boolean versionGreaterOrEqual(
+      int currentMajor, int currentMinor, int currentPatch, int major, int minor, int patch) {
     if (currentMajor > major) {
       return true;
     }

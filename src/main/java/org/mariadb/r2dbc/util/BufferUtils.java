@@ -9,7 +9,6 @@ import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ByteProcessor;
 import java.nio.charset.StandardCharsets;
-import java.time.format.DateTimeFormatter;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 
@@ -18,13 +17,8 @@ public final class BufferUtils {
   public static final byte[] BINARY_PREFIX = {'_', 'b', 'i', 'n', 'a', 'r', 'y', ' ', '\''};
   public static final byte[] STRING_PREFIX = {'\''};
   private static final byte QUOTE = (byte) '\'';
-  private static final byte DBL_QUOTE = (byte) '"';
   private static final byte ZERO_BYTE = (byte) '\0';
   private static final byte BACKSLASH = (byte) '\\';
-  private static final DateTimeFormatter TIMESTAMP_FORMAT =
-      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
-  private static final DateTimeFormatter TIMESTAMP_FORMAT_NO_FRACTIONAL =
-      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
   public static void skipLengthEncode(ByteBuf buf) {
     short type = buf.readUnsignedByte();
@@ -104,38 +98,11 @@ public final class BufferUtils {
     buf.writeBytes(bytes);
   }
 
-  public static ByteBuf encodeByte(ByteBufAllocator allocator, int value) {
-    ByteBuf byteBuf = allocator.buffer();
-    byteBuf.writeByte(value);
-    return byteBuf;
-  }
-
-  public static ByteBuf encodeAscii(ByteBufAllocator allocator, String value) {
-    ByteBuf byteBuf = allocator.buffer();
-    byteBuf.writeCharSequence(value, StandardCharsets.US_ASCII);
-    return byteBuf;
-  }
-
-  public static ByteBuf encodeLengthAscii(ByteBufAllocator allocator, String value) {
-    int len = value.length();
-    ByteBuf byteBuf = allocator.buffer(len + 9);
-    byteBuf.writeBytes(encodeLength(value.length()));
-    byteBuf.writeCharSequence(value, StandardCharsets.US_ASCII);
-    return byteBuf;
-  }
-
   public static ByteBuf encodeLengthUtf8(ByteBufAllocator allocator, String value) {
     byte[] b = value.getBytes(StandardCharsets.UTF_8);
     CompositeByteBuf byteBuf = allocator.compositeBuffer();
     byteBuf.addComponent(true, Unpooled.wrappedBuffer(encodeLength(b.length)));
     byteBuf.addComponent(true, Unpooled.wrappedBuffer(b));
-    return byteBuf;
-  }
-
-  public static ByteBuf encodeLengthBytes(ByteBufAllocator allocator, byte[] value) {
-    CompositeByteBuf byteBuf = allocator.compositeBuffer();
-    byteBuf.addComponent(true, Unpooled.wrappedBuffer(encodeLength(value.length)));
-    byteBuf.addComponent(true, Unpooled.wrappedBuffer(value));
     return byteBuf;
   }
 

@@ -30,18 +30,13 @@ public abstract class MariadbCommonStatement implements MariadbStatement {
   protected final Client client;
   protected final String initialSql;
   protected final MariadbConnectionConfiguration configuration;
-  private final Protocol defaultProtocol;
+  protected final ExceptionFactory factory;
   protected int expectedSize;
-  protected ExceptionFactory factory;
   protected String[] generatedColumns;
   private Binding currentBinding;
 
   public MariadbCommonStatement(
-      Client client,
-      String sql,
-      MariadbConnectionConfiguration configuration,
-      Protocol defaultProtocol) {
-    this.defaultProtocol = defaultProtocol;
+      Client client, String sql, MariadbConnectionConfiguration configuration) {
     this.client = client;
     this.configuration = configuration;
     this.initialSql = Assert.requireNonNull(sql, "sql must not be null");

@@ -54,7 +54,7 @@ public class FailoverClient implements Client {
         .then(Mono.just(Boolean.TRUE));
   }
 
-  private static final Mono<ServerMessage> reconnectFallback(
+  private static Mono<ServerMessage> reconnectFallback(
       Throwable t,
       MariadbConnectionConfiguration conf,
       ReentrantLock lock,

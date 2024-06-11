@@ -28,7 +28,7 @@ public enum DecoderState implements DecoderStateInterface {
   OK_PACKET {
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
-      return OkPacket.decode(sequencer, body, decoder.getContext());
+      return OkPacket.decode(body, decoder.getContext());
     }
 
     @Override
@@ -40,7 +40,7 @@ public enum DecoderState implements DecoderStateInterface {
   AUTHENTICATION_SWITCH {
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
-      return AuthSwitchPacket.decode(sequencer, body, decoder.getContext());
+      return AuthSwitchPacket.decode(sequencer, body);
     }
   },
 
@@ -63,7 +63,7 @@ public enum DecoderState implements DecoderStateInterface {
   AUTHENTICATION_MORE_DATA {
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
-      return AuthMoreDataPacket.decode(sequencer, body, decoder.getContext());
+      return AuthMoreDataPacket.decode(sequencer, body);
     }
   },
 
@@ -84,8 +84,7 @@ public enum DecoderState implements DecoderStateInterface {
   COLUMN_COUNT {
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
-      ColumnCountPacket columnCountPacket =
-          ColumnCountPacket.decode(sequencer, body, decoder.getContext());
+      ColumnCountPacket columnCountPacket = ColumnCountPacket.decode(body, decoder.getContext());
       decoder.setStateCounter(columnCountPacket.getColumnCount());
       decoder.setMetaFollows(columnCountPacket.isMetaFollows());
       return columnCountPacket;
@@ -104,8 +103,7 @@ public enum DecoderState implements DecoderStateInterface {
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       decoder.decrementStateCounter();
-      return ColumnDefinitionPacket.decode(
-          sequencer, body, decoder.getContext(), false, decoder.getConf());
+      return ColumnDefinitionPacket.decode(body, false, decoder.getConf());
     }
 
     @Override
@@ -120,7 +118,7 @@ public enum DecoderState implements DecoderStateInterface {
   EOF_INTERMEDIATE_RESPONSE {
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
-      EofPacket eof = EofPacket.decode(sequencer, body, decoder.getContext(), false);
+      EofPacket eof = EofPacket.decode(body, decoder.getContext(), false);
       decoder.setStateCounter((eof.getServerStatus() & ServerStatus.PS_OUT_PARAMETERS) > 0 ? 1 : 0);
       return eof;
     }
@@ -139,7 +137,7 @@ public enum DecoderState implements DecoderStateInterface {
   EOF_END {
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
-      return EofPacket.decode(sequencer, body, decoder.getContext(), true);
+      return EofPacket.decode(body, decoder.getContext(), true);
     }
 
     @Override
@@ -154,7 +152,7 @@ public enum DecoderState implements DecoderStateInterface {
       // specific for mysql that break protocol, forgetting sometime to set PS_OUT_PARAMETERS and
       // more importantly MORE_RESULTS_EXISTS
       // breaking protocol
-      return EofPacket.decodeOutputParam(sequencer, body, decoder.getContext());
+      return EofPacket.decodeOutputParam(body, decoder.getContext());
     }
 
     @Override
@@ -337,8 +335,7 @@ public enum DecoderState implements DecoderStateInterface {
     @Override
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       ColumnDefinitionPacket columnDefinitionPacket =
-          ColumnDefinitionPacket.decode(
-              sequencer, body, decoder.getContext(), false, decoder.getConf());
+          ColumnDefinitionPacket.decode(body, false, decoder.getConf());
       decoder
               .getPrepareColumns()[
               decoder.getPrepare().getNumColumns() - decoder.getStateCounter()] =

@@ -19,7 +19,7 @@ public class ColumnCountPacket implements ServerMessage {
     this.metaFollows = metaFollows;
   }
 
-  public static ColumnCountPacket decode(Sequencer sequencer, ByteBuf buf, Context context) {
+  public static ColumnCountPacket decode(ByteBuf buf, Context context) {
     long columnCount = BufferUtils.readLengthEncodedInt(buf);
     boolean metaFollow = true;
     if ((context.getServerCapabilities() & Capabilities.MARIADB_CLIENT_CACHE_METADATA) > 0) {
