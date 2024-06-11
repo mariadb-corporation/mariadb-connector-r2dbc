@@ -527,8 +527,7 @@ public class SimpleClient implements Client {
                       "Request queue limit reached during handshake"));
             }
           } catch (Throwable t) {
-            t.printStackTrace();
-            throw t;
+            sink.error(t);
           } finally {
             lock.unlock();
           }
