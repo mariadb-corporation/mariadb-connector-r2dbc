@@ -18,6 +18,7 @@ import java.time.LocalTime;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.mariadb.r2dbc.codec.list.*;
 import org.mariadb.r2dbc.util.Assert;
@@ -47,7 +48,8 @@ public final class Codecs {
         DurationCodec.INSTANCE,
         ShortCodec.INSTANCE,
         StreamCodec.INSTANCE,
-        StringCodec.INSTANCE
+        StringCodec.INSTANCE,
+        UuidCodec.INSTANCE
       };
   private static final Map<R2dbcType, Codec<?>> r2dbcTypeMapper = r2dbcTypeToDataTypeMap();
   private static final Map<Class<?>, Codec<?>> codecMapper = classToCodecMap();
@@ -117,6 +119,7 @@ public final class Codecs {
     myMap.put(Short.class, ShortCodec.INSTANCE);
     myMap.put(Stream.class, StreamCodec.INSTANCE);
     myMap.put(String.class, StringCodec.INSTANCE);
+    myMap.put(UUID.class, UuidCodec.INSTANCE);
     return myMap;
   }
 
@@ -170,6 +173,7 @@ public final class Codecs {
     myMap.put(LocalTime.class, LocalTimeCodec.INSTANCE);
     myMap.put(Duration.class, DurationCodec.INSTANCE);
     myMap.put(LocalDateTime.class, LocalDateTimeCodec.INSTANCE);
+    myMap.put(UUID.class, UuidCodec.INSTANCE);
     return myMap;
   }
 
