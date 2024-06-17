@@ -1,5 +1,19 @@
 # Change Log
 
+## [1.2.1](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.2.1) (19 Jun 2024)
+
+[Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.2.0...1.2.1)
+
+Notable Changes:
+* R2DBC-96 Missing UUID support
+
+Bugs Fixed:
+* R2DBC-97 NPE if No HaMode provided
+* R2DBC-98 correcting possible bug connecting if project contain a project.properties file
+* R2DBC-99 No encoding set for ByteBuffer parameter
+* R2DBC-101 Wrong default return type for MySQL JSON fields
+* R2DBC-102 avoid netty unneeded dependencies
+
 ## [1.2.0](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.2.0) (08 Feb 2024)
 
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.1.4...1.2.0)
