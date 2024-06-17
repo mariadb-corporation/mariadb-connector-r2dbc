@@ -222,6 +222,7 @@ public final class ColumnDefinitionPacket
       case TIME:
         return MariadbType.TIME;
       case JSON:
+        return MariadbType.VARCHAR;
       case ENUM:
       case SET:
       case STRING:
