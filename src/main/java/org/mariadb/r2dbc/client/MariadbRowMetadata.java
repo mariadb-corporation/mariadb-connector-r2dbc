@@ -46,6 +46,13 @@ public final class MariadbRowMetadata implements RowMetadata {
     return Collections.unmodifiableCollection(columnNames);
   }
 
+  public Collection<String> getColumnNames() {
+    if (this.columnNames == null) {
+      this.columnNames = getColumnNames(this.metadataList);
+    }
+    return this.columnNames;
+  }
+
   @Override
   public String toString() {
     if (this.columnNames == null) {

@@ -33,7 +33,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
             .onErrorResume(
                 e -> {
                   ed25519PluginEnabled.set(false);
-                  return Flux.just(1L);
+                  return Flux.just(1);
                 })
             .blockLast();
 
@@ -47,7 +47,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
             .onErrorResume(
                 e -> {
                   ed25519PluginEnabled.set(false);
-                  return Flux.just(1L);
+                  return Flux.just(1);
                 })
             .blockLast();
       }
@@ -61,7 +61,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
           .onErrorResume(
               e -> {
                 ed25519PluginEnabled.set(false);
-                return Flux.just(1L);
+                return Flux.just(1);
               })
           .blockLast();
       sharedConn.createStatement("FLUSH PRIVILEGES").execute().blockLast();
