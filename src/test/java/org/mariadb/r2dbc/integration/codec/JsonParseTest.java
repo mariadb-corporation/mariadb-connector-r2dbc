@@ -3,38 +3,33 @@
 
 package org.mariadb.r2dbc.integration.codec;
 
+import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import reactor.test.StepVerifier;
 
-import java.util.Optional;
-import java.util.UUID;
-
 public class JsonParseTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
-      afterAll2();
-      sharedConn.beginTransaction().block();
-      sharedConn.createStatement("DROP TABLE IF EXISTS JsonTable").execute().blockLast();
-      sharedConn.createStatement("CREATE TABLE JsonTable (t1 JSON)").execute().blockLast();
-      sharedConn
-          .createStatement(
-              "INSERT INTO JsonTable VALUES"
-                  + " ('{}'),('{\"val\": \"val1\"}'),"
-                  + " (null)")
-          .execute()
-          .blockLast();
-      sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
-      sharedConn.commitTransaction().block();
+    afterAll2();
+    sharedConn.beginTransaction().block();
+    sharedConn.createStatement("DROP TABLE IF EXISTS JsonTable").execute().blockLast();
+    sharedConn.createStatement("CREATE TABLE JsonTable (t1 JSON)").execute().blockLast();
+    sharedConn
+        .createStatement(
+            "INSERT INTO JsonTable VALUES" + " ('{}'),('{\"val\": \"val1\"}')," + " (null)")
+        .execute()
+        .blockLast();
+    sharedConn.createStatement("FLUSH TABLES").execute().blockLast();
+    sharedConn.commitTransaction().block();
   }
 
   @AfterAll
   public static void afterAll2() {
-    //sharedConn.createStatement("DROP TABLE IF EXISTS JsonTable").execute().blockLast();
+    // sharedConn.createStatement("DROP TABLE IF EXISTS JsonTable").execute().blockLast();
   }
 
   @Test
@@ -54,10 +49,7 @@ public class JsonParseTest extends BaseConnectionTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0))))
         .as(StepVerifier::create)
-        .expectNext(
-            Optional.of("{}"),
-            Optional.of("{\"val\": \"val1\"}"),
-            Optional.empty())
+        .expectNext(Optional.of("{}"), Optional.of("{\"val\": \"val1\"}"), Optional.empty())
         .verifyComplete();
 
     connection
@@ -66,10 +58,7 @@ public class JsonParseTest extends BaseConnectionTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Object.class))))
         .as(StepVerifier::create)
-        .expectNext(
-                Optional.of("{}"),
-                Optional.of("{\"val\": \"val1\"}"),
-                Optional.empty())
+        .expectNext(Optional.of("{}"), Optional.of("{\"val\": \"val1\"}"), Optional.empty())
         .verifyComplete();
   }
 
@@ -90,11 +79,7 @@ public class JsonParseTest extends BaseConnectionTest {
         .execute()
         .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, String.class))))
         .as(StepVerifier::create)
-        .expectNext(
-                Optional.of("{}"),
-                Optional.of("{\"val\": \"val1\"}"),
-                Optional.empty())
+        .expectNext(Optional.of("{}"), Optional.of("{\"val\": \"val1\"}"), Optional.empty())
         .verifyComplete();
   }
-
 }
