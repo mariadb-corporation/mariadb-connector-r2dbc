@@ -188,17 +188,17 @@ public class SimpleClient implements Client {
                   lock)
               .delayUntil(client -> AuthenticationFlow.exchange(client, redirectConf, hostAddress))
               .doOnError(e -> HaMode.failHost(hostAddress))
+              .onErrorComplete()
               .cast(SimpleClient.class)
               .flatMap(
                   client ->
                       MariadbConnectionFactory.setSessionVariables(redirectConf, client)
                           .then(Mono.just(client)))
               .flatMap(this::refreshClient)
-              .onErrorComplete()
               .then();
         } catch (UnsupportedEncodingException e) {
           // "UTF-8" is known, but String decode(String s, Charset charset) requires java 10+ to get
-          // ride of catching error
+          // rid of catching error
           return Mono.error(e);
         }
       }
@@ -207,28 +207,25 @@ public class SimpleClient implements Client {
   }
 
   public Mono<Void> refreshClient(SimpleClient client) {
-    return connection
-        .outbound()
-        .send(encoder.encodeFlux(QuitPacket.INSTANCE))
-        .then()
-        .doOnSuccess(v -> this.connection.dispose())
-        .then(this.connection.onDispose())
-        .doFinally(
-            v -> {
-              this.isClosed.set(false);
-              this.closeRequested = false;
-              this.connection = client.connection;
-              this.context = client.context;
-              this.configuration = client.configuration;
-              this.hostAddress = client.hostAddress;
-              this.prepareCache.clear();
-              this.requestSink = client.requestSink;
-              this.decoder = client.decoder;
-              this.encoder = client.encoder;
-              this.byteBufAllocator = client.byteBufAllocator;
-              this.messageSubscriber = client.messageSubscriber;
-              this.exchangeQueue = client.exchangeQueue;
-            })
+    return quitOrClose()
+        .then(
+            Mono.fromCallable(
+                () -> {
+                  this.isClosed.set(false);
+                  this.closeRequested = false;
+                  this.connection = client.connection;
+                  this.context = client.context;
+                  this.configuration = client.configuration;
+                  this.hostAddress = client.hostAddress;
+                  this.prepareCache.clear();
+                  this.requestSink = client.requestSink;
+                  this.decoder = client.decoder;
+                  this.encoder = client.encoder;
+                  this.byteBufAllocator = client.byteBufAllocator;
+                  this.messageSubscriber = client.messageSubscriber;
+                  this.exchangeQueue = client.exchangeQueue;
+                  return Mono.empty();
+                }))
         .then();
   }
 
@@ -752,7 +749,9 @@ public class SimpleClient implements Client {
                   "Connection %s",
                   SimpleClient.this.closeChannelIfNeeded() ? "unexpected error" : "error"),
               "08000"));
-      SimpleClient.this.quitOrClose().subscribe();
+      if (!SimpleClient.this.isClosed.get()) {
+        SimpleClient.this.quitOrClose().subscribe();
+      }
     }
 
     @Override

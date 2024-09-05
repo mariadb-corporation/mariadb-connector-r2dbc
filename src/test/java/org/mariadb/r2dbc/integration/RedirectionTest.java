@@ -78,7 +78,7 @@ public class RedirectionTest extends BaseConnectionTest {
                   TestConfiguration.defaultConf.getPort()))
           .execute()
           .flatMap(r -> r.getRowsUpdated())
-          .subscribe();
+          .blockLast();
     } catch (Exception e) {
       // if server doesn't support redirection
       permitRedirection = false;
@@ -150,7 +150,7 @@ public class RedirectionTest extends BaseConnectionTest {
                   TestConfiguration.defaultConf.getHostAddresses().get(0).getHost(),
                   TestConfiguration.defaultConf.getPort()))
           .execute()
-          .subscribe();
+          .blockLast();
     }
     connection
         .createStatement("SELECT 4")
