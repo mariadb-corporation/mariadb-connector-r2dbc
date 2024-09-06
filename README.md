@@ -32,7 +32,7 @@ The MariaDB Connector is available through maven using :
 		<dependency>
 				<groupId>org.mariadb</groupId>
 				<artifactId>r2dbc-mariadb</artifactId>
-				<version>1.2.1</version>
+				<version>1.2.2</version>
 		</dependency>
 ```
 
@@ -117,6 +117,19 @@ Basic example:
 |                             **`timezone`** | permits to force session timezone in case of client having a different timezone compare to server. The option `timezone` can have 3 types of value: * 'disabled' (default) : connector doesn't change time_zone. * 'auto': client will use client default timezone. * '<a timezone>': connector will set connection variable to value. Since 1.2.0                                                                                                                                                       |               String               |     'disabled'      |
 |                    **`skipPostCommands`**  | Permit to indicate that commands after connections must be skipped. This permit to avoid unnecessary command on connection creation, and when using RDV proxy not to have session pinning. Use with care, because connector expects server to have : 1.connection exchanges to be UT8(mb3/mb4). 2.autocommit set to true. 3.transaction isolation defaulting to REPEATABLE-READ                                                                                                                          |             *boolean*              |       'false'       |
 
+
+## Compatibility
+
+Connector is compatible with R2DBC 1.0.0 spec.
+For 0.9.1 spec compatibility, use artifact-id r2dbc-mariadb-0.9.1-spec
+example 
+```
+		<dependency>
+				<groupId>org.mariadb</groupId>
+				<artifactId>r2dbc-mariadb-0.9.1-spec</artifactId>
+				<version>1.2.2</version>
+		</dependency>
+```
 
 
 ## Failover
