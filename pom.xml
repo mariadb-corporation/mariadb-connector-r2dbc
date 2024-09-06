@@ -11,7 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.mariadb</groupId>
     <artifactId>r2dbc-mariadb-0.9.1-spec</artifactId>
-    <version>1.2.2-SNAPSHOT</version>
+    <version>1.2.2</version>
     <packaging>jar</packaging>
     <url>https://github.com/mariadb-corporation/mariadb-connector-r2dbc</url>
 
