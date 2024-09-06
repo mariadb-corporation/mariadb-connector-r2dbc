@@ -1,5 +1,14 @@
 # Change Log
 
+## [1.2.2](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.2.2) (Sep 2024)
+
+Notable Changes:
+* R2DBC-105	Permit avoiding session setting with new option `skipPostCommands`
+
+Bugs Fixed:
+* R2DBC-104	Redirection might result in connection error
+
+
 ## [1.2.1](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.2.1) (19 Jun 2024)
 
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.2.0...1.2.1)
