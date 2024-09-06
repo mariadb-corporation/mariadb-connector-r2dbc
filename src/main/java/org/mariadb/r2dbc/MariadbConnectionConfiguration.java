@@ -50,13 +50,14 @@ public final class MariadbConnectionConfiguration {
   private final String cachingRsaPublicKey;
   private final boolean allowPublicKeyRetrieval;
   private final boolean useServerPrepStmts;
-  private final boolean autocommit;
+  private final Boolean autocommit;
   private final boolean permitRedirect;
   private final boolean tinyInt1isBit;
   private final String[] restrictedAuth;
   private final LoopResources loopResources;
   private final UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer;
   private IsolationLevel isolationLevel;
+  private final boolean skipPostCommands;
 
   private MariadbConnectionConfiguration(
       String haMode,
@@ -88,8 +89,9 @@ public final class MariadbConnectionConfiguration {
       boolean allowPublicKeyRetrieval,
       boolean useServerPrepStmts,
       IsolationLevel isolationLevel,
-      boolean autocommit,
+      Boolean autocommit,
       boolean permitRedirect,
+      boolean skipPostCommands,
       @Nullable Integer prepareCacheSize,
       @Nullable CharSequence[] pamOtherPwd,
       boolean tinyInt1isBit,
@@ -139,8 +141,9 @@ public final class MariadbConnectionConfiguration {
     this.allowPublicKeyRetrieval = allowPublicKeyRetrieval;
     this.prepareCacheSize = (prepareCacheSize == null) ? 250 : prepareCacheSize;
     this.pamOtherPwd = pamOtherPwd;
-    this.autocommit = autocommit;
+    this.autocommit = (autocommit != null) ? autocommit : Boolean.TRUE;
     this.permitRedirect = permitRedirect;
+    this.skipPostCommands = skipPostCommands;
     this.tinyInt1isBit = tinyInt1isBit;
     this.loopResources = loopResources != null ? loopResources : TcpResources.get();
     this.useServerPrepStmts = !this.allowMultiQueries && useServerPrepStmts;
@@ -172,8 +175,9 @@ public final class MariadbConnectionConfiguration {
       String cachingRsaPublicKey,
       boolean allowPublicKeyRetrieval,
       boolean useServerPrepStmts,
-      boolean autocommit,
+      Boolean autocommit,
       boolean permitRedirect,
+      boolean skipPostCommands,
       boolean tinyInt1isBit,
       String[] restrictedAuth,
       LoopResources loopResources,
@@ -202,8 +206,9 @@ public final class MariadbConnectionConfiguration {
     this.cachingRsaPublicKey = cachingRsaPublicKey;
     this.allowPublicKeyRetrieval = allowPublicKeyRetrieval;
     this.useServerPrepStmts = useServerPrepStmts;
-    this.autocommit = autocommit;
+    this.autocommit = (autocommit != null) ? autocommit : Boolean.TRUE;
     this.permitRedirect = permitRedirect;
+    this.skipPostCommands = skipPostCommands;
     this.tinyInt1isBit = tinyInt1isBit;
     this.restrictedAuth = restrictedAuth;
     this.loopResources = loopResources;
@@ -240,6 +245,7 @@ public final class MariadbConnectionConfiguration {
         this.allowPublicKeyRetrieval,
         this.useServerPrepStmts,
         this.autocommit,
+        this.skipPostCommands,
         false,
         this.tinyInt1isBit,
         this.restrictedAuth,
@@ -371,15 +377,27 @@ public final class MariadbConnectionConfiguration {
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.AUTO_COMMIT)) {
-      builder.autocommit(
-          boolValue(
-              connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.AUTO_COMMIT)));
+      Object value =
+          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.AUTO_COMMIT);
+      if (value == null) {
+        builder.autocommit(null);
+      } else if (value instanceof Boolean) {
+        builder.autocommit((Boolean) value);
+      } else {
+        builder.autocommit(Boolean.parseBoolean(value.toString()) || "1".equals(value));
+      }
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.PERMIT_REDIRECT)) {
       builder.permitRedirect(
           boolValue(
               connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.PERMIT_REDIRECT)));
+    }
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SKIP_POST_COMMANDS)) {
+      builder.skipPostCommands(
+          boolValue(
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.SKIP_POST_COMMANDS)));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.TINY_IS_BIT)) {
@@ -603,12 +621,16 @@ public final class MariadbConnectionConfiguration {
     return useServerPrepStmts;
   }
 
-  public boolean autocommit() {
+  public Boolean autocommit() {
     return autocommit;
   }
 
   public boolean permitRedirect() {
     return permitRedirect;
+  }
+
+  public boolean skipPostCommands() {
+    return skipPostCommands;
   }
 
   public boolean tinyInt1isBit() {
@@ -833,8 +855,9 @@ public final class MariadbConnectionConfiguration {
     private boolean allowPipelining = true;
     private boolean useServerPrepStmts = false;
     private IsolationLevel isolationLevel = null;
-    private boolean autocommit = true;
+    private Boolean autocommit = Boolean.TRUE;
     private boolean permitRedirect = true;
+    private boolean skipPostCommands = false;
     private boolean tinyInt1isBit = true;
     @Nullable private List<String> tlsProtocol;
     @Nullable private String serverSslCert;
@@ -906,6 +929,7 @@ public final class MariadbConnectionConfiguration {
           this.isolationLevel,
           this.autocommit,
           this.permitRedirect,
+          this.skipPostCommands,
           this.prepareCacheSize,
           this.pamOtherPwd,
           this.tinyInt1isBit,
@@ -1203,7 +1227,7 @@ public final class MariadbConnectionConfiguration {
      * @param autocommit use autocommit
      * @return this {@link Builder}
      */
-    public Builder autocommit(boolean autocommit) {
+    public Builder autocommit(Boolean autocommit) {
       this.autocommit = autocommit;
       return this;
     }
@@ -1216,6 +1240,29 @@ public final class MariadbConnectionConfiguration {
      */
     public Builder permitRedirect(boolean permitRedirect) {
       this.permitRedirect = permitRedirect;
+      return this;
+    }
+
+    /**
+     * Permit to indicate that commands after connections must be skipped. This permit to avoid
+     * unnecessary command on connection creation, and when using RDV proxy not to have session
+     * pinning
+     *
+     * <p>Use with care, because connector expects server to have :
+     *
+     * <ul>
+     *   <li>connection exchanges to be UT8(mb3/mb4)
+     *   <li>autocommit set to true
+     *   <li>transaction isolation defaulting to REPEATABLE-READ
+     * </ul>
+     *
+     * Default value False.
+     *
+     * @param skipPostCommands skip post commands
+     * @return this {@link Builder}
+     */
+    public Builder skipPostCommands(boolean skipPostCommands) {
+      this.skipPostCommands = skipPostCommands;
       return this;
     }
 

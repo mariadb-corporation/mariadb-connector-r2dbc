@@ -126,10 +126,15 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
 
   public static Mono<Void> setSessionVariables(
       final MariadbConnectionConfiguration configuration, Client client) {
-
+    if (configuration.skipPostCommands()) return Mono.empty();
     // set default autocommit value
-    StringBuilder sql =
-        new StringBuilder("SET autocommit=" + (configuration.autocommit() ? "1" : "0"));
+    StringBuilder sql = new StringBuilder("SET ");
+    sql.append(" names UTF8MB4");
+    if (configuration.getCollation() != null && !configuration.getCollation().isEmpty())
+      sql.append(" COLLATE ").append(configuration.getCollation());
+    if (configuration.autocommit() != null) {
+      sql.append(",autocommit=").append((configuration.autocommit() ? "1" : "0"));
+    }
 
     // set default transaction isolation
     String txIsolation =
@@ -205,10 +210,6 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
         }
       }
     }
-    sql.append(", names UTF8MB4");
-    if (configuration.getCollation() != null && !configuration.getCollation().isEmpty())
-      sql.append(" COLLATE ").append(configuration.getCollation());
-
     return setTimezoneIfNeeded(configuration, client)
         .map(sql::append)
         .flatMap(
