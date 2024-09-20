@@ -621,7 +621,7 @@ public class SimpleClient implements Client {
           if (!isConnected() || messageSubscriber.isClose()) {
             sink.error(
                 new R2dbcNonTransientResourceException(
-                    "Connection is close. Cannot send anything"));
+                    "The connection is closed. Unable to send anything"));
             return;
           }
           try {
@@ -671,7 +671,7 @@ public class SimpleClient implements Client {
           if (!isConnected() || messageSubscriber.isClose()) {
             sink.error(
                 new R2dbcNonTransientResourceException(
-                    "Connection is close. Cannot send anything"));
+                    "The connection is closed. Unable to send anything"));
             return;
           }
           try {
