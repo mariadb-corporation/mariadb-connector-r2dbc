@@ -122,7 +122,7 @@ Basic example:
 
 Connector is compatible with R2DBC 1.0.0 spec.
 For 0.9.1 spec compatibility, use artifact-id r2dbc-mariadb-0.9.1-spec
-example 
+example
 ```
 		<dependency>
 				<groupId>org.mariadb</groupId>
