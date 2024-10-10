@@ -402,7 +402,9 @@ public class ConnectionTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && (throwable.getMessage().equals("The connection is closed. Unable to send anything")
+                    && (throwable
+                            .getMessage()
+                            .equals("The connection is closed. Unable to send anything")
                         || throwable
                             .getMessage()
                             .contains("Cannot execute command since connection is already closed")))
@@ -615,7 +617,9 @@ public class ConnectionTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && (throwable.getMessage().contains("The connection is closed. Unable to send anything")
+                    && (throwable
+                            .getMessage()
+                            .contains("The connection is closed. Unable to send anything")
                         || throwable
                             .getMessage()
                             .contains("Cannot execute command since connection is already closed")))
