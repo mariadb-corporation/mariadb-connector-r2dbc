@@ -32,7 +32,7 @@ The MariaDB Connector is available through maven using :
 		<dependency>
 				<groupId>org.mariadb</groupId>
 				<artifactId>r2dbc-mariadb</artifactId>
-				<version>1.2.2</version>
+				<version>1.3.0</version>
 		</dependency>
 ```
 
@@ -122,12 +122,12 @@ Basic example:
 
 Connector is compatible with R2DBC 1.0.0 spec.
 For 0.9.1 spec compatibility, use artifact-id r2dbc-mariadb-0.9.1-spec
-example 
+example
 ```
 		<dependency>
 				<groupId>org.mariadb</groupId>
 				<artifactId>r2dbc-mariadb-0.9.1-spec</artifactId>
-				<version>1.2.2</version>
+				<version>1.3.0</version>
 		</dependency>
 ```
 

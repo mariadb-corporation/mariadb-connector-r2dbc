@@ -7,3 +7,4 @@ org.mariadb.r2dbc.authentication.standard.Ed25519PasswordPluginFlow
 org.mariadb.r2dbc.authentication.standard.Sha256PasswordPluginFlow
 org.mariadb.r2dbc.authentication.standard.CachingSha2PasswordFlow
 org.mariadb.r2dbc.authentication.standard.PamPluginFlow
+org.mariadb.r2dbc.authentication.standard.ParsecPasswordPlugin

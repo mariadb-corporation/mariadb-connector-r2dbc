@@ -42,20 +42,25 @@ public enum DecoderState implements DecoderStateInterface {
     public ServerMessage decode(ByteBuf body, Sequencer sequencer, MariadbFrameDecoder decoder) {
       return AuthSwitchPacket.decode(sequencer, body);
     }
+
+    @Override
+    public DecoderState next(MariadbFrameDecoder decoder) {
+      return AUTHENTICATION_SWITCH_RESPONSE;
+    }
   },
 
   AUTHENTICATION_SWITCH_RESPONSE {
     @Override
     public DecoderState decoder(short val, int len) {
       switch (val) {
-        case 1:
-          return AUTHENTICATION_MORE_DATA;
+        case 0:
+          return OK_PACKET;
         case 254: // 0xFE
           return AUTHENTICATION_SWITCH;
         case 255: // 0xFF
           return ERROR;
         default:
-          return OK_PACKET;
+          return AUTHENTICATION_MORE_DATA;
       }
     }
   },

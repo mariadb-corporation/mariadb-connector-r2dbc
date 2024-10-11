@@ -3,6 +3,7 @@
 
 package org.mariadb.r2dbc.authentication.standard;
 
+import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.nio.charset.StandardCharsets;
@@ -93,7 +94,9 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
         return new AuthMoreRawPacket(sequencer, fastCryptedPwd);
 
       case FAST_AUTH_RESULT:
-        byte fastAuthResult = authMoreData.getBuf().getByte(0);
+        ByteBuf buf = authMoreData.getBuf();
+        buf.skipBytes(1);
+        byte fastAuthResult = buf.readByte();
         switch (fastAuthResult) {
           case 3:
             // success authentication
