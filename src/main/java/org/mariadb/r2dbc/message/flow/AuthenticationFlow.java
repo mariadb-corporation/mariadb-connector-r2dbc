@@ -312,6 +312,7 @@ public final class AuthenticationFlow {
                     }
                   } else if (message instanceof AuthMoreDataPacket) {
                     flow.authMoreDataPacket = (AuthMoreDataPacket) message;
+                    flow.sequencer = (Sequencer) ((AuthMoreDataPacket) message).getSequencer();
                     sink.next(AUTH_SWITCH);
                   } else {
                     sink.error(

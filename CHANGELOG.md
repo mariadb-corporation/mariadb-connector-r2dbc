@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.3.0](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.3.0) (Oct 2024)
+
+Notable Changes:
+* R2DBC-106 Implement parsec authentication. see https://mariadb.com/kb/en/authentication-plugin-parsec/
+
+
 ## [1.2.2](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.2.2) (Sep 2024)
 
 Notable Changes:

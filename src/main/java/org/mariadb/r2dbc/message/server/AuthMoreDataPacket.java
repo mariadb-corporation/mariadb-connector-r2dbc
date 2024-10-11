@@ -20,7 +20,6 @@ public class AuthMoreDataPacket implements AuthMoreData, ServerMessage, Referenc
   }
 
   public static AuthMoreDataPacket decode(MessageSequence sequencer, ByteBuf buf) {
-    buf.skipBytes(1);
     ByteBuf data = buf.readRetainedSlice(buf.readableBytes());
     return new AuthMoreDataPacket(sequencer, data);
   }

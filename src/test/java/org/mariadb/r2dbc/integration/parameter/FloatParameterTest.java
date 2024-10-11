@@ -271,6 +271,9 @@ public class FloatParameterTest extends BaseConnectionTest {
   }
 
   private void localDateTimeValue(MariadbConnection connection) {
+    // mysql 9 doesn't throw an error
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(9, 0, 0));
+
     connection
         .createStatement("INSERT INTO FloatParam VALUES (?,?,?)")
         .bind(0, LocalDateTime.now())
@@ -293,6 +296,9 @@ public class FloatParameterTest extends BaseConnectionTest {
   }
 
   private void localDateValue(MariadbConnection connection) {
+    // mysql 9 doesn't throw an error
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(9, 0, 0));
+
     connection
         .createStatement("INSERT INTO FloatParam VALUES (?,?,?)")
         .bind(0, LocalDate.now())
@@ -315,6 +321,8 @@ public class FloatParameterTest extends BaseConnectionTest {
   }
 
   private void localTimeValue(MariadbConnection connection) {
+    // mysql 9 doesn't throw an error
+    Assumptions.assumeFalse(!isMariaDBServer() && minVersion(9, 0, 0));
     connection
         .createStatement("INSERT INTO FloatParam VALUES (?,?,?)")
         .bind(0, LocalTime.now())

@@ -79,7 +79,7 @@ public class ConnectionTest extends BaseConnectionTest {
             t -> {
               assertTrue(t instanceof R2dbcNonTransientResourceException);
               assertTrue(
-                  t.getMessage().contains("Connection is close. Cannot send anything")
+                  t.getMessage().contains("The connection is closed. Unable to send anything")
                       || t.getMessage()
                           .contains("Cannot execute command since connection is already closed")
                       || t.getMessage().contains("Connection error")
@@ -402,7 +402,9 @@ public class ConnectionTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && (throwable.getMessage().equals("Connection is close. Cannot send anything")
+                    && (throwable
+                            .getMessage()
+                            .equals("The connection is closed. Unable to send anything")
                         || throwable
                             .getMessage()
                             .contains("Cannot execute command since connection is already closed")))
@@ -615,7 +617,9 @@ public class ConnectionTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcNonTransientResourceException
-                    && (throwable.getMessage().contains("Connection is close. Cannot send anything")
+                    && (throwable
+                            .getMessage()
+                            .contains("The connection is closed. Unable to send anything")
                         || throwable
                             .getMessage()
                             .contains("Cannot execute command since connection is already closed")))
@@ -851,7 +855,7 @@ public class ConnectionTest extends BaseConnectionTest {
     assertThrows(
         R2dbcNonTransientResourceException.class,
         () -> stmt.execute().blockLast(),
-        "Connection is close. Cannot send anything");
+        "The connection is closed. Unable to send anything");
 
     connection =
         new MariadbConnectionFactory(
@@ -864,7 +868,7 @@ public class ConnectionTest extends BaseConnectionTest {
     assertThrows(
         R2dbcNonTransientResourceException.class,
         () -> stmt2.execute().blockLast(),
-        "Connection is close. Cannot send anything");
+        "The connection is closed. Unable to send anything");
   }
 
   void useTransaction(MariadbConnection conn) {
@@ -1105,7 +1109,7 @@ public class ConnectionTest extends BaseConnectionTest {
     } catch (Throwable t) {
       Assertions.assertEquals(R2dbcNonTransientResourceException.class, t.getClass());
       Assertions.assertTrue(
-          t.getMessage().contains("Connection is close. Cannot send anything")
+          t.getMessage().contains("The connection is closed. Unable to send anything")
               || t.getMessage().contains("Connection unexpectedly closed")
               || t.getMessage().contains("Connection unexpected error")
               || t.getMessage().contains("Connection error"),
