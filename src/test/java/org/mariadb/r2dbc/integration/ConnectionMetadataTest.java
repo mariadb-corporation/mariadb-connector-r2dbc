@@ -26,7 +26,7 @@ public class ConnectionMetadataTest extends BaseConnectionTest {
               || meta.getDatabaseVersion().contains("23."));
     } else {
       assertTrue(
-          meta.getDatabaseVersion().contains("5.") || meta.getDatabaseVersion().contains("8."));
+          meta.getDatabaseVersion().contains("8.") || meta.getDatabaseVersion().contains("9."));
     }
     String type = System.getenv("srv");
     String version = System.getenv("v");
