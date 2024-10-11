@@ -21,7 +21,9 @@ public class ParsecPluginTest extends BaseConnectionTest {
   @BeforeAll
   public static void before2() {
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
-    if (meta.isMariaDBServer() && meta.minVersion(11, 6, 1)) {
+    if (meta.isMariaDBServer()
+        && meta.minVersion(11, 6, 1)
+        && !"mariadb-es".equals(System.getenv("srv"))) {
       sharedConn
           .createStatement("INSTALL SONAME 'auth_parsec'")
           .execute()
@@ -36,7 +38,10 @@ public class ParsecPluginTest extends BaseConnectionTest {
 
   @Test
   public void parsecAuthPlugin() throws Throwable {
-    Assumptions.assumeTrue(parsecPluginEnabled.get() && !"maxscale".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(
+        parsecPluginEnabled.get()
+            && !"maxscale".equals(System.getenv("srv"))
+            && !"mariadb-es".equals(System.getenv("srv")));
 
     sharedConn.createStatement("drop user IF EXISTS verifParsec@'%'").execute().blockLast();
     sharedConn
