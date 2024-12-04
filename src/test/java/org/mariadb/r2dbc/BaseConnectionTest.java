@@ -122,6 +122,30 @@ public class BaseConnectionTest {
         .block();
   }
 
+  public static Integer getMaxScaleVersion() {
+    if ("maxscale".equals(System.getenv("srv"))) {
+      /**                                                                                                                                                                                                                                                                                 
+       * The test system must either create the maxscale_version() function                                                                                                                                                                                                               
+       * that returns the MaxScale version as an integer or MaxScale must be                                                                                                                                                                                                              
+       * configured  with a regexfilter that replaces the SQL with something                                                                                                                                                                                                              
+       * that returns it as a constant.                                                                                                                                                                                                                                                   
+       *                                                                                                                                                                                                                                                                                  
+       * [InjectVersion]                                                                                                                                                                                                                                                                  
+       * type=filter                                                                                                                                                                                                                                                                      
+       * module=regexfilter                                                                                                                                                                                                                                                               
+       * match=SELECT maxscale_version()                                                                                                                                                                                                                                                  
+       * replace=SELECT 230800                                                                                                                                                                                                                                                            
+       */
+      return sharedConnPrepare
+          .createStatement("SELECT maxscale_version()")
+          .execute()
+          .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.class)))
+          .single()
+          .block();
+    }
+    return 0;
+  }
+
   public void assertThrows(
       Class<? extends Exception> expectedType, Executable executable, String expected) {
     Exception e = Assertions.assertThrows(expectedType, executable);
