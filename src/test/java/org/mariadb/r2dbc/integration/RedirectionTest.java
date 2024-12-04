@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2020-2024 MariaDB Corporation Ab
+// Copyright (c) 2020-2026 MariaDB Corporation Ab
 
 package org.mariadb.r2dbc.integration;
 
@@ -168,8 +168,7 @@ public class RedirectionTest extends BaseConnectionTest {
 
   @Test
   void connectionRedirection() throws Exception {
-    // need maxscale 23.08+
-    Assumptions.assumeTrue(isMaxscale());
+    Assumptions.assumeTrue(isMaxscale() && getMaxScaleVersion() >= 230800);
     try {
       proxy =
           new TcpProxy(
