@@ -11,6 +11,8 @@ import java.io.*;
 import java.util.List;
 import java.util.function.UnaryOperator;
 import javax.net.ssl.SSLException;
+import javax.net.ssl.TrustManagerFactory;
+
 import org.mariadb.r2dbc.SslMode;
 
 public class SslConfig {
@@ -89,8 +91,8 @@ public class SslConfig {
           }
         }
       } else {
-        throw new R2dbcTransientResourceException(
-            "Server certificate needed (option `serverSslCert`) for ssl mode " + sslMode, "08000");
+        // use the system default, i.e. verify against PKI
+        sslCtxBuilder.trustManager((TrustManagerFactory) null);
       }
     }
     if (clientSslCert != null && clientSslKey != null) {
