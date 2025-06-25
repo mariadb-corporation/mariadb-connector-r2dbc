@@ -65,7 +65,7 @@ public class ConnectionTest extends BaseConnectionTest {
   @Test
   void connectionError() throws Exception {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
 
@@ -105,7 +105,7 @@ public class ConnectionTest extends BaseConnectionTest {
     Assumptions.assumeTrue(System.getenv("local") == null || "1".equals(System.getenv("local")));
 
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnection connection = createProxyCon();
@@ -117,7 +117,7 @@ public class ConnectionTest extends BaseConnectionTest {
   void connectionCollation() throws Exception {
     Assumptions.assumeTrue(
         isMariaDBServer()
-            && !"maxscale".equals(System.getenv("srv"))
+            && !isMaxscale()
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
 
@@ -197,12 +197,7 @@ public class ConnectionTest extends BaseConnectionTest {
   void connectionDuringError() throws Exception {
     Assumptions.assumeTrue(System.getenv("local") == null || "1".equals(System.getenv("local")));
 
-    Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
-            && !"skysql".equals(System.getenv("srv"))
-            && !"mariadb-es".equals(System.getenv("srv"))
-            && !"mariadb-es-test".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(!isMaxscale() && !isEnterprise());
     MariadbConnection connection = createProxyCon();
     new Timer()
         .schedule(
@@ -556,7 +551,7 @@ public class ConnectionTest extends BaseConnectionTest {
 
   @Test
   void beginTransactionWithIsolation() throws Exception {
-    Assumptions.assumeFalse(isXpand());
+    Assumptions.assumeTrue(!isEnterprise() && !minVersion(10, 2, 0));
     TransactionDefinition transactionDefinition =
         MariadbTransactionDefinition.READ_ONLY.isolationLevel(IsolationLevel.READ_COMMITTED);
     TransactionDefinition transactionDefinition2 =
@@ -577,8 +572,8 @@ public class ConnectionTest extends BaseConnectionTest {
                     && throwable
                         .getMessage()
                         .equals(
-                            "Transaction characteristics can't be changed while a transaction is in"
-                                + " progress"))
+                            "Transaction characteristics can't be changed while a transaction is"
+                                + " in progress"))
         .verify();
     sharedConn.rollbackTransaction().block();
   }
@@ -1035,7 +1030,7 @@ public class ConnectionTest extends BaseConnectionTest {
   @Test
   public void errorOnConnection() throws Throwable {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
             && !"skysql-ha".equals(System.getenv("srv"))
             && !"skysql".equals(System.getenv("srv"))
             && !isXpand());
@@ -1077,7 +1072,7 @@ public class ConnectionTest extends BaseConnectionTest {
   @Timeout(2)
   void killedConnection() {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnection connection = factory.create().block();
@@ -1130,7 +1125,7 @@ public class ConnectionTest extends BaseConnectionTest {
   @Test
   public void queryTimeout() throws Throwable {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv"))
             && !isXpand());

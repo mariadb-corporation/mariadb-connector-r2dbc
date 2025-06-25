@@ -117,8 +117,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   void validateParam() {
     // disabling with maxscale due to MXS-3956
     // to be re-enabled when > 6.1.1
-    Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(!isMaxscale() && !"skysql-ha".equals(System.getenv("srv")));
     Assertions.assertThrows(
         Exception.class,
         () ->
@@ -143,7 +142,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     Assumptions.assumeTrue(maxAllowedPacket() >= 17 * 1024 * 1024);
     Assumptions.assumeTrue(
         !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
-            && !"maxscale".equals(System.getenv("srv"))
+            && !isMaxscale()
             && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeTrue(runLongTest());
     char[] arr1024 = new char[1024];
@@ -226,7 +225,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
     Assumptions.assumeTrue(maxAllowedPacket() >= 20 * 1024 * 1024 + 500);
     Assumptions.assumeTrue(
         !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
-            && !"maxscale".equals(System.getenv("srv"))
+            && !isMaxscale()
             && !"skysql-ha".equals(System.getenv("srv")));
     // out of memory on travis and 10.1
     Assumptions.assumeFalse(
@@ -499,8 +498,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   @Test
   void cannotPrepare() throws Throwable {
     // unexpected error "unexpected message received when no command was send: 0x48000002"
-    Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(!isMaxscale() && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeFalse(isXpand());
     MariadbConnectionConfiguration confPipeline =
         TestConfiguration.defaultBuilder.clone().useServerPrepStmts(true).build();
@@ -623,9 +621,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   @Test
   void cache() throws Throwable {
     Assumptions.assumeTrue(
-        isMariaDBServer()
-            && !"maxscale".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv")));
+        isMariaDBServer() && !isMaxscale() && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnectionConfiguration confPipeline =
         TestConfiguration.defaultBuilder
             .clone()
@@ -656,9 +652,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
   @SuppressWarnings("unchecked")
   void cacheReuse() throws Throwable {
     Assumptions.assumeTrue(
-        isMariaDBServer()
-            && !"maxscale".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv")));
+        isMariaDBServer() && !isMaxscale() && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnectionConfiguration confPipeline =
         TestConfiguration.defaultBuilder
             .clone()
@@ -739,7 +733,7 @@ public class PrepareResultSetTest extends BaseConnectionTest {
 
       List<String> endingStatus = prepareInfo(connection);
       // Com_stmt_prepare
-      if (!"maxscale".equals(System.getenv("srv"))
+      if (!isMaxscale()
           && !"skysql-ha".equals(System.getenv("srv"))
           && (isMariaDBServer() || !minVersion(8, 0, 0))
           && !isXpand()) {

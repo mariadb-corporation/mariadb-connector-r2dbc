@@ -3,7 +3,6 @@ name: Run CI Tests
 
 on:
   push:
-    branches: ['master', 'develop', 'maintenance/*']
   pull_request:
   workflow_dispatch:
   schedule:
@@ -37,6 +36,8 @@ jobs:
   ci:
     name: ${{ matrix.name }}${{ ((matrix.java == '8' && matrix.db-tag == '11.4')) && matrix.db-type != 'enterprise' && matrix.db-type != 'dev' && ' (local)' || '' }}${{ matrix.java != 21 && format(' - java {0}', matrix.java) || '' }}
     needs: setup
+    # Only run scheduled jobs if we're on the right branch
+    if: github.event_name != 'schedule' || contains(fromJSON('["develop", "master"]'), github.ref_name)
     timeout-minutes: 50
     strategy:
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
@@ -72,9 +73,11 @@ jobs:
         env:
           LOCAL_DB: ${{ steps.setup-env.outputs.database-type }}
           DB_TYPE: ${{ matrix.db-type }}
-          TEST_DB_SERVER_CERT: ${{ matrix.db-type == 'container' && format('{0}/.github/workflows/certs/server.crt', github.workspace) || '' }}
-          TEST_DB_SERVER_CA_CERT: ${{ matrix.db-type == 'container' && format('{0}/.github/workflows/certs/ca.crt', github.workspace) || '' }}
-          TEST_DB_CLIENT_PKCS: ${{ matrix.db-type == 'container' && format('{0}/.github/workflows/certs/client.p12', github.workspace) || '' }}
+          TEST_DB_SERVER_CERT: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/server.crt', github.workspace) || '' }}
+          TEST_DB_CLIENT_CERT: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/client.crt', github.workspace) || '' }}
+          TEST_DB_CLIENT_KEY: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/client-key.pem', github.workspace) || '' }}
+          TEST_DB_SERVER_CA_CERT: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/ca.crt', github.workspace) || '' }}
+          TEST_DB_CLIENT_PKCS: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/client.p12', github.workspace) || '' }}
           DB_VERSION: ${{ matrix.db-tag }}
 
       - name: Generate Coverage Report

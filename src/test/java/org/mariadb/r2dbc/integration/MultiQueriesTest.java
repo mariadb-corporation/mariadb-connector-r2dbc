@@ -19,9 +19,7 @@ public class MultiQueriesTest extends BaseConnectionTest {
   @Test
   void multiQueryDefault() {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv"))
-            && !isXpand());
+        !isMaxscale() && !"skysql-ha".equals(System.getenv("srv")) && !isXpand());
     sharedConn
         .createStatement("SELECT 1; SELECT 'a'")
         .execute()
@@ -52,9 +50,7 @@ public class MultiQueriesTest extends BaseConnectionTest {
   @Test
   void multiQueryDisable() throws Exception {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv"))
-            && !isXpand());
+        !isMaxscale() && !"skysql-ha".equals(System.getenv("srv")) && !isXpand());
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder.clone().allowMultiQueries(false).build();
@@ -75,9 +71,7 @@ public class MultiQueriesTest extends BaseConnectionTest {
   @Test
   void multiQueryWithParameterDefault() {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv"))
-            && !isXpand());
+        !isMaxscale() && !"skysql-ha".equals(System.getenv("srv")) && !isXpand());
 
     sharedConn
         .createStatement("SELECT CAST(? as CHAR); SELECT ?")
@@ -113,9 +107,7 @@ public class MultiQueriesTest extends BaseConnectionTest {
   @Test
   void multiQueryWithParameterDisable() throws Exception {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv"))
-            && !isXpand());
+        !isMaxscale() && !"skysql-ha".equals(System.getenv("srv")) && !isXpand());
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder.clone().allowMultiQueries(false).build();

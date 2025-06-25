@@ -42,7 +42,7 @@ public class ErrorTest extends BaseConnectionTest {
 
   @Test
   void permissionDenied() throws Exception {
-    sharedConn.createStatement("CREATE USER IF NOT EXISTS userWithoutRight").execute().blockLast();
+    sharedConn.createStatement("CREATE USER IF NOT EXISTS userWithoutRight"+getHostSuffix()).execute().blockLast();
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
             .clone()
@@ -103,7 +103,7 @@ public class ErrorTest extends BaseConnectionTest {
   @Test
   void rollbackException() {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv"))
             && !isXpand());
