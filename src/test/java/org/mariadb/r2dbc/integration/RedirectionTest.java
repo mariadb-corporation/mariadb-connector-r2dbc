@@ -169,7 +169,7 @@ public class RedirectionTest extends BaseConnectionTest {
   @Test
   void connectionRedirection() throws Exception {
     // need maxscale 23.08+
-    Assumptions.assumeTrue("maxscale".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(isMaxscale());
     try {
       proxy =
           new TcpProxy(

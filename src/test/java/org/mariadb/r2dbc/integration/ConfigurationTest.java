@@ -102,6 +102,11 @@ public class ConfigurationTest extends BaseConnectionTest {
     String clientSslCert = System.getenv("TEST_DB_CLIENT_CERT");
     String clientSslKey = System.getenv("TEST_DB_CLIENT_KEY");
 
+    if ("".equals(serverSslCert)) {
+      serverSslCert = null;
+      clientSslCert = null;
+      clientSslKey = null;
+    }
     // try default if not present
     if (serverSslCert == null) {
       File sslDir = new File(System.getProperty("user.dir") + "/../../ssl");

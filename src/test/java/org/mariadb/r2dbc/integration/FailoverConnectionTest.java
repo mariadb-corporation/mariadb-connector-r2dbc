@@ -64,7 +64,7 @@ public class FailoverConnectionTest extends BaseConnectionTest {
   void multipleCommandStack() throws Exception {
     Assumptions.assumeFalse(System.getenv("TRAVIS") != null && isWindows);
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
 
@@ -90,7 +90,7 @@ public class FailoverConnectionTest extends BaseConnectionTest {
   void transactionReplayFalse() throws Exception {
     Assumptions.assumeFalse(System.getenv("TRAVIS") != null && isWindows);
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
 
@@ -121,7 +121,7 @@ public class FailoverConnectionTest extends BaseConnectionTest {
   void transactionReplayFailingBetweenCmds() throws Exception {
     Assumptions.assumeFalse(System.getenv("TRAVIS") != null && isWindows);
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
     try {
@@ -197,7 +197,7 @@ public class FailoverConnectionTest extends BaseConnectionTest {
   void transactionReplayFailingDuringCmd() throws Exception {
     Assumptions.assumeFalse(System.getenv("TRAVIS") != null && isWindows);
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv"))
             && !isXpand());

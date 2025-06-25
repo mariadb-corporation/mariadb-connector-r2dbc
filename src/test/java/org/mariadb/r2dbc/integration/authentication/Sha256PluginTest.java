@@ -275,6 +275,7 @@ public class Sha256PluginTest extends BaseConnectionTest {
         TestConfiguration.defaultBuilder
             .clone()
             .username("sha256User")
+            .allowPublicKeyRetrieval(false)
             .password("password")
             .build();
     new MariadbConnectionFactory(conf)
@@ -386,6 +387,7 @@ public class Sha256PluginTest extends BaseConnectionTest {
         TestConfiguration.defaultBuilder
             .clone()
             .username("cachingSha256User3")
+            .allowPublicKeyRetrieval(false)
             .password("password")
             .build();
     new MariadbConnectionFactory(conf)

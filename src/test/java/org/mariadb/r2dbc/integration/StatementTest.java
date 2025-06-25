@@ -279,8 +279,7 @@ public class StatementTest extends BaseConnectionTest {
   @Test
   void metadataNotSkipped() {
     // issue with maxscale 22.08.2
-    Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(!isMaxscale() && !"skysql-ha".equals(System.getenv("srv")));
 
     String sql;
     int param = 500;
@@ -806,8 +805,7 @@ public class StatementTest extends BaseConnectionTest {
 
   @Test
   public void generatedId() {
-    Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(!isMaxscale() && !"skysql-ha".equals(System.getenv("srv")));
     sharedConn.beginTransaction().block();
     sharedConn
         .createStatement("INSERT INTO generatedId(test) VALUES (?)")

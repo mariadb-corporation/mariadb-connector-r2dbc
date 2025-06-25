@@ -21,11 +21,8 @@ public class PamPluginTest extends BaseConnectionTest {
     Assumptions.assumeTrue(
         System.getenv("TRAVIS") != null
             && System.getenv("TEST_PAM_USER") != null
-            && !"maxscale".equals(System.getenv("srv"))
-            && !"skysql".equals(System.getenv("srv"))
-            && !"mariadb-es".equals(System.getenv("srv"))
-            && !"mariadb-es-test".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv")));
+            && !isMaxscale()
+            && !isEnterprise());
     Assumptions.assumeTrue(isMariaDBServer());
     String pamUser = System.getenv("TEST_PAM_USER");
     sharedConn.createStatement("INSTALL PLUGIN pam SONAME 'auth_pam'").execute().blockLast();

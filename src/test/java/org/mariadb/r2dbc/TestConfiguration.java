@@ -90,7 +90,7 @@ public class TestConfiguration {
               .create()
               .block();
       MariadbConnectionMetadata meta = connection.getMetadata();
-      if (!meta.isMariaDBServer() && meta.minVersion(8, 4, 0)) {
+      if (!meta.isMariaDBServer()) {
         defaultBuilder.allowPublicKeyRetrieval(true);
       }
       connection.close().block();

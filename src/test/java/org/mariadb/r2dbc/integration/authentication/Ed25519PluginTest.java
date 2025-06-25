@@ -26,7 +26,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
       if (meta.minVersion(10, 4, 0)) {
         sharedConn
             .createStatement(
-                "CREATE USER verificationEd25519AuthPlugin IDENTIFIED "
+                "CREATE USER verificationEd25519AuthPlugin"+ getHostSuffix()+" IDENTIFIED "
                     + "VIA ed25519 USING PASSWORD('MySup8%rPassw@ord')")
             .execute()
             .flatMap(it -> it.getRowsUpdated())
@@ -40,7 +40,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
       } else {
         sharedConn
             .createStatement(
-                "CREATE USER verificationEd25519AuthPlugin IDENTIFIED "
+                "CREATE USER verificationEd25519AuthPlugin"+ getHostSuffix()+" IDENTIFIED "
                     + "VIA ed25519 USING '6aW9C7ENlasUfymtfMvMZZtnkCVlcb1ssxOLJ0kj/AA'")
             .execute()
             .flatMap(it -> it.getRowsUpdated())
@@ -55,7 +55,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
           .createStatement(
               String.format(
                   "GRANT SELECT on `%s`.* to verificationEd25519AuthPlugin",
-                  TestConfiguration.database))
+                  TestConfiguration.database)+ getHostSuffix())
           .execute()
           .flatMap(it -> it.getRowsUpdated())
           .onErrorResume(
@@ -71,7 +71,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
   @AfterAll
   public static void after2() {
     sharedConn
-        .createStatement("DROP USER IF EXISTS verificationEd25519AuthPlugin")
+        .createStatement("DROP USER IF EXISTS verificationEd25519AuthPlugin" + getHostSuffix())
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
@@ -81,9 +81,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
   @Test
   public void verificationEd25519AuthPlugin() throws Throwable {
     Assumptions.assumeTrue(
-        ed25519PluginEnabled.get()
-            && !"maxscale".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv")));
+        ed25519PluginEnabled.get() && !isMaxscale() && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     Assumptions.assumeTrue(meta.isMariaDBServer() && meta.minVersion(10, 2, 0));
 
@@ -100,9 +98,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
   @Test
   public void verificationEd25519AuthPluginRestricted() throws Throwable {
     Assumptions.assumeTrue(
-        ed25519PluginEnabled.get()
-            && !"maxscale".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv")));
+        ed25519PluginEnabled.get() && !isMaxscale() && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     Assumptions.assumeTrue(meta.isMariaDBServer() && meta.minVersion(10, 2, 0));
 
@@ -125,7 +121,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
   @Test
   public void multiAuthPlugin() throws Throwable {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv"))
             && System.getenv("TEST_PAM_USER") != null);
@@ -165,7 +161,7 @@ public class Ed25519PluginTest extends BaseConnectionTest {
   @Test
   public void multiAuthPluginRestricted() throws Throwable {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv"))
             && System.getenv("TEST_PAM_USER") != null);

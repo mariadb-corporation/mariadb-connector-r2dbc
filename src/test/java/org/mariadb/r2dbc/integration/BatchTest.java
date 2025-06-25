@@ -57,7 +57,7 @@ public class BatchTest extends BaseConnectionTest {
     // error crashing maxscale 6.1.x
     Assumptions.assumeTrue(
         !sharedConn.getMetadata().getDatabaseVersion().contains("maxScale-6.1.")
-            && !"maxscale".equals(System.getenv("srv"))
+            && !isMaxscale()
             && !"skysql-ha".equals(System.getenv("srv")));
     MariadbConnectionConfiguration confMulti =
         TestConfiguration.defaultBuilder.clone().allowMultiQueries(true).build();
