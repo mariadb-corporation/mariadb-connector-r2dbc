@@ -34,6 +34,8 @@ public class BaseConnectionTest {
   public static Integer initialConnectionNumber = -1;
   public static TcpProxy proxy;
   private static Instant initialTest;
+  private static String maxscaleVersion = null;
+
   @RegisterExtension public Extension watcher = new BaseConnectionTest.Follow();
 
   @BeforeAll
@@ -104,6 +106,24 @@ public class BaseConnectionTest {
   public static boolean minVersion(int major, int minor, int patch) {
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     return meta.minVersion(major, minor, patch);
+  }
+
+  public static boolean isMaxscale() {
+    if (maxscaleVersion == null) {
+      return "maxscale".equals(System.getenv("srv")) || "maxscale".equals(System.getenv("DB_TYPE"));
+    }
+    return true;
+  }
+
+  public static String getHostSuffix() {
+    if ("local".equals(System.getenv().getOrDefault("LOCAL_DB", "container"))) {
+      return "@'localhost'";
+    }
+    return "@'%'";
+  }
+
+  public static boolean isEnterprise() {
+    return "enterprise".equals(System.getenv("DB_TYPE"));
   }
 
   public static boolean exactVersion(int major, int minor, int patch) {

@@ -7,6 +7,7 @@
 # MariaDB R2DBC connector
 
 [![Maven Central][maven-image]][maven-url]
+[![CI Tests](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/actions/workflows/ci.yml)
 [![Test Build][travis-image]][travis-url]
 [![License][license-image]][license-url]
 [![codecov][codecov-image]][codecov-url]

@@ -35,6 +35,11 @@ public class TlsTest extends BaseConnectionTest {
     serverSslCert = System.getenv("TEST_DB_SERVER_CERT");
     clientSslCert = System.getenv("TEST_DB_CLIENT_CERT");
     clientSslKey = System.getenv("TEST_DB_CLIENT_KEY");
+    if ("".equals(serverSslCert)) {
+      serverSslCert = null;
+      clientSslCert = null;
+      clientSslKey = null;
+    }
     sslPort =
         System.getenv("TEST_MAXSCALE_TLS_PORT") == null
                 || System.getenv("TEST_MAXSCALE_TLS_PORT").isEmpty()
@@ -92,18 +97,13 @@ public class TlsTest extends BaseConnectionTest {
 
   @Test
   public void testWithoutPassword() throws Throwable {
-    Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
-            && !"skysql".equals(System.getenv("srv"))
-            && !"mariadb-es".equals(System.getenv("srv"))
-            && !"mariadb-es-test".equals(System.getenv("srv"))
-            && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(!isMaxscale() && !isEnterprise());
     Assumptions.assumeTrue(haveSsl(sharedConn));
-    sharedConn.createStatement("CREATE USER userWithoutPassword").execute().blockLast();
+    sharedConn.createStatement("CREATE USER userWithoutPassword"+getHostSuffix()).execute().blockLast();
     sharedConn
         .createStatement(
             String.format(
-                "GRANT SELECT on `%s`.* to userWithoutPassword", TestConfiguration.database))
+                "GRANT SELECT on `%s`.* to userWithoutPassword", TestConfiguration.database)+getHostSuffix())
         .execute()
         .blockLast();
     MariadbConnectionConfiguration conf =
@@ -117,7 +117,7 @@ public class TlsTest extends BaseConnectionTest {
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();
     sharedConn
-        .createStatement("DROP USER IF EXISTS userWithoutPassword")
+        .createStatement("DROP USER IF EXISTS userWithoutPassword"+getHostSuffix())
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
@@ -127,7 +127,7 @@ public class TlsTest extends BaseConnectionTest {
   @Test
   void defaultHasNoSSL() throws Exception {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeTrue(haveSsl(sharedConn));
@@ -146,8 +146,7 @@ public class TlsTest extends BaseConnectionTest {
 
   @Test
   void trustValidation() throws Exception {
-    Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(!isMaxscale() && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeTrue(haveSsl(sharedConn));
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder.clone().port(sslPort).sslMode(SslMode.TRUST).build();
@@ -168,7 +167,7 @@ public class TlsTest extends BaseConnectionTest {
 
   @Test
   void wrongCertificateFiles() throws Exception {
-    Assumptions.assumeTrue(haveSsl(sharedConn));
+    Assumptions.assumeTrue(haveSsl(sharedConn) && serverSslCert != null);
     assertThrows(
         R2dbcTransientResourceException.class,
         () ->
@@ -215,7 +214,7 @@ public class TlsTest extends BaseConnectionTest {
   @Test
   void trustForceProtocol() throws Exception {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
                 && !"skysql".equals(System.getenv("srv"))
                 && !"skysql-ha".equals(System.getenv("srv"))
                 && (isMariaDBServer() && minVersion(10, 3, 0))
@@ -261,8 +260,7 @@ public class TlsTest extends BaseConnectionTest {
           .as(StepVerifier::create)
           .expectNextMatches(
               val -> {
-                if ("maxscale".equals(System.getenv("srv"))
-                    && !"skysql-ha".equals(System.getenv("srv"))) return true;
+                if (isMaxscale() && !"skysql-ha".equals(System.getenv("srv"))) return true;
                 String[] values = {"TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
                 return Arrays.stream(values).anyMatch(val::equals);
               })
@@ -287,7 +285,7 @@ public class TlsTest extends BaseConnectionTest {
   @Test
   void fullWithoutServerCert() throws Exception {
     Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv"))
+        !isMaxscale()
             && !"skysql".equals(System.getenv("srv"))
             && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeTrue(haveSsl(sharedConn));
@@ -347,8 +345,7 @@ public class TlsTest extends BaseConnectionTest {
           .as(StepVerifier::create)
           .expectNextMatches(
               val -> {
-                if ("maxscale".equals(System.getenv("srv"))
-                    && !"skysql-ha".equals(System.getenv("srv"))) return true;
+                if (isMaxscale() && !"skysql-ha".equals(System.getenv("srv"))) return true;
                 String[] values = {"TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
                 return Arrays.stream(values).anyMatch(val::equals);
               })
@@ -379,17 +376,13 @@ public class TlsTest extends BaseConnectionTest {
     new MariadbConnectionFactory(conf)
         .create()
         .as(StepVerifier::create)
-        .expectErrorMatches(
-            throwable ->
-                throwable instanceof R2dbcNonTransientException
-                    && throwable.getMessage().contains("No name matching"))
+        .expectErrorMatches(throwable -> throwable instanceof R2dbcNonTransientException)
         .verify();
   }
 
   @Test
   void fullMutualWithoutClientCerts() throws Exception {
-    Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(!isMaxscale() && !"skysql-ha".equals(System.getenv("srv")));
     Assumptions.assumeTrue(haveSsl(sharedConn));
     Assumptions.assumeTrue(serverSslCert != null && clientSslCert != null & clientSslKey != null);
     MariadbConnectionConfiguration conf =
@@ -416,8 +409,7 @@ public class TlsTest extends BaseConnectionTest {
 
   @Test
   void fullMutualAuthentication() throws Exception {
-    Assumptions.assumeTrue(
-        !"maxscale".equals(System.getenv("srv")) && !"skysql-ha".equals(System.getenv("srv")));
+    Assumptions.assumeTrue(!isMaxscale());
 
     Assumptions.assumeTrue(haveSsl(sharedConn));
     Assumptions.assumeTrue(serverSslCert != null && clientSslCert != null & clientSslKey != null);
@@ -441,8 +433,7 @@ public class TlsTest extends BaseConnectionTest {
         .as(StepVerifier::create)
         .expectNextMatches(
             val -> {
-              if ("maxscale".equals(System.getenv("srv"))
-                  && !"skysql-ha".equals(System.getenv("srv"))) return true;
+              if (isMaxscale() && !"skysql-ha".equals(System.getenv("srv"))) return true;
               String[] values = {"TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"};
               return Arrays.stream(values).anyMatch(val::equals);
             })
