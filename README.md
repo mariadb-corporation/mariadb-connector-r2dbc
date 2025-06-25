@@ -8,7 +8,6 @@
 
 [![Maven Central][maven-image]][maven-url]
 [![CI Tests](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/actions/workflows/ci.yml)
-[![Test Build][travis-image]][travis-url]
 [![License][license-image]][license-url]
 [![codecov][codecov-image]][codecov-url]
 
@@ -198,10 +197,6 @@ Commands must be idempotent only (queries can be "replayable")
 
 To file an issue or follow the development, see [JIRA](https://jira.mariadb.org/projects/R2DBC/issues/).
 
-
-[travis-image]:https://app.travis-ci.com/mariadb-corporation/mariadb-connector-r2dbc.svg?branch=master
-
-[travis-url]:https://app.travis-ci.com/github/mariadb-corporation/mariadb-connector-r2dbc
 
 [maven-image]:https://img.shields.io/maven-central/v/org.mariadb/r2dbc-mariadb.svg
 
