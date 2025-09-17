@@ -34,18 +34,33 @@ jobs:
         singlestore_version: ${{ fromJson(needs.fetch-s2-versions.outputs.versions) }}
         java: ["8", "11", "17"]
 
-    services:
-      singlestore:
-        image: ghcr.io/singlestore-labs/singlestoredb-dev:latest
-        ports:
-          - "3306:3306"
+    steps:
+      - name: Free Disk Space
+        run: |
+          echo "=== BEFORE ==="
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /opt/hostedtoolcache/Ruby
+          sudo rm -rf /opt/hostedtoolcache/Go
+          docker system prune -af || true
+          sudo apt-get clean
+          echo "=== AFTER ==="
+          df -h
+
+      - uses: actions/checkout@v4
+
+      - name: Setup SingleStore Cluster
         env:
           SINGLESTORE_LICENSE: ${{ secrets.SINGLESTORE_LICENSE }}
           ROOT_PASSWORD: ${{ secrets.SINGLESTORE_PASSWORD }}
-          SINGELSTORE_VERSION: ${{ matrix.singlestore_version }}
-
-    steps:
-      - uses: actions/checkout@v4
+          SINGLESTORE_VERSION: ${{ matrix.singlestore_version }}
+          DATABASE: ${{ env.TEST_DB_DATABASE }}
+        run: ./scripts/setup-cluster.sh
 
       - uses: actions/setup-java@v4
         with:
@@ -55,3 +70,7 @@ jobs:
 
       - name: Run Tests
         run: mvn clean test ${{ matrix.java == '8' && '-P java8' || '' }}
+        env:
+          TEST_DB_SERVER_CERT: ${{ format('{0}/scripts/ssl/server-cert.pem', github.workspace) }}
+          TEST_DB_CLIENT_CERT: ${{ format('{0}/scripts/ssl/client-cert.pem', github.workspace) }}
+          TEST_DB_CLIENT_KEY: ${{ format('{0}/scripts/ssl/client-key.pem', github.workspace) }}
