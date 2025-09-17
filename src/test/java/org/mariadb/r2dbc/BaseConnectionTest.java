@@ -116,9 +116,6 @@ public class BaseConnectionTest {
   }
 
   public static String getHostSuffix() {
-    if ("local".equals(System.getenv().getOrDefault("LOCAL_DB", "container"))) {
-      return "@'localhost'";
-    }
     return "@'%'";
   }
 
@@ -180,7 +177,7 @@ public class BaseConnectionTest {
       if (!isXpand()) {
         initialConnectionNumber =
             sharedConn
-                .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
+                .createStatement("SHOW STATUS LIKE 'Threads_connected'")
                 .execute()
                 .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
                 .blockLast();
@@ -195,7 +192,7 @@ public class BaseConnectionTest {
       if (!isXpand()) {
         Integer finalConnectionNumber =
             sharedConn
-                .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
+                .createStatement("SHOW STATUS LIKE 'Threads_connected'")
                 .execute()
                 .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
                 .onErrorResume(
@@ -210,7 +207,7 @@ public class BaseConnectionTest {
             Thread.sleep(50);
             finalConnectionNumber =
                 sharedConn
-                    .createStatement("SHOW STATUS WHERE `variable_name` = 'Threads_connected'")
+                    .createStatement("SHOW STATUS LIKE 'Threads_connected'")
                     .execute()
                     .flatMap(r -> r.map((row, metadata) -> row.get(1, Integer.class)))
                     .onErrorResume(

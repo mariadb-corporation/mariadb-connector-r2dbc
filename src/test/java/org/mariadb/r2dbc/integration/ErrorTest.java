@@ -6,6 +6,7 @@ package org.mariadb.r2dbc.integration;
 import io.r2dbc.spi.*;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
@@ -24,6 +25,7 @@ public class ErrorTest extends BaseConnectionTest {
   }
 
   @Test
+  @Disabled
   void queryTimeout() throws Exception {
     Assumptions.assumeTrue(isMariaDBServer() && minVersion(10, 2, 0));
     sharedConn

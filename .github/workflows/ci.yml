@@ -6,61 +6,47 @@ on:
   pull_request:
   workflow_dispatch:
   schedule:
-    # Run weekly on Sundays at 2 AM UTC
-    - cron: '0 2 * * 0'
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+    # Run weekly on Sundays at 00:00 UTC
+    - cron: '0 0 * * 0'
 
 env:
-  TEST_DB_HOST: mariadb.example.com
+  TEST_DB_HOST: 127.0.0.1
   TEST_DB_PORT: 3306
   TEST_DB_USER: root
-  TEST_DB_PASSWORD: "heyPassw-!*20oRd"
+  TEST_DB_PASSWORD: ${{ secrets.SINGLESTORE_PASSWORD }}
   TEST_DB_DATABASE: testr2
 
 jobs:
-  setup:
+  fetch-s2-versions:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.final-matrix }}
+      versions: ${{ steps.get_versions.outputs.versions }}
     steps:
-      - uses: actions/checkout@v4
-      - id: set-matrix
-        name: build matrix
-        uses: rusher/mariadb-test-build-matrix@main
-        with:
-          additional-matrix: '[{"name": "MariaDB 11.4", "os": "ubuntu-latest", "db-type": "community", "db-tag": "11.4", "java": 8},{"name": "MariaDB 11.4", "os": "ubuntu-latest", "db-type": "community", "db-tag": "11.4", "java": 11},{"name": "MariaDB 11.4", "os": "ubuntu-latest", "db-type": "community", "db-tag": "11.4", "java": 17}]'
+      - name: Get supported versions of Singlestore
+        id: get_versions
+        uses: singlestore-labs/singlestore-supported-versions@main
 
-  ci:
+  test:
+    needs: fetch-s2-versions
+    runs-on: ubuntu-latest
     name: ${{ matrix.name }}${{ ((matrix.java == '8' && matrix.db-tag == '11.4')) && matrix.db-type != 'enterprise' && matrix.db-type != 'dev' && ' (local)' || '' }}${{ matrix.java != 21 && format(' - java {0}', matrix.java) || '' }}
-    needs: setup
-    # Only run scheduled jobs if we're on the right branch
-    if: github.event_name != 'schedule' || contains(fromJSON('["develop", "master"]'), github.ref_name)
-    timeout-minutes: 50
     strategy:
-      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
+      matrix:
+        singlestore_version: ${{ fromJson(needs.fetch-s2-versions.outputs.versions) }}
+        java: ["8", "11", "17"]
 
-    runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.continue-on-error || false }}
+    services:
+      singlestore:
+        image: ghcr.io/singlestore-labs/singlestoredb-dev:latest
+        ports:
+          - "3306:3306"
+        env:
+          SINGLESTORE_LICENSE: ${{ secrets.SINGLESTORE_LICENSE }}
+          ROOT_PASSWORD: ${{ secrets.SINGLESTORE_PASSWORD }}
+          SINGELSTORE_VERSION: ${{ matrix.singlestore_version }}
+
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Test Environment
-        id: setup-env
-        uses: rusher/mariadb-test-setup@master
-        with:
-          node-version: ${{ matrix.node }}
-          db-type: ${{ matrix.db-type }}
-          db-tag: ${{ matrix.db-tag }}
-          test-db-password: ${{ env.TEST_DB_PASSWORD }}
-          test-db-database: ${{ env.TEST_DB_DATABASE }}
-          test-db-port: ${{ env.TEST_DB_PORT }}
-          additional-conf: ${{ matrix.additional-conf || '' }}
-          registry-user: ${{ matrix.db-type == 'enterprise' && secrets.ENTERPRISE_USER || (secrets.DOCKER_PWD != '' && 'mariadbtest' || '') }}
-          registry-password: ${{ matrix.db-type == 'enterprise' && secrets.ENTERPRISE_TOKEN || secrets.DOCKER_PWD }}
-          os: ${{ matrix.os }}
 
       - uses: actions/setup-java@v4
         with:
@@ -70,19 +56,3 @@ jobs:
 
       - name: Run Tests
         run: mvn clean test ${{ matrix.java == '8' && '-P java8' || '' }}
-        env:
-          LOCAL_DB: ${{ steps.setup-env.outputs.database-type }}
-          DB_TYPE: ${{ matrix.db-type }}
-          TEST_DB_SERVER_CERT: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/server.crt', github.workspace) || '' }}
-          TEST_DB_CLIENT_CERT: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/client.crt', github.workspace) || '' }}
-          TEST_DB_CLIENT_KEY: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/client-key.pem', github.workspace) || '' }}
-          TEST_DB_SERVER_CA_CERT: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/ca.crt', github.workspace) || '' }}
-          TEST_DB_CLIENT_PKCS: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/client.p12', github.workspace) || '' }}
-          DB_VERSION: ${{ matrix.db-tag }}
-
-      - name: Generate Coverage Report
-        shell: bash
-        run: |
-          bash <(curl -s https://codecov.io/bash)
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

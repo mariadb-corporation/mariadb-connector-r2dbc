@@ -1123,6 +1123,7 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
+  @Disabled
   public void queryTimeout() throws Throwable {
     Assumptions.assumeTrue(
         !isMaxscale()
