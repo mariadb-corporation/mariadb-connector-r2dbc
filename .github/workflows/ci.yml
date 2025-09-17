@@ -29,7 +29,6 @@ jobs:
   test:
     needs: fetch-s2-versions
     runs-on: ubuntu-latest
-    name: ${{ matrix.name }}${{ ((matrix.java == '8' && matrix.db-tag == '11.4')) && matrix.db-type != 'enterprise' && matrix.db-type != 'dev' && ' (local)' || '' }}${{ matrix.java != 21 && format(' - java {0}', matrix.java) || '' }}
     strategy:
       matrix:
         singlestore_version: ${{ fromJson(needs.fetch-s2-versions.outputs.versions) }}
