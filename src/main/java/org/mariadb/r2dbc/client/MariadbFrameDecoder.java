@@ -56,7 +56,13 @@ public class MariadbFrameDecoder extends ByteToMessageDecoder {
           multipart = buf.alloc().compositeBuffer();
         }
         buf.skipBytes(4); // skip length + header
-        multipart.addComponent(true, buf.readRetainedSlice(length));
+        ByteBuf slice = buf.readRetainedSlice(length);
+        try {
+          multipart.addComponent(true, slice);
+        } catch (Throwable t) {
+          slice.release();
+          throw t;
+        }
         continue;
       }
 
@@ -68,18 +74,36 @@ public class MariadbFrameDecoder extends ByteToMessageDecoder {
         // add sequence byte
         multipart.addComponent(true, 0, Unpooled.wrappedBuffer(new byte[] {buf.readByte()}));
         // add data
-        multipart.addComponent(true, buf.readRetainedSlice(length));
-        out.add(decode(multipart));
-        multipart.release();
-        multipart = null;
+        ByteBuf dataSlice = buf.readRetainedSlice(length);
+        boolean sliceAdded = false;
+        try {
+          multipart.addComponent(true, dataSlice);
+          sliceAdded = true;
+          out.add(decode(multipart));
+        } catch (Throwable t) {
+          // If addComponent failed, release the slice that wasn't added to multipart
+          if (!sliceAdded) {
+            dataSlice.release();
+          }
+          throw t;
+        } finally {
+          multipart.release();
+          multipart = null;
+        }
         continue;
       }
 
       // create Object from packet
       buf.skipBytes(3); // skip length
-      ByteBuf packet = buf.readRetainedSlice(1 + length);
-      out.add(decode(packet));
-      packet.release();
+      ByteBuf packet = null;
+      try {
+        packet = buf.readRetainedSlice(1 + length);
+        out.add(decode(packet));
+      } finally {
+        if (packet != null) {
+          packet.release();
+        }
+      }
     }
   }
 
