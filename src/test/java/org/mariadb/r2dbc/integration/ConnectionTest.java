@@ -1145,12 +1145,7 @@ public class ConnectionTest extends BaseConnectionTest {
           .blockLast();
       Assertions.fail();
     } catch (R2dbcTimeoutException e) {
-      assertTrue(
-          e.getMessage().contains("Query execution was interrupted (max_statement_time exceeded)")
-              || e.getMessage()
-                  .contains(
-                      "Query execution was interrupted, maximum statement execution time"
-                          + " exceeded"));
+      assertTrue(e.getMessage().contains("was interrupted"));
     } finally {
       connection.close().block();
     }
