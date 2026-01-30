@@ -3,6 +3,7 @@ name: Run CI Tests
 
 on:
   push:
+    branches: ['main', 'develop', 'maintenance/*', 'feature/*']
   pull_request:
   workflow_dispatch:
   schedule:
@@ -29,15 +30,13 @@ jobs:
       - uses: actions/checkout@v4
       - id: set-matrix
         name: build matrix
-        uses: rusher/mariadb-test-build-matrix@main
+        uses: mariadb-corporation/connector-ci-build-matrix@main
         with:
-          additional-matrix: '[{"name": "MariaDB 11.4", "os": "ubuntu-latest", "db-type": "community", "db-tag": "11.4", "java": 8},{"name": "MariaDB 11.4", "os": "ubuntu-latest", "db-type": "community", "db-tag": "11.4", "java": 11},{"name": "MariaDB 11.4", "os": "ubuntu-latest", "db-type": "community", "db-tag": "11.4", "java": 17}]'
+          additional-matrix: '[{"name": "MariaDB 11.4", "os": "ubuntu-latest", "db-type": "community", "db-tag": "11.4", "java": 8},{"name": "MariaDB 11.4", "os": "ubuntu-latest", "db-type": "community", "db-tag": "11.4", "java": 11},{"name": "MariaDB 11.4", "os": "ubuntu-latest", "db-type": "community", "db-tag": "11.4", "java": 17},{"name": "MariaDB 11.4", "os": "ubuntu-latest", "db-type": "community", "db-tag": "11.4", "java": "25"}]'
 
   ci:
     name: ${{ matrix.name }}${{ ((matrix.java == '8' && matrix.db-tag == '11.4')) && matrix.db-type != 'enterprise' && matrix.db-type != 'dev' && ' (local)' || '' }}${{ matrix.java != 21 && format(' - java {0}', matrix.java) || '' }}
     needs: setup
-    # Only run scheduled jobs if we're on the right branch
-    if: github.event_name != 'schedule' || contains(fromJSON('["develop", "master"]'), github.ref_name)
     timeout-minutes: 50
     strategy:
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
@@ -49,7 +48,7 @@ jobs:
 
       - name: Setup Test Environment
         id: setup-env
-        uses: rusher/mariadb-test-setup@master
+        uses: mariadb-corporation/connector-ci-setup@master
         with:
           node-version: ${{ matrix.node }}
           db-type: ${{ matrix.db-type }}
@@ -66,7 +65,7 @@ jobs:
         with:
           java-version: ${{ matrix.java || '21' }}
           cache: maven
-          distribution: 'adopt'
+          distribution: ${{ (matrix.java && matrix.java > 17) && 'oracle' || 'adopt' }}
 
       - name: Run Tests
         run: mvn clean test ${{ matrix.java == '8' && '-P java8' || '' }}
@@ -74,8 +73,6 @@ jobs:
           LOCAL_DB: ${{ steps.setup-env.outputs.database-type }}
           DB_TYPE: ${{ matrix.db-type }}
           TEST_DB_SERVER_CERT: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/server.crt', github.workspace) || '' }}
-          TEST_DB_CLIENT_CERT: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/client.crt', github.workspace) || '' }}
-          TEST_DB_CLIENT_KEY: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/client-key.pem', github.workspace) || '' }}
           TEST_DB_SERVER_CA_CERT: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/ca.crt', github.workspace) || '' }}
           TEST_DB_CLIENT_PKCS: ${{ steps.setup-env.outputs.database-type == 'container' && format('{0}/.github/workflows/certs/client.p12', github.workspace) || '' }}
           DB_VERSION: ${{ matrix.db-tag }}
