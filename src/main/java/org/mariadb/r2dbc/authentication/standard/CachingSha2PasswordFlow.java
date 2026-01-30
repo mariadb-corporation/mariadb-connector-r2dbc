@@ -95,7 +95,7 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
 
       case FAST_AUTH_RESULT:
         ByteBuf buf = authMoreData.getBuf();
-        buf.skipBytes(1);
+        if (buf.getByte(buf.readerIndex()) == 0x01) buf.readByte();
         byte fastAuthResult = buf.readByte();
         switch (fastAuthResult) {
           case 3:
