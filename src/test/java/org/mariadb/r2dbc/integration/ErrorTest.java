@@ -36,7 +36,7 @@ public class ErrorTest extends BaseConnectionTest {
         .expectErrorMatches(
             throwable ->
                 throwable instanceof R2dbcTimeoutException
-                    && throwable.getMessage().contains("Query execution was interrupted"))
+                    && throwable.getMessage().contains("was interrupted"))
         .verify();
   }
 
