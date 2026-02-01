@@ -3,15 +3,12 @@
 
 package org.mariadb.r2dbc.codec;
 
-import io.r2dbc.spi.Blob;
-import io.r2dbc.spi.Clob;
-import io.r2dbc.spi.Parameter;
-import io.r2dbc.spi.R2dbcType;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -20,9 +17,36 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
-import org.mariadb.r2dbc.codec.list.*;
+
+import org.mariadb.r2dbc.codec.list.BigDecimalCodec;
+import org.mariadb.r2dbc.codec.list.BigIntegerCodec;
+import org.mariadb.r2dbc.codec.list.BitSetCodec;
+import org.mariadb.r2dbc.codec.list.BlobCodec;
+import org.mariadb.r2dbc.codec.list.BooleanCodec;
+import org.mariadb.r2dbc.codec.list.ByteArrayCodec;
+import org.mariadb.r2dbc.codec.list.ByteBufferCodec;
+import org.mariadb.r2dbc.codec.list.ByteCodec;
+import org.mariadb.r2dbc.codec.list.ClobCodec;
+import org.mariadb.r2dbc.codec.list.DoubleCodec;
+import org.mariadb.r2dbc.codec.list.DurationCodec;
+import org.mariadb.r2dbc.codec.list.FloatCodec;
+import org.mariadb.r2dbc.codec.list.InstantCodec;
+import org.mariadb.r2dbc.codec.list.IntCodec;
+import org.mariadb.r2dbc.codec.list.LocalDateCodec;
+import org.mariadb.r2dbc.codec.list.LocalDateTimeCodec;
+import org.mariadb.r2dbc.codec.list.LocalTimeCodec;
+import org.mariadb.r2dbc.codec.list.LongCodec;
+import org.mariadb.r2dbc.codec.list.ShortCodec;
+import org.mariadb.r2dbc.codec.list.StreamCodec;
+import org.mariadb.r2dbc.codec.list.StringCodec;
+import org.mariadb.r2dbc.codec.list.UuidCodec;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.BindValue;
+
+import io.r2dbc.spi.Blob;
+import io.r2dbc.spi.Clob;
+import io.r2dbc.spi.Parameter;
+import io.r2dbc.spi.R2dbcType;
 
 public final class Codecs {
 
@@ -42,6 +66,7 @@ public final class Codecs {
         LongCodec.INSTANCE,
         FloatCodec.INSTANCE,
         IntCodec.INSTANCE,
+        InstantCodec.INSTANCE,
         LocalDateCodec.INSTANCE,
         LocalDateTimeCodec.INSTANCE,
         LocalTimeCodec.INSTANCE,
@@ -112,6 +137,7 @@ public final class Codecs {
     myMap.put(Duration.class, DurationCodec.INSTANCE);
     myMap.put(Float.class, FloatCodec.INSTANCE);
     myMap.put(Integer.class, IntCodec.INSTANCE);
+    myMap.put(Instant.class, InstantCodec.INSTANCE);
     myMap.put(LocalDate.class, LocalDateCodec.INSTANCE);
     myMap.put(LocalDateTime.class, LocalDateTimeCodec.INSTANCE);
     myMap.put(LocalTime.class, LocalTimeCodec.INSTANCE);
@@ -169,6 +195,7 @@ public final class Codecs {
     myMap.put(BigDecimal.class, BigDecimalCodec.INSTANCE);
     myMap.put(Float.class, FloatCodec.INSTANCE);
     myMap.put(Double.class, DoubleCodec.INSTANCE);
+    myMap.put(Instant.class, InstantCodec.INSTANCE);
     myMap.put(LocalDate.class, LocalDateCodec.INSTANCE);
     myMap.put(LocalTime.class, LocalTimeCodec.INSTANCE);
     myMap.put(Duration.class, DurationCodec.INSTANCE);

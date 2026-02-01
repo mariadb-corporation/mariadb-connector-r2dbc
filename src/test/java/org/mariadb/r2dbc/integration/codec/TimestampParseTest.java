@@ -6,10 +6,7 @@ package org.mariadb.r2dbc.integration.codec;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.*;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -135,6 +132,31 @@ public class TimestampParseTest extends BaseConnectionTest {
             Optional.of(LocalTime.parse("10:45:01")),
             Optional.empty())
         .verifyComplete();
+  }
+
+
+  @Test
+  void instantValue() {
+    instantValue(sharedConn);
+  }
+
+  @Test
+  void instantValuePrepare() {
+    instantValue(sharedConnPrepare);
+  }
+
+  private void instantValue(MariadbConnection connection) {
+    connection
+            .createStatement("SELECT t1 FROM TimestampTable WHERE 1 = ?")
+            .bind(0, 1)
+            .execute()
+            .flatMap(r -> r.map((row, metadata) -> Optional.ofNullable(row.get(0, Instant.class))))
+            .as(StepVerifier::create)
+            .expectNext(
+                    Optional.of(LocalDateTime.parse("2013-07-22T12:50:05.01230").atZone(ZoneId.systemDefault()).toInstant()),
+                    Optional.of(LocalDateTime.parse("2035-01-31T10:45:01").atZone(ZoneId.systemDefault()).toInstant()),
+                    Optional.empty())
+            .verifyComplete();
   }
 
   @Test

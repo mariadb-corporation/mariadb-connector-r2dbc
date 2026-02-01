@@ -6,9 +6,7 @@ package org.mariadb.r2dbc.integration.parameter;
 import io.r2dbc.spi.R2dbcBadGrammarException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.*;
 import java.util.Optional;
 import org.junit.jupiter.api.*;
 import org.mariadb.r2dbc.BaseConnectionTest;
@@ -349,6 +347,31 @@ public class TimeStampParameterTest extends BaseConnectionTest {
         Optional.of(LocalDateTime.parse("2010-01-12T05:08:09.001400")),
         Optional.of(LocalDateTime.parse("2018-12-15T05:08:10.123456")),
         Optional.of(LocalDateTime.parse("2025-05-12T05:08:11.123000")));
+  }
+
+
+  @Test
+  void instantTimeValue() {
+    instantTimeValue(sharedConn);
+  }
+
+  @Test
+  void instantTimeValuePrepare() {
+    instantTimeValue(sharedConnPrepare);
+  }
+
+  private void instantTimeValue(MariadbConnection connection) {
+    connection
+            .createStatement("INSERT INTO TimestampParam VALUES (?,?,?)")
+            .bind(0, LocalDateTime.parse("2010-01-12T05:08:09.0014").atZone(ZoneId.systemDefault()).toInstant())
+            .bind(1, LocalDateTime.parse("2018-12-15T05:08:10.123456").atZone(ZoneId.systemDefault()).toInstant())
+            .bind(2, LocalDateTime.parse("2025-05-12T05:08:11.123").atZone(ZoneId.systemDefault()).toInstant())
+            .execute()
+            .blockLast();
+    validate(
+            Optional.of(LocalDateTime.parse("2010-01-12T05:08:09.001400")),
+            Optional.of(LocalDateTime.parse("2018-12-15T05:08:10.123456")),
+            Optional.of(LocalDateTime.parse("2025-05-12T05:08:11.123000")));
   }
 
   @Test
