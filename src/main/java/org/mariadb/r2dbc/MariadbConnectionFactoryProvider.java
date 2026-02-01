@@ -3,15 +3,14 @@
 
 package org.mariadb.r2dbc;
 
-import java.util.function.UnaryOperator;
-
-import org.mariadb.r2dbc.util.Assert;
+import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
 
 import io.netty.handler.ssl.SslContextBuilder;
 import io.r2dbc.spi.ConnectionFactoryOptions;
-import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
 import io.r2dbc.spi.ConnectionFactoryProvider;
 import io.r2dbc.spi.Option;
+import java.util.function.UnaryOperator;
+import org.mariadb.r2dbc.util.Assert;
 import reactor.netty.resources.LoopResources;
 
 public final class MariadbConnectionFactoryProvider implements ConnectionFactoryProvider {

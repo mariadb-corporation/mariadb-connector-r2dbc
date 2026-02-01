@@ -5,20 +5,18 @@ package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import org.mariadb.r2dbc.ExceptionFactory;
-import org.mariadb.r2dbc.codec.Codec;
-import org.mariadb.r2dbc.codec.DataType;
-import org.mariadb.r2dbc.message.Context;
-import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
-
 import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
 import java.util.EnumSet;
+import org.mariadb.r2dbc.ExceptionFactory;
+import org.mariadb.r2dbc.codec.Codec;
+import org.mariadb.r2dbc.codec.DataType;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 
 public class InstantCodec implements Codec<Instant> {
 
@@ -39,8 +37,7 @@ public class InstantCodec implements Codec<Instant> {
           DataType.DATE);
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
-    return COMPATIBLE_TYPES.contains(column.getDataType())
-        && type.isAssignableFrom(Instant.class);
+    return COMPATIBLE_TYPES.contains(column.getDataType()) && type.isAssignableFrom(Instant.class);
   }
 
   public boolean canEncode(Class<?> value) {
@@ -61,18 +58,26 @@ public class InstantCodec implements Codec<Instant> {
         parts = LocalDateCodec.parseDate(buf, length);
         if (parts == null) return null;
         return LocalDateTime.of(parts[0], parts[1], parts[2], 0, 0, 0)
-                .atZone(ZoneId.systemDefault()).toInstant();
+            .atZone(ZoneId.systemDefault())
+            .toInstant();
 
       case DATETIME:
       case TIMESTAMP:
-        parts = LocalDateTimeCodec.parseTimestamp(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
+        parts =
+            LocalDateTimeCodec.parseTimestamp(
+                buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
         if (parts == null) return null;
         return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
-            .plusNanos(parts[6]).atZone(ZoneId.systemDefault()).toInstant();
+            .plusNanos(parts[6])
+            .atZone(ZoneId.systemDefault())
+            .toInstant();
 
       case TIME:
         parts = LocalTimeCodec.parseTime(buf, length, column, factory);
-        return LocalDateTime.of(1970, 1, 1, parts[1] % 24, parts[2], parts[3]).plusNanos(parts[4]).atZone(ZoneId.systemDefault()).toInstant();
+        return LocalDateTime.of(1970, 1, 1, parts[1] % 24, parts[2], parts[3])
+            .plusNanos(parts[4])
+            .atZone(ZoneId.systemDefault())
+            .toInstant();
 
       default:
         // STRING, VARCHAR, VARSTRING:
@@ -81,7 +86,9 @@ public class InstantCodec implements Codec<Instant> {
           parts = LocalDateTimeCodec.parseTimestamp(val);
           if (parts == null) return null;
           return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
-              .plusNanos(parts[6]).atZone(ZoneId.systemDefault()).toInstant();
+              .plusNanos(parts[6])
+              .atZone(ZoneId.systemDefault())
+              .toInstant();
         } catch (DateTimeException dte) {
           throw factory.createParsingException(
               String.format(
@@ -153,7 +160,9 @@ public class InstantCodec implements Codec<Instant> {
           int[] parts = LocalDateTimeCodec.parseTimestamp(val);
           if (parts == null) return null;
           return LocalDateTime.of(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
-              .plusNanos(parts[6]).atZone(ZoneId.systemDefault()).toInstant();
+              .plusNanos(parts[6])
+              .atZone(ZoneId.systemDefault())
+              .toInstant();
         } catch (DateTimeException dte) {
           throw factory.createParsingException(
               String.format(
@@ -162,7 +171,9 @@ public class InstantCodec implements Codec<Instant> {
     }
 
     return LocalDateTime.of(year, month, (int) dayOfMonth, hour, minutes, seconds)
-        .plusNanos(microseconds * 1000).atZone(ZoneId.systemDefault()).toInstant();
+        .plusNanos(microseconds * 1000)
+        .atZone(ZoneId.systemDefault())
+        .toInstant();
   }
 
   @Override

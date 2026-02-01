@@ -3,6 +3,10 @@
 
 package org.mariadb.r2dbc.codec;
 
+import io.r2dbc.spi.Blob;
+import io.r2dbc.spi.Clob;
+import io.r2dbc.spi.Parameter;
+import io.r2dbc.spi.R2dbcType;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -17,7 +21,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
-
 import org.mariadb.r2dbc.codec.list.BigDecimalCodec;
 import org.mariadb.r2dbc.codec.list.BigIntegerCodec;
 import org.mariadb.r2dbc.codec.list.BitSetCodec;
@@ -42,11 +45,6 @@ import org.mariadb.r2dbc.codec.list.StringCodec;
 import org.mariadb.r2dbc.codec.list.UuidCodec;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.BindValue;
-
-import io.r2dbc.spi.Blob;
-import io.r2dbc.spi.Clob;
-import io.r2dbc.spi.Parameter;
-import io.r2dbc.spi.R2dbcType;
 
 public final class Codecs {
 

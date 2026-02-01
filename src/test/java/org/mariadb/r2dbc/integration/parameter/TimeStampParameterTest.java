@@ -349,7 +349,6 @@ public class TimeStampParameterTest extends BaseConnectionTest {
         Optional.of(LocalDateTime.parse("2025-05-12T05:08:11.123000")));
   }
 
-
   @Test
   void instantTimeValue() {
     instantTimeValue(sharedConn);
@@ -362,16 +361,28 @@ public class TimeStampParameterTest extends BaseConnectionTest {
 
   private void instantTimeValue(MariadbConnection connection) {
     connection
-            .createStatement("INSERT INTO TimestampParam VALUES (?,?,?)")
-            .bind(0, LocalDateTime.parse("2010-01-12T05:08:09.0014").atZone(ZoneId.systemDefault()).toInstant())
-            .bind(1, LocalDateTime.parse("2018-12-15T05:08:10.123456").atZone(ZoneId.systemDefault()).toInstant())
-            .bind(2, LocalDateTime.parse("2025-05-12T05:08:11.123").atZone(ZoneId.systemDefault()).toInstant())
-            .execute()
-            .blockLast();
+        .createStatement("INSERT INTO TimestampParam VALUES (?,?,?)")
+        .bind(
+            0,
+            LocalDateTime.parse("2010-01-12T05:08:09.0014")
+                .atZone(ZoneId.systemDefault())
+                .toInstant())
+        .bind(
+            1,
+            LocalDateTime.parse("2018-12-15T05:08:10.123456")
+                .atZone(ZoneId.systemDefault())
+                .toInstant())
+        .bind(
+            2,
+            LocalDateTime.parse("2025-05-12T05:08:11.123")
+                .atZone(ZoneId.systemDefault())
+                .toInstant())
+        .execute()
+        .blockLast();
     validate(
-            Optional.of(LocalDateTime.parse("2010-01-12T05:08:09.001400")),
-            Optional.of(LocalDateTime.parse("2018-12-15T05:08:10.123456")),
-            Optional.of(LocalDateTime.parse("2025-05-12T05:08:11.123000")));
+        Optional.of(LocalDateTime.parse("2010-01-12T05:08:09.001400")),
+        Optional.of(LocalDateTime.parse("2018-12-15T05:08:10.123456")),
+        Optional.of(LocalDateTime.parse("2025-05-12T05:08:11.123000")));
   }
 
   @Test
