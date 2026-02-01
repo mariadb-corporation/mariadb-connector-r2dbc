@@ -3,22 +3,34 @@
 
 package org.mariadb.r2dbc;
 
-import static io.r2dbc.spi.ConnectionFactoryOptions.*;
-
-import io.netty.handler.ssl.SslContextBuilder;
-import io.r2dbc.spi.ConnectionFactoryOptions;
-import io.r2dbc.spi.IsolationLevel;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Properties;
 import java.util.function.UnaryOperator;
+
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.Security;
 import org.mariadb.r2dbc.util.SslConfig;
+
+import io.netty.handler.ssl.SslContextBuilder;
+import io.r2dbc.spi.ConnectionFactoryOptions;
+import static io.r2dbc.spi.ConnectionFactoryOptions.DATABASE;
+import static io.r2dbc.spi.ConnectionFactoryOptions.HOST;
+import static io.r2dbc.spi.ConnectionFactoryOptions.PASSWORD;
+import static io.r2dbc.spi.ConnectionFactoryOptions.PORT;
+import static io.r2dbc.spi.ConnectionFactoryOptions.USER;
+import io.r2dbc.spi.IsolationLevel;
 import reactor.netty.resources.LoopResources;
 import reactor.netty.tcp.TcpResources;
 import reactor.util.annotation.Nullable;
@@ -58,6 +70,8 @@ public final class MariadbConnectionConfiguration {
   private final UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer;
   private IsolationLevel isolationLevel;
   private final boolean skipPostCommands;
+  private final boolean fallbackToSystemTrustStore;
+  private final boolean fallbackToSystemKeyStore;
 
   private MariadbConnectionConfiguration(
       String haMode,
@@ -98,7 +112,9 @@ public final class MariadbConnectionConfiguration {
       String restrictedAuth,
       @Nullable LoopResources loopResources,
       @Nullable UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer,
-      boolean sslTunnelDisableHostVerification) {
+      boolean sslTunnelDisableHostVerification,
+      boolean fallbackToSystemTrustStore,
+      boolean fallbackToSystemKeyStore) {
     this.haMode = haMode == null ? HaMode.NONE : HaMode.from(haMode);
     this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
@@ -134,7 +150,9 @@ public final class MariadbConnectionConfiguration {
               clientSslPassword,
               tlsProtocol,
               sslTunnelDisableHostVerification,
-              sslContextBuilderCustomizer);
+              sslContextBuilderCustomizer,
+              fallbackToSystemTrustStore,
+              fallbackToSystemKeyStore);
     }
     this.rsaPublicKey = rsaPublicKey;
     this.cachingRsaPublicKey = cachingRsaPublicKey;
@@ -148,6 +166,8 @@ public final class MariadbConnectionConfiguration {
     this.loopResources = loopResources != null ? loopResources : TcpResources.get();
     this.useServerPrepStmts = !this.allowMultiQueries && useServerPrepStmts;
     this.sslContextBuilderCustomizer = sslContextBuilderCustomizer;
+    this.fallbackToSystemTrustStore = fallbackToSystemTrustStore;
+    this.fallbackToSystemKeyStore = fallbackToSystemKeyStore;
   }
 
   private MariadbConnectionConfiguration(
@@ -181,7 +201,9 @@ public final class MariadbConnectionConfiguration {
       boolean tinyInt1isBit,
       String[] restrictedAuth,
       LoopResources loopResources,
-      UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer) {
+      UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer,
+      boolean fallbackToSystemTrustStore,
+      boolean fallbackToSystemKeyStore) {
     this.database = database;
     this.hostAddresses = hostAddresses;
     this.haMode = haMode;
@@ -213,6 +235,8 @@ public final class MariadbConnectionConfiguration {
     this.restrictedAuth = restrictedAuth;
     this.loopResources = loopResources;
     this.sslContextBuilderCustomizer = sslContextBuilderCustomizer;
+    this.fallbackToSystemTrustStore = fallbackToSystemTrustStore;
+    this.fallbackToSystemKeyStore = fallbackToSystemKeyStore;
   }
 
   public MariadbConnectionConfiguration redirectConf(
@@ -250,7 +274,9 @@ public final class MariadbConnectionConfiguration {
         this.tinyInt1isBit,
         this.restrictedAuth,
         this.loopResources,
-        this.sslContextBuilderCustomizer);
+        this.sslContextBuilderCustomizer,
+        this.fallbackToSystemTrustStore,
+        this.fallbackToSystemKeyStore);
   }
 
   static boolean boolValue(Object value) {
@@ -504,6 +530,22 @@ public final class MariadbConnectionConfiguration {
           (UnaryOperator<SslContextBuilder>)
               connectionFactoryOptions.getValue(
                   MariadbConnectionFactoryProvider.SSL_CONTEXT_BUILDER_CUSTOMIZER));
+    }
+
+    if (connectionFactoryOptions.hasOption(
+        MariadbConnectionFactoryProvider.FALLBACK_TO_SYSTEM_TRUST_STORE)) {
+      builder.fallbackToSystemTrustStore(
+          boolValue(
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.FALLBACK_TO_SYSTEM_TRUST_STORE)));
+    }
+
+    if (connectionFactoryOptions.hasOption(
+        MariadbConnectionFactoryProvider.FALLBACK_TO_SYSTEM_KEY_STORE)) {
+      builder.fallbackToSystemKeyStore(
+          boolValue(
+              connectionFactoryOptions.getValue(
+                  MariadbConnectionFactoryProvider.FALLBACK_TO_SYSTEM_KEY_STORE)));
     }
 
     return builder;
@@ -870,6 +912,8 @@ public final class MariadbConnectionConfiguration {
     @Nullable private LoopResources loopResources;
     @Nullable private UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer;
     private boolean sslTunnelDisableHostVerification;
+    private boolean fallbackToSystemTrustStore;
+    private boolean fallbackToSystemKeyStore;
 
     private Builder() {}
 
@@ -936,7 +980,9 @@ public final class MariadbConnectionConfiguration {
           this.restrictedAuth,
           this.loopResources,
           this.sslContextBuilderCustomizer,
-          this.sslTunnelDisableHostVerification);
+          this.sslTunnelDisableHostVerification,
+          this.fallbackToSystemTrustStore,
+          this.fallbackToSystemKeyStore);
     }
 
     /**
@@ -1341,6 +1387,34 @@ public final class MariadbConnectionConfiguration {
 
     public Builder sslTunnelDisableHostVerification(boolean sslTunnelDisableHostVerification) {
       this.sslTunnelDisableHostVerification = sslTunnelDisableHostVerification;
+      return this;
+    }
+
+    /**
+     * When using SSL/TLS with a serverSslCert, if the certificate file is not found,
+     * fallback to the system's default trust store instead of throwing an error.
+     * This is useful for environments where the certificate path might not be available
+     * but the system trust store contains the necessary certificates.
+     *
+     * @param fallbackToSystemTrustStore whether to fallback to system trust store
+     * @return this {@link Builder}
+     */
+    public Builder fallbackToSystemTrustStore(boolean fallbackToSystemTrustStore) {
+      this.fallbackToSystemTrustStore = fallbackToSystemTrustStore;
+      return this;
+    }
+
+    /**
+     * When using SSL/TLS with client certificates (mutual authentication), if the client
+     * certificate or key files are not found, fallback to the system's default key store
+     * instead of throwing an error. This is useful for environments where the certificate
+     * path might not be available but the system key store contains the necessary certificates.
+     *
+     * @param fallbackToSystemKeyStore whether to fallback to system key store
+     * @return this {@link Builder}
+     */
+    public Builder fallbackToSystemKeyStore(boolean fallbackToSystemKeyStore) {
+      this.fallbackToSystemKeyStore = fallbackToSystemKeyStore;
       return this;
     }
 
