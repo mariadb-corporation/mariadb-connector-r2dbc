@@ -3,17 +3,23 @@
 
 package org.mariadb.r2dbc.util;
 
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
-import io.r2dbc.spi.R2dbcTransientResourceException;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.function.UnaryOperator;
+
 import javax.net.ssl.SSLException;
 import javax.net.ssl.TrustManagerFactory;
 
 import org.mariadb.r2dbc.SslMode;
+
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.r2dbc.spi.R2dbcTransientResourceException;
 
 public class SslConfig {
 
@@ -29,6 +35,8 @@ public class SslConfig {
   private UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer;
 
   private boolean sslTunnelDisableHostVerification;
+  private boolean fallbackToSystemTrustStore;
+  private boolean fallbackToSystemKeyStore;
 
   public SslConfig(
       SslMode sslMode,
@@ -38,7 +46,9 @@ public class SslConfig {
       CharSequence clientSslPassword,
       List<String> tlsProtocol,
       boolean sslTunnelDisableHostVerification,
-      UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer)
+      UnaryOperator<SslContextBuilder> sslContextBuilderCustomizer,
+      boolean fallbackToSystemTrustStore,
+      boolean fallbackToSystemKeyStore)
       throws R2dbcTransientResourceException {
     this.sslMode = sslMode;
     this.serverSslCert = serverSslCert;
@@ -48,6 +58,8 @@ public class SslConfig {
     this.clientSslPassword = clientSslPassword;
     this.sslTunnelDisableHostVerification = sslTunnelDisableHostVerification;
     this.sslContextBuilderCustomizer = sslContextBuilderCustomizer;
+    this.fallbackToSystemTrustStore = fallbackToSystemTrustStore;
+    this.fallbackToSystemKeyStore = fallbackToSystemKeyStore;
     if (sslMode != SslMode.DISABLE) {
       this.sslContextBuilder = getSslContextBuilder();
     }
@@ -78,10 +90,15 @@ public class SslConfig {
           inStream = loadCert(serverSslCert);
           sslCtxBuilder.trustManager(inStream);
         } catch (FileNotFoundException fileNotFoundEx) {
-          throw new R2dbcTransientResourceException(
-              "Failed to find serverSslCert file. serverSslCert=" + serverSslCert,
-              "08000",
-              fileNotFoundEx);
+          if (fallbackToSystemTrustStore) {
+            // Fallback to system trust store if certificate file not found
+            sslCtxBuilder.trustManager((TrustManagerFactory) null);
+          } else {
+            throw new R2dbcTransientResourceException(
+                "Failed to find serverSslCert file. serverSslCert=" + serverSslCert,
+                "08000",
+                fileNotFoundEx);
+          }
         } finally {
           if (inStream != null) {
             try {
@@ -90,10 +107,14 @@ public class SslConfig {
             }
           }
         }
-      } else {
-        // use the system default, i.e. verify against PKI
-        sslCtxBuilder.trustManager((TrustManagerFactory) null);
-      }
+      } else if (fallbackToSystemTrustStore) {
+            // Fallback to system trust store if certificate file not found
+            sslCtxBuilder.trustManager((TrustManagerFactory) null);
+          } else {
+            throw new R2dbcTransientResourceException(
+                "No serverSslCert file, and fallback to system trust store is disabled",
+                "08000");
+          }
     }
     if (clientSslCert != null && clientSslKey != null) {
       InputStream certificatesStream = null;
@@ -106,10 +127,16 @@ public class SslConfig {
           } catch (IOException e) {
           }
         }
-        throw new R2dbcTransientResourceException(
-            "Failed to find clientSslCert file. clientSslCert=" + clientSslCert,
-            "08000",
-            fileNotFoundEx);
+        if (fallbackToSystemKeyStore) {
+          // Fallback to system key store if client certificate file not found
+          // Skip client certificate configuration
+          return sslCtxBuilder;
+        } else {
+          throw new R2dbcTransientResourceException(
+              "Failed to find clientSslCert file. clientSslCert=" + clientSslCert,
+              "08000",
+              fileNotFoundEx);
+        }
       }
 
       InputStream privateKeyStream = null;
@@ -120,14 +147,32 @@ public class SslConfig {
             privateKeyStream,
             clientSslPassword == null ? null : clientSslPassword.toString());
       } catch (FileNotFoundException fileNotFoundEx) {
-        throw new R2dbcTransientResourceException(
-            "Failed to find clientSslKey file. clientSslKey=" + clientSslKey,
-            "08000",
-            fileNotFoundEx);
+        if (fallbackToSystemKeyStore) {
+          // Fallback to system key store if client key file not found
+          // Skip client certificate configuration
+          if (certificatesStream != null) {
+            try {
+              certificatesStream.close();
+            } catch (IOException e) {
+            }
+          }
+          return sslCtxBuilder;
+        } else {
+          throw new R2dbcTransientResourceException(
+              "Failed to find clientSslKey file. clientSslKey=" + clientSslKey,
+              "08000",
+              fileNotFoundEx);
+        }
       } finally {
         if (privateKeyStream != null) {
           try {
             privateKeyStream.close();
+          } catch (IOException e) {
+          }
+        }
+        if (certificatesStream != null) {
+          try {
+            certificatesStream.close();
           } catch (IOException e) {
           }
         }
@@ -200,6 +245,18 @@ public class SslConfig {
     if (sslTunnelDisableHostVerification) {
       if (!first) sb.append("&");
       sb.append("sslTunnelDisableHostVerification=true");
+      first = false;
+    }
+
+    if (fallbackToSystemTrustStore) {
+      if (!first) sb.append("&");
+      sb.append("fallbackToSystemTrustStore=true");
+      first = false;
+    }
+
+    if (fallbackToSystemKeyStore) {
+      if (!first) sb.append("&");
+      sb.append("fallbackToSystemKeyStore=true");
       first = false;
     }
 
