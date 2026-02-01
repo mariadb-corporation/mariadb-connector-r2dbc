@@ -52,7 +52,7 @@ public class ParsecPasswordPlugin implements AuthenticationPlugin {
     int iterations = 100;
     ByteBuf buf = authMoreData.getBuf();
 
-    if (buf.getByte(buf.readerIndex()) == 0x01) buf.readByte();
+    if (buf.readableBytes() > 0 && buf.getByte(buf.readerIndex()) == 0x01) buf.readByte();
 
     if (buf.readableBytes() > 2) {
       firstByte = buf.readByte();
