@@ -3,14 +3,15 @@
 
 package org.mariadb.r2dbc;
 
-import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
+import java.util.function.UnaryOperator;
+
+import org.mariadb.r2dbc.util.Assert;
 
 import io.netty.handler.ssl.SslContextBuilder;
 import io.r2dbc.spi.ConnectionFactoryOptions;
+import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
 import io.r2dbc.spi.ConnectionFactoryProvider;
 import io.r2dbc.spi.Option;
-import java.util.function.UnaryOperator;
-import org.mariadb.r2dbc.util.Assert;
 import reactor.netty.resources.LoopResources;
 
 public final class MariadbConnectionFactoryProvider implements ConnectionFactoryProvider {
@@ -55,6 +56,12 @@ public final class MariadbConnectionFactoryProvider implements ConnectionFactory
       Option.valueOf("sslContextBuilderCustomizer");
   public static final Option<Boolean> SSL_TUNNEL_DISABLE_HOST_VERIFICATION =
       Option.valueOf("sslTunnelDisableHostVerification");
+
+  public static final Option<Boolean> FALLBACK_TO_SYSTEM_TRUST_STORE =
+      Option.valueOf("fallbackToSystemTrustStore");
+
+  public static final Option<Boolean> FALLBACK_TO_SYSTEM_KEY_STORE =
+      Option.valueOf("fallbackToSystemKeyStore");
 
   static MariadbConnectionConfiguration createConfiguration(
       ConnectionFactoryOptions connectionFactoryOptions) {

@@ -292,7 +292,7 @@ public class TlsTest extends BaseConnectionTest {
     assertThrows(
         R2dbcTransientResourceException.class,
         () -> TestConfiguration.defaultBuilder.clone().sslMode(SslMode.VERIFY_FULL).build(),
-        "Server certificate needed (option `serverSslCert`) for ssl mode VERIFY_FULL");
+        "No serverSslCert file, and fallback to system trust store is disabled");
   }
 
   @Test
