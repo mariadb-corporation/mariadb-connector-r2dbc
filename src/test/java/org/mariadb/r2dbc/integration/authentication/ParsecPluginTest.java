@@ -38,13 +38,13 @@ public class ParsecPluginTest extends BaseConnectionTest {
   public void parsecAuthPlugin() throws Throwable {
     Assumptions.assumeTrue(parsecPluginEnabled.get() && !isMaxscale() && !isEnterprise());
 
-    sharedConn.createStatement("drop user IF EXISTS verifParsec@'%'").execute().blockLast();
+    sharedConn.createStatement("drop user IF EXISTS verifParsec" + getHostSuffix()).execute().blockLast();
     sharedConn
         .createStatement(
-            "CREATE USER verifParsec@'%' IDENTIFIED VIA parsec USING PASSWORD('MySup8%rPassw@ord')")
+            "CREATE USER verifParsec"  + getHostSuffix() + " IDENTIFIED VIA parsec USING PASSWORD('MySup8%rPassw@ord')")
         .execute()
         .blockLast();
-    sharedConn.createStatement("GRANT SELECT on *.* to verifParsec@'%'").execute().blockLast();
+    sharedConn.createStatement("GRANT SELECT on *.* to verifParsec" + getHostSuffix()).execute().blockLast();
 
     String version = System.getProperty("java.version");
     int majorVersion =
