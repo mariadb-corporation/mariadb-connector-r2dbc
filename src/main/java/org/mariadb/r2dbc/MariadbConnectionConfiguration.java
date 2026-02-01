@@ -3,6 +3,15 @@
 
 package org.mariadb.r2dbc;
 
+import static io.r2dbc.spi.ConnectionFactoryOptions.DATABASE;
+import static io.r2dbc.spi.ConnectionFactoryOptions.HOST;
+import static io.r2dbc.spi.ConnectionFactoryOptions.PASSWORD;
+import static io.r2dbc.spi.ConnectionFactoryOptions.PORT;
+import static io.r2dbc.spi.ConnectionFactoryOptions.USER;
+
+import io.netty.handler.ssl.SslContextBuilder;
+import io.r2dbc.spi.ConnectionFactoryOptions;
+import io.r2dbc.spi.IsolationLevel;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.net.URLDecoder;
@@ -17,20 +26,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.UnaryOperator;
-
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.Security;
 import org.mariadb.r2dbc.util.SslConfig;
-
-import io.netty.handler.ssl.SslContextBuilder;
-import io.r2dbc.spi.ConnectionFactoryOptions;
-import static io.r2dbc.spi.ConnectionFactoryOptions.DATABASE;
-import static io.r2dbc.spi.ConnectionFactoryOptions.HOST;
-import static io.r2dbc.spi.ConnectionFactoryOptions.PASSWORD;
-import static io.r2dbc.spi.ConnectionFactoryOptions.PORT;
-import static io.r2dbc.spi.ConnectionFactoryOptions.USER;
-import io.r2dbc.spi.IsolationLevel;
 import reactor.netty.resources.LoopResources;
 import reactor.netty.tcp.TcpResources;
 import reactor.util.annotation.Nullable;
@@ -1391,10 +1390,10 @@ public final class MariadbConnectionConfiguration {
     }
 
     /**
-     * When using SSL/TLS with a serverSslCert, if the certificate file is not found,
-     * fallback to the system's default trust store instead of throwing an error.
-     * This is useful for environments where the certificate path might not be available
-     * but the system trust store contains the necessary certificates.
+     * When using SSL/TLS with a serverSslCert, if the certificate file is not found, fallback to
+     * the system's default trust store instead of throwing an error. This is useful for
+     * environments where the certificate path might not be available but the system trust store
+     * contains the necessary certificates.
      *
      * @param fallbackToSystemTrustStore whether to fallback to system trust store
      * @return this {@link Builder}
@@ -1406,9 +1405,9 @@ public final class MariadbConnectionConfiguration {
 
     /**
      * When using SSL/TLS with client certificates (mutual authentication), if the client
-     * certificate or key files are not found, fallback to the system's default key store
-     * instead of throwing an error. This is useful for environments where the certificate
-     * path might not be available but the system key store contains the necessary certificates.
+     * certificate or key files are not found, fallback to the system's default key store instead of
+     * throwing an error. This is useful for environments where the certificate path might not be
+     * available but the system key store contains the necessary certificates.
      *
      * @param fallbackToSystemKeyStore whether to fallback to system key store
      * @return this {@link Builder}
