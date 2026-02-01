@@ -144,17 +144,13 @@ public class BaseConnectionTest {
 
   public static Integer getMaxScaleVersion() {
     if ("maxscale".equals(System.getenv("srv"))) {
-      /**                                                                                                                                                                                                                                                                                 
-       * The test system must either create the maxscale_version() function                                                                                                                                                                                                               
-       * that returns the MaxScale version as an integer or MaxScale must be                                                                                                                                                                                                              
-       * configured  with a regexfilter that replaces the SQL with something                                                                                                                                                                                                              
-       * that returns it as a constant.                                                                                                                                                                                                                                                   
-       *                                                                                                                                                                                                                                                                                  
-       * [InjectVersion]                                                                                                                                                                                                                                                                  
-       * type=filter                                                                                                                                                                                                                                                                      
-       * module=regexfilter                                                                                                                                                                                                                                                               
-       * match=SELECT maxscale_version()                                                                                                                                                                                                                                                  
-       * replace=SELECT 230800                                                                                                                                                                                                                                                            
+      /**
+       * The test system must either create the maxscale_version() function that returns the
+       * MaxScale version as an integer or MaxScale must be configured with a regexfilter that
+       * replaces the SQL with something that returns it as a constant.
+       *
+       * <p>[InjectVersion] type=filter module=regexfilter match=SELECT maxscale_version()
+       * replace=SELECT 230800
        */
       return sharedConnPrepare
           .createStatement("SELECT maxscale_version()")

@@ -26,7 +26,9 @@ public class Ed25519PluginTest extends BaseConnectionTest {
       if (meta.minVersion(10, 4, 0)) {
         sharedConn
             .createStatement(
-                "CREATE USER verificationEd25519AuthPlugin"+ getHostSuffix()+" IDENTIFIED "
+                "CREATE USER verificationEd25519AuthPlugin"
+                    + getHostSuffix()
+                    + " IDENTIFIED "
                     + "VIA ed25519 USING PASSWORD('MySup8%rPassw@ord')")
             .execute()
             .flatMap(it -> it.getRowsUpdated())
@@ -40,7 +42,9 @@ public class Ed25519PluginTest extends BaseConnectionTest {
       } else {
         sharedConn
             .createStatement(
-                "CREATE USER verificationEd25519AuthPlugin"+ getHostSuffix()+" IDENTIFIED "
+                "CREATE USER verificationEd25519AuthPlugin"
+                    + getHostSuffix()
+                    + " IDENTIFIED "
                     + "VIA ed25519 USING '6aW9C7ENlasUfymtfMvMZZtnkCVlcb1ssxOLJ0kj/AA'")
             .execute()
             .flatMap(it -> it.getRowsUpdated())
@@ -54,8 +58,9 @@ public class Ed25519PluginTest extends BaseConnectionTest {
       sharedConn
           .createStatement(
               String.format(
-                  "GRANT SELECT on `%s`.* to verificationEd25519AuthPlugin",
-                  TestConfiguration.database)+ getHostSuffix())
+                      "GRANT SELECT on `%s`.* to verificationEd25519AuthPlugin",
+                      TestConfiguration.database)
+                  + getHostSuffix())
           .execute()
           .flatMap(it -> it.getRowsUpdated())
           .onErrorResume(

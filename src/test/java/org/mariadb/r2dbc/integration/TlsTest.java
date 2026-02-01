@@ -99,11 +99,15 @@ public class TlsTest extends BaseConnectionTest {
   public void testWithoutPassword() throws Throwable {
     Assumptions.assumeTrue(!isMaxscale() && !isEnterprise());
     Assumptions.assumeTrue(haveSsl(sharedConn));
-    sharedConn.createStatement("CREATE USER userWithoutPassword"+getHostSuffix()).execute().blockLast();
+    sharedConn
+        .createStatement("CREATE USER userWithoutPassword" + getHostSuffix())
+        .execute()
+        .blockLast();
     sharedConn
         .createStatement(
             String.format(
-                "GRANT SELECT on `%s`.* to userWithoutPassword", TestConfiguration.database)+getHostSuffix())
+                    "GRANT SELECT on `%s`.* to userWithoutPassword", TestConfiguration.database)
+                + getHostSuffix())
         .execute()
         .blockLast();
     MariadbConnectionConfiguration conf =
@@ -117,7 +121,7 @@ public class TlsTest extends BaseConnectionTest {
     MariadbConnection connection = new MariadbConnectionFactory(conf).create().block();
     connection.close().block();
     sharedConn
-        .createStatement("DROP USER IF EXISTS userWithoutPassword"+getHostSuffix())
+        .createStatement("DROP USER IF EXISTS userWithoutPassword" + getHostSuffix())
         .execute()
         .map(res -> res.getRowsUpdated())
         .onErrorReturn(Mono.empty())
