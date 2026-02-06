@@ -27,9 +27,7 @@ public final class Sha256PasswordPacket implements ClientMessage {
       MessageSequence sequencer, CharSequence password, byte[] seed, PublicKey publicKey) {
     this.sequencer = sequencer;
     this.password = password;
-    byte[] truncatedSeed = new byte[seed.length - 1];
-    System.arraycopy(seed, 0, truncatedSeed, 0, seed.length - 1);
-    this.seed = truncatedSeed;
+    this.seed = seed;
     this.publicKey = publicKey;
   }
 
