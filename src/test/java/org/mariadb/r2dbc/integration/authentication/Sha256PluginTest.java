@@ -3,9 +3,8 @@
 
 package org.mariadb.r2dbc.integration.authentication;
 
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
-import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.io.File;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -16,6 +15,9 @@ import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.SslMode;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
+
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.r2dbc.spi.R2dbcTransientResourceException;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -123,69 +125,40 @@ public class Sha256PluginTest extends BaseConnectionTest {
         sharedConn.createStatement(sqlGrant3).execute().blockLast();
       }
       if (minVersion(8, 0, 0) || (isMariaDBServer() && minVersion(12, 1, 0))) {
-        // MariaDB uses different syntax: IDENTIFIED VIA ... USING PASSWORD()
-        String createUser1 =
-            isMariaDBServer()
-                ? "CREATE USER 'cachingSha256User'"+getHostSuffix()+" IDENTIFIED VIA caching_sha2_password USING"
-                    + " PASSWORD('password')"
-                : "CREATE USER 'cachingSha256User'"+getHostSuffix()+" IDENTIFIED WITH caching_sha2_password BY"
-                    + " 'password'";
-        String createUser2 =
-            isMariaDBServer()
-                ? "CREATE USER 'cachingSha256User2'"+getHostSuffix()+" IDENTIFIED VIA caching_sha2_password USING"
-                    + " PASSWORD('password')"
-                : "CREATE USER 'cachingSha256User2'"+getHostSuffix()+" IDENTIFIED WITH caching_sha2_password BY"
-                    + " 'password'";
-        String createUser3 =
-            isMariaDBServer()
-                ? "CREATE USER 'cachingSha256User3'"+getHostSuffix()+" IDENTIFIED VIA caching_sha2_password USING"
-                    + " PASSWORD('password')"
-                : "CREATE USER 'cachingSha256User3'"+getHostSuffix()+" IDENTIFIED WITH caching_sha2_password BY"
-                    + " 'password'";
-        String createUser4 =
-            isMariaDBServer()
-                ? "CREATE USER 'cachingSha256User4'"+getHostSuffix()+" IDENTIFIED VIA caching_sha2_password USING"
-                    + " PASSWORD('')"
-                : "CREATE USER 'cachingSha256User4'"+getHostSuffix()+" IDENTIFIED WITH caching_sha2_password BY ''";
-        String createUserWrong =
-            isMariaDBServer()
-                ? "CREATE USER 'userWithWrongPassword'"+getHostSuffix()+" IDENTIFIED VIA caching_sha2_password USING"
-                    + " PASSWORD('blabla')"
-                : "CREATE USER 'userWithWrongPassword'"+getHostSuffix()+" IDENTIFIED WITH caching_sha2_password BY"
-                    + " 'blabla'";
-        String createUser20 =
-            isMariaDBServer()
-                ? "CREATE USER 'cachingSha256User20Char'"+getHostSuffix()+" IDENTIFIED VIA caching_sha2_password USING"
-                    + " PASSWORD('12345678901234567890')"
-                : "CREATE USER 'cachingSha256User20Char' IDENTIFIED WITH caching_sha2_password BY"
-                    + " '12345678901234567890'";
-
-        sharedConn.createStatement(createUser1).execute().blockLast();
+        // MariaDB uses VIA ... USING PASSWORD(), MySQL uses WITH ... BY
+        String keyword = isMariaDBServer() ? "VIA" : "WITH";
+        String password = isMariaDBServer() ? "USING PASSWORD('password')" : "BY 'password'";
+        String passwordEmpty = isMariaDBServer() ? "USING PASSWORD('')" : "BY ''";
+        String passwordWrong = isMariaDBServer() ? "USING PASSWORD('blabla')" : "BY 'blabla'";
+        String password20 = isMariaDBServer() ? "USING PASSWORD('12345678901234567890')" : "BY '12345678901234567890'";
+        
+        sharedConn.createStatement("CREATE USER 'cachingSha256User'"+getHostSuffix()+" IDENTIFIED "+keyword+" caching_sha2_password "+password).execute().blockLast();
+        sharedConn.createStatement("CREATE USER 'cachingSha256User2'"+getHostSuffix()+" IDENTIFIED "+keyword+" caching_sha2_password "+password).execute().blockLast();
+        sharedConn.createStatement("CREATE USER 'cachingSha256User3'"+getHostSuffix()+" IDENTIFIED "+keyword+" caching_sha2_password "+password).execute().blockLast();
+        sharedConn.createStatement("CREATE USER 'cachingSha256User4'"+getHostSuffix()+" IDENTIFIED "+keyword+" caching_sha2_password "+passwordEmpty).execute().blockLast();
+        sharedConn.createStatement("CREATE USER 'userWithWrongPassword'"+getHostSuffix()+" IDENTIFIED "+keyword+" caching_sha2_password "+passwordWrong).execute().blockLast();
+        sharedConn.createStatement("CREATE USER 'cachingSha256User20Char'"+getHostSuffix()+" IDENTIFIED "+keyword+" caching_sha2_password "+password20).execute().blockLast();
+        
         sharedConn
             .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User'"+getHostSuffix())
             .execute()
             .blockLast();
-        sharedConn.createStatement(createUser2).execute().blockLast();
         sharedConn
             .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User2'"+getHostSuffix())
             .execute()
             .blockLast();
-        sharedConn.createStatement(createUser3).execute().blockLast();
         sharedConn
             .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User3'"+getHostSuffix())
             .execute()
             .blockLast();
-        sharedConn.createStatement(createUser4).execute().blockLast();
         sharedConn
             .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User4'"+getHostSuffix())
             .execute()
             .blockLast();
-        sharedConn.createStatement(createUserWrong).execute().blockLast();
         sharedConn
             .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'userWithWrongPassword'"+getHostSuffix())
             .execute()
             .blockLast();
-        sharedConn.createStatement(createUser20).execute().blockLast();
         sharedConn
             .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User20Char'"+getHostSuffix())
             .execute()
