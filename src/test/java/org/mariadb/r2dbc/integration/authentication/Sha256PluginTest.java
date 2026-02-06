@@ -3,8 +3,9 @@
 
 package org.mariadb.r2dbc.integration.authentication;
 
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.io.File;
-
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -15,9 +16,6 @@ import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.SslMode;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
-
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
-import io.r2dbc.spi.R2dbcTransientResourceException;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -41,6 +39,15 @@ public class Sha256PluginTest extends BaseConnectionTest {
   public static void init() throws Exception {
     Assumptions.assumeTrue(
         (!isMariaDBServer() && minVersion(5, 7, 0)) || (isMariaDBServer() && minVersion(12, 1, 0)));
+
+    // MariaDB requires auth_mysql_sha2 plugin to be installed for caching_sha2_password
+    if (isMariaDBServer() && minVersion(12, 1, 0)) {
+      try {
+        sharedConn.createStatement("INSTALL SONAME 'auth_mysql_sha2'").execute().blockLast();
+      } catch (Exception e) {
+        // Plugin might already be installed
+      }
+    }
 
     rsaPublicKey = System.getProperty("rsaPublicKey");
     if (!validPath(rsaPublicKey) && minVersion(5, 7, 0)) {
@@ -86,6 +93,24 @@ public class Sha256PluginTest extends BaseConnectionTest {
           }
         }
       }
+
+      // MariaDB fallback: get RSA public key content directly from server status
+      if (cachingRsaPublicKey == null && isMariaDBServer() && minVersion(12, 1, 0)) {
+        try {
+          cachingRsaPublicKey =
+              sharedConn
+                  .createStatement("SHOW STATUS LIKE 'Caching_sha2_password_rsa_public_key'")
+                  .execute()
+                  .flatMap(r -> r.map((row, metadata) -> row.get(1, String.class)))
+                  .blockLast();
+          if (cachingRsaPublicKey != null && cachingRsaPublicKey.isEmpty()) {
+            cachingRsaPublicKey = null;
+          }
+        } catch (Exception e) {
+          // eat
+        }
+      }
+
       dropAll();
 
       String sqlCreateUser;
@@ -96,25 +121,39 @@ public class Sha256PluginTest extends BaseConnectionTest {
       String sqlGrant3;
       if (!isMariaDBServer()) {
         if (minVersion(8, 0, 0)) {
-          sqlCreateUser = "CREATE USER 'sha256User'"+getHostSuffix()+" IDENTIFIED WITH sha256_password BY 'password'";
-          sqlGrant = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User'"+getHostSuffix();
+          sqlCreateUser =
+              "CREATE USER 'sha256User'"
+                  + getHostSuffix()
+                  + " IDENTIFIED WITH sha256_password BY 'password'";
+          sqlGrant = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User'" + getHostSuffix();
           sqlCreateUser2 =
-              "CREATE USER 'sha256User2'"+getHostSuffix()+" IDENTIFIED WITH sha256_password BY 'password'";
-          sqlGrant2 = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User2'"+getHostSuffix();
-          sqlCreateUser3 = "CREATE USER 'sha256User3'"+getHostSuffix()+" IDENTIFIED WITH sha256_password BY ''";
-          sqlGrant3 = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User3'"+getHostSuffix();
+              "CREATE USER 'sha256User2'"
+                  + getHostSuffix()
+                  + " IDENTIFIED WITH sha256_password BY 'password'";
+          sqlGrant2 = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User2'" + getHostSuffix();
+          sqlCreateUser3 =
+              "CREATE USER 'sha256User3'"
+                  + getHostSuffix()
+                  + " IDENTIFIED WITH sha256_password BY ''";
+          sqlGrant3 = "GRANT ALL PRIVILEGES ON *.* TO 'sha256User3'" + getHostSuffix();
         } else {
           sqlCreateUser = "CREATE USER 'sha256User'";
           sqlGrant =
-              "GRANT ALL PRIVILEGES ON *.* TO 'sha256User'"+getHostSuffix()+" IDENTIFIED WITH "
+              "GRANT ALL PRIVILEGES ON *.* TO 'sha256User'"
+                  + getHostSuffix()
+                  + " IDENTIFIED WITH "
                   + "sha256_password BY 'password'";
-          sqlCreateUser2 = "CREATE USER 'sha256User2'"+getHostSuffix();
+          sqlCreateUser2 = "CREATE USER 'sha256User2'" + getHostSuffix();
           sqlGrant2 =
-              "GRANT ALL PRIVILEGES ON *.* TO 'sha256User2'"+getHostSuffix()+" IDENTIFIED WITH "
+              "GRANT ALL PRIVILEGES ON *.* TO 'sha256User2'"
+                  + getHostSuffix()
+                  + " IDENTIFIED WITH "
                   + "sha256_password BY 'password'";
-          sqlCreateUser3 = "CREATE USER 'sha256User3'"+getHostSuffix();
+          sqlCreateUser3 = "CREATE USER 'sha256User3'" + getHostSuffix();
           sqlGrant3 =
-              "GRANT ALL PRIVILEGES ON *.* TO 'sha256User3'"+getHostSuffix()+" IDENTIFIED WITH "
+              "GRANT ALL PRIVILEGES ON *.* TO 'sha256User3'"
+                  + getHostSuffix()
+                  + " IDENTIFIED WITH "
                   + "sha256_password BY ''";
         }
         sharedConn.createStatement(sqlCreateUser).execute().blockLast();
@@ -124,45 +163,111 @@ public class Sha256PluginTest extends BaseConnectionTest {
         sharedConn.createStatement(sqlCreateUser3).execute().blockLast();
         sharedConn.createStatement(sqlGrant3).execute().blockLast();
       }
-      if (minVersion(8, 0, 0) || (isMariaDBServer() && minVersion(12, 1, 0))) {
+      if ((!isMariaDBServer() && minVersion(8, 0, 0))
+          || (isMariaDBServer() && minVersion(12, 1, 0))) {
         // MariaDB uses VIA ... USING PASSWORD(), MySQL uses WITH ... BY
         String keyword = isMariaDBServer() ? "VIA" : "WITH";
         String password = isMariaDBServer() ? "USING PASSWORD('password')" : "BY 'password'";
         String passwordEmpty = isMariaDBServer() ? "USING PASSWORD('')" : "BY ''";
         String passwordWrong = isMariaDBServer() ? "USING PASSWORD('blabla')" : "BY 'blabla'";
-        String password20 = isMariaDBServer() ? "USING PASSWORD('12345678901234567890')" : "BY '12345678901234567890'";
-        
-        sharedConn.createStatement("CREATE USER 'cachingSha256User'"+getHostSuffix()+" IDENTIFIED "+keyword+" caching_sha2_password "+password).execute().blockLast();
-        sharedConn.createStatement("CREATE USER 'cachingSha256User2'"+getHostSuffix()+" IDENTIFIED "+keyword+" caching_sha2_password "+password).execute().blockLast();
-        sharedConn.createStatement("CREATE USER 'cachingSha256User3'"+getHostSuffix()+" IDENTIFIED "+keyword+" caching_sha2_password "+password).execute().blockLast();
-        sharedConn.createStatement("CREATE USER 'cachingSha256User4'"+getHostSuffix()+" IDENTIFIED "+keyword+" caching_sha2_password "+passwordEmpty).execute().blockLast();
-        sharedConn.createStatement("CREATE USER 'userWithWrongPassword'"+getHostSuffix()+" IDENTIFIED "+keyword+" caching_sha2_password "+passwordWrong).execute().blockLast();
-        sharedConn.createStatement("CREATE USER 'cachingSha256User20Char'"+getHostSuffix()+" IDENTIFIED "+keyword+" caching_sha2_password "+password20).execute().blockLast();
-        
+        String password20 =
+            isMariaDBServer()
+                ? "USING PASSWORD('12345678901234567890')"
+                : "BY '12345678901234567890'";
+
         sharedConn
-            .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User'"+getHostSuffix())
+            .createStatement(
+                "CREATE USER 'cachingSha256User'"
+                    + getHostSuffix()
+                    + " IDENTIFIED "
+                    + keyword
+                    + " caching_sha2_password "
+                    + password)
             .execute()
             .blockLast();
         sharedConn
-            .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User2'"+getHostSuffix())
+            .createStatement(
+                "CREATE USER 'cachingSha256User2'"
+                    + getHostSuffix()
+                    + " IDENTIFIED "
+                    + keyword
+                    + " caching_sha2_password "
+                    + password)
             .execute()
             .blockLast();
         sharedConn
-            .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User3'"+getHostSuffix())
+            .createStatement(
+                "CREATE USER 'cachingSha256User3'"
+                    + getHostSuffix()
+                    + " IDENTIFIED "
+                    + keyword
+                    + " caching_sha2_password "
+                    + password)
             .execute()
             .blockLast();
         sharedConn
-            .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User4'"+getHostSuffix())
+            .createStatement(
+                "CREATE USER 'cachingSha256User4'"
+                    + getHostSuffix()
+                    + " IDENTIFIED "
+                    + keyword
+                    + " caching_sha2_password "
+                    + passwordEmpty)
             .execute()
             .blockLast();
         sharedConn
-            .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'userWithWrongPassword'"+getHostSuffix())
+            .createStatement(
+                "CREATE USER 'userWithWrongPassword'"
+                    + getHostSuffix()
+                    + " IDENTIFIED "
+                    + keyword
+                    + " caching_sha2_password "
+                    + passwordWrong)
             .execute()
             .blockLast();
         sharedConn
-            .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User20Char'"+getHostSuffix())
+            .createStatement(
+                "CREATE USER 'cachingSha256User20Char'"
+                    + getHostSuffix()
+                    + " IDENTIFIED "
+                    + keyword
+                    + " caching_sha2_password "
+                    + password20)
             .execute()
             .blockLast();
+
+        sharedConn
+            .createStatement("GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User'" + getHostSuffix())
+            .execute()
+            .blockLast();
+        sharedConn
+            .createStatement(
+                "GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User2'" + getHostSuffix())
+            .execute()
+            .blockLast();
+        sharedConn
+            .createStatement(
+                "GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User3'" + getHostSuffix())
+            .execute()
+            .blockLast();
+        sharedConn
+            .createStatement(
+                "GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User4'" + getHostSuffix())
+            .execute()
+            .blockLast();
+        sharedConn
+            .createStatement(
+                "GRANT ALL PRIVILEGES ON *.* TO 'userWithWrongPassword'" + getHostSuffix())
+            .execute()
+            .blockLast();
+        sharedConn
+            .createStatement(
+                "GRANT ALL PRIVILEGES ON *.* TO 'cachingSha256User20Char'" + getHostSuffix())
+            .execute()
+            .blockLast();
+
+        // Flush privileges to ensure changes take effect immediately
+        sharedConn.createStatement("FLUSH PRIVILEGES").execute().blockLast();
       }
     }
   }
@@ -354,9 +459,7 @@ public class Sha256PluginTest extends BaseConnectionTest {
   @Test
   public void cachingSha256PluginTestWithoutServerRsaKey() throws Exception {
     Assumptions.assumeTrue(
-        !isWindows
-            && rsaPublicKey != null
-            && (minVersion(8, 0, 0) || (isMariaDBServer() && minVersion(12, 1, 0))));
+        !isWindows && (minVersion(8, 0, 0) || (isMariaDBServer() && minVersion(12, 1, 0))));
     // mysql 8.0.31 broken public key retrieval, so avoid FLUSHING for now
     Assumptions.assumeTrue(!exactVersion(8, 0, 31));
 
@@ -398,7 +501,11 @@ public class Sha256PluginTest extends BaseConnectionTest {
 
   @Test
   public void cachingSha256PluginTestException() throws Exception {
-    Assumptions.assumeTrue(!isMariaDBServer() && minVersion(8, 0, 0) && !minVersion(8, 4, 0));
+    Assumptions.assumeTrue(
+        !isMariaDBServer()
+            && cachingRsaPublicKey != null
+            && minVersion(8, 0, 0)
+            && !minVersion(8, 4, 0));
 
     MariadbConnectionConfiguration conf =
         TestConfiguration.defaultBuilder
@@ -458,8 +565,10 @@ public class Sha256PluginTest extends BaseConnectionTest {
   @Test
   public void cachingSha256PluginTest20CharPassword() throws Exception {
     Assumptions.assumeTrue(
-        !isWindows && (minVersion(8, 0, 0) || (isMariaDBServer() && minVersion(12, 1, 0))));
-    // mysql 8.0.31 broken public key retrieval, so avoid FLUSHING for now
+        !isWindows
+            && cachingRsaPublicKey != null
+            && (minVersion(8, 0, 0) || (isMariaDBServer() && minVersion(12, 1, 0))));
+    // mysql 8.0.31 broken public key retrieval
     Assumptions.assumeTrue(!exactVersion(8, 0, 31));
 
     MariadbConnectionConfiguration conf =
