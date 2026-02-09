@@ -3,7 +3,7 @@ name: Run CI Tests
 
 on:
   push:
-    branches: ['master', 'develop', 'maintenance/*', 'feature/*']
+    branches: ['master', 'develop*', 'maintenance/*', 'feature/*']
   pull_request:
   workflow_dispatch:
   schedule:
@@ -40,7 +40,7 @@ jobs:
     timeout-minutes: 50
     strategy:
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
-
+      fail-fast: false  
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.continue-on-error || false }}
     steps:
