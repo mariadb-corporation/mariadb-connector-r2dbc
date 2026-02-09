@@ -17,7 +17,11 @@ import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.ServerMessage;
-import org.mariadb.r2dbc.message.client.*;
+import org.mariadb.r2dbc.message.client.ChangeSchemaPacket;
+import org.mariadb.r2dbc.message.client.ExecutePacket;
+import org.mariadb.r2dbc.message.client.PreparePacket;
+import org.mariadb.r2dbc.message.client.QueryPacket;
+import org.mariadb.r2dbc.message.client.SslRequestPacket;
 import org.mariadb.r2dbc.message.server.CompletePrepareResult;
 import org.mariadb.r2dbc.message.server.ErrorPacket;
 import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
@@ -31,6 +35,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
 import reactor.core.publisher.Sinks;
+import reactor.core.scheduler.Scheduler;
 
 public class FailoverClient implements Client {
 
@@ -614,5 +619,10 @@ public class FailoverClient implements Client {
   @Override
   public Mono<Void> redirect() {
     return client.get().redirect();
+  }
+
+  @Override
+  public Scheduler getScheduler() {
+    return client.get().getScheduler();
   }
 }
