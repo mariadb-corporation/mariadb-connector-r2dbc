@@ -109,7 +109,11 @@ public class Sha256PasswordPluginFlow implements AuthenticationPlugin {
       } else {
         // retrieve public key from configuration or from server
         if (configuration.getRsaPublicKey() != null && !configuration.getRsaPublicKey().isEmpty()) {
-          publicKey = readPublicKeyFromFile(configuration.getRsaPublicKey());
+          if (configuration.getRsaPublicKey().contains("BEGIN PUBLIC KEY")) {
+            publicKey = generatePublicKey(configuration.getRsaPublicKey().getBytes());
+          } else {
+            publicKey = readPublicKeyFromFile(configuration.getRsaPublicKey());
+          }
         } else {
           if (!configuration.allowPublicKeyRetrieval()) {
             throw new R2dbcNonTransientResourceException(
