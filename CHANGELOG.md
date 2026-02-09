@@ -1,5 +1,19 @@
 # Change Log
 
+## [1.4.0](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.4.0) (Feb 2026)
+
+Notable Changes:
+* R2DBC-109 Add fallbackToSystemTrustStore and fallbackToSystemKeyStore options
+* R2DBC-110 Support java.time.Instant parameters
+* R2DBC-114 Implement Wrapped interface to expose EventLoop scheduler for r2dbc-pool optimization
+
+Bugs Fixed:
+* R2DBC-108 Handle authentication plugin multi-exchange prefix (0x01) introduced in MDEV-37554
+* R2DBC-111 Potential hang when upstream subscription is cancelled before demand
+* R2DBC-112 Failed authentication when using `caching_sha2_password` with passwords longer than 18 characters
+* R2DBC-113 Add support for RSA public key content in cachingRsaPublicKey and rsaPublicKey options
+
+
 ## [1.3.0](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.3.0) (Oct 2024)
 
 Notable Changes:
