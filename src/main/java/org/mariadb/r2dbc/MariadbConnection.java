@@ -6,6 +6,7 @@ package org.mariadb.r2dbc;
 import io.r2dbc.spi.IsolationLevel;
 import io.r2dbc.spi.TransactionDefinition;
 import io.r2dbc.spi.ValidationDepth;
+import io.r2dbc.spi.Wrapped;
 import java.time.Duration;
 import java.util.function.Function;
 import org.mariadb.r2dbc.api.MariadbStatement;
@@ -18,10 +19,12 @@ import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
-public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbConnection {
+public final class MariadbConnection
+    implements org.mariadb.r2dbc.api.MariadbConnection, Wrapped<Object> {
 
   private final Logger logger = Loggers.getLogger(this.getClass());
   private final Client client;
@@ -306,5 +309,18 @@ public final class MariadbConnection implements org.mariadb.r2dbc.api.MariadbCon
 
   public PrepareCache _test_prepareCache() {
     return client.getPrepareCache();
+  }
+
+  @Override
+  public <E> E unwrap(Class<E> targetClass) {
+    if (targetClass == Scheduler.class) {
+      return targetClass.cast(this.client.getScheduler());
+    }
+    return Wrapped.super.unwrap(targetClass);
+  }
+
+  @Override
+  public Object unwrap() {
+    return null;
   }
 }

@@ -18,6 +18,7 @@ import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 
 public interface Client {
 
@@ -81,4 +82,6 @@ public interface Client {
   HostAddress getHostAddress();
 
   Mono<Void> redirect();
+
+  Scheduler getScheduler();
 }
