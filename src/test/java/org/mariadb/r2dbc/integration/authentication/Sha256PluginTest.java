@@ -3,8 +3,9 @@
 
 package org.mariadb.r2dbc.integration.authentication;
 
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.io.File;
-
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -15,9 +16,6 @@ import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.mariadb.r2dbc.SslMode;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
-
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
-import io.r2dbc.spi.R2dbcTransientResourceException;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
