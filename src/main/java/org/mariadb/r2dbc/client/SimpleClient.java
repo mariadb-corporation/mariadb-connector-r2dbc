@@ -6,6 +6,7 @@ package org.mariadb.r2dbc.client;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoop;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
@@ -48,6 +49,8 @@ import org.mariadb.r2dbc.util.constants.ServerStatus;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.*;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 import reactor.netty.Connection;
 import reactor.netty.channel.AbortedException;
 import reactor.netty.resources.ConnectionProvider;
@@ -75,6 +78,7 @@ public class SimpleClient implements Client {
   private MariadbFrameDecoder decoder;
   private MariadbPacketEncoder encoder;
   private final PrepareCache prepareCache;
+  private final Scheduler scheduler;
   private ByteBufAllocator byteBufAllocator;
   protected volatile Context context;
   private volatile boolean closeRequested = false;
@@ -92,6 +96,8 @@ public class SimpleClient implements Client {
         new PrepareCache(
             this.configuration.useServerPrepStmts() ? this.configuration.getPrepareCacheSize() : 0,
             this);
+    EventLoop eventLoop = connection.channel().eventLoop();
+    this.scheduler = Schedulers.fromExecutorService(eventLoop, eventLoop.toString());
     this.decoder = new MariadbFrameDecoder(exchangeQueue, this, configuration);
     this.encoder = new MariadbPacketEncoder();
     this.byteBufAllocator = connection.outbound().alloc();
@@ -839,5 +845,10 @@ public class SimpleClient implements Client {
     public boolean isClose() {
       return close;
     }
+  }
+
+  @Override
+  public Scheduler getScheduler() {
+    return this.scheduler;
   }
 }
