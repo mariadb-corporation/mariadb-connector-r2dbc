@@ -5,7 +5,14 @@ package org.mariadb.r2dbc.authentication.standard;
 
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
-import java.security.*;
+import java.security.InvalidKeyException;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
+import java.security.SecureRandom;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import javax.crypto.SecretKey;
@@ -59,8 +66,8 @@ public class ParsecPasswordPlugin implements AuthenticationPlugin {
       iterations = buf.readByte();
     }
 
-    if (firstByte != 0x50 || iterations > 3) {
-      // expected 'P' for KDF algorithm (PBKDF2) and maximum iteration of 8192
+    if (firstByte != 0x50 || iterations > 20) {
+      // expected 'P' for KDF algorithm (PBKDF2) and iterations < 20
       throw new R2dbcNonTransientResourceException("Wrong parsec authentication format", "S1009");
     }
 
