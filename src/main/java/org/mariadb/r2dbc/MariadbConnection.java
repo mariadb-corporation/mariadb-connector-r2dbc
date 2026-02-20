@@ -101,7 +101,8 @@ public final class MariadbConnection
       throw new IllegalArgumentException("Statement cannot be empty.");
     }
 
-    if ((this.configuration.useServerPrepStmts() || sql.contains("call"))
+    if ((this.configuration.useServerPrepStmts()
+            || sql.trim().regionMatches(true, 0, "call ", 0, 5))
         && !sql.startsWith("/*text*/")) {
       return new MariadbServerParameterizedQueryStatement(this.client, sql, this.configuration);
     }

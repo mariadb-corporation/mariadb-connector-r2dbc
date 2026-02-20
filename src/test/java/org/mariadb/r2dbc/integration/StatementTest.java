@@ -252,6 +252,33 @@ public class StatementTest extends BaseConnectionTest {
   }
 
   @Test
+  void createStatementCallRouting() {
+    // lowercase call should use server prepared statement (binary protocol)
+    String callLower = sharedConn.createStatement("call someProc()").toString();
+    Assertions.assertTrue(
+        callLower.contains("MariadbServerParameterizedQueryStatement{"),
+        callLower);
+
+    // uppercase CALL should also use server prepared statement
+    String callUpper = sharedConn.createStatement("CALL someProc()").toString();
+    Assertions.assertTrue(
+        callUpper.contains("MariadbServerParameterizedQueryStatement{"),
+        callUpper);
+
+    // SQL containing "call" as substring should use client prepared statement
+    String selectCaller = sharedConn.createStatement("SELECT 1 as caller").toString();
+    Assertions.assertTrue(
+        selectCaller.contains("MariadbClientParameterizedQueryStatement{"),
+        selectCaller);
+
+    // /*text*/ prefix should force client prepared statement
+    String textPrefix = sharedConn.createStatement("/*text*/ call someProc()").toString();
+    Assertions.assertTrue(
+        textPrefix.contains("MariadbClientParameterizedQueryStatement{"),
+        textPrefix);
+  }
+
+  @Test
   void fetchSize() {
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     // sequence table requirement
