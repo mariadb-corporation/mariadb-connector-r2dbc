@@ -265,6 +265,18 @@ public class StatementTest extends BaseConnectionTest {
         callUpper.contains("MariadbServerParameterizedQueryStatement{"),
         callUpper);
 
+    // tab-separated CALL should also use server prepared statement
+    String callTab = sharedConn.createStatement("CALL\tsomeProc()").toString();
+    Assertions.assertTrue(
+        callTab.contains("MariadbServerParameterizedQueryStatement{"),
+        callTab);
+
+    // leading whitespace before CALL should also use server prepared statement
+    String callLeadingSpace = sharedConn.createStatement("  call someProc()").toString();
+    Assertions.assertTrue(
+        callLeadingSpace.contains("MariadbServerParameterizedQueryStatement{"),
+        callLeadingSpace);
+
     // SQL containing "call" as substring should use client prepared statement
     String selectCaller = sharedConn.createStatement("SELECT 1 as caller").toString();
     Assertions.assertTrue(

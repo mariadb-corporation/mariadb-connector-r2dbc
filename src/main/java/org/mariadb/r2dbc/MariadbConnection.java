@@ -9,6 +9,7 @@ import io.r2dbc.spi.ValidationDepth;
 import io.r2dbc.spi.Wrapped;
 import java.time.Duration;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.client.Client;
 import org.mariadb.r2dbc.message.client.ChangeSchemaPacket;
@@ -25,6 +26,9 @@ import reactor.util.Loggers;
 
 public final class MariadbConnection
     implements org.mariadb.r2dbc.api.MariadbConnection, Wrapped<Object> {
+
+  private static final Pattern CALL_PATTERN =
+      Pattern.compile("^\\s*CALL\\s+", Pattern.CASE_INSENSITIVE);
 
   private final Logger logger = Loggers.getLogger(this.getClass());
   private final Client client;
@@ -101,8 +105,7 @@ public final class MariadbConnection
       throw new IllegalArgumentException("Statement cannot be empty.");
     }
 
-    if ((this.configuration.useServerPrepStmts()
-            || sql.trim().regionMatches(true, 0, "call ", 0, 5))
+    if ((this.configuration.useServerPrepStmts() || CALL_PATTERN.matcher(sql).find())
         && !sql.startsWith("/*text*/")) {
       return new MariadbServerParameterizedQueryStatement(this.client, sql, this.configuration);
     }
