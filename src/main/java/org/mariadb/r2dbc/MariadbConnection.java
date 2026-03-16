@@ -101,12 +101,59 @@ public final class MariadbConnection
       throw new IllegalArgumentException("Statement cannot be empty.");
     }
 
-    if ((this.configuration.useServerPrepStmts()
-            || sql.trim().regionMatches(true, 0, "call ", 0, 5))
+    if ((this.configuration.useServerPrepStmts() || startsWithCall(sql))
         && !sql.startsWith("/*text*/")) {
       return new MariadbServerParameterizedQueryStatement(this.client, sql, this.configuration);
     }
     return new MariadbClientParameterizedQueryStatement(this.client, sql, this.configuration);
+  }
+
+  private static boolean startsWithCall(String sql) {
+    int i = 0;
+    int len = sql.length();
+
+    while (i < len) {
+      char c = sql.charAt(i);
+
+      // skip whitespace
+      if (Character.isWhitespace(c)) {
+        i++;
+        continue;
+      }
+
+      // skip /* ... */ block comments
+      if (c == '/' && i + 1 < len && sql.charAt(i + 1) == '*') {
+        i = sql.indexOf("*/", i + 2);
+        if (i < 0) return false;
+        i += 2;
+        continue;
+      }
+
+      // skip -- line comments
+      if (c == '-' && i + 1 < len && sql.charAt(i + 1) == '-') {
+        i += 2;
+        while (i < len && sql.charAt(i) != '\n' && sql.charAt(i) != '\r') {
+          i++;
+        }
+        continue;
+      }
+
+      // skip # line comments
+      if (c == '#') {
+        i++;
+        while (i < len && sql.charAt(i) != '\n' && sql.charAt(i) != '\r') {
+          i++;
+        }
+        continue;
+      }
+
+      break;
+    }
+
+    // match "CALL" (case-insensitive) followed by whitespace
+    return i + 4 < len
+        && sql.regionMatches(true, i, "call", 0, 4)
+        && Character.isWhitespace(sql.charAt(i + 4));
   }
 
   @Override
