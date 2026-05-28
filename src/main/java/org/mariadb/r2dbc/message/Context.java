@@ -36,5 +36,21 @@ public interface Context {
 
   ByteBufAllocator getByteBufAllocator();
 
+  /**
+   * Indicate server charset change. After {@link #setInitialized()} has been called, only utf8 /
+   * utf8mb3 / utf8mb4 charsets are accepted; any other value will close the connection and throw an
+   * exception so that subsequent operations can't run against a session whose
+   * character_set_client is out of sync with the driver's UTF-8 assumption.
+   *
+   * @param charset new server character_set_client value
+   */
+  void setCharset(String charset);
+
+  /**
+   * Mark the context as fully initialized so that any further server-side charset change to a
+   * non-utf8 charset is rejected (see {@link #setCharset(String)}).
+   */
+  void setInitialized();
+
   default void saveRedo(ClientMessage msg, ByteBuf buf, int initialReaderIndex) {}
 }

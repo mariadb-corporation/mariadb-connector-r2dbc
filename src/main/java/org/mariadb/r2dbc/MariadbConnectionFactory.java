@@ -51,7 +51,11 @@ public final class MariadbConnectionFactory implements ConnectionFactory {
             ConnectionProvider.newConnection(), endpoint, hostAddress, configuration, lock)
         .delayUntil(client -> AuthenticationFlow.exchange(client, configuration, hostAddress))
         .cast(Client.class)
-        .flatMap(client -> setSessionVariables(configuration, client).thenReturn(client))
+        .flatMap(
+            client -> {
+              client.getContext().setInitialized();
+              return setSessionVariables(configuration, client).thenReturn(client);
+            })
         .onErrorMap(e -> cannotConnect(e, endpoint));
   }
 

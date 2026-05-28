@@ -5,6 +5,7 @@ package org.mariadb.r2dbc.client;
 
 import io.netty.buffer.ByteBufAllocator;
 import io.r2dbc.spi.IsolationLevel;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import org.mariadb.r2dbc.message.Context;
 
 public class SimpleContext implements Context {
@@ -18,6 +19,7 @@ public class SimpleContext implements Context {
   private short serverStatus;
   private IsolationLevel isolationLevel;
   private String database;
+  private volatile boolean initialized = false;
 
   public SimpleContext(
       String serverVersion,
@@ -92,6 +94,23 @@ public class SimpleContext implements Context {
 
   public String getRedirectValue() {
     return redirectValue;
+  }
+
+  @Override
+  public void setCharset(String charset) {
+    if (initialized && charset != null && !charset.startsWith("utf8")) {
+      throw new R2dbcNonTransientResourceException(
+          String.format(
+              "Connection character set was changed to '%s'. Only utf8 / utf8mb3 / utf8mb4 are"
+                  + " supported. The connection has been closed.",
+              charset),
+          "08000");
+    }
+  }
+
+  @Override
+  public void setInitialized() {
+    this.initialized = true;
   }
 
   @Override
