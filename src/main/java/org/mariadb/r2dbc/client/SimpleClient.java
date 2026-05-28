@@ -197,9 +197,11 @@ public class SimpleClient implements Client {
               .onErrorComplete()
               .cast(SimpleClient.class)
               .flatMap(
-                  client ->
-                      MariadbConnectionFactory.setSessionVariables(redirectConf, client)
-                          .then(Mono.just(client)))
+                  client -> {
+                    client.getContext().setInitialized();
+                    return MariadbConnectionFactory.setSessionVariables(redirectConf, client)
+                        .then(Mono.just(client));
+                  })
               .flatMap(this::refreshClient)
               .then();
         } catch (UnsupportedEncodingException e) {
@@ -282,7 +284,10 @@ public class SimpleClient implements Client {
               "Cannot execute command since connection is already closed", "08000", throwable));
     } else {
       R2dbcNonTransientResourceException error;
-      if (throwable instanceof SSLHandshakeException) {
+      R2dbcNonTransientResourceException rooted = findR2dbcCause(throwable);
+      if (rooted != null) {
+        error = rooted;
+      } else if (throwable instanceof SSLHandshakeException) {
         error = new R2dbcNonTransientResourceException(throwable.getMessage(), "08000", throwable);
       } else {
         error = new R2dbcNonTransientResourceException("Connection error", "08000", throwable);
@@ -290,6 +295,19 @@ public class SimpleClient implements Client {
       this.messageSubscriber.close(error);
       closeChannelIfNeeded();
     }
+  }
+
+  private static R2dbcNonTransientResourceException findR2dbcCause(Throwable t) {
+    Throwable current = t;
+    while (current != null) {
+      if (current instanceof R2dbcNonTransientResourceException) {
+        return (R2dbcNonTransientResourceException) current;
+      }
+      Throwable next = current.getCause();
+      if (next == current) return null;
+      current = next;
+    }
+    return null;
   }
 
   private Mono<Void> sendResumeError(Throwable throwable) {

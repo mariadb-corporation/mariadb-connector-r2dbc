@@ -119,8 +119,11 @@ public enum HaMode {
         .doOnError(e -> HaMode.failHost(hostAddress))
         .cast(Client.class)
         .flatMap(
-            client ->
-                MariadbConnectionFactory.setSessionVariables(conf, client).then(Mono.just(client)));
+            client -> {
+              client.getContext().setInitialized();
+              return MariadbConnectionFactory.setSessionVariables(conf, client)
+                  .then(Mono.just(client));
+            });
   }
 
   /**

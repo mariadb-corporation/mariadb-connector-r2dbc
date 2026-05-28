@@ -101,6 +101,26 @@ public class ConnectionTest extends BaseConnectionTest {
   }
 
   @Test
+  void setNamesBig5IsRejectedAndConnectionDropped() {
+    MariadbConnection connection = factory.create().block();
+    try {
+      connection
+          .createStatement("SET NAMES big5")
+          .execute()
+          .flatMap(r -> r.getRowsUpdated())
+          .as(StepVerifier::create)
+          .verifyErrorSatisfies(
+              t -> {
+                assertTrue(t instanceof R2dbcNonTransientResourceException);
+                assertTrue(t.getMessage().contains("big5"));
+              });
+      assertFalse(connection.validate(ValidationDepth.LOCAL).block());
+    } finally {
+      connection.close().onErrorResume(e -> Mono.empty()).block();
+    }
+  }
+
+  @Test
   void connectionWithoutErrorOnClose() throws Exception {
     Assumptions.assumeTrue(System.getenv("local") == null || "1".equals(System.getenv("local")));
 
