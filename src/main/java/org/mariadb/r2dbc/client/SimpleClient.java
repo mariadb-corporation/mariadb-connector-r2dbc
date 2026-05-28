@@ -284,7 +284,12 @@ public class SimpleClient implements Client {
               "Cannot execute command since connection is already closed", "08000", throwable));
     } else {
       R2dbcNonTransientResourceException error;
-      R2dbcNonTransientResourceException rooted = findR2dbcCause(throwable);
+      // when an R2dbcNonTransientResourceException is raised from inside the netty decoder
+      // (e.g. SimpleContext.setCharset rejecting a non-utf8 charset) it arrives here wrapped
+      // in a DecoderException; propagate its specific message rather than the generic
+      // "Connection error". Other failure paths (failover, transaction replay, etc.) keep the
+      // existing wrap to avoid leaking transient internal errors.
+      R2dbcNonTransientResourceException rooted = unwrapDecoderException(throwable);
       if (rooted != null) {
         error = rooted;
       } else if (throwable instanceof SSLHandshakeException) {
@@ -297,15 +302,11 @@ public class SimpleClient implements Client {
     }
   }
 
-  private static R2dbcNonTransientResourceException findR2dbcCause(Throwable t) {
-    Throwable current = t;
-    while (current != null) {
-      if (current instanceof R2dbcNonTransientResourceException) {
-        return (R2dbcNonTransientResourceException) current;
-      }
-      Throwable next = current.getCause();
-      if (next == current) return null;
-      current = next;
+  private static R2dbcNonTransientResourceException unwrapDecoderException(Throwable t) {
+    if (!(t instanceof io.netty.handler.codec.DecoderException)) return null;
+    Throwable cause = t.getCause();
+    if (cause instanceof R2dbcNonTransientResourceException) {
+      return (R2dbcNonTransientResourceException) cause;
     }
     return null;
   }
