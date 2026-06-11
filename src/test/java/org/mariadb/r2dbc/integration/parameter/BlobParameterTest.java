@@ -15,7 +15,12 @@ import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
@@ -486,10 +491,22 @@ public class BlobParameterTest extends BaseConnectionTest {
   @Test
   void localTimeValuePrepare() {
     localTimeValue(sharedConnPrepare);
-    validateNotNull(
-        ByteBuffer.wrap((isMariaDBServer() ? "18:00:00.012340" : "18:00:00").getBytes()),
-        ByteBuffer.wrap((isMariaDBServer() ? "08:00:00.123000" : "08:00:00").getBytes()),
-        ByteBuffer.wrap((isMariaDBServer() ? "08:00:00.123000" : "08:00:00").getBytes()));
+    if (isMariaDBServer()) {
+      validateNotNull(
+          ByteBuffer.wrap("18:00:00.012340".getBytes()),
+          ByteBuffer.wrap("08:00:00.123000".getBytes()),
+          ByteBuffer.wrap("08:00:00.123000".getBytes()));
+    } else if (minVersion(9, 7, 0)) {
+      validateNotNull(
+          ByteBuffer.wrap("18:00:00.01234".getBytes()),
+          ByteBuffer.wrap("08:00:00.123".getBytes()),
+          ByteBuffer.wrap("08:00:00.123".getBytes()));
+    } else {
+      validateNotNull(
+          ByteBuffer.wrap("18:00:00".getBytes()),
+          ByteBuffer.wrap("08:00:00".getBytes()),
+          ByteBuffer.wrap("08:00:00".getBytes()));
+    }
   }
 
   private void localTimeValue(MariadbConnection connection) {
