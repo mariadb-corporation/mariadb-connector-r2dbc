@@ -758,6 +758,17 @@ public final class MariadbConnectionConfiguration {
             continue;
           }
 
+          if ("pamOtherPwd".equals(field.getName())) {
+            // secondary PAM passwords are secrets too: mask each, never print verbatim
+            sb.append(first ? '?' : '&');
+            first = false;
+            sb.append(field.getName()).append('=');
+            for (int i = 0; i < ((CharSequence[]) obj).length; i++) {
+              sb.append(i == 0 ? "***" : ",***");
+            }
+            continue;
+          }
+
           if (field.getType().equals(String.class)) {
             String defaultValue = (String) field.get(defaultConf);
             if (!obj.equals(defaultValue)) {
