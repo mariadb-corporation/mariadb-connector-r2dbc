@@ -5,7 +5,6 @@ package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import org.mariadb.r2dbc.ExceptionFactory;
@@ -58,7 +57,8 @@ public class BooleanCodec implements Codec<Boolean> {
       case OLDDECIMAL:
       case FLOAT:
       case DOUBLE:
-        return new BigDecimal(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString())
+        return BigDecimalCodec.parseBigDecimal(
+                    buf.readCharSequence(length, StandardCharsets.US_ASCII).toString(), factory)
                 .intValue()
             != 0;
 
@@ -92,7 +92,8 @@ public class BooleanCodec implements Codec<Boolean> {
 
       case DECIMAL:
       case OLDDECIMAL:
-        return new BigDecimal(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString())
+        return BigDecimalCodec.parseBigDecimal(
+                    buf.readCharSequence(length, StandardCharsets.US_ASCII).toString(), factory)
                 .intValue()
             != 0;
       case FLOAT:

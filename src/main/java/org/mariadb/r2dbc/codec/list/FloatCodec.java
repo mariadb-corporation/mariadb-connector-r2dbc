@@ -5,7 +5,6 @@ package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
@@ -129,7 +128,8 @@ public class FloatCodec implements Codec<Float> {
 
       case OLDDECIMAL:
       case DECIMAL:
-        return new BigDecimal(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString())
+        return BigDecimalCodec.parseBigDecimal(
+                buf.readCharSequence(length, StandardCharsets.US_ASCII).toString(), factory)
             .floatValue();
 
       default:
