@@ -48,6 +48,11 @@ public final class Sha256PasswordPacket implements ClientMessage {
     byte[] nullFinishedPwd = Arrays.copyOf(bytePwd, bytePwd.length + 1);
     byte[] xorBytes = new byte[nullFinishedPwd.length];
     int seedLength = seed.length;
+    if (seedLength == 0) {
+      // a malicious/buggy server may send an empty seed; avoid a division-by-zero (% seedLength)
+      throw new R2dbcPermissionDeniedException(
+          "Could not connect using SHA256 plugin : empty authentication seed", "S1009");
+    }
 
     for (int i = 0; i < xorBytes.length; i++) {
       xorBytes[i] = (byte) (nullFinishedPwd[i] ^ seed[i % seedLength]);
