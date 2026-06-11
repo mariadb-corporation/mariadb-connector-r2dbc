@@ -5,7 +5,6 @@ package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -102,7 +101,10 @@ public class ByteCodec implements Codec<Byte> {
         // FLOAT, DOUBLE, OLDDECIMAL, DECIMAL, ENUM, VARCHAR, VARSTRING, STRING:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
-          result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).byteValueExact();
+          result =
+              BigDecimalCodec.parseBigDecimal(str, factory)
+                  .setScale(0, RoundingMode.DOWN)
+                  .byteValueExact();
         } catch (NumberFormatException | ArithmeticException nfe) {
           throw factory.createParsingException(
               String.format(
@@ -192,7 +194,10 @@ public class ByteCodec implements Codec<Byte> {
       case STRING:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
-          result = new BigDecimal(str).setScale(0, RoundingMode.DOWN).byteValueExact();
+          result =
+              BigDecimalCodec.parseBigDecimal(str, factory)
+                  .setScale(0, RoundingMode.DOWN)
+                  .byteValueExact();
         } catch (NumberFormatException | ArithmeticException nfe) {
           throw factory.createParsingException(
               String.format(

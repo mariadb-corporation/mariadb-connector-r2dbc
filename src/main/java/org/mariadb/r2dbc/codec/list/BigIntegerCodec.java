@@ -3,18 +3,20 @@
 
 package org.mariadb.r2dbc.codec.list;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
+
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.util.BufferUtils;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 
 public class BigIntegerCodec implements Codec<BigInteger> {
 
@@ -36,6 +38,28 @@ public class BigIntegerCodec implements Codec<BigInteger> {
           DataType.VARSTRING,
           DataType.STRING);
   public static final BigIntegerCodec INSTANCE = new BigIntegerCodec();
+
+  /**
+   * Parse a numeric string into a {@link BigInteger}, rejecting inputs longer than {@link
+   * BigDecimalCodec#MAX_BIG_DECIMAL_STRING_LENGTH} characters.
+   *
+   * @param str numeric text
+   * @param factory exception factory used to report an over-cap input
+   * @return parsed BigInteger
+   * @throws io.r2dbc.spi.R2dbcException if {@code str} is longer than the cap
+   * @throws NumberFormatException if {@code str} isn't a valid integer
+   */
+  public static BigInteger parseBigInteger(String str, ExceptionFactory factory) {
+    if (str.length() > BigDecimalCodec.MAX_BIG_DECIMAL_STRING_LENGTH) {
+      throw factory.createParsingException(
+          "value cannot be decoded as BigInteger: length "
+              + str.length()
+              + " exceeds maximum of "
+              + BigDecimalCodec.MAX_BIG_DECIMAL_STRING_LENGTH
+              + " characters");
+    }
+    return new BigInteger(str);
+  }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getDataType())
@@ -60,7 +84,7 @@ public class BigIntegerCodec implements Codec<BigInteger> {
       case DECIMAL:
       case OLDDECIMAL:
         String value = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
-        return new BigDecimal(value).toBigInteger();
+        return BigDecimalCodec.parseBigDecimal(value, factory).toBigInteger();
 
       case BIT:
         long result = 0;
@@ -76,13 +100,14 @@ public class BigIntegerCodec implements Codec<BigInteger> {
       case INTEGER:
       case BIGINT:
       case YEAR:
-        return new BigInteger(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
+        return parseBigInteger(
+            buf.readCharSequence(length, StandardCharsets.US_ASCII).toString(), factory);
 
       default:
         // VARCHAR, VARSTRING, STRING
         String str2 = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
-          return new BigDecimal(str2).toBigIntegerExact();
+          return BigDecimalCodec.parseBigDecimal(str2, factory).toBigIntegerExact();
         } catch (NumberFormatException | ArithmeticException nfe) {
           throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as BigInteger", str2));
@@ -138,7 +163,8 @@ public class BigIntegerCodec implements Codec<BigInteger> {
         return BigDecimal.valueOf(buf.readDoubleLE()).toBigInteger();
 
       case DECIMAL:
-        return new BigDecimal(buf.readCharSequence(length, StandardCharsets.UTF_8).toString())
+        return BigDecimalCodec.parseBigDecimal(
+                buf.readCharSequence(length, StandardCharsets.UTF_8).toString(), factory)
             .toBigInteger();
 
       case BIGINT:
@@ -155,7 +181,7 @@ public class BigIntegerCodec implements Codec<BigInteger> {
         // VARCHAR, VARSTRING, STRING
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
-          return new BigInteger(str);
+          return parseBigInteger(str, factory);
         } catch (NumberFormatException nfe) {
           throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as BigInteger", str));

@@ -5,7 +5,6 @@ package org.mariadb.r2dbc.codec.list;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -80,7 +79,9 @@ public class LongCodec implements Codec<Long> {
       case FLOAT:
         String str1 = buf.readCharSequence(length, StandardCharsets.US_ASCII).toString();
         try {
-          return new BigDecimal(str1).setScale(0, RoundingMode.DOWN).longValueExact();
+          return BigDecimalCodec.parseBigDecimal(str1, factory)
+              .setScale(0, RoundingMode.DOWN)
+              .longValueExact();
         } catch (NumberFormatException | ArithmeticException nfe) {
           throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as Long", str1));
@@ -99,7 +100,8 @@ public class LongCodec implements Codec<Long> {
           break;
         } else {
           BigInteger val =
-              new BigInteger(buf.readCharSequence(length, StandardCharsets.US_ASCII).toString());
+              BigIntegerCodec.parseBigInteger(
+                  buf.readCharSequence(length, StandardCharsets.US_ASCII).toString(), factory);
           try {
             return val.longValueExact();
           } catch (ArithmeticException ae) {
@@ -120,7 +122,7 @@ public class LongCodec implements Codec<Long> {
         // STRING, VARCHAR, VARSTRING:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
-          return new BigInteger(str).longValueExact();
+          return BigIntegerCodec.parseBigInteger(str, factory).longValueExact();
         } catch (NumberFormatException | ArithmeticException nfe) {
           throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as Long", str));
@@ -199,7 +201,9 @@ public class LongCodec implements Codec<Long> {
         // VARSTRING, VARCHAR, STRING, OLDDECIMAL, DECIMAL:
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
-          return new BigDecimal(str).setScale(0, RoundingMode.DOWN).longValueExact();
+          return BigDecimalCodec.parseBigDecimal(str, factory)
+              .setScale(0, RoundingMode.DOWN)
+              .longValueExact();
         } catch (NumberFormatException | ArithmeticException nfe) {
           throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as Long", str));
