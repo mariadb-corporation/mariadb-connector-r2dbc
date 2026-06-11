@@ -82,7 +82,6 @@ public final class HandshakeResponse implements ClientMessage {
     String authenticationPluginType = initialHandshakePacket.getAuthenticationPluginType();
     switch (authenticationPluginType) {
       case ClearPasswordPluginFlow.TYPE:
-        // TODO check that SSL is enable
         authData =
             (password == null) ? new byte[0] : password.toString().getBytes(StandardCharsets.UTF_8);
         break;

@@ -15,6 +15,18 @@ public interface AuthenticationPlugin {
 
   AuthenticationPlugin create();
 
+  /**
+   * Whether this authentication plugin requires a secure connection (TLS or a local unix socket).
+   * Plugins that transmit the password in clear text return {@code true}; the driver then refuses
+   * to run them over a plain TCP connection, so a malicious server cannot harvest the password by
+   * requesting a clear-text authentication plugin.
+   *
+   * @return true if a secure connection is required
+   */
+  default boolean requireSecure() {
+    return false;
+  }
+
   ClientMessage next(
       MariadbConnectionConfiguration configuration,
       byte[] seed,
