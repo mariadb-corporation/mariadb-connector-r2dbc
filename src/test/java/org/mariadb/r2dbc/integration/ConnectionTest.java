@@ -3,6 +3,19 @@
 
 package org.mariadb.r2dbc.integration;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import io.r2dbc.spi.Connection;
+import io.r2dbc.spi.IsolationLevel;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
+import io.r2dbc.spi.R2dbcPermissionDeniedException;
+import io.r2dbc.spi.R2dbcTimeoutException;
+import io.r2dbc.spi.Statement;
+import io.r2dbc.spi.TransactionDefinition;
+import io.r2dbc.spi.ValidationDepth;
 import java.math.BigInteger;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -18,13 +31,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -36,15 +44,6 @@ import org.mariadb.r2dbc.MariadbTransactionDefinition;
 import org.mariadb.r2dbc.TestConfiguration;
 import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbStatement;
-
-import io.r2dbc.spi.Connection;
-import io.r2dbc.spi.IsolationLevel;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
-import io.r2dbc.spi.R2dbcPermissionDeniedException;
-import io.r2dbc.spi.R2dbcTimeoutException;
-import io.r2dbc.spi.Statement;
-import io.r2dbc.spi.TransactionDefinition;
-import io.r2dbc.spi.ValidationDepth;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.resources.LoopResources;

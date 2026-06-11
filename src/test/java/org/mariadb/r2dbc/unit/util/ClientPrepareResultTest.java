@@ -623,7 +623,6 @@ public class ClientPrepareResultTest {
     // normal case still works
     checkParsing("/* comment */ ?", 1, true, false, false, new String[] {"/* comment */ ", ""});
     // consecutive block comments still work
-    checkParsing(
-        "/* a */ /* b */ ?", 1, true, false, false, new String[] {"/* a */ /* b */ ", ""});
+    checkParsing("/* a */ /* b */ ?", 1, true, false, false, new String[] {"/* a */ /* b */ ", ""});
   }
 }
