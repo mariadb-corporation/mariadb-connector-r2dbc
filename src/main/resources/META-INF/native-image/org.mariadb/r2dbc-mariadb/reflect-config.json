@@ -1,0 +1,34 @@
+[
+  {
+    "name": "org.mariadb.r2dbc.MariadbConnectionFactoryProvider",
+    "methods": [{ "name": "<init>", "parameterTypes": [] }]
+  },
+  {
+    "name": "org.mariadb.r2dbc.authentication.standard.NativePasswordPluginFlow",
+    "methods": [{ "name": "<init>", "parameterTypes": [] }]
+  },
+  {
+    "name": "org.mariadb.r2dbc.authentication.addon.ClearPasswordPluginFlow",
+    "methods": [{ "name": "<init>", "parameterTypes": [] }]
+  },
+  {
+    "name": "org.mariadb.r2dbc.authentication.standard.Ed25519PasswordPluginFlow",
+    "methods": [{ "name": "<init>", "parameterTypes": [] }]
+  },
+  {
+    "name": "org.mariadb.r2dbc.authentication.standard.Sha256PasswordPluginFlow",
+    "methods": [{ "name": "<init>", "parameterTypes": [] }]
+  },
+  {
+    "name": "org.mariadb.r2dbc.authentication.standard.CachingSha2PasswordFlow",
+    "methods": [{ "name": "<init>", "parameterTypes": [] }]
+  },
+  {
+    "name": "org.mariadb.r2dbc.authentication.standard.PamPluginFlow",
+    "methods": [{ "name": "<init>", "parameterTypes": [] }]
+  },
+  {
+    "name": "org.mariadb.r2dbc.authentication.standard.ParsecPasswordPlugin",
+    "methods": [{ "name": "<init>", "parameterTypes": [] }]
+  }
+]
