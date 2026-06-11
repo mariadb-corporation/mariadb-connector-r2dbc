@@ -3,10 +3,6 @@
 
 package org.mariadb.r2dbc.util;
 
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
-import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -14,9 +10,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.function.UnaryOperator;
+
 import javax.net.ssl.SSLException;
 import javax.net.ssl.TrustManagerFactory;
+
 import org.mariadb.r2dbc.SslMode;
+
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.r2dbc.spi.R2dbcTransientResourceException;
 
 public class SslConfig {
 
@@ -200,6 +203,10 @@ public class SslConfig {
       inStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(classpathFile);
     } else {
       inStream = new FileInputStream(path);
+    }
+
+    if (inStream == null) {
+      throw new FileNotFoundException(path);
     }
     return inStream;
   }
