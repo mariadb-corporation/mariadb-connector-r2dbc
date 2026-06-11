@@ -7,6 +7,7 @@ import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.ColumnMetadata;
 import io.r2dbc.spi.Nullability;
 import io.r2dbc.spi.OutParameterMetadata;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.nio.charset.StandardCharsets;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.codec.DataType;
@@ -78,6 +79,10 @@ public final class ColumnDefinitionPacket
 
   public static ColumnDefinitionPacket decode(
       ByteBuf buf, boolean ending, MariadbConnectionConfiguration conf) {
+    if (buf.readableBytes() < 12) {
+      throw new R2dbcNonTransientResourceException(
+          "unexpected packet: malformed column definition packet", "08000");
+    }
     byte[] meta = new byte[buf.readableBytes() - 12];
     buf.readBytes(meta);
     int charset = buf.readUnsignedShortLE();

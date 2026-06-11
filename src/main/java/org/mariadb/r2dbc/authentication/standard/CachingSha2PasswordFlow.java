@@ -18,6 +18,7 @@ import org.mariadb.r2dbc.message.client.AuthMoreRawPacket;
 import org.mariadb.r2dbc.message.client.ClearPasswordPacket;
 import org.mariadb.r2dbc.message.client.Sha256PasswordPacket;
 import org.mariadb.r2dbc.message.client.Sha2PublicKeyRequestPacket;
+import org.mariadb.r2dbc.message.server.AuthSwitchPacket;
 import org.mariadb.r2dbc.message.server.Sequencer;
 
 public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
@@ -39,8 +40,7 @@ public final class CachingSha2PasswordFlow extends Sha256PasswordPluginFlow {
     if (password == null) {
       return new byte[0];
     }
-    byte[] truncatedSeed = new byte[seed.length - 1];
-    System.arraycopy(seed, 0, truncatedSeed, 0, seed.length - 1);
+    byte[] truncatedSeed = AuthSwitchPacket.getTruncatedSeed(seed);
     try {
       final MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
       byte[] bytePwd = password.toString().getBytes(StandardCharsets.UTF_8);

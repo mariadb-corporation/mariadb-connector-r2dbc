@@ -11,6 +11,7 @@ import java.security.NoSuchAlgorithmException;
 import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.MessageSequence;
+import org.mariadb.r2dbc.message.server.AuthSwitchPacket;
 import reactor.core.publisher.Mono;
 
 public final class NativePasswordPacket implements ClientMessage {
@@ -22,10 +23,7 @@ public final class NativePasswordPacket implements ClientMessage {
   public NativePasswordPacket(MessageSequence sequencer, CharSequence password, byte[] seed) {
     this.sequencer = sequencer;
     this.password = password;
-    byte[] truncatedSeed = new byte[seed.length - 1];
-    System.arraycopy(seed, 0, truncatedSeed, 0, seed.length - 1);
-
-    this.seed = truncatedSeed;
+    this.seed = AuthSwitchPacket.getTruncatedSeed(seed);
   }
 
   public static byte[] encrypt(CharSequence authenticationData, byte[] seed) {

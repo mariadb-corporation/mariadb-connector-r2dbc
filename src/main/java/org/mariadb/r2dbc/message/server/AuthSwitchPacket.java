@@ -5,6 +5,7 @@ package org.mariadb.r2dbc.message.server;
 
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import org.mariadb.r2dbc.message.AuthSwitch;
 import org.mariadb.r2dbc.message.ServerMessage;
 
@@ -37,6 +38,17 @@ public class AuthSwitchPacket implements AuthSwitch, ServerMessage {
 
   public byte[] getSeed() {
     return seed;
+  }
+
+  /**
+   * Return the seed without its trailing 0x00 byte. A malicious/buggy server may send an empty
+   * seed, so guard the length to avoid {@code new byte[-1]} (NegativeArraySizeException).
+   *
+   * @param seed seed sent by the server
+   * @return seed without the trailing null byte (empty if the seed is empty)
+   */
+  public static byte[] getTruncatedSeed(byte[] seed) {
+    return (seed.length > 0) ? Arrays.copyOfRange(seed, 0, seed.length - 1) : new byte[0];
   }
 
   public Sequencer getSequencer() {
