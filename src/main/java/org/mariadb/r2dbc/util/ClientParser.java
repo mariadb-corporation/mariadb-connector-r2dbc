@@ -77,6 +77,8 @@ public final class ClientParser implements PrepareResult {
         case (byte) '/':
           if (state == LexState.SlashStarComment && lastChar == (byte) '*') {
             state = LexState.Normal;
+            lastChar = 0;
+            continue;
           } else if (state == LexState.Normal && lastChar == (byte) '/') {
             state = LexState.EOLComment;
           }
@@ -90,7 +92,18 @@ public final class ClientParser implements PrepareResult {
 
         case (byte) '-':
           if (state == LexState.Normal && lastChar == (byte) '-') {
-            state = LexState.EOLComment;
+            // '--' starts a comment only if followed by whitespace or control character
+            if (i + 1 < queryLength) {
+              byte next = query[i + 1];
+              if (next == ' '
+                  || next == '\t'
+                  || next == '\n'
+                  || next == '\r'
+                  || next == '\f'
+                  || (next >= 0x00 && next <= 0x1F)) {
+                state = LexState.EOLComment;
+              }
+            }
           }
           break;
 
@@ -316,6 +329,8 @@ public final class ClientParser implements PrepareResult {
         case (byte) '/':
           if (state == LexState.SlashStarComment && lastChar == (byte) '*') {
             state = LexState.Normal;
+            lastChar = 0;
+            continue;
           } else if (state == LexState.Normal && lastChar == (byte) '/') {
             state = LexState.EOLComment;
           }
@@ -329,7 +344,18 @@ public final class ClientParser implements PrepareResult {
 
         case (byte) '-':
           if (state == LexState.Normal && lastChar == (byte) '-') {
-            state = LexState.EOLComment;
+            // '--' starts a comment only if followed by whitespace or control character
+            if (i + 1 < queryLength) {
+              byte next = query[i + 1];
+              if (next == ' '
+                  || next == '\t'
+                  || next == '\n'
+                  || next == '\r'
+                  || next == '\f'
+                  || (next >= 0x00 && next <= 0x1F)) {
+                state = LexState.EOLComment;
+              }
+            }
           }
           break;
 
@@ -441,6 +467,8 @@ public final class ClientParser implements PrepareResult {
         case '/':
           if (state == LexState.SlashStarComment && lastChar == '*') {
             state = LexState.Normal;
+            lastChar = 0;
+            continue;
           } else if (state == LexState.Normal && lastChar == '/') {
             state = LexState.EOLComment;
           }
@@ -454,7 +482,18 @@ public final class ClientParser implements PrepareResult {
 
         case '-':
           if (state == LexState.Normal && lastChar == '-') {
-            state = LexState.EOLComment;
+            // '--' starts a comment only if followed by whitespace or control character
+            if (i + 1 < queryLength) {
+              char next = query[i + 1];
+              if (next == ' '
+                  || next == '\t'
+                  || next == '\n'
+                  || next == '\r'
+                  || next == '\f'
+                  || next <= 0x1F) {
+                state = LexState.EOLComment;
+              }
+            }
           }
           break;
 
