@@ -31,6 +31,7 @@ public class ByteBufferCodec implements Codec<ByteBuffer> {
 
   private static ByteBuffer decode(
       ByteBuf buf, int length, ColumnDefinitionPacket column, ExceptionFactory factory) {
+    BufferUtils.checkFieldLength(buf, length);
     switch (column.getDataType()) {
       case STRING:
       case TEXT:

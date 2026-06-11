@@ -71,7 +71,7 @@ public class StringCodec implements Codec<String> {
       Class<? extends String> type,
       ExceptionFactory factory) {
     if (column.getDataType() == DataType.BIT) {
-
+      BufferUtils.checkFieldLength(buf, length);
       byte[] bytes = new byte[length];
       buf.readBytes(bytes);
       StringBuilder sb = new StringBuilder(bytes.length * Byte.SIZE + 3);
@@ -103,6 +103,7 @@ public class StringCodec implements Codec<String> {
     String rawValue;
     switch (column.getDataType()) {
       case BIT:
+        BufferUtils.checkFieldLength(buf, length);
         byte[] bytes = new byte[length];
         buf.readBytes(bytes);
         StringBuilder sb = new StringBuilder(bytes.length * Byte.SIZE + 3);
