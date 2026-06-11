@@ -1,0 +1,8 @@
+{
+  "resources": {
+    "includes": [
+      { "pattern": "\\QMETA-INF/services/io.r2dbc.spi.ConnectionFactoryProvider\\E" },
+      { "pattern": "\\QMETA-INF/services/org.mariadb.r2dbc.authentication.AuthenticationPlugin\\E" }
+    ]
+  }
+}
