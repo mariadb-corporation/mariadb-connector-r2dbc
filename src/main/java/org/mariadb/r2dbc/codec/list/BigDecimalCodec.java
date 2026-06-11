@@ -3,18 +3,20 @@
 
 package org.mariadb.r2dbc.codec.list;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
+
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.util.BufferUtils;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 
 public class BigDecimalCodec implements Codec<BigDecimal> {
 
@@ -36,6 +38,35 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
           DataType.TEXT,
           DataType.VARSTRING,
           DataType.STRING);
+
+  /**
+   * Maximum length of a numeric string the driver will parse into a {@link BigDecimal} (or {@link
+   * BigInteger}).
+   */
+  public static final int MAX_BIG_DECIMAL_STRING_LENGTH = 1024;
+
+  /**
+   * Parse a numeric string into a {@link BigDecimal}, rejecting inputs longer than {@link
+   * #MAX_BIG_DECIMAL_STRING_LENGTH} characters.
+   *
+   * @param str numeric text
+   * @param factory exception factory used to report an over-cap input
+   * @return parsed BigDecimal
+   * @throws io.r2dbc.spi.R2dbcException if {@code str} is longer than the cap
+   * @throws NumberFormatException if {@code str} isn't a valid number (caller may catch and rewrap
+   *     with column-specific context)
+   */
+  public static BigDecimal parseBigDecimal(String str, ExceptionFactory factory) {
+    if (str.length() > MAX_BIG_DECIMAL_STRING_LENGTH) {
+      throw factory.createParsingException(
+          "value cannot be decoded as BigDecimal: length "
+              + str.length()
+              + " exceeds maximum of "
+              + MAX_BIG_DECIMAL_STRING_LENGTH
+              + " characters");
+    }
+    return new BigDecimal(str);
+  }
 
   public boolean canDecode(ColumnDefinitionPacket column, Class<?> type) {
     return COMPATIBLE_TYPES.contains(column.getDataType())
@@ -64,7 +95,8 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
       case YEAR:
       case DECIMAL:
       case OLDDECIMAL:
-        return new BigDecimal(buf.readCharSequence(length, StandardCharsets.UTF_8).toString());
+        return parseBigDecimal(
+            buf.readCharSequence(length, StandardCharsets.UTF_8).toString(), factory);
 
       case BIT:
         long result = 0;
@@ -78,7 +110,7 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
         // VARCHAR, VARSTRING, STRING
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
-          return new BigDecimal(str);
+          return parseBigDecimal(str, factory);
         } catch (NumberFormatException nfe) {
           throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as BigDecimal", str));
@@ -153,7 +185,7 @@ public class BigDecimalCodec implements Codec<BigDecimal> {
         // VARCHAR, VARSTRING, STRING, DECIMAL, OLDDECIMAL
         String str = buf.readCharSequence(length, StandardCharsets.UTF_8).toString();
         try {
-          return new BigDecimal(str);
+          return parseBigDecimal(str, factory);
         } catch (NumberFormatException nfe) {
           throw factory.createParsingException(
               String.format("value '%s' cannot be decoded as BigDecimal", str));
