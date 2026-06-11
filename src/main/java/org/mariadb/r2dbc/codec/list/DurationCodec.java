@@ -8,6 +8,7 @@ import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.EnumSet;
+import java.util.Locale;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
@@ -165,16 +166,26 @@ public class DurationCodec implements Codec<Duration> {
         s = s - 1;
         durationStr =
             String.format(
-                "-%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), 1000000 - microSecond);
+                Locale.ROOT,
+                "-%d:%02d:%02d.%06d",
+                s / 3600,
+                (s % 3600) / 60,
+                (s % 60),
+                1000000 - microSecond);
 
       } else {
         durationStr =
-            String.format("%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), microSecond);
+            String.format(
+                Locale.ROOT, "%d:%02d:%02d.%06d", s / 3600, (s % 3600) / 60, (s % 60), microSecond);
       }
     } else {
       durationStr =
           String.format(
-              negate ? "-%d:%02d:%02d" : "%d:%02d:%02d", s / 3600, (s % 3600) / 60, (s % 60));
+              Locale.ROOT,
+              negate ? "-%d:%02d:%02d" : "%d:%02d:%02d",
+              s / 3600,
+              (s % 3600) / 60,
+              (s % 60));
     }
     out.writeCharSequence(durationStr, StandardCharsets.US_ASCII);
     out.writeByte('\'');
