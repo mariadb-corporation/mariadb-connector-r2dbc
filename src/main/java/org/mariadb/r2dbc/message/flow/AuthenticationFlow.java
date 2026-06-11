@@ -20,7 +20,12 @@ import org.mariadb.r2dbc.message.ClientMessage;
 import org.mariadb.r2dbc.message.ServerMessage;
 import org.mariadb.r2dbc.message.client.HandshakeResponse;
 import org.mariadb.r2dbc.message.client.SslRequestPacket;
-import org.mariadb.r2dbc.message.server.*;
+import org.mariadb.r2dbc.message.server.AuthMoreDataPacket;
+import org.mariadb.r2dbc.message.server.AuthSwitchPacket;
+import org.mariadb.r2dbc.message.server.ErrorPacket;
+import org.mariadb.r2dbc.message.server.InitialHandshakePacket;
+import org.mariadb.r2dbc.message.server.OkPacket;
+import org.mariadb.r2dbc.message.server.Sequencer;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.constants.Capabilities;
@@ -139,6 +144,35 @@ public final class AuthenticationFlow {
     return new SslRequestPacket(this.initialHandshakePacket, clientCapabilities);
   }
 
+  /**
+   * A connection is considered secure when TLS is enabled or when it is a local unix-domain socket.
+   * Clear-text password plugins are only permitted over a secure connection.
+   *
+   * @return true if the password may be transmitted in clear text
+   */
+  private boolean isSecureConnection() {
+    return configuration.getSslConfig().getSslMode() != SslMode.DISABLE
+        || configuration.getSocket() != null;
+  }
+
+  /** Whether the authentication plugin of the given type requires a secure connection. */
+  private static boolean pluginRequireSecure(String pluginType) {
+    try {
+      return AuthenticationFlowPluginLoader.get(pluginType).requireSecure();
+    } catch (RuntimeException e) {
+      // unknown plugin types are not clear-text password plugins handled by this driver
+      return false;
+    }
+  }
+
+  private static R2dbcException clearTextRefusal(String pluginType) {
+    return new R2dbcPermissionDeniedException(
+        String.format(
+            "Authentication plugin '%s' is a clear-text password plugin that cannot be used over an"
+                + " insecure connection. Enable TLS (sslMode) or use a local unix socket.",
+            pluginType));
+  }
+
   public enum State {
     INIT {
       @Override
@@ -201,14 +235,18 @@ public final class AuthenticationFlow {
         flow.seed = flow.initialHandshakePacket.getSeed();
         flow.sequencer = flow.initialHandshakePacket.getSequencer();
 
-        if (flow.initialHandshakePacket
-            .getAuthenticationPluginType()
-            .equals(CachingSha2PasswordFlow.TYPE)) {
+        String initialPlugin = flow.initialHandshakePacket.getAuthenticationPluginType();
+        if (initialPlugin != null && initialPlugin.equals(CachingSha2PasswordFlow.TYPE)) {
           AuthenticationPlugin authPlugin =
               AuthenticationFlowPluginLoader.get(CachingSha2PasswordFlow.TYPE);
           ((CachingSha2PasswordFlow) authPlugin).setStateFastAuth();
           flow.authMoreDataPacket = null;
           flow.pluginHandler = authPlugin;
+        }
+
+        // Refuse to send the password in clear text over an insecure connection
+        if (pluginRequireSecure(initialPlugin) && !flow.isSecureConnection()) {
+          return Mono.error(clearTextRefusal(initialPlugin));
         }
 
         return flow.client
@@ -238,9 +276,13 @@ public final class AuthenticationFlow {
                                   Arrays.toString(flow.configuration.getRestrictedAuth()))));
                     } else {
                       AuthenticationPlugin authPlugin = AuthenticationFlowPluginLoader.get(plugin);
-                      flow.authMoreDataPacket = null;
-                      flow.pluginHandler = authPlugin;
-                      sink.next(AUTH_SWITCH);
+                      if (authPlugin.requireSecure() && !flow.isSecureConnection()) {
+                        sink.error(clearTextRefusal(plugin));
+                      } else {
+                        flow.authMoreDataPacket = null;
+                        flow.pluginHandler = authPlugin;
+                        sink.next(AUTH_SWITCH);
+                      }
                     }
                   } else if (flow.pluginHandler != null && message instanceof AuthMoreDataPacket) {
                     flow.authMoreDataPacket = (AuthMoreDataPacket) message;
@@ -306,9 +348,13 @@ public final class AuthenticationFlow {
                                   Arrays.toString(flow.configuration.getRestrictedAuth()))));
                     } else {
                       AuthenticationPlugin authPlugin = AuthenticationFlowPluginLoader.get(plugin);
-                      flow.authMoreDataPacket = null;
-                      flow.pluginHandler = authPlugin;
-                      sink.next(AUTH_SWITCH);
+                      if (authPlugin.requireSecure() && !flow.isSecureConnection()) {
+                        sink.error(clearTextRefusal(plugin));
+                      } else {
+                        flow.authMoreDataPacket = null;
+                        flow.pluginHandler = authPlugin;
+                        sink.next(AUTH_SWITCH);
+                      }
                     }
                   } else if (message instanceof AuthMoreDataPacket) {
                     flow.authMoreDataPacket = (AuthMoreDataPacket) message;

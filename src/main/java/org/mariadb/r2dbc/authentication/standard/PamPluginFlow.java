@@ -23,6 +23,11 @@ public final class PamPluginFlow implements AuthenticationPlugin {
     return TYPE;
   }
 
+  @Override
+  public boolean requireSecure() {
+    return true;
+  }
+
   public ClientMessage next(
       MariadbConnectionConfiguration configuration,
       byte[] seed,
