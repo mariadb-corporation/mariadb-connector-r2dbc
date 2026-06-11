@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
+import java.util.Locale;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
@@ -22,9 +23,9 @@ public class InstantCodec implements Codec<Instant> {
 
   public static final InstantCodec INSTANCE = new InstantCodec();
   public static final DateTimeFormatter TIMESTAMP_FORMAT =
-      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS", Locale.ROOT);
   public static final DateTimeFormatter TIMESTAMP_FORMAT_NO_FRACTIONAL =
-      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ROOT);
 
   private static final EnumSet<DataType> COMPATIBLE_TYPES =
       EnumSet.of(

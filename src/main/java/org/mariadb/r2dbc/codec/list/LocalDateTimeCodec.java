@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.EnumSet;
+import java.util.Locale;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.DataType;
@@ -21,9 +22,9 @@ public class LocalDateTimeCodec implements Codec<LocalDateTime> {
 
   public static final LocalDateTimeCodec INSTANCE = new LocalDateTimeCodec();
   public static final DateTimeFormatter TIMESTAMP_FORMAT =
-      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS", Locale.ROOT);
   public static final DateTimeFormatter TIMESTAMP_FORMAT_NO_FRACTIONAL =
-      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ROOT);
 
   public static final DateTimeFormatter MARIADB_LOCAL_DATE_TIME;
   private static final EnumSet<DataType> COMPATIBLE_TYPES =
