@@ -7,3 +7,6 @@
 /target/
 .idea
 /r2dbc-mariadb.iml
+.github/native-image-test/spring-boot/target
+.claude
+.claude-logs/*
