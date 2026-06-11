@@ -42,6 +42,7 @@ public class ByteArrayCodec implements Codec<byte[]> {
       Class<? extends byte[]> type,
       ExceptionFactory factory) {
 
+    BufferUtils.checkFieldLength(buf, length);
     byte[] arr = new byte[length];
     buf.readBytes(arr);
     return arr;
@@ -54,6 +55,7 @@ public class ByteArrayCodec implements Codec<byte[]> {
       ColumnDefinitionPacket column,
       Class<? extends byte[]> type,
       ExceptionFactory factory) {
+    BufferUtils.checkFieldLength(buf, length);
     byte[] arr = new byte[length];
     buf.readBytes(arr);
     return arr;

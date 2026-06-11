@@ -8,6 +8,7 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ByteProcessor;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.nio.charset.StandardCharsets;
 import org.mariadb.r2dbc.message.Context;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
@@ -19,6 +20,23 @@ public final class BufferUtils {
   private static final byte QUOTE = (byte) '\'';
   private static final byte ZERO_BYTE = (byte) '\0';
   private static final byte BACKSLASH = (byte) '\\';
+
+  /**
+   * Validate a server-provided field length before it is used to allocate a buffer. A field can
+   * never legitimately be longer than the bytes remaining in the (already received) packet, so a
+   * larger or negative value indicates a malformed/hostile packet and is rejected here rather than
+   * reaching a {@code new byte[length]} that could exhaust memory (OutOfMemoryError).
+   *
+   * @param buf packet buffer, positioned at the field data
+   * @param length decoded field length
+   */
+  public static void checkFieldLength(ByteBuf buf, int length) {
+    if (length < 0 || length > buf.readableBytes()) {
+      throw new R2dbcNonTransientResourceException(
+          "unexpected packet: field length " + length + " exceeds remaining packet length",
+          "08000");
+    }
+  }
 
   public static void skipLengthEncode(ByteBuf buf) {
     short type = buf.readUnsignedByte();
