@@ -77,9 +77,11 @@ jobs:
         working-directory: .github/native-image-test/spring-boot
 
       - name: Run Spring Boot native image test
-        run: |
-          ./target/native-image-spring-test \
-            --spring.r2dbc.url=r2dbc:mariadb://${{ env.TEST_DB_HOST }}:${{ env.TEST_DB_PORT }}/${{ env.TEST_DB_DATABASE }} \
-            --spring.r2dbc.username=${{ env.TEST_DB_USER }} \
-            --spring.r2dbc.password=${{ env.TEST_DB_PASSWORD }}
+        run: ./target/native-image-spring-test
         working-directory: .github/native-image-test/spring-boot
+        env:
+          TEST_DB_HOST: ${{ env.TEST_DB_HOST }}
+          TEST_DB_PORT: ${{ env.TEST_DB_PORT }}
+          TEST_DB_USER: ${{ env.TEST_DB_USER }}
+          TEST_DB_PASSWORD: ${{ env.TEST_DB_PASSWORD }}
+          TEST_DB_DATABASE: ${{ env.TEST_DB_DATABASE }}
