@@ -15,7 +15,11 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
@@ -435,6 +439,11 @@ public class StringParameterTest extends BaseConnectionTest {
           Optional.of("05:08:09.001400"),
           Optional.of("05:08:10.123456"),
           Optional.of("05:08:11.123000"));
+    } else if (meta.minVersion(9, 7, 0)) {
+      validate(
+          Optional.of("05:08:09.0014"),
+          Optional.of("05:08:10.123456"),
+          Optional.of("05:08:11.123"));
     } else {
       validate(Optional.of("05:08:09"), Optional.of("05:08:10"), Optional.of("05:08:11"));
     }
@@ -464,6 +473,8 @@ public class StringParameterTest extends BaseConnectionTest {
           Optional.of("90:00:00.012340"),
           Optional.of(isXpand() ? "00:08:00.000000" : "00:08:00"),
           Optional.of(isXpand() ? "00:00:22.000000" : "00:00:22"));
+    } else if (meta.minVersion(9, 7, 0)) {
+      validate(Optional.of("90:00:00.01234"), Optional.of("00:08:00"), Optional.of("00:00:22"));
     } else {
       validate(Optional.of("90:00:00"), Optional.of("00:08:00"), Optional.of("00:00:22"));
     }
