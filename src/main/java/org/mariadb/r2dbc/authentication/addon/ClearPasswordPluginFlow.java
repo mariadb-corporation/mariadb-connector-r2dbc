@@ -22,6 +22,11 @@ public final class ClearPasswordPluginFlow implements AuthenticationPlugin {
     return TYPE;
   }
 
+  @Override
+  public boolean requireSecure() {
+    return true;
+  }
+
   public ClientMessage next(
       MariadbConnectionConfiguration configuration,
       byte[] seed,
