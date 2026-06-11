@@ -19,6 +19,7 @@ public class BitSetCodec implements Codec<BitSet> {
   public static final BitSetCodec INSTANCE = new BitSetCodec();
 
   public static BitSet parseBit(ByteBuf buf, int length) {
+    BufferUtils.checkFieldLength(buf, length);
     byte[] arr = new byte[length];
     buf.readBytes(arr);
     revertOrder(arr);
