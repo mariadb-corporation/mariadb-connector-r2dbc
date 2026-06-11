@@ -576,7 +576,54 @@ public class ClientPrepareResultTest {
     Assertions.assertFalse(ClientParser.hasParameter("SELECT /*? */", false));
     Assertions.assertFalse(ClientParser.hasParameter("SELECT //?\n '?'", false));
     Assertions.assertFalse(ClientParser.hasParameter("SELECT #? \n '?'", false));
-    Assertions.assertFalse(ClientParser.hasParameter("SELECT --? \n '?'", false));
+    Assertions.assertFalse(ClientParser.hasParameter("SELECT -- ? \n '?'", false));
     Assertions.assertFalse(ClientParser.hasParameter("SELECT '`\\n' from `gg`", true));
+    // '--' not followed by whitespace/control is not a comment, so the parameter is detected
+    Assertions.assertTrue(ClientParser.hasParameter("SELECT 2--1, ?", false));
+    // '*' right after a block comment end must not start a new comment
+    Assertions.assertTrue(ClientParser.hasParameter("/* comment */* ?", false));
+  }
+
+  /**
+   * '--' starts a comment only when followed by whitespace or a control character. Expressions like
+   * '2--1' (subtraction of a negative number) must not treat '--' as a comment start.
+   */
+  @Test
+  public void testDoubleDashNotCommentInExpression() {
+    // '2--1' is not a comment - the ? is still found as a parameter
+    checkParsing("SELECT 2--1, ?", 1, true, false, false, new String[] {"SELECT 2--1, ", ""});
+    // '-- ' (with space) is a comment ending at \n, so the ? after it is found
+    checkParsing(
+        "SELECT 1 -- comment\n, ?",
+        1,
+        true,
+        false,
+        false,
+        new String[] {"SELECT 1 -- comment\n, ", ""});
+    // '--\t' (with tab) is a comment ending at \n, so the ? after it is found
+    checkParsing(
+        "SELECT 1 --\tcomment\n, ?",
+        1,
+        true,
+        false,
+        false,
+        new String[] {"SELECT 1 --\tcomment\n, ", ""});
+    // '--' at end of query is a comment
+    checkParsing("SELECT 1 --", 0, true, false, false, new String[] {"SELECT 1 --"});
+  }
+
+  /**
+   * After a block comment ends, the next character must not be able to start a new comment. The
+   * lastChar must be reset so that "slash-star ... star-slash star" is not parsed as a new comment.
+   */
+  @Test
+  public void testBlockCommentFollowedByAsterisk() {
+    // the '*' after '*/' must not start a new comment
+    checkParsing("/* comment */* ?", 1, true, false, false, new String[] {"/* comment */* ", ""});
+    // normal case still works
+    checkParsing("/* comment */ ?", 1, true, false, false, new String[] {"/* comment */ ", ""});
+    // consecutive block comments still work
+    checkParsing(
+        "/* a */ /* b */ ?", 1, true, false, false, new String[] {"/* a */ /* b */ ", ""});
   }
 }
