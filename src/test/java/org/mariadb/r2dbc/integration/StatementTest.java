@@ -252,6 +252,95 @@ public class StatementTest extends BaseConnectionTest {
   }
 
   @Test
+  void createStatementCallRouting() {
+    // lowercase call should use server prepared statement (binary protocol)
+    String callLower = sharedConn.createStatement("call someProc()").toString();
+    Assertions.assertTrue(
+        callLower.contains("MariadbServerParameterizedQueryStatement{"),
+        callLower);
+
+    // uppercase CALL should also use server prepared statement
+    String callUpper = sharedConn.createStatement("CALL someProc()").toString();
+    Assertions.assertTrue(
+        callUpper.contains("MariadbServerParameterizedQueryStatement{"),
+        callUpper);
+
+    // mixed case
+    String callMixed = sharedConn.createStatement("Call someProc()").toString();
+    Assertions.assertTrue(
+        callMixed.contains("MariadbServerParameterizedQueryStatement{"),
+        callMixed);
+
+    // leading whitespace (spaces, tabs, newlines)
+    String callLeadingSpace = sharedConn.createStatement("  call someProc()").toString();
+    Assertions.assertTrue(
+        callLeadingSpace.contains("MariadbServerParameterizedQueryStatement{"),
+        callLeadingSpace);
+
+    String callLeadingTab = sharedConn.createStatement("\t\ncall someProc()").toString();
+    Assertions.assertTrue(
+        callLeadingTab.contains("MariadbServerParameterizedQueryStatement{"),
+        callLeadingTab);
+
+    // block comment before CALL
+    String callWithComment = sharedConn.createStatement("/* hint */ CALL someProc()").toString();
+    Assertions.assertTrue(
+        callWithComment.contains("MariadbServerParameterizedQueryStatement{"),
+        callWithComment);
+
+    // multiple block comments
+    String callMultiComment =
+        sharedConn.createStatement("/* a */ /* b */ call someProc()").toString();
+    Assertions.assertTrue(
+        callMultiComment.contains("MariadbServerParameterizedQueryStatement{"),
+        callMultiComment);
+
+    // SQL containing "call" as substring should use client prepared statement
+    String selectCaller = sharedConn.createStatement("SELECT 1 as caller").toString();
+    Assertions.assertTrue(
+        selectCaller.contains("MariadbClientParameterizedQueryStatement{"),
+        selectCaller);
+
+    // SELECT with callback column
+    String selectCallback = sharedConn.createStatement("SELECT callback FROM t").toString();
+    Assertions.assertTrue(
+        selectCallback.contains("MariadbClientParameterizedQueryStatement{"),
+        selectCallback);
+
+    // -- line comment before CALL
+    String callLineComment =
+        sharedConn.createStatement("-- comment\nCALL someProc()").toString();
+    Assertions.assertTrue(
+        callLineComment.contains("MariadbServerParameterizedQueryStatement{"),
+        callLineComment);
+
+    // # line comment before CALL
+    String callHashComment =
+        sharedConn.createStatement("# comment\ncall someProc()").toString();
+    Assertions.assertTrue(
+        callHashComment.contains("MariadbServerParameterizedQueryStatement{"),
+        callHashComment);
+
+    // tab after CALL keyword
+    String callTab = sharedConn.createStatement("CALL\tsomeProc()").toString();
+    Assertions.assertTrue(
+        callTab.contains("MariadbServerParameterizedQueryStatement{"),
+        callTab);
+
+    // "callback" should NOT match
+    String callbackFalse = sharedConn.createStatement("SELECT callback()").toString();
+    Assertions.assertTrue(
+        callbackFalse.contains("MariadbClientParameterizedQueryStatement{"),
+        callbackFalse);
+
+    // /*text*/ prefix should force client prepared statement
+    String textPrefix = sharedConn.createStatement("/*text*/ call someProc()").toString();
+    Assertions.assertTrue(
+        textPrefix.contains("MariadbClientParameterizedQueryStatement{"),
+        textPrefix);
+  }
+
+  @Test
   void fetchSize() {
     MariadbConnectionMetadata meta = sharedConn.getMetadata();
     // sequence table requirement
