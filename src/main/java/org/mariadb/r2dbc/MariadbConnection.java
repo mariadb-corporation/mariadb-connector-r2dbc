@@ -3,10 +3,6 @@
 
 package org.mariadb.r2dbc;
 
-import io.r2dbc.spi.IsolationLevel;
-import io.r2dbc.spi.TransactionDefinition;
-import io.r2dbc.spi.ValidationDepth;
-import io.r2dbc.spi.Wrapped;
 import java.time.Duration;
 import java.util.function.Function;
 
@@ -19,6 +15,11 @@ import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
+
+import io.r2dbc.spi.IsolationLevel;
+import io.r2dbc.spi.TransactionDefinition;
+import io.r2dbc.spi.ValidationDepth;
+import io.r2dbc.spi.Wrapped;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.util.Logger;
@@ -109,52 +110,52 @@ public final class MariadbConnection
     return new MariadbClientParameterizedQueryStatement(this.client, sql, this.configuration);
   }
 
-  private static boolean startsWithCall(String sql) {
+  /**
+   * Detect whether {@code sql} is a stored-procedure {@code CALL}. Such statements are forced onto
+   * the binary (server-prepared) protocol, the only one in which MariaDB returns OUT parameters (in
+   * a dedicated result-set). This sits on the {@code createStatement()} hot path, so it allocates
+   * nothing and bails on the first non-matching character.
+   *
+   * @param sql query
+   * @return true if the query is a stored-procedure CALL
+   */
+  static boolean startsWithCall(String sql) {
+    final int len = sql.length();
     int i = 0;
-    int len = sql.length();
-
     while (i < len) {
       char c = sql.charAt(i);
-
-      // skip whitespace
-      if (Character.isWhitespace(c)) {
+      if (c <= ' ') {
         i++;
-        continue;
+      } else if (c == '/' && i + 1 < len && sql.charAt(i + 1) == '*') {
+        // block comment
+        int end = sql.indexOf("*/", i + 2);
+        if (end < 0) return false;
+        i = end + 2;
+      } else if (c == '#') {
+        // line comment
+        i = endOfLine(sql, i + 1, len);
+      } else if (c == '-'
+          && i + 1 < len
+          && sql.charAt(i + 1) == '-'
+          && (i + 2 >= len || sql.charAt(i + 2) <= ' ')) { 
+        // -- comment
+        i = endOfLine(sql, i + 2, len);
+      } else {
+        break;
       }
-
-      // skip /* ... */ block comments
-      if (c == '/' && i + 1 < len && sql.charAt(i + 1) == '*') {
-        i = sql.indexOf("*/", i + 2);
-        if (i < 0) return false;
-        i += 2;
-        continue;
-      }
-
-      // skip -- line comments
-      if (c == '-' && i + 1 < len && sql.charAt(i + 1) == '-') {
-        i += 2;
-        while (i < len && sql.charAt(i) != '\n' && sql.charAt(i) != '\r') {
-          i++;
-        }
-        continue;
-      }
-
-      // skip # line comments
-      if (c == '#') {
-        i++;
-        while (i < len && sql.charAt(i) != '\n' && sql.charAt(i) != '\r') {
-          i++;
-        }
-        continue;
-      }
-
-      break;
     }
-
-    // match "CALL" (case-insensitive) followed by whitespace
+    // insensitive "CALL"
     return i + 4 < len
-        && sql.regionMatches(true, i, "call", 0, 4)
-        && Character.isWhitespace(sql.charAt(i + 4));
+        && (sql.charAt(i) | 0x20) == 'c'
+        && (sql.charAt(i + 1) | 0x20) == 'a'
+        && (sql.charAt(i + 2) | 0x20) == 'l'
+        && (sql.charAt(i + 3) | 0x20) == 'l'
+        && sql.charAt(i + 4) <= ' ';
+  }
+
+  private static int endOfLine(String sql, int i, int len) {
+    while (i < len && sql.charAt(i) != '\n' && sql.charAt(i) != '\r') i++;
+    return i;
   }
 
   @Override
