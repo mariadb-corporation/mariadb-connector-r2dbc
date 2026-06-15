@@ -3,20 +3,17 @@
 
 package org.mariadb.r2dbc.message.client;
 
-import java.nio.charset.StandardCharsets;
-import java.security.PublicKey;
-import java.util.Arrays;
-
-import javax.crypto.Cipher;
-
-import org.mariadb.r2dbc.message.ClientMessage;
-import org.mariadb.r2dbc.message.Context;
-import org.mariadb.r2dbc.message.MessageSequence;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
+import java.nio.charset.StandardCharsets;
+import java.security.PublicKey;
+import java.util.Arrays;
+import javax.crypto.Cipher;
+import org.mariadb.r2dbc.message.ClientMessage;
+import org.mariadb.r2dbc.message.Context;
+import org.mariadb.r2dbc.message.MessageSequence;
 import reactor.core.publisher.Mono;
 
 public final class Sha256PasswordPacket implements ClientMessage {
