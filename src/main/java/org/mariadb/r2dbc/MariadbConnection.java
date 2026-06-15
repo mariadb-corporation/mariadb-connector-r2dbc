@@ -3,6 +3,10 @@
 
 package org.mariadb.r2dbc;
 
+import io.r2dbc.spi.IsolationLevel;
+import io.r2dbc.spi.TransactionDefinition;
+import io.r2dbc.spi.ValidationDepth;
+import io.r2dbc.spi.Wrapped;
 import java.time.Duration;
 import java.util.function.Function;
 import org.mariadb.r2dbc.api.MariadbStatement;
@@ -14,11 +18,6 @@ import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.constants.Capabilities;
 import org.mariadb.r2dbc.util.constants.ServerStatus;
-
-import io.r2dbc.spi.IsolationLevel;
-import io.r2dbc.spi.TransactionDefinition;
-import io.r2dbc.spi.ValidationDepth;
-import io.r2dbc.spi.Wrapped;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.util.Logger;
@@ -136,7 +135,7 @@ public final class MariadbConnection
       } else if (c == '-'
           && i + 1 < len
           && sql.charAt(i + 1) == '-'
-          && (i + 2 >= len || sql.charAt(i + 2) <= ' ')) { 
+          && (i + 2 >= len || sql.charAt(i + 2) <= ' ')) {
         // -- comment
         i = endOfLine(sql, i + 2, len);
       } else {
