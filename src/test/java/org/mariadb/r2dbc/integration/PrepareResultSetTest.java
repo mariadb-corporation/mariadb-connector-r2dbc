@@ -3,11 +3,19 @@
 
 package org.mariadb.r2dbc.integration;
 
-import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.jupiter.api.*;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
@@ -16,6 +24,8 @@ import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
+
+import io.r2dbc.spi.R2dbcTransientResourceException;
 import reactor.test.StepVerifier;
 
 public class PrepareResultSetTest extends BaseConnectionTest {
@@ -720,16 +730,27 @@ public class PrepareResultSetTest extends BaseConnectionTest {
         }
       }
 
+      long settleDeadline = System.currentTimeMillis() + 5000;
+      while (System.currentTimeMillis() < settleDeadline
+          && !prepareResults[1].toString().contains("use=0")) {
+        Thread.sleep(2);
+      }
+
       Assertions.assertTrue(
-          prepareResults[0].toString().contains("closing=true, use=0, cached=false}"));
+          prepareResults[0].toString().contains("closing=true, use=0, cached=false}"),
+          prepareResults[0].toString());
       Assertions.assertTrue(
-          prepareResults[1].toString().contains("closing=false, use=0, cached=true}"));
+          prepareResults[1].toString().contains("closing=false, use=0, cached=true}"),
+          prepareResults[1].toString());
       Assertions.assertTrue(
-          prepareResults[2].toString().contains("closing=true, use=0, cached=false}"));
+          prepareResults[2].toString().contains("closing=true, use=0, cached=false}"),
+          prepareResults[2].toString());
       Assertions.assertTrue(
-          prepareResults[3].toString().contains("closing=false, use=0, cached=true}"));
+          prepareResults[3].toString().contains("closing=false, use=0, cached=true}"),
+          prepareResults[3].toString());
       Assertions.assertTrue(
-          prepareResults[4].toString().contains("closing=false, use=0, cached=true}"));
+          prepareResults[4].toString().contains("closing=false, use=0, cached=true}"),
+          prepareResults[4].toString());
 
       List<String> endingStatus = prepareInfo(connection);
       // Com_stmt_prepare
