@@ -1,5 +1,24 @@
 # Change Log
 
+## [1.4.1](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.4.1) (Jun 2026)
+
+[Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.4.0...1.4.1)
+
+Notable Changes:
+* R2DBC-116 Add GraalVM native-image configuration and CI coverage
+* Update dependencies (Project Reactor 2025.0.6, Netty 4.2.15.Final)
+
+Bugs Fixed:
+* R2DBC-115 Clear-text authentication plugins (PAM, mysql_clear_password) must require a secure connection (report by fg0x0)
+* R2DBC-117 Cap BigDecimal/BigInteger string parsing length to prevent CPU exhaustion if MitM (report by tonghuaroot)
+* R2DBC-119 Fail closed when a `classpath:` SSL certificate is missing
+* R2DBC-120 Stored-procedure CALL detection wrongly matched any query containing "call" (thanks to yunhobb)
+* R2DBC-121 `caching_sha2_password`/`sha256_password` login fails with passwords of 20 characters or more (report by 4UjwXc)
+* R2DBC-124 Ensure a non-UTF8 charset cannot be used for protocol exchanges (report by fg0x0)
+* R2DBC-122 Fix SQL parser to correctly handle '--' in expressions
+* R2DBC-123 Pin Locale.ROOT on locale-sensitive wire-format codec sites (thanks to jmestwa-coder)
+
+
 ## [1.4.0](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.4.0) (Feb 2026)
 
 Notable Changes:
