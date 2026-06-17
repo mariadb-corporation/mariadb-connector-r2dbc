@@ -386,7 +386,7 @@ public class StatementTest extends BaseConnectionTest {
         .execute()
         .flatMap(r -> r.getRowsUpdated())
         .as(StepVerifier::create)
-        .expectNext(2L)
+        .expectNext(2)
         .verifyComplete();
     if (isMariaDBServer() && minVersion(10, 5, 1)) {
       sharedConn
@@ -394,7 +394,7 @@ public class StatementTest extends BaseConnectionTest {
           .execute()
           .flatMap(r -> r.getRowsUpdated())
           .as(StepVerifier::create)
-          .expectNext(2L)
+          .expectNext(2)
           .verifyComplete();
 
       sharedConn
@@ -402,7 +402,7 @@ public class StatementTest extends BaseConnectionTest {
           .execute()
           .flatMap(r -> r.getRowsUpdated())
           .as(StepVerifier::create)
-          .expectNext(1L)
+          .expectNext(1)
           .verifyComplete();
     }
 
@@ -502,7 +502,7 @@ public class StatementTest extends BaseConnectionTest {
         .execute()
         .flatMap(r -> r.getRowsUpdated())
         .as(StepVerifier::create)
-        .expectNext(1L)
+        .expectNext(1)
         .verifyComplete();
 
     sharedConn
