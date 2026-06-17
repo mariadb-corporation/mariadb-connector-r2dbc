@@ -3,6 +3,7 @@
 
 package org.mariadb.r2dbc.integration;
 
+import io.r2dbc.spi.R2dbcTransientResourceException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
@@ -10,7 +11,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -24,8 +24,6 @@ import org.mariadb.r2dbc.api.MariadbConnection;
 import org.mariadb.r2dbc.api.MariadbStatement;
 import org.mariadb.r2dbc.util.PrepareCache;
 import org.mariadb.r2dbc.util.ServerPrepareResult;
-
-import io.r2dbc.spi.R2dbcTransientResourceException;
 import reactor.test.StepVerifier;
 
 public class PrepareResultSetTest extends BaseConnectionTest {
