@@ -71,7 +71,7 @@ public class MariadbResult extends AbstractReferenceCounted
 
   @Override
   @SuppressWarnings({"rawtypes", "unchecked"})
-  public Mono<Long> getRowsUpdated() {
+  public Mono<Integer> getRowsUpdated() {
     // Since CLIENT_DEPRECATE_EOF is not set in order to identify output parameter
     // number of updated row can be identified either by OK_Packet or number of rows in case of
     // RETURNING
@@ -111,7 +111,7 @@ public class MariadbResult extends AbstractReferenceCounted
                 return;
               }
 
-              long sum = 0;
+              int sum = 0;
 
               for (Long i : list) {
                 sum += i;

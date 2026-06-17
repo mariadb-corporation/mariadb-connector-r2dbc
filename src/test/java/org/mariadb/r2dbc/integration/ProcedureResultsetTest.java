@@ -154,7 +154,7 @@ public class ProcedureResultsetTest extends BaseConnectionTest {
         .execute()
         .flatMap(it -> it.getRowsUpdated())
         .as(StepVerifier::create)
-        .expectNext(0L)
+        .expectNext(0)
         .verifyComplete();
     sharedConn
         .createStatement("/*text*/ call no_out_proc(?,?)")
@@ -163,7 +163,7 @@ public class ProcedureResultsetTest extends BaseConnectionTest {
         .execute()
         .flatMap(it -> it.getRowsUpdated())
         .as(StepVerifier::create)
-        .expectNext(0L)
+        .expectNext(0)
         .verifyComplete();
   }
 }
