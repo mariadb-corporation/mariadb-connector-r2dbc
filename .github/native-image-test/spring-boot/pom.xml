@@ -26,7 +26,7 @@
         </dependency>
         <dependency>
             <groupId>org.mariadb</groupId>
-            <artifactId>r2dbc-mariadb</artifactId>
+            <artifactId>r2dbc-mariadb-0.9.1-spec</artifactId>
             <version>${mariadb.connector.version}</version>
         </dependency>
     </dependencies>
