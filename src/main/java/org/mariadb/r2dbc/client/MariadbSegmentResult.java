@@ -160,7 +160,7 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
   }
 
   @Override
-  public Mono<Long> getRowsUpdated() {
+  public Mono<Integer> getRowsUpdated() {
     return this.segments
         .<Integer>handle(
             (segment, sink) -> {
@@ -185,7 +185,7 @@ public final class MariadbSegmentResult extends AbstractReferenceCounted impleme
                 return;
               }
 
-              long sum = 0;
+              int sum = 0;
 
               for (Integer integer : list) {
                 sum += integer;

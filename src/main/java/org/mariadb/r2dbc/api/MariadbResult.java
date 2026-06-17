@@ -13,7 +13,7 @@ import reactor.core.publisher.Mono;
 public interface MariadbResult extends Result {
 
   @Override
-  Mono<Long> getRowsUpdated();
+  Mono<Integer> getRowsUpdated();
 
   @Override
   <T> Flux<T> map(BiFunction<Row, RowMetadata, ? extends T> mappingFunction);
