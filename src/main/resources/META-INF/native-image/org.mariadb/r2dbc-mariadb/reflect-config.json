@@ -26,9 +26,5 @@
   {
     "name": "org.mariadb.r2dbc.authentication.standard.PamPluginFlow",
     "methods": [{ "name": "<init>", "parameterTypes": [] }]
-  },
-  {
-    "name": "org.mariadb.r2dbc.authentication.standard.ParsecPasswordPlugin",
-    "methods": [{ "name": "<init>", "parameterTypes": [] }]
   }
 ]

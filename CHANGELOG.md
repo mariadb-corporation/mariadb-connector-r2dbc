@@ -1,5 +1,38 @@
 # Change Log
 
+## [1.2.3](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.2.3) (Jun 2026)
+
+Maintenance release for the 1.2 line, back-porting the corrections, CI and
+security fixes made after 1.2.2. The `parsec` authentication plugin and
+`java.time.Instant` parameter support are intentionally **not** included.
+
+Notable Changes:
+* R2DBC-108	Handle authentication plugin multi-exchange prefix (0x01) introduced in MDEV-37554
+* R2DBC-109	Add `fallbackToSystemTrustStore` and `fallbackToSystemKeyStore` options
+* R2DBC-113	Support inline RSA public key for `sha256_password` and `caching_sha2_password`
+* R2DBC-114	Implement `Wrapped` interface to expose the EventLoop scheduler for r2dbc-pool
+* R2DBC-116	Add GraalVM native-image configuration and CI testing
+
+Bugs Fixed:
+* R2DBC-111	Potential hang when upstream subscription is cancelled before demand
+* R2DBC-112	Failed authentication using `caching_sha2_password` with passwords longer than 18 characters
+* R2DBC-120	Stored-procedure CALL detection wrongly matched any query containing "call"
+* R2DBC-121	`caching_sha2_password`/`sha256_password` login fails with passwords ≥ 20 characters
+* Fix SQL parser to correctly handle `--` in expressions
+* Ensure non-UTF-8 charset cannot be used for exchanges
+* Ensure connection error wrappers are correctly set
+* Always release the lock of `buf.readRetainedSlice` in `MariadbFrameDecoder` to avoid a ByteBuf leak
+
+Security:
+* R2DBC-115	Clear-text authentication plugins require a secure connection
+* R2DBC-117	Cap numeric-string length before BigDecimal/BigInteger parsing to prevent CPU-exhaustion DoS
+* R2DBC-118	Lock which plugins may transmit the password in clear text (`requireSecure()`)
+* R2DBC-119	Fail closed when a `classpath:` SSL certificate is missing
+* Bound row field length before allocating to avoid OOM
+* Reject malformed auth-switch seed and column-definition packets cleanly
+* Mask `pamOtherPwd` in `MariadbConnectionConfiguration.toString()`
+
+
 ## [1.2.2](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.2.2) (Sep 2024)
 
 Notable Changes:

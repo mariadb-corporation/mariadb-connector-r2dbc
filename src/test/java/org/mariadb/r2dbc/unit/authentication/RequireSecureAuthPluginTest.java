@@ -12,7 +12,6 @@ import org.mariadb.r2dbc.authentication.standard.CachingSha2PasswordFlow;
 import org.mariadb.r2dbc.authentication.standard.Ed25519PasswordPluginFlow;
 import org.mariadb.r2dbc.authentication.standard.NativePasswordPluginFlow;
 import org.mariadb.r2dbc.authentication.standard.PamPluginFlow;
-import org.mariadb.r2dbc.authentication.standard.ParsecPasswordPlugin;
 import org.mariadb.r2dbc.authentication.standard.Sha256PasswordPluginFlow;
 
 /**
@@ -34,6 +33,5 @@ public class RequireSecureAuthPluginTest {
     assertFalse(new Ed25519PasswordPluginFlow().requireSecure(), "client_ed25519");
     assertFalse(new Sha256PasswordPluginFlow().requireSecure(), "sha256_password");
     assertFalse(new CachingSha2PasswordFlow().requireSecure(), "caching_sha2_password");
-    assertFalse(new ParsecPasswordPlugin().requireSecure(), "parsec");
   }
 }
