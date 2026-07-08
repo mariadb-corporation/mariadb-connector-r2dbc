@@ -32,7 +32,7 @@
         <reactor.version>2025.0.6</reactor.version>
         <mariadb-jdbc.version>3.5.9</mariadb-jdbc.version>
         <uberjar.name>benchmarks</uberjar.name>
-        <spotless.version>2.43.0</spotless.version>
+        <spotless.version>3.7.0</spotless.version>
         <jacoco.version>0.8.15</jacoco.version>
     </properties>
 
@@ -334,7 +334,7 @@
                             <include>src/test/java/**/*.java</include>
                         </includes>
                         <googleJavaFormat>
-                            <version>1.18.1</version>
+                            <version>1.35.0</version>
                             <style>GOOGLE</style>
                             <reflowLongStrings>true</reflowLongStrings>
                             <formatJavadoc>true</formatJavadoc>
