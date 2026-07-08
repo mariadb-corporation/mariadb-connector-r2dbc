@@ -3,7 +3,7 @@
 
 package org.mariadb.r2dbc.util;
 
-import reactor.util.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public final class Assert {
 

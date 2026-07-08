@@ -26,13 +26,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.UnaryOperator;
+import org.jspecify.annotations.Nullable;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.Security;
 import org.mariadb.r2dbc.util.SslConfig;
 import reactor.netty.resources.LoopResources;
 import reactor.netty.tcp.TcpResources;
-import reactor.util.annotation.Nullable;
 
 public final class MariadbConnectionConfiguration {
 
@@ -106,7 +106,7 @@ public final class MariadbConnectionConfiguration {
       boolean permitRedirect,
       boolean skipPostCommands,
       @Nullable Integer prepareCacheSize,
-      @Nullable CharSequence[] pamOtherPwd,
+      CharSequence @Nullable [] pamOtherPwd,
       boolean tinyInt1isBit,
       String restrictedAuth,
       @Nullable LoopResources loopResources,
@@ -1052,7 +1052,7 @@ public final class MariadbConnectionConfiguration {
       return this;
     }
 
-    public Builder pamOtherPwd(@Nullable CharSequence[] pamOtherPwd) {
+    public Builder pamOtherPwd(CharSequence @Nullable [] pamOtherPwd) {
       this.pamOtherPwd = pamOtherPwd;
       return this;
     }
