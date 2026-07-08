@@ -145,7 +145,9 @@ public class TcpProxySocket implements Runnable {
                           try {
                             Thread.sleep(delay);
                           } catch (InterruptedException e) {
-                            e.printStackTrace();
+                            // interrupted on proxy shutdown - stop pumping quietly
+                            Thread.currentThread().interrupt();
+                            break;
                           }
                         }
                         toServer.write(request, 0, bytesRead);
@@ -167,7 +169,9 @@ public class TcpProxySocket implements Runnable {
               try {
                 Thread.sleep(1);
               } catch (InterruptedException e) {
-                e.printStackTrace();
+                // interrupted on proxy shutdown - stop pumping quietly
+                Thread.currentThread().interrupt();
+                break;
               }
               toClient.write(reply, 0, bytesRead);
               toClient.flush();
@@ -192,7 +196,10 @@ public class TcpProxySocket implements Runnable {
         }
       }
     } catch (IOException e) {
-      e.printStackTrace();
+      // accept() unblocked by kill()/close() during shutdown is expected
+      if (!stop) {
+        e.printStackTrace();
+      }
     }
   }
 
