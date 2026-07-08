@@ -552,13 +552,13 @@
               inner 'mvn clean' would conflict with this outer Maven process holding target/), then
               Infer's inner 'mvn compile' captures.
 
-              The inner build runs offline ('-o'). Infer 1.3.0's maven capture reads the inner
-              mvn's stdout to detect javac invocations; for a fast build like this one, mvn can exit
-              and close that stream before Infer's final read, crashing the capture (input_line EOF)
-              non-deterministically. Offline mode removes Maven's variable-latency remote-metadata
-              phase, which reliably closes that race window. This requires the local repository to
-              already be populated, so run a normal build (e.g. 'mvn -P default compile') at least
-              once before invoking this profile.
+              The inner build runs offline ('-o'), which requires the local repository to already
+              be populated - run a normal build once first. Infer 1.3.0's maven capture reads the
+              inner mvn's stdout to detect javac invocations; for a fast build like this one mvn can
+              exit and close that stream before Infer's final read, crashing the capture (input_line
+              EOF) non-deterministically. Offline mode makes this rare but not impossible, so the run
+              is wrapped in a small retry loop (matching the CI job); a genuine finding prints no
+              "External Error" and fails immediately without retrying.
               Usage: mvn -P default compile   (once, to warm the local repo)
                      mvn -Pinfer clean validate
             -->
@@ -577,17 +577,11 @@
                                     <goal>exec</goal>
                                 </goals>
                                 <configuration>
-                                    <executable>infer</executable>
+                                    <executable>bash</executable>
                                     <workingDirectory>${project.basedir}</workingDirectory>
                                     <arguments>
-                                        <argument>run</argument>
-                                        <argument>--fail-on-issue</argument>
-                                        <argument>--</argument>
-                                        <argument>mvn</argument>
-                                        <argument>-o</argument>
-                                        <argument>compile</argument>
-                                        <argument>-P</argument>
-                                        <argument>default</argument>
+                                        <argument>-c</argument>
+                                        <argument>log=$(mktemp); for i in 1 2 3 4 5; do rm -rf infer-out; infer run --fail-on-issue -- mvn -o compile -P default 2>&amp;1 | tee "$log"; rc=$PIPESTATUS; if [ "$rc" -eq 0 ]; then exit 0; fi; if ! grep -q "External Error" "$log"; then exit "$rc"; fi; done; exit 1</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
