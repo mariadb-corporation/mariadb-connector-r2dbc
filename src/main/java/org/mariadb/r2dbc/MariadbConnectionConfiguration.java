@@ -808,14 +808,14 @@ public final class MariadbConnectionConfiguration {
             first = false;
             boolean firstProp = true;
             Properties properties = (Properties) obj;
-            for (Object key : properties.keySet()) {
+            for (Map.Entry<Object, Object> entry : properties.entrySet()) {
               if (firstProp) {
                 firstProp = false;
               } else {
                 sb.append('&');
               }
-              sb.append(key).append('=');
-              sb.append(properties.get(key));
+              sb.append(entry.getKey()).append('=');
+              sb.append(entry.getValue());
             }
           } else if (field.getType().isArray()) {
             Object defaultValue = field.get(defaultConf);

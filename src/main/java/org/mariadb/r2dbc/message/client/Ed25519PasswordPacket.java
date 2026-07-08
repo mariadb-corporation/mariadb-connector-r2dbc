@@ -57,6 +57,9 @@ public final class Ed25519PasswordPacket implements ClientMessage {
       ScalarOps scalar = new ScalarOps();
 
       EdDSAParameterSpec spec = EdDSANamedCurveTable.getByName("Ed25519");
+      if (spec == null) {
+        throw new R2dbcNonTransientResourceException("Unknown Ed25519 curve specification");
+      }
       GroupElement elementAvalue = spec.getB().scalarMultiply(az);
       byte[] elementAarray = elementAvalue.toByteArray();
       System.arraycopy(elementAarray, 0, sm, 32, elementAarray.length);
