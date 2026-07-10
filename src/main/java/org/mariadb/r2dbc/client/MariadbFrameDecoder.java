@@ -8,6 +8,7 @@ import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import java.util.List;
 import java.util.Queue;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
@@ -45,6 +46,13 @@ public class MariadbFrameDecoder extends ByteToMessageDecoder {
   public void decode(ChannelHandlerContext ctx, ByteBuf buf, List<Object> out) throws Exception {
     while (buf.readableBytes() > 4) {
       int length = buf.getUnsignedMediumLE(buf.readerIndex());
+
+      if (length == 0xffffff && (context == null || !context.isInitialized())) {
+        throw new R2dbcNonTransientResourceException(
+            "Multipart packet (>16MB) received before authentication completed. The connection has"
+                + " been closed.",
+            "08000");
+      }
 
       // packet not complete
       if (buf.readableBytes() < length + 4) return;
