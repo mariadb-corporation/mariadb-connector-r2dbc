@@ -52,5 +52,14 @@ public interface Context {
    */
   void setInitialized();
 
+  /**
+   * Indicate whether the connection has completed the handshake/authentication phase (see {@link
+   * #setInitialized()}). Used to forbid multipart packet reassembly before authentication, so that a
+   * rogue server cannot drive the client to {@link OutOfMemoryError} pre-auth.
+   *
+   * @return {@code true} once authentication has completed
+   */
+  boolean isInitialized();
+
   default void saveRedo(ClientMessage msg, ByteBuf buf, int initialReaderIndex) {}
 }
