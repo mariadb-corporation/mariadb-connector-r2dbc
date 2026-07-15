@@ -22,6 +22,24 @@ import org.mariadb.r2dbc.util.ServerPrepareResult;
 import reactor.util.concurrent.Queues;
 
 public class MariadbFrameDecoder extends ByteToMessageDecoder {
+
+  /**
+   * Cap on a received packet until authentication completes. No legitimate handshake/authentication
+   * packet comes close to 1Mb, so this bounds what a rogue or MitM'd server can make the client
+   * buffer before it has proven itself.
+   */
+  private static final long MAX_PACKET_LENGTH_BEFORE_AUTH = 1024 * 1024;
+
+  /**
+   * Cap on a received packet once authenticated, when {@code maxAllowedPacket} is not configured. A
+   * quarter of the JVM max heap, clamped between 16Mb and 1Gb: a server-independent ceiling that
+   * keeps a single result set from exhausting the heap, without depending on the server's {@code
+   * max_allowed_packet}.
+   */
+  private static final long DEFAULT_MAX_RECEIVE_PACKET_LENGTH =
+      Math.max(
+          16L * 1024 * 1024, Math.min(1024L * 1024 * 1024, Runtime.getRuntime().maxMemory() / 4));
+
   private final Queue<Exchange> exchangeQueue;
   private final Client client;
   private final MariadbConnectionConfiguration configuration;
@@ -47,17 +65,8 @@ public class MariadbFrameDecoder extends ByteToMessageDecoder {
     while (buf.readableBytes() > 4) {
       int length = buf.getUnsignedMediumLE(buf.readerIndex());
 
-      // A 16MB (multipart) packet before the handshake/authentication phase completes is never
-      // legitimate. Reject it as soon as the length header is seen - before buffering the fragment
-      // -
-      // so a rogue or MitM'd server cannot stream endless max-length fragments to drive the client
-      // to OutOfMemoryError pre-auth.
-      if (length == 0xffffff && (context == null || !context.isInitialized())) {
-        throw new R2dbcNonTransientResourceException(
-            "Multipart packet (>16MB) received before authentication completed. The connection has"
-                + " been closed.",
-            "08000");
-      }
+      // Reject an oversized packet
+      checkPacketLength((multipart == null ? 0L : multipart.readableBytes()) + length);
 
       // packet not complete
       if (buf.readableBytes() < length + 4) return;
@@ -117,6 +126,55 @@ public class MariadbFrameDecoder extends ByteToMessageDecoder {
           packet.release();
         }
       }
+    }
+  }
+
+  @Override
+  protected void handlerRemoved0(ChannelHandlerContext ctx) {
+    // a partially reassembled multipart packet is still holding retained slices when the connection
+    // goes away - on an oversized packet, on a decoding error, or on a plain close.
+    if (multipart != null) {
+      multipart.release();
+      multipart = null;
+    }
+  }
+
+  /**
+   * Ensure a packet the server is about to send stays within the limit applicable to the current
+   * phase.
+   *
+   * @param length packet length, or running total for a multipart packet
+   * @throws R2dbcNonTransientResourceException if the limit is exceeded, closing the connection:
+   *     the remaining bytes of the rejected packet would desynchronize the stream anyway.
+   */
+  private void checkPacketLength(long length) {
+    boolean authenticated = context != null && context.isInitialized();
+    Integer confMax = configuration == null ? null : configuration.getMaxAllowedPacket();
+    long limit;
+    String limitDescription;
+    if (!authenticated) {
+      limit = MAX_PACKET_LENGTH_BEFORE_AUTH;
+      limitDescription = "the " + limit + " bytes limit applicable before authentication completes";
+    } else if (confMax != null) {
+      limit = confMax;
+      limitDescription = "maxAllowedPacket (" + limit + ")";
+    } else {
+      limit = DEFAULT_MAX_RECEIVE_PACKET_LENGTH;
+      limitDescription =
+          "the default limit of "
+              + limit
+              + " bytes (a quarter of the JVM max heap, clamped between 16Mb and 1Gb). Set the"
+              + " maxAllowedPacket option to change it";
+    }
+
+    if (length > limit) {
+      throw new R2dbcNonTransientResourceException(
+          "Received packet size ("
+              + length
+              + " bytes) is greater than "
+              + limitDescription
+              + ". The connection has been closed.",
+          "08000");
     }
   }
 

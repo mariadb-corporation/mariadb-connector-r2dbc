@@ -137,7 +137,8 @@ public final class AuthenticationFlow {
         this.configuration.getDatabase(),
         configuration.getConnectionAttributes(),
         this.hostAddress,
-        clientCapabilities);
+        clientCapabilities,
+        this.configuration.getMaxAllowedPacket());
   }
 
   private SslRequestPacket createSslRequest(long clientCapabilities) {
