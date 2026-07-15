@@ -30,6 +30,7 @@ public final class HandshakeResponse implements ClientMessage {
   private final Map<String, String> connectionAttributes;
   private final HostAddress hostAddress;
   private final long clientCapabilities;
+  private final Integer maxAllowedPacket;
 
   public HandshakeResponse(
       InitialHandshakePacket initialHandshakePacket,
@@ -38,7 +39,8 @@ public final class HandshakeResponse implements ClientMessage {
       String database,
       Map<String, String> connectionAttributes,
       HostAddress hostAddress,
-      long clientCapabilities) {
+      long clientCapabilities,
+      Integer maxAllowedPacket) {
     this.initialHandshakePacket = initialHandshakePacket;
     this.username = username;
     this.password = password;
@@ -46,6 +48,7 @@ public final class HandshakeResponse implements ClientMessage {
     this.connectionAttributes = connectionAttributes;
     this.hostAddress = hostAddress;
     this.clientCapabilities = clientCapabilities;
+    this.maxAllowedPacket = maxAllowedPacket;
   }
 
   /**
@@ -101,7 +104,8 @@ public final class HandshakeResponse implements ClientMessage {
     }
 
     buf.writeIntLE((int) clientCapabilities);
-    buf.writeIntLE(1024 * 1024 * 1024);
+    buf.writeIntLE(
+        maxAllowedPacket != null ? Math.min(maxAllowedPacket, 0xffffff) : 1024 * 1024 * 1024);
     buf.writeByte(exchangeCharset); // 1
 
     buf.writeZero(19); // 19
