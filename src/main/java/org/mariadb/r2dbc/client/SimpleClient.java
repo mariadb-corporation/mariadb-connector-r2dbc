@@ -786,6 +786,7 @@ public class SimpleClient implements Client {
     @Override
     public void onNext(ServerMessage message) {
       if (this.close) {
+        message.release();
         Operators.onNextDropped(message, currentContext());
         return;
       }
@@ -793,11 +794,33 @@ public class SimpleClient implements Client {
       this.receiverDemands.decrementAndGet();
       Exchange exchange = this.exchangeQueue.peek();
 
+      // Server never sends a packet on its own initiative: a message received while no command is
+      // in flight is either a protocol violation/injected packet, or a proxy (like MaxScale)
+      // ending the session with an error packet. Such message must never be delivered to a
+      // subsequent, unrelated command: log it and close the connection.
+      if (exchange == null) {
+        String reason;
+        if (message instanceof ErrorPacket) {
+          ErrorPacket err = (ErrorPacket) message;
+          reason =
+              String.format(
+                  "Connection closed by server: %s (code=%s, sqlState=%s)",
+                  err.getMessage(), err.errorCode(), err.sqlState());
+        } else {
+          reason =
+              "Protocol error: server message received while no command was in flight."
+                  + " Closing connection";
+        }
+        logger.warn(reason);
+        message.release();
+        close(new R2dbcNonTransientResourceException(reason, "08000"));
+        SimpleClient.this.closeChannelIfNeeded();
+        return;
+      }
+
       // nothing buffered => directly emit message
       ReferenceCountUtil.retain(message);
-      if (this.receiverQueue.isEmpty()
-          && exchange != null
-          && (exchange.hasDemand() || exchange.isCancelled())) {
+      if (this.receiverQueue.isEmpty() && (exchange.hasDemand() || exchange.isCancelled())) {
         if (exchange.emit(message)) this.exchangeQueue.poll();
         if (exchange.hasDemand() || exchange.isCancelled()) {
           requestQueueFilling();
