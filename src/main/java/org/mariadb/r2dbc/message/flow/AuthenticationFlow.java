@@ -7,6 +7,7 @@ import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import java.util.Arrays;
+import java.util.Optional;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.SslMode;
@@ -32,6 +33,7 @@ import org.mariadb.r2dbc.util.constants.Capabilities;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
@@ -303,73 +305,20 @@ public final class AuthenticationFlow {
     AUTH_SWITCH {
       @Override
       Mono<State> handle(AuthenticationFlow flow) {
-        ClientMessage clientMessage;
-        try {
-          clientMessage =
-              flow.pluginHandler.next(
-                  flow.configuration, flow.seed, flow.sequencer, flow.authMoreDataPacket);
-        } catch (R2dbcException ex) {
-          return Mono.error(ex);
-        }
-
-        Flux<ServerMessage> flux;
-        if (clientMessage != null) {
-          // this can occur when there is a "finishing" message for authentication plugin
-          // example CachingSha2PasswordFlow that finish with a successful FAST_AUTH
-          flux =
-              flow.client.sendCommand(
-                  clientMessage, DecoderState.AUTHENTICATION_SWITCH_RESPONSE, false);
-        } else {
-          flux = flow.client.receive(DecoderState.AUTHENTICATION_SWITCH_RESPONSE);
-        }
-        if (flow.authMoreDataPacket != null) {
-          flow.authMoreDataPacket.release();
-          flow.authMoreDataPacket = null;
-        }
-        return flux.<State>handle(
-                (message, sink) -> {
-                  if (message instanceof ErrorPacket) {
-                    sink.error(
-                        new R2dbcNonTransientResourceException(((ErrorPacket) message).message()));
-                  } else if (message instanceof OkPacket) {
-                    sink.next(COMPLETED);
-                  } else if (message instanceof AuthSwitchPacket) {
-                    AuthSwitchPacket authSwitchPacket = ((AuthSwitchPacket) message);
-                    flow.seed = authSwitchPacket.getSeed();
-                    flow.sequencer = authSwitchPacket.getSequencer();
-                    String plugin = authSwitchPacket.getPlugin();
-                    if (flow.configuration.getRestrictedAuth() != null
-                        && !Arrays.stream(flow.configuration.getRestrictedAuth())
-                            .anyMatch(s -> plugin.equals(s))) {
-                      sink.error(
-                          new R2dbcPermissionDeniedException(
-                              String.format(
-                                  "Unsupported authentication plugin %s. Authorized plugin: %s",
-                                  plugin,
-                                  Arrays.toString(flow.configuration.getRestrictedAuth()))));
-                    } else {
-                      AuthenticationPlugin authPlugin = AuthenticationFlowPluginLoader.get(plugin);
-                      if (authPlugin.requireSecure() && !flow.isSecureConnection()) {
-                        sink.error(clearTextRefusal(plugin));
-                      } else {
-                        flow.authMoreDataPacket = null;
-                        flow.pluginHandler = authPlugin;
-                        sink.next(AUTH_SWITCH);
-                      }
-                    }
-                  } else if (message instanceof AuthMoreDataPacket) {
-                    flow.authMoreDataPacket = (AuthMoreDataPacket) message;
-                    flow.sequencer = (Sequencer) ((AuthMoreDataPacket) message).getSequencer();
-                    sink.next(AUTH_SWITCH);
-                  } else {
-                    sink.error(
-                        new IllegalStateException(
-                            String.format(
-                                "Unexpected message type '%s' in handshake response phase",
-                                message.getClass().getSimpleName())));
-                  }
-                })
-            .next();
+        // an authentication plugin can have an expensive key derivation, with a cost the server
+        // dictates (parsec PBKDF2 for example). It must not run on the event loop thread, which is
+        // shared with every other connection of that same loop.
+        return Mono.fromCallable(
+                () ->
+                    Optional.ofNullable(
+                        flow.pluginHandler.next(
+                            flow.configuration,
+                            flow.seed,
+                            flow.sequencer,
+                            flow.authMoreDataPacket)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .publishOn(flow.client.getScheduler())
+            .flatMap(clientMessage -> authSwitchResponse(flow, clientMessage.orElse(null)));
       }
     },
 
@@ -381,5 +330,67 @@ public final class AuthenticationFlow {
     };
 
     abstract Mono<State> handle(AuthenticationFlow flow);
+
+    /** Send the authentication plugin response, if any, and handle the server answer. */
+    private static Mono<State> authSwitchResponse(
+        AuthenticationFlow flow, ClientMessage clientMessage) {
+      Flux<ServerMessage> flux;
+      if (clientMessage != null) {
+        // this can occur when there is a "finishing" message for authentication plugin
+        // example CachingSha2PasswordFlow that finish with a successful FAST_AUTH
+        flux =
+            flow.client.sendCommand(
+                clientMessage, DecoderState.AUTHENTICATION_SWITCH_RESPONSE, false);
+      } else {
+        flux = flow.client.receive(DecoderState.AUTHENTICATION_SWITCH_RESPONSE);
+      }
+      if (flow.authMoreDataPacket != null) {
+        flow.authMoreDataPacket.release();
+        flow.authMoreDataPacket = null;
+      }
+      return flux.<State>handle(
+              (message, sink) -> {
+                if (message instanceof ErrorPacket) {
+                  sink.error(
+                      new R2dbcNonTransientResourceException(((ErrorPacket) message).message()));
+                } else if (message instanceof OkPacket) {
+                  sink.next(COMPLETED);
+                } else if (message instanceof AuthSwitchPacket) {
+                  AuthSwitchPacket authSwitchPacket = ((AuthSwitchPacket) message);
+                  flow.seed = authSwitchPacket.getSeed();
+                  flow.sequencer = authSwitchPacket.getSequencer();
+                  String plugin = authSwitchPacket.getPlugin();
+                  if (flow.configuration.getRestrictedAuth() != null
+                      && !Arrays.stream(flow.configuration.getRestrictedAuth())
+                          .anyMatch(s -> plugin.equals(s))) {
+                    sink.error(
+                        new R2dbcPermissionDeniedException(
+                            String.format(
+                                "Unsupported authentication plugin %s. Authorized plugin: %s",
+                                plugin, Arrays.toString(flow.configuration.getRestrictedAuth()))));
+                  } else {
+                    AuthenticationPlugin authPlugin = AuthenticationFlowPluginLoader.get(plugin);
+                    if (authPlugin.requireSecure() && !flow.isSecureConnection()) {
+                      sink.error(clearTextRefusal(plugin));
+                    } else {
+                      flow.authMoreDataPacket = null;
+                      flow.pluginHandler = authPlugin;
+                      sink.next(AUTH_SWITCH);
+                    }
+                  }
+                } else if (message instanceof AuthMoreDataPacket) {
+                  flow.authMoreDataPacket = (AuthMoreDataPacket) message;
+                  flow.sequencer = (Sequencer) ((AuthMoreDataPacket) message).getSequencer();
+                  sink.next(AUTH_SWITCH);
+                } else {
+                  sink.error(
+                      new IllegalStateException(
+                          String.format(
+                              "Unexpected message type '%s' in handshake response phase",
+                              message.getClass().getSimpleName())));
+                }
+              })
+          .next();
+    }
   }
 }
