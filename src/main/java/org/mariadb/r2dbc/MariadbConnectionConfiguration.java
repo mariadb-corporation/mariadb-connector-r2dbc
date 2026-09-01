@@ -37,6 +37,7 @@ import reactor.netty.tcp.TcpResources;
 public final class MariadbConnectionConfiguration {
 
   public static final int DEFAULT_PORT = 3306;
+  public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(10);
   private final String database;
   private final List<HostAddress> hostAddresses;
   private final HaMode haMode;
@@ -117,7 +118,7 @@ public final class MariadbConnectionConfiguration {
       boolean fallbackToSystemTrustStore,
       boolean fallbackToSystemKeyStore) {
     this.haMode = haMode == null ? HaMode.NONE : HaMode.from(haMode);
-    this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
+    this.connectTimeout = connectTimeout == null ? DEFAULT_CONNECT_TIMEOUT : connectTimeout;
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
     this.tcpAbortiveClose = tcpAbortiveClose == null ? Boolean.FALSE : tcpAbortiveClose;
     this.transactionReplay = transactionReplay == null ? Boolean.FALSE : transactionReplay;
