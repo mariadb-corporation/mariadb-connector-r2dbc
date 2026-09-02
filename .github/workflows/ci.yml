@@ -82,3 +82,63 @@ jobs:
           bash <(curl -s https://codecov.io/bash)
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  infer:
+    name: Infer static analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      INFER_VERSION: 1.3.0
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          cache: maven
+          distribution: 'adopt'
+
+      - name: Install Infer
+        run: |
+          curl -fsSL "https://github.com/facebook/infer/releases/download/v${INFER_VERSION}/infer-linux-x86_64-v${INFER_VERSION}.tar.xz" \
+            | sudo tar -C /opt -xJ
+          echo "/opt/infer-linux-x86_64-v${INFER_VERSION}/bin" >> "$GITHUB_PATH"
+
+      - name: Prime Maven cache
+        run: mvn -q -P default clean compile
+
+      # Infer 1.3.0's maven capture reads the inner mvn's stdout to find javac
+      # calls; on this small/fast build mvn can close that stream before Infer's
+      # final read, crashing the capture with an "External Error ... input_line"
+      # EOF. That is a race, not a code defect, so retry it (each failed capture
+      # is cheap - it stops before analysis). A genuine Infer finding is
+      # deterministic and prints no "External Error", so we fail fast on it.
+      - name: Run Infer
+        run: |
+          log="${RUNNER_TEMP:-/tmp}/infer-run.out"
+          for attempt in 1 2 3 4 5; do
+            # Offline first (steadier mvn output -> fewer capture races); drop -o
+            # on the last two attempts as a fallback if something isn't cached.
+            [ "${attempt}" -le 3 ] && offline="-o" || offline=""
+            echo "::group::Infer attempt ${attempt} (mvn ${offline:-online})"
+            rm -rf infer-out
+            infer run --fail-on-issue -- mvn ${offline} clean compile -P default 2>&1 | tee "${log}"
+            rc=${PIPESTATUS[0]}
+            echo "::endgroup::"
+            if [ "${rc}" -eq 0 ]; then exit 0; fi
+            if ! grep -q "External Error" "${log}"; then
+              echo "Infer reported findings or a hard error (not a capture race) - failing."
+              exit "${rc}"
+            fi
+            echo "Infer maven-capture race on attempt ${attempt}; retrying..."
+          done
+          echo "Infer capture race persisted after 5 attempts."
+          exit 1
+
+      - name: Upload Infer report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: infer-report
+          path: infer-out/report.txt
+          if-no-files-found: ignore

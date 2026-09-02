@@ -5,12 +5,12 @@ package org.mariadb.r2dbc.client;
 
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcTransientResourceException;
+import org.jspecify.annotations.Nullable;
 import org.mariadb.r2dbc.ExceptionFactory;
 import org.mariadb.r2dbc.codec.Codec;
 import org.mariadb.r2dbc.codec.Codecs;
 import org.mariadb.r2dbc.message.server.ColumnDefinitionPacket;
 import org.mariadb.r2dbc.util.Assert;
-import reactor.util.annotation.Nullable;
 
 public class MariadbRowText extends MariadbRow implements org.mariadb.r2dbc.api.MariadbRow {
 

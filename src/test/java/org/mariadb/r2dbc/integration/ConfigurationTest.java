@@ -369,7 +369,8 @@ public class ConfigurationTest extends BaseConnectionTest {
             + " host=localhost, sessionVariables=null, connectionAttributes=null, password=*,"
             + " restrictedAuth=null, port=3306, hosts={}, socket=null, allowMultiQueries=false,"
             + " allowPipelining=true, useServerPrepStmts=false, collation=null, timezone=null,"
-            + " prepareCacheSize=null, isolationLevel=null, tlsProtocol=null, serverSslCert=null,"
+            + " prepareCacheSize=null, isolationLevel=null, maxAllowedPacket=null,"
+            + " tlsProtocol=null, serverSslCert=null,"
             + " clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST,"
             + " sslTunnelDisableHostVerification=false, pamOtherPwd=*,*, tinyInt1isBit=false,"
             + " autoCommit=true, permitRedirect=true}",
@@ -382,7 +383,8 @@ public class ConfigurationTest extends BaseConnectionTest {
             + " host=localhost, sessionVariables=null, connectionAttributes=null, password=*,"
             + " restrictedAuth=null, port=3306, hosts={}, socket=null, allowMultiQueries=false,"
             + " allowPipelining=true, useServerPrepStmts=false, collation=null, timezone=null,"
-            + " prepareCacheSize=null, isolationLevel=null, tlsProtocol=null, serverSslCert=null,"
+            + " prepareCacheSize=null, isolationLevel=null, maxAllowedPacket=null,"
+            + " tlsProtocol=null, serverSslCert=null,"
             + " clientSslCert=null, clientSslKey=null, clientSslPassword=null, sslMode=TRUST,"
             + " sslTunnelDisableHostVerification=false, pamOtherPwd=*,*, tinyInt1isBit=false,"
             + " autoCommit=true, permitRedirect=true}",

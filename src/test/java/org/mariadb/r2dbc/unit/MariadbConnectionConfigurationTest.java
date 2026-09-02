@@ -197,6 +197,40 @@ public class MariadbConnectionConfigurationTest {
   }
 
   @Test
+  public void maxAllowedPacket() {
+    // unset by default, so nothing is advertised in the connection string
+    MariadbConnectionConfiguration conf =
+        MariadbConnectionConfiguration.builder().host("localhost").username("user").build();
+    Assertions.assertNull(conf.getMaxAllowedPacket());
+    Assertions.assertEquals("r2dbc:mariadb://localhost/?username=user", conf.toString());
+
+    conf =
+        MariadbConnectionConfiguration.builder()
+            .host("localhost")
+            .username("user")
+            .maxAllowedPacket(16 * 1024 * 1024)
+            .build();
+    Assertions.assertEquals(16 * 1024 * 1024, conf.getMaxAllowedPacket());
+    Assertions.assertEquals(
+        "r2dbc:mariadb://localhost/?maxAllowedPacket=16777216&username=user", conf.toString());
+
+    ConnectionFactoryOptions options =
+        ConnectionFactoryOptions.parse(
+            "r2dbc:mariadb://user@localhost:3306/db?maxAllowedPacket=1000000");
+    Assertions.assertEquals(
+        1000000, MariadbConnectionConfiguration.fromOptions(options).build().getMaxAllowedPacket());
+
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            MariadbConnectionConfiguration.builder()
+                .host("localhost")
+                .username("user")
+                .maxAllowedPacket(0)
+                .build());
+  }
+
+  @Test
   public void testSessionVariableParsing() {
     Assertions.assertEquals(
         "{wait_timeout=1}", Security.parseSessionVariables("wait_timeout=1").toString());

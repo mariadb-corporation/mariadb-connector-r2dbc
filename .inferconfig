@@ -1,0 +1,6 @@
+{
+  "racerd": false,
+  "report-block-list-path-regex": [
+    ".*/org/mariadb/r2dbc/authentication/standard/ed25519/.*"
+  ]
+}

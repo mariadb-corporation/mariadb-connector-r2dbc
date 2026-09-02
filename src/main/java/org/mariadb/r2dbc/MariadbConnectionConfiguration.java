@@ -26,17 +26,18 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.UnaryOperator;
+import org.jspecify.annotations.Nullable;
 import org.mariadb.r2dbc.util.Assert;
 import org.mariadb.r2dbc.util.HostAddress;
 import org.mariadb.r2dbc.util.Security;
 import org.mariadb.r2dbc.util.SslConfig;
 import reactor.netty.resources.LoopResources;
 import reactor.netty.tcp.TcpResources;
-import reactor.util.annotation.Nullable;
 
 public final class MariadbConnectionConfiguration {
 
   public static final int DEFAULT_PORT = 3306;
+  public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(10);
   private final String database;
   private final List<HostAddress> hostAddresses;
   private final HaMode haMode;
@@ -50,6 +51,7 @@ public final class MariadbConnectionConfiguration {
   private final CharSequence[] pamOtherPwd;
   private final int port;
   private final int prepareCacheSize;
+  private final Integer maxAllowedPacket;
   private final String socket;
   private final String username;
   private final boolean allowMultiQueries;
@@ -106,7 +108,8 @@ public final class MariadbConnectionConfiguration {
       boolean permitRedirect,
       boolean skipPostCommands,
       @Nullable Integer prepareCacheSize,
-      @Nullable CharSequence[] pamOtherPwd,
+      @Nullable Integer maxAllowedPacket,
+      CharSequence @Nullable [] pamOtherPwd,
       boolean tinyInt1isBit,
       String restrictedAuth,
       @Nullable LoopResources loopResources,
@@ -115,7 +118,7 @@ public final class MariadbConnectionConfiguration {
       boolean fallbackToSystemTrustStore,
       boolean fallbackToSystemKeyStore) {
     this.haMode = haMode == null ? HaMode.NONE : HaMode.from(haMode);
-    this.connectTimeout = connectTimeout == null ? Duration.ofSeconds(10) : connectTimeout;
+    this.connectTimeout = connectTimeout == null ? DEFAULT_CONNECT_TIMEOUT : connectTimeout;
     this.tcpKeepAlive = tcpKeepAlive == null ? Boolean.FALSE : tcpKeepAlive;
     this.tcpAbortiveClose = tcpAbortiveClose == null ? Boolean.FALSE : tcpAbortiveClose;
     this.transactionReplay = transactionReplay == null ? Boolean.FALSE : transactionReplay;
@@ -157,6 +160,7 @@ public final class MariadbConnectionConfiguration {
     this.cachingRsaPublicKey = cachingRsaPublicKey;
     this.allowPublicKeyRetrieval = allowPublicKeyRetrieval;
     this.prepareCacheSize = (prepareCacheSize == null) ? 250 : prepareCacheSize;
+    this.maxAllowedPacket = maxAllowedPacket;
     this.pamOtherPwd = pamOtherPwd;
     this.autocommit = (autocommit != null) ? autocommit : Boolean.TRUE;
     this.permitRedirect = permitRedirect;
@@ -183,6 +187,7 @@ public final class MariadbConnectionConfiguration {
       CharSequence[] pamOtherPwd,
       int port,
       int prepareCacheSize,
+      Integer maxAllowedPacket,
       String socket,
       String username,
       boolean allowMultiQueries,
@@ -216,6 +221,7 @@ public final class MariadbConnectionConfiguration {
     this.pamOtherPwd = pamOtherPwd;
     this.port = port;
     this.prepareCacheSize = prepareCacheSize;
+    this.maxAllowedPacket = maxAllowedPacket;
     this.socket = socket;
     this.username = username;
     this.allowMultiQueries = allowMultiQueries;
@@ -256,6 +262,7 @@ public final class MariadbConnectionConfiguration {
         this.pamOtherPwd,
         hostAddress.getPort(),
         this.prepareCacheSize,
+        this.maxAllowedPacket,
         this.socket,
         user,
         this.allowMultiQueries,
@@ -445,6 +452,12 @@ public final class MariadbConnectionConfiguration {
           intValue(
               connectionFactoryOptions.getValue(
                   MariadbConnectionFactoryProvider.PREPARE_CACHE_SIZE)));
+    }
+
+    if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.MAX_ALLOWED_PACKET)) {
+      Object value =
+          connectionFactoryOptions.getValue(MariadbConnectionFactoryProvider.MAX_ALLOWED_PACKET);
+      builder.maxAllowedPacket(value == null ? null : intValue(value));
     }
 
     if (connectionFactoryOptions.hasOption(MariadbConnectionFactoryProvider.SSL_MODE)) {
@@ -682,6 +695,17 @@ public final class MariadbConnectionConfiguration {
     return prepareCacheSize;
   }
 
+  /**
+   * Maximum size (in bytes) of a packet the driver will send or accept, or {@code null} when unset.
+   *
+   * @return configured maximum packet size, {@code null} if not set
+   * @see Builder#maxAllowedPacket(Integer)
+   */
+  @Nullable
+  public Integer getMaxAllowedPacket() {
+    return maxAllowedPacket;
+  }
+
   public boolean isTcpKeepAlive() {
     return tcpKeepAlive;
   }
@@ -808,14 +832,14 @@ public final class MariadbConnectionConfiguration {
             first = false;
             boolean firstProp = true;
             Properties properties = (Properties) obj;
-            for (Object key : properties.keySet()) {
+            for (Map.Entry<Object, Object> entry : properties.entrySet()) {
               if (firstProp) {
                 firstProp = false;
               } else {
                 sb.append('&');
               }
-              sb.append(key).append('=');
-              sb.append(properties.get(key));
+              sb.append(entry.getKey()).append('=');
+              sb.append(entry.getValue());
             }
           } else if (field.getType().isArray()) {
             Object defaultValue = field.get(defaultConf);
@@ -884,6 +908,7 @@ public final class MariadbConnectionConfiguration {
   public static final class Builder implements Cloneable {
 
     @Nullable Integer prepareCacheSize;
+    @Nullable Integer maxAllowedPacket;
     @Nullable private String haMode;
     @Nullable private String rsaPublicKey;
     @Nullable private String cachingRsaPublicKey;
@@ -951,6 +976,11 @@ public final class MariadbConnectionConfiguration {
           throw new IllegalArgumentException("username must not be null");
         }
       }
+
+      if (this.maxAllowedPacket != null && this.maxAllowedPacket <= 0) {
+        throw new IllegalArgumentException(
+            "maxAllowedPacket must be strictly positive, but was " + this.maxAllowedPacket);
+      }
       return new MariadbConnectionConfiguration(
           this.haMode,
           this.connectTimeout,
@@ -985,6 +1015,7 @@ public final class MariadbConnectionConfiguration {
           this.permitRedirect,
           this.skipPostCommands,
           this.prepareCacheSize,
+          this.maxAllowedPacket,
           this.pamOtherPwd,
           this.tinyInt1isBit,
           this.restrictedAuth,
@@ -1052,7 +1083,7 @@ public final class MariadbConnectionConfiguration {
       return this;
     }
 
-    public Builder pamOtherPwd(@Nullable CharSequence[] pamOtherPwd) {
+    public Builder pamOtherPwd(CharSequence @Nullable [] pamOtherPwd) {
       this.pamOtherPwd = pamOtherPwd;
       return this;
     }
@@ -1172,6 +1203,34 @@ public final class MariadbConnectionConfiguration {
      */
     public Builder prepareCacheSize(Integer prepareCacheSize) {
       this.prepareCacheSize = prepareCacheSize;
+      return this;
+    }
+
+    /**
+     * Maximum size (in bytes) of a packet the driver will send or accept.
+     *
+     * <p>When set, the value is advertised to the server during the handshake, commands whose size
+     * would exceed it are rejected before anything is sent, and an oversized packet received from
+     * the server is rejected as well.
+     *
+     * <p>When left unset (default):
+     *
+     * <ul>
+     *   <li>no client-side limit is applied to what the driver sends (the server's {@code
+     *       max_allowed_packet} remains the only bound);
+     *   <li>received packets are bounded by a server-independent, heap-relative ceiling: a quarter
+     *       of the JVM max heap, clamped between 16Mb and 1Gb.
+     * </ul>
+     *
+     * <p>Until authentication completes, a fixed 1Mb cap applies to received packets regardless of
+     * this option, so that a rogue server cannot drive the client to {@link OutOfMemoryError}
+     * pre-auth.
+     *
+     * @param maxAllowedPacket maximum packet size in bytes, or null to use the defaults above
+     * @return this {@link Builder}
+     */
+    public Builder maxAllowedPacket(@Nullable Integer maxAllowedPacket) {
+      this.maxAllowedPacket = maxAllowedPacket;
       return this;
     }
 
@@ -1500,6 +1559,8 @@ public final class MariadbConnectionConfiguration {
           + isolationLevel
           + ", isolationLevel="
           + prepareCacheSize
+          + ", maxAllowedPacket="
+          + maxAllowedPacket
           + ", tlsProtocol="
           + tlsProtocol
           + ", serverSslCert="

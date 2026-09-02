@@ -15,6 +15,7 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.time.Duration;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
@@ -34,6 +35,10 @@ public class ParsecPasswordPlugin implements AuthenticationPlugin {
         0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04,
         0x20
       };
+
+  private static final long PBKDF2_ROUNDS_PER_MS = 262144 / 225;
+  private static final int MAX_ITERATION_FACTOR = 20;
+  private static final long MAX_BUDGET_MS = 3_600_000L;
 
   public ParsecPasswordPlugin create() {
     return new ParsecPasswordPlugin();
@@ -56,19 +61,29 @@ public class ParsecPasswordPlugin implements AuthenticationPlugin {
     }
 
     byte firstByte = 0;
-    int iterations = 100;
+    int iterationFactor = -1;
     ByteBuf buf = authMoreData.getBuf();
 
     if (buf.readableBytes() > 0 && buf.getByte(buf.readerIndex()) == 0x01) buf.readByte();
 
     if (buf.readableBytes() > 2) {
       firstByte = buf.readByte();
-      iterations = buf.readByte();
+      iterationFactor = buf.readUnsignedByte();
     }
 
-    if (firstByte != 0x50 || iterations > 20) {
-      // expected 'P' for KDF algorithm (PBKDF2) and iterations < 20
+    if (firstByte != 0x50 || iterationFactor < 0) {
+      // expected 'P' for KDF algorithm (PBKDF2)
       throw new R2dbcNonTransientResourceException("Wrong parsec authentication format", "S1009");
+    }
+
+    int maxIterationFactor = maxIterationFactor(configuration.getConnectTimeout());
+    if (iterationFactor > maxIterationFactor) {
+      throw new R2dbcNonTransientResourceException(
+          String.format(
+              "Parsec authentication iteration factor %s exceeds the maximum value %s permitted by"
+                  + " connectTimeout. Server might be malicious.",
+              iterationFactor, maxIterationFactor),
+          "S1009");
     }
 
     byte[] salt = new byte[buf.readableBytes()];
@@ -101,7 +116,7 @@ public class ParsecPasswordPlugin implements AuthenticationPlugin {
 
     try {
       // hash password with PBKDF2
-      PBEKeySpec spec = new PBEKeySpec(password, salt, 1024 << iterations, 256);
+      PBEKeySpec spec = new PBEKeySpec(password, salt, 1024 << iterationFactor, 256);
       SecretKey key = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512").generateSecret(spec);
       byte[] derivedKey = key.getEncoded();
 
@@ -128,6 +143,27 @@ public class ParsecPasswordPlugin implements AuthenticationPlugin {
       // not expected
       throw new R2dbcNonTransientResourceException("Error during parsec authentication", e);
     }
+  }
+
+  /**
+   * Maximum PBKDF2 iteration factor accepted from the server, derived from the connection time
+   * budget. The factor is an exponent, effective work being {@code 1024 << factor} rounds, so the
+   * bound scales with connectTimeout by design: the client declares its own budget, and a longer
+   * declared budget permits a bigger factor.
+   *
+   * @param connectTimeout configured connection timeout
+   * @return maximum accepted iteration factor
+   */
+  public static int maxIterationFactor(Duration connectTimeout) {
+    Duration budget =
+        connectTimeout == null || connectTimeout.isZero() || connectTimeout.isNegative()
+            ? MariadbConnectionConfiguration.DEFAULT_CONNECT_TIMEOUT
+            : connectTimeout;
+    long budgetMs = budget.getSeconds() >= MAX_BUDGET_MS / 1000 ? MAX_BUDGET_MS : budget.toMillis();
+    long maxRounds = PBKDF2_ROUNDS_PER_MS * budgetMs / 1024;
+    if (maxRounds < 1) return 0;
+    // floor(log2(maxRounds))
+    return Math.min(63 - Long.numberOfLeadingZeros(maxRounds), MAX_ITERATION_FACTOR);
   }
 
   private byte[] combineArray(byte[] arr1, byte[] arr2) {

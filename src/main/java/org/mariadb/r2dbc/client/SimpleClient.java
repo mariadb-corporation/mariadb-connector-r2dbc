@@ -99,7 +99,7 @@ public class SimpleClient implements Client {
     EventLoop eventLoop = connection.channel().eventLoop();
     this.scheduler = Schedulers.fromExecutorService(eventLoop, eventLoop.toString());
     this.decoder = new MariadbFrameDecoder(exchangeQueue, this, configuration);
-    this.encoder = new MariadbPacketEncoder();
+    this.encoder = new MariadbPacketEncoder(configuration);
     this.byteBufAllocator = connection.outbound().alloc();
     Queue<ServerMessage> receiverQueue = Queues.<ServerMessage>get(Queues.SMALL_BUFFER_SIZE).get();
     this.messageSubscriber = new ServerMessageSubscriber(this.lock, exchangeQueue, receiverQueue);
@@ -292,6 +292,10 @@ public class SimpleClient implements Client {
       R2dbcNonTransientResourceException rooted = unwrapDecoderException(throwable);
       if (rooted != null) {
         error = rooted;
+      } else if (throwable instanceof MaxAllowedPacketException) {
+        // raised by the encoder when a command exceeds maxAllowedPacket: report why the command
+        // was refused rather than the generic "Connection error".
+        error = (MaxAllowedPacketException) throwable;
       } else if (throwable instanceof SSLHandshakeException) {
         error = new R2dbcNonTransientResourceException(throwable.getMessage(), "08000", throwable);
       } else {

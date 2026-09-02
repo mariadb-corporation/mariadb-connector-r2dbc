@@ -114,6 +114,11 @@ public class SimpleContext implements Context {
   }
 
   @Override
+  public boolean isInitialized() {
+    return initialized;
+  }
+
+  @Override
   public String toString() {
     return "ConnectionContext{" + "threadId=" + threadId + ", version=" + version + '}';
   }

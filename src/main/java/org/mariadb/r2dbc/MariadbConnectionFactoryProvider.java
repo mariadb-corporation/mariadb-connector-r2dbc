@@ -33,6 +33,7 @@ public final class MariadbConnectionFactoryProvider implements ConnectionFactory
   public static final Option<Boolean> SKIP_POST_COMMANDS = Option.valueOf("skipPostCommands");
   public static final Option<Boolean> TINY_IS_BIT = Option.valueOf("tinyInt1isBit");
   public static final Option<Integer> PREPARE_CACHE_SIZE = Option.valueOf("prepareCacheSize");
+  public static final Option<Integer> MAX_ALLOWED_PACKET = Option.valueOf("maxAllowedPacket");
   public static final Option<String> SSL_MODE = Option.valueOf("sslMode");
   public static final Option<Boolean> TRANSACTION_REPLAY = Option.valueOf("transactionReplay");
   public static final Option<String> HAMODE = Option.valueOf("haMode");
