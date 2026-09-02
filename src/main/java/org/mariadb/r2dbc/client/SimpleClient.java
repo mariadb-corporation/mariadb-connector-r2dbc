@@ -360,6 +360,11 @@ public class SimpleClient implements Client {
                 .outbound()
                 .send(encoder.encodeFlux(QuitPacket.INSTANCE))
                 .then()
+                .onErrorResume(
+                    t -> {
+                      logger.debug("fail to send QUIT on close, socket already closed", t);
+                      return Mono.empty();
+                    })
                 .doOnSuccess(v -> this.connection.dispose())
                 .then(this.connection.onDispose());
           }
