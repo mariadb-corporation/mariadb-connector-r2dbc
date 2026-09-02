@@ -1,5 +1,19 @@
 # Change Log
 
+## [1.4.2](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.4.2) (Sep 2026)
+
+[Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.4.1...1.4.2)
+
+Notable Changes:
+* R2DBC-128 Add `maxAllowedPacket` connection option, limiting both the packet size the driver sends and the size it accepts from the server (report by fg0x0)
+* R2DBC-125 Add Infer static analysis to CI
+
+Bugs Fixed:
+* R2DBC-127 Reject multipart (>16 MB) packets before authentication to prevent pre-auth OOM from a rogue server (report by fg0x0)
+* R2DBC-129 Bound the server-given parsec PBKDF2 iteration factor by `connectTimeout`, and derive keys off the event loop (report by fg0x0)
+* R2DBC-131 Close the connection when the server sends a message while no command is in flight, instead of delivering it to an unrelated command (report by fg0x0)
+
+
 ## [1.4.1](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.4.1) (Jun 2026)
 
 [Full Changelog](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/compare/1.4.0...1.4.1)
