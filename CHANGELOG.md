@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.2.4](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.2.4) (Sep 2026)
+
+Bugs Fixed:
+* `Connection.close()` must not fail when the QUIT packet cannot be sent because the socket is already closed
+* R2DBC-127	Reject multipart (>16 MB) packets before authentication to prevent pre-auth OOM from a rogue server
+
+
 ## [1.2.3](https://github.com/mariadb-corporation/mariadb-connector-r2dbc/tree/1.2.3) (Jun 2026)
 
 Maintenance release for the 1.2 line, back-porting the corrections, CI and
