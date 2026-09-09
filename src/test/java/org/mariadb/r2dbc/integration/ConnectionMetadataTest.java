@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.r2dbc.spi.ConnectionFactoryMetadata;
-import io.r2dbc.spi.ConnectionMetadata;
 import org.junit.jupiter.api.Test;
 import org.mariadb.r2dbc.BaseConnectionTest;
 import org.mariadb.r2dbc.api.MariadbConnectionMetadata;
@@ -16,18 +15,18 @@ public class ConnectionMetadataTest extends BaseConnectionTest {
 
   @Test
   void connectionMeta() {
-    ConnectionMetadata meta = sharedConn.getMetadata();
-    System.out.println(meta.getDatabaseVersion());
-    assertEquals(meta.getDatabaseProductName(), isMariaDBServer() ? "MariaDB" : "MySQL");
+    MariadbConnectionMetadata meta = sharedConn.getMetadata();
+    String dbVersion = meta.getDatabaseVersion();
+    assertEquals(isMariaDBServer() ? "MariaDB" : "MySQL", meta.getDatabaseProductName());
+    // the reported version must be the one parsed from the handshake, without any "5.5.5-" prefix
+    assertTrue(
+        dbVersion.startsWith(
+            meta.getMajorVersion() + "." + meta.getMinorVersion() + "." + meta.getPatchVersion()),
+        "unexpected version " + dbVersion);
     if (isMariaDBServer() && !isXpand()) {
-      assertTrue(
-          meta.getDatabaseVersion().contains("10.")
-              || meta.getDatabaseVersion().contains("11.")
-              || meta.getDatabaseVersion().contains("12.")
-              || meta.getDatabaseVersion().contains("23."));
-    } else {
-      assertTrue(
-          meta.getDatabaseVersion().contains("8.") || meta.getDatabaseVersion().contains("9."));
+      assertTrue(meta.getMajorVersion() >= 10, "unexpected MariaDB version " + dbVersion);
+    } else if (!isMariaDBServer()) {
+      assertTrue(meta.getMajorVersion() >= 8, "unexpected MySQL version " + dbVersion);
     }
     String type = System.getenv("srv");
     String version = System.getenv("v");
