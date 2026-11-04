@@ -30,7 +30,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <r2dbc-spi.version>1.0.0.RELEASE</r2dbc-spi.version>
         <reactor.version>2025.0.6</reactor.version>
-        <mariadb-jdbc.version>3.5.9</mariadb-jdbc.version>
+        <mariadb-jdbc.version>3.5.11</mariadb-jdbc.version>
         <uberjar.name>benchmarks</uberjar.name>
         <spotless.version>3.7.0</spotless.version>
         <jacoco.version>0.8.15</jacoco.version>
